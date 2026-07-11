@@ -62,24 +62,28 @@ bootstrap has happened yet).
 
 ---
 
-## Phase 0 - Scaffold & plumbing
+## Phase 0 - Scaffold & plumbing  [DONE 2026-07-11]
 
 Goal: installable empty plugin, repo pushed, framework in place.
 
-- [ ] Plugin skeleton: main file, `defines.php`, version 0.1.0, readme.txt with changelog
-- [ ] Add `super-speedy-settings` submodule; settings page shell registered under Tools (or
-      top-level?) using the abstract settings class; JS tabs wired (empty tabs: Overview,
-      Pages, Plugins, History, Share)
-- [ ] Update checker pointed at the public GitHub repo (releases-based)
-- [ ] `class-sspa-schema.php` + activation: create all six tables via dbDelta
+- [x] Plugin skeleton: main file, `defines.php`, version 0.1.0, readme.txt with changelog
+- [x] Add `super-speedy-settings` submodule; admin page as a submenu of the shared
+      Super Speedy menu (own top-level fallback when the submodule/siblings are absent);
+      JS tabs wired (empty tabs: Overview, Pages, Plugins, History, Share)
+- [x] Update checker pointed at the public GitHub repo (releases-based). NOTE: we must NOT
+      call `SuperSpeedySettings_1_0::init()` - it registers a superspeedyplugins.com PUC for
+      our slug and PUC fatals on duplicate slugs; this free plugin uses the GitHub checker
+      only (learned the hard way - the fatal took down the whole site/CLI)
+- [x] `class-sspa-schema.php` + activation: create all six tables via dbDelta
       (runs, profiles, component_stats, findings, plugin_impacts, site_metrics) with
       `sspa_db_version` option + migration path; blog_id column present, unused
-- [ ] `uninstall.php`: honour a "remove all data on uninstall" setting (default off)
-- [ ] `.tests/README.md` stub describing the harness we'll build in phase 1
-- [ ] Initial commit + push to `main`
+- [x] `uninstall.php`: honour a "remove all data on uninstall" setting (default off);
+      signature-checked cleanup of shim/mu files + stale db.php.sspa-hold restore
+- [x] `.tests/README.md` stub describing the harness we'll build in phase 1
+- [x] Initial commit + push to `main`
 
-Acceptance: activates cleanly on the local install, tables exist, empty tabbed page renders,
-update checker sees the repo.
+Acceptance: verified on the local install - activates cleanly, all six tables exist,
+tabbed page renders (5 tabs/5 panels), wp-cli loads without error.
 
 ## Phase 1 - Capture engine (the profiler + crawler)
 

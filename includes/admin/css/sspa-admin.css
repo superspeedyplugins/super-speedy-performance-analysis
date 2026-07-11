@@ -1,0 +1,12 @@
+#sspa_main .tab-contents {
+	margin-top: 1em;
+}
+
+#sspa_main .sspa-placeholder {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 2em;
+	max-width: 720px;
+	color: #50575e;
+}

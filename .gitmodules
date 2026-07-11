@@ -1,0 +1,3 @@
+[submodule "super-speedy-settings"]
+	path = super-speedy-settings
+	url = git@github.com:superspeedyplugins/super-speedy-settings.git
