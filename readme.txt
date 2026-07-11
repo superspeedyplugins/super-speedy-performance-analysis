@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,16 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.3.0 (11th July 2026) =
+* Phase 2 analysis engine: your profiles now become plain-English findings. Heuristics cover slow queries (with shape classification: postmeta scans, SQL_CALC_FOUND_ROWS, ORDER BY rand(), leading-wildcard LIKE, nested taxonomy joins), large result sets (the usual RAM culprits), queries-in-loops (N+1), byte-identical duplicate queries, blocking HTTP calls during page render, autoloaded-options bloat, environment red flags (old PHP, missing object cache on large databases), overlapping plugins and security-blocked pages.
+* Site score plus Top 5 insights on the Overview tab, each naming the responsible plugin or theme with evidence and a recommendation.
+* Site profile card: content counts, database size, sector inference (e-commerce, jobs board, publisher etc) - recorded per run for future benchmarking.
+* Pages tab drill-down: click any page for its per-plugin breakdown, slowest queries with callers, and HTTP calls.
+* Plugins tab: per-plugin SQL time, query counts, rows fetched and slowest query across the whole analysis (inferred attribution; measured isolation testing comes with Deep Analysis).
+* History tab: score, findings and median generation time across runs, so you can see whether your site is getting slower as it grows.
+* Stored-data meter with a manual "delete detailed data older than the last 5 runs" button - nothing is ever pruned automatically.
+* Recommendation texts, thresholds, plugin categories and sector signatures ship as a bundled rules file, ready to be community-updated via superspeedy.org in a later phase.
 
 = 0.2.0 (11th July 2026) =
 * Phase 1 capture engine: profiles your key pages (front end, WooCommerce and wp-admin) via signed loopback requests and stores per-page metrics - generation time, SQL time, query counts, returned rows, HTTP API time, peak RAM.

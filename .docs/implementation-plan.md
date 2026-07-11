@@ -163,30 +163,36 @@ Acceptance: full baseline (3 variants where applicable) on the local dev store c
 unattended in < ~10 min, Pages tab shows real numbers, QM cross-check passes, kill -9 during
 a run leaves no held db.php and the next load self-heals.
 
-## Phase 2 - Analysis engine + insights UI
+## Phase 2 - Analysis engine + insights UI  [DONE 2026-07-11]
 
 Goal: the numbers become plain-English findings; the plugin is genuinely useful (and
 shareable) at the end of this phase.
 
-- [ ] Heuristics (each a class emitting findings w/ evidence + recommendation_key):
+- [x] Heuristics (each a class emitting findings w/ evidence + recommendation_key):
       slow-query (+ shape classifier), big-result-set, query-count/N+1 (incl. content
       scaling comparison), duplicate-queries, slow-http, autoload-bloat, environment
       red flags, duplicate-functionality categories
-- [ ] Bundled `rules/rules-snapshot.json` v1: recommendation texts, query-shape ->
+- [x] Bundled `rules/rules-snapshot.json` v1: recommendation texts, query-shape ->
       recommendation map (incl. Scalability Pro / SSS / SSF where honest), category map,
       sector signatures, dependency seed, security whitelisting advice texts
-- [ ] `class-sspa-demographics.php`: full snapshot + sector inference
-- [ ] Overview tab: site score, Top 5 insights narrative, demographics card, storage meter +
+- [x] `class-sspa-demographics.php`: full snapshot + sector inference
+- [x] Overview tab: site score, Top 5 insights narrative, demographics card, storage meter +
       "Delete detailed data older than last 5 runs" button + share-before-delete prompt
       (submission itself lands phase 5 - prompt links to Share tab explaining what's coming
       or is hidden until then)
-- [ ] Pages tab: sortable metrics, drill-down (per-component breakdown, worst queries
+- [x] Pages tab: sortable metrics, drill-down (per-component breakdown, worst queries
       pretty-printed with caller stacks), variant switcher
-- [ ] Plugins tab: per-component aggregates across pages (inferred badges only for now)
-- [ ] History tab: metric trends across runs, "site growing slower?" callout
-- [ ] readme.txt changelog + first tagged release (0.5.x): capture + insights, no isolation
+- [x] Plugins tab: per-component aggregates across pages (inferred badges only for now)
+- [x] History tab: metric trends across runs, "site growing slower?" callout
+- [x] readme.txt changelog + first tagged release (0.5.x): capture + insights, no isolation
 
-Acceptance: on the local store with a deliberately bad test plugin (write one: N+1 loop, a
+Notes: heuristics implemented as engine methods (YAGNI vs one-class-per-file); content-
+scaling comparison (3 vs 30 related items) deferred to phase 3+ where isolation gives better
+signal; share-before-delete prompt is a "coming soon" note until phase 5 builds submission.
+Duplicate-query detection uses byte-identical SQL (fingerprint-identical = N+1, handled by
+query_loop instead).
+
+Acceptance: on the docker store with a deliberately bad test plugin (write one: N+1 loop, a
 500-row query, a blocking HTTP call), all planted offences appear as findings naming the
 plugin; e2e test asserts exactly that.
 

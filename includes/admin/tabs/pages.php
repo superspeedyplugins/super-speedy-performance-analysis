@@ -32,7 +32,7 @@ if (!$sspa_last_run_id) : ?>
         </thead>
         <tbody>
         <?php foreach ($sspa_profiles as $p) : ?>
-            <tr>
+            <tr class="sspa-page-row" data-profile-id="<?php echo (int) $p['id']; ?>" title="<?php esc_attr_e('Click for per-plugin breakdown and worst queries', 'super-speedy-performance-analysis'); ?>">
                 <td><code><?php echo esc_html($p['page_key']); ?></code></td>
                 <td><?php echo esc_html($p['variant']); ?></td>
                 <td><?php echo $p['page_gen_ms'] !== null ? esc_html(number_format((float) $p['page_gen_ms'], 1)) : '-'; ?></td>

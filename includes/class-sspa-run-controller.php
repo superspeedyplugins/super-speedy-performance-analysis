@@ -20,6 +20,8 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_process_batch', array(__CLASS__, 'ajax_process_batch'));
         add_action('wp_ajax_sspa_run_status', array(__CLASS__, 'ajax_run_status'));
         add_action('wp_ajax_sspa_cancel_run', array(__CLASS__, 'ajax_cancel_run'));
+        add_action('wp_ajax_sspa_page_detail', array(__CLASS__, 'ajax_page_detail'));
+        add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }
@@ -152,9 +154,21 @@ class SSPA_Run_Controller {
     }
 
     private static function finish($run_id) {
+        global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
         delete_option('sspa_queue_' . $run_id);
-        self::set_status($run_id, 'done', true);
+        self::set_status($run_id, 'analysing');
+
+        $demographics = SSPA_Demographics::snapshot($run_id);
+        $engine = new SSPA_Analysis_Engine();
+        $finding_count = $engine->analyse($run_id, $demographics);
+        $score = SSPA_Analysis_Engine::score($run_id);
+
+        $wpdb->update(SSPA_Schema::table('runs'), array(
+            'status' => 'done',
+            'finished' => gmdate('Y-m-d H:i:s'),
+            'notes' => wp_json_encode(array('score' => $score, 'findings' => $finding_count)),
+        ), array('id' => $run_id));
     }
 
     private static function fail($run_id, $note) {
@@ -267,5 +281,67 @@ class SSPA_Run_Controller {
             self::cancel($run_id);
         }
         wp_send_json_success();
+    }
+
+    public static function ajax_page_detail() {
+        global $wpdb;
+        self::ajax_guard();
+        $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
+        $blob = $wpdb->get_var($wpdb->prepare(
+            'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . ' WHERE id = %d',
+            $profile_id
+        ));
+        $capture = $blob ? json_decode((string) @gzuncompress($blob), true) : null;
+        if (!is_array($capture)) {
+            wp_send_json_error(__('No detailed data stored for this page (pruned or capture failed).', 'super-speedy-performance-analysis'));
+        }
+
+        $components = array();
+        foreach ((array) $capture['components'] as $name => $stats) {
+            $components[] = array('component' => $name) + $stats;
+        }
+        usort($components, function ($a, $b) {
+            return $b['sql_ms'] <=> $a['sql_ms'];
+        });
+
+        $queries = (array) $capture['sql']['queries'];
+        usort($queries, function ($a, $b) {
+            return $b['ms'] <=> $a['ms'];
+        });
+        $queries = array_map(function ($q) {
+            return array(
+                'sql' => $q['sql'] !== null ? $q['sql'] : $q['fp'],
+                'ms' => $q['ms'],
+                'rows' => $q['rows'],
+                'component' => $q['component'],
+                'caller' => $q['caller'],
+            );
+        }, array_slice($queries, 0, 10));
+
+        wp_send_json_success(array(
+            'components' => $components,
+            'queries' => $queries,
+            'http' => isset($capture['http']['calls']) ? array_map(function ($c) {
+                unset($c['frames']);
+                return $c;
+            }, $capture['http']['calls']) : array(),
+            'dupes' => isset($capture['sql']['dupe_details']) ? $capture['sql']['dupe_details'] : array(),
+        ));
+    }
+
+    public static function ajax_prune_blobs() {
+        global $wpdb;
+        self::ajax_guard();
+        $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
+        $runs_table = SSPA_Schema::table('runs');
+        $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $runs_table ORDER BY id DESC LIMIT %d", $keep));
+        $keep_ids = array_map('intval', $keep_ids);
+        $profiles = SSPA_Schema::table('profiles');
+        if ($keep_ids) {
+            $in = implode(',', $keep_ids);
+            $wpdb->query("UPDATE $profiles SET profile_blob = NULL WHERE run_id NOT IN ($in)");
+        }
+        $bytes = (int) $wpdb->get_var("SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM $profiles");
+        wp_send_json_success(array('bytes' => $bytes, 'human' => size_format($bytes)));
     }
 }

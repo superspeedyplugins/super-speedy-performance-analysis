@@ -1,0 +1,101 @@
+{
+    "version": 1,
+    "updated": "2026-07-11",
+    "thresholds": {
+        "slow_query_ms": 50,
+        "big_result_rows": 200,
+        "query_hog_count": 50,
+        "dupe_query_count": 5,
+        "slow_http_ms": 100,
+        "autoload_bytes": 1048576,
+        "ram_hog_bytes": 67108864
+    },
+    "recommendations": {
+        "slow_query_postmeta": {
+            "title": "Slow postmeta query",
+            "body": "This query scans or joins wp_postmeta, which grows with every product/post and has no useful index for this access pattern. This is the exact query shape Scalability Pro fixes with covering indexes and query rewrites.",
+            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+        },
+        "slow_query_found_rows": {
+            "title": "SQL_CALC_FOUND_ROWS",
+            "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. Scalability Pro removes it from key queries; on large tables this alone can halve query time.",
+            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+        },
+        "slow_query_rand": {
+            "title": "ORDER BY rand()",
+            "body": "ORDER BY rand() forces a full table scan and sort on every page view and gets slower as your content grows. The component running it should pick random items a cheaper way (e.g. random offset)."
+        },
+        "slow_query_like": {
+            "title": "Leading-wildcard LIKE",
+            "body": "LIKE '%term%' cannot use an index and scans the whole table. If this powers your search, a dedicated search plugin such as Super Speedy Search replaces it with indexed lookups.",
+            "link": "https://www.superspeedyplugins.com/product/super-speedy-search/"
+        },
+        "slow_query_tax": {
+            "title": "Nested taxonomy query",
+            "body": "Deeply nested term_relationships joins slow down as your catalogue grows. Scalability Pro's taxonomy query optimisation and Super Speedy Filters both target this pattern.",
+            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+        },
+        "slow_query_generic": {
+            "title": "Slow query",
+            "body": "This query exceeds the slow threshold. Check whether the component really needs it on every page load, and whether an index would help."
+        },
+        "big_result_set": {
+            "title": "Large result set",
+            "body": "Queries returning hundreds of rows are the usual cause of high RAM per page view: every row is hydrated into PHP memory. If this component regularly fetches this much data, it is a prime suspect for deep analysis."
+        },
+        "query_loop": {
+            "title": "Queries in a loop",
+            "body": "A high query count from one component usually means queries inside a loop (N+1). The count grows as your content grows, so this gets slower every month. The component should batch its lookups or cache the results."
+        },
+        "dupe_queries": {
+            "title": "Duplicate queries",
+            "body": "The same query ran repeatedly in one page load - the component is missing basic result caching. Cheap to fix for the developer; report it or replace the plugin."
+        },
+        "slow_http": {
+            "title": "Blocking HTTP call during page load",
+            "body": "This component makes a blocking HTTP request while your page renders - every visitor waits for a remote server (licence checks and geo lookups are common offenders). These calls belong in cron, not page loads."
+        },
+        "autoload_bloat": {
+            "title": "Autoloaded options bloat",
+            "body": "Your autoloaded options exceed 1MB and are loaded on every request into memory. Find the biggest autoloaded rows and set autoload=no or delete leftovers from removed plugins."
+        },
+        "no_object_cache": {
+            "title": "No persistent object cache",
+            "body": "This site has a large database but no persistent object cache (Redis/Memcached). Every request recomputes work that could be cached in memory. Ask your host to enable Redis and install a drop-in."
+        },
+        "old_php": {
+            "title": "Outdated PHP",
+            "body": "PHP 8+ is significantly faster than PHP 7.x for WordPress workloads. Upgrading PHP is usually the cheapest speed win available."
+        },
+        "duplicate_functionality": {
+            "title": "Overlapping plugins",
+            "body": "Multiple active plugins provide the same functionality; each adds queries and RAM to every page. Keep one, remove the rest."
+        },
+        "security_block": {
+            "title": "Profiling requests blocked",
+            "body": "A security layer blocked this plugin's self-profiling requests, so some pages could not be measured. Whitelist your own server's IP in the named security plugin and re-run the analysis."
+        }
+    },
+    "categories": {
+        "seo": ["wordpress-seo", "all-in-one-seo-pack", "seopress", "rank-math", "slim-seo", "the-seo-framework"],
+        "security": ["wordfence", "better-wp-security", "all-in-one-wp-security-and-firewall", "wp-simple-firewall", "sucuri-scanner", "wp-cerber", "jetpack-protect"],
+        "page-cache": ["wp-rocket", "w3-total-cache", "litespeed-cache", "wp-super-cache", "wp-fastest-cache", "cache-enabler", "hummingbird-performance"],
+        "backup": ["updraftplus", "backwpup", "duplicator", "all-in-one-wp-migration"],
+        "page-builder": ["elementor", "beaver-builder-lite-version", "siteorigin-panels", "divi-builder", "brizy"],
+        "contact-form": ["contact-form-7", "wpforms-lite", "ninja-forms", "formidable", "fluentform"],
+        "multilingual": ["sitepress-multilingual-cms", "polylang", "translatepress-multilingual", "weglot"]
+    },
+    "sector_signatures": {
+        "job_listing": "jobs board",
+        "download": "digital store",
+        "property": "real estate",
+        "listing": "directory",
+        "tribe_events": "events",
+        "event": "events",
+        "course": "e-learning",
+        "lesson": "e-learning",
+        "sfwd-courses": "e-learning",
+        "product": "e-commerce",
+        "portfolio": "portfolio/agency"
+    }
+}

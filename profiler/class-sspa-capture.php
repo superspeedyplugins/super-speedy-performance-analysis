@@ -221,11 +221,14 @@ if (!class_exists('SSPA_Capture')) {
             foreach ($entries as $i => $e) {
                 $total_ms += $e['ms'];
                 $total_rows += (int) $e['rows'];
-                $fp = sspa_fingerprint_hash($e['sql']);
+                // True duplicates = byte-identical SQL. Fingerprint-identical queries with
+                // different literals are N+1, not dupes - the query-hog heuristic's job.
+                $fp = md5($e['sql']);
                 if (!isset($dupes[$fp])) {
-                    $dupes[$fp] = 0;
+                    $dupes[$fp] = array('count' => 0, 'sql' => $e['sql'], 'component' => $e['component'], 'ms' => 0);
                 }
-                $dupes[$fp]++;
+                $dupes[$fp]['count']++;
+                $dupes[$fp]['ms'] += $e['ms'];
                 $full = isset($keep_full[$i]) || $e['ms'] >= self::FULL_SQL_MS || $e['rows'] >= self::FULL_SQL_ROWS || $e['err'];
                 $queries[] = array(
                     'sql' => $full ? $e['sql'] : null,
@@ -240,11 +243,22 @@ if (!class_exists('SSPA_Capture')) {
             }
 
             $dupe_count = 0;
-            foreach ($dupes as $count) {
-                if ($count > 1) {
-                    $dupe_count += $count - 1;
+            $dupe_details = array();
+            foreach ($dupes as $d) {
+                if ($d['count'] > 1) {
+                    $dupe_count += $d['count'] - 1;
+                    $dupe_details[] = array(
+                        'count' => $d['count'],
+                        'ms' => round($d['ms'], 3),
+                        'sql' => $d['sql'],
+                        'component' => $d['component'],
+                    );
                 }
             }
+            usort($dupe_details, function ($a, $b) {
+                return $b['count'] <=> $a['count'];
+            });
+            $dupe_details = array_slice($dupe_details, 0, 10);
 
             return array(
                 'mode' => $mode,
@@ -252,6 +266,7 @@ if (!class_exists('SSPA_Capture')) {
                 'total_ms' => round($total_ms, 3),
                 'rows_total' => $total_rows,
                 'dupe_count' => $dupe_count,
+                'dupe_details' => $dupe_details,
                 'truncated' => !empty($wpdb->sspa_truncated),
                 'queries' => $queries,
             );

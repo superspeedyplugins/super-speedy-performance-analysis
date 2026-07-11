@@ -40,3 +40,75 @@
 	color: #b32d2e;
 	font-weight: 600;
 }
+
+#sspa_main .sspa-score-row {
+	display: flex;
+	gap: 2em;
+	align-items: flex-start;
+}
+
+#sspa_main .sspa-score {
+	min-width: 110px;
+	text-align: center;
+	border-radius: 8px;
+	padding: 1em;
+	color: #fff;
+}
+
+#sspa_main .sspa-score.good { background: #00a32a; }
+#sspa_main .sspa-score.ok { background: #dba617; }
+#sspa_main .sspa-score.bad { background: #b32d2e; }
+
+#sspa_main .sspa-score-number {
+	display: block;
+	font-size: 42px;
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+#sspa_main .sspa-insights {
+	margin: 0 0 0 1.2em;
+}
+
+#sspa_main .sspa-insight {
+	margin-bottom: 0.9em;
+}
+
+#sspa_main .sspa-insight.sspa-sev-critical > strong {
+	color: #b32d2e;
+}
+
+#sspa_main .sspa-insight-detail code,
+#sspa_main .sspa-sql code {
+	display: block;
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-width: 100%;
+	font-size: 11px;
+	background: #f6f7f7;
+	padding: 4px 6px;
+}
+
+#sspa_main .sspa-insight-rec {
+	margin: 0.3em 0 0;
+	color: #50575e;
+}
+
+#sspa_main .sspa-page-row {
+	cursor: pointer;
+}
+
+#sspa_main .sspa-detail {
+	padding: 0.5em 0 1em;
+}
+
+#sspa_main .sspa-detail h4 {
+	margin: 1em 0 0.4em;
+}
+
+#sspa_main .sspa-badge {
+	background: #dcdcde;
+	border-radius: 3px;
+	padding: 1px 7px;
+	font-size: 11px;
+}
