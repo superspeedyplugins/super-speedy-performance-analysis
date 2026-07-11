@@ -39,7 +39,7 @@ class SSPA_Rules_Feed {
      * @return true|WP_Error
      */
     public static function refresh() {
-        $response = wp_remote_get(SSPA_Submitter::hub_url() . '/wp-json/ssph/v1/rules', array(
+        $response = wp_remote_get(SSPA_Submitter::endpoint('rules'), array(
             'timeout' => 30,
             'sslverify' => false,
         ));

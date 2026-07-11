@@ -30,7 +30,7 @@ sleep(3); // opcache: apache must serve the hub REST routes
 update_option('sspa_hub_url', home_url(), false);
 update_option('sspa_rules_pubkey', get_option('ssph_pubkey'), false);
 update_option('sspa_share_optin', 1, false);
-delete_option('sspa_install_secret');
+$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE 'sspa\\_install\\_secret%'"); // secrets are per-hub
 $wpdb->delete(SSPH_Schema::table('installs'), array('install_uuid' => SSPA_Anonymiser::install_uuid())); // fresh registration on re-runs
 
 // --- Payload anonymisation contract ---

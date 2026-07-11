@@ -41,6 +41,17 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   (`opcache.revalidate_freq=2`). Tests that swap `wp-content/db.php` sleep 3s before
   sending profiled requests.
 
+## Dev: submitting to the local hub (localhost:8081)
+
+The hub companion plugin (repo `hub/` folder) is symlinked into the LOCAL superspeedy
+install and activated there, standing in for superspeedy.org during development.
+`.tests/dev-local-hub.sh` points the docker analysis site at it
+(`http://host.docker.internal:8081`), fires a submission + rules-feed fetch, and prints
+the hub-side row counts. After a `wp reset` on the local install, re-activate the hub
+plugin (recreates tables + keypair) and re-run the script. The client uses
+`?rest_route=` URLs because the local install 301s pretty `/wp-json/` paths to trailing
+slashes, which kills POSTs.
+
 ## Cases
 
 - `01-health.php` - tables, secret, helper-file install (mu-loader + db.php shim),

@@ -14,19 +14,46 @@ class SSPA_Submitter {
         return $url ? untrailingslashit($url) : 'https://superspeedy.org';
     }
 
+    /**
+     * Hub endpoint URL. Uses the ?rest_route= form, which works on every WordPress
+     * regardless of the hub's permalink settings or trailing-slash redirect rules
+     * (pretty /wp-json/ URLs 301 into oblivion on some setups, breaking POSTs).
+     */
+    public static function endpoint($path) {
+        return self::hub_url() . '/?rest_route=/ssph/v1/' . ltrim($path, '/');
+    }
+
     public static function opted_in() {
         return (bool) get_option('sspa_share_optin');
     }
 
+    /**
+     * Per-install secrets are issued BY a hub, so they are stored per hub URL - switching
+     * hubs (dev vs production) must not present one hub's secret to another.
+     */
+    private static function secret_key() {
+        return 'sspa_install_secret_' . md5(self::hub_url());
+    }
+
     private static function secret() {
-        return get_option('sspa_install_secret');
+        $secret = get_option(self::secret_key());
+        if (!$secret) {
+            // Pre-0.7.1 installs stored a single global secret; adopt it for this hub.
+            $legacy = get_option('sspa_install_secret');
+            if ($legacy) {
+                add_option(self::secret_key(), $legacy, '', false);
+                delete_option('sspa_install_secret');
+                $secret = $legacy;
+            }
+        }
+        return $secret;
     }
 
     public static function register() {
         if (self::secret()) {
             return true;
         }
-        $response = wp_remote_post(self::hub_url() . '/wp-json/ssph/v1/register', array(
+        $response = wp_remote_post(self::endpoint('register'), array(
             'timeout' => 30,
             'sslverify' => false,
             'headers' => array('Content-Type' => 'application/json'),
@@ -43,7 +70,7 @@ class SSPA_Submitter {
         if ((int) wp_remote_retrieve_response_code($response) !== 200 || empty($body['secret'])) {
             return new WP_Error('sspa_register_failed', __('The community hub did not accept the registration.', 'super-speedy-performance-analysis'));
         }
-        add_option('sspa_install_secret', $body['secret'], '', false);
+        add_option(self::secret_key(), $body['secret'], '', false);
         return true;
     }
 
@@ -66,7 +93,7 @@ class SSPA_Submitter {
         }
         $body = wp_json_encode($payload);
 
-        $response = wp_remote_post(self::hub_url() . '/wp-json/ssph/v1/submissions', array(
+        $response = wp_remote_post(self::endpoint('submissions'), array(
             'timeout' => 60,
             'sslverify' => false,
             'headers' => array(

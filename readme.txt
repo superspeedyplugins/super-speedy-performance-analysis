@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.7.0
+Stable tag: 0.7.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,11 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.7.1 (11th July 2026) =
+* Hub client hardening, proven against a real second site: submissions and the rules feed now use ?rest_route= URLs, which work on every WordPress regardless of the hub's permalink or trailing-slash redirect setup (pretty /wp-json/ URLs 301 on some hosts, silently breaking POST submissions).
+* Install secrets are now stored per hub URL - switching between a development hub and superspeedy.org no longer presents one hub's credentials to the other. Existing secrets migrate automatically.
+* Added .tests/dev-local-hub.sh: points the docker test site at a hub on the developer's local WordPress and verifies the full cross-site round trip (registration, signed submission, rules feed).
 
 = 0.7.0 (11th July 2026) =
 * Phase 6 Agents: AI assistants and scripts can now drive the whole plugin.
