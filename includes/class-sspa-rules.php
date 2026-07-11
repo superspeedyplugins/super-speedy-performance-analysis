@@ -16,6 +16,26 @@ class SSPA_Rules {
             if (!is_array(self::$data)) {
                 self::$data = array();
             }
+            // Verified community feed overlays the bundled snapshot (feed wins per key).
+            if (class_exists('SSPA_Rules_Feed')) {
+                $feed = SSPA_Rules_Feed::get();
+                if (is_array($feed)) {
+                    foreach (array('thresholds', 'recommendations', 'categories', 'sector_signatures') as $section) {
+                        if (!empty($feed[$section]) && is_array($feed[$section])) {
+                            self::$data[$section] = array_merge(
+                                isset(self::$data[$section]) ? self::$data[$section] : array(),
+                                $feed[$section]
+                            );
+                        }
+                    }
+                    if (!empty($feed['fragile']) && is_array($feed['fragile'])) {
+                        self::$data['fragile'] = array_values(array_unique(array_merge(
+                            isset(self::$data['fragile']) ? self::$data['fragile'] : array(),
+                            $feed['fragile']
+                        )));
+                    }
+                }
+            }
         }
         return self::$data;
     }
@@ -49,5 +69,12 @@ class SSPA_Rules {
     public static function fragile() {
         $data = self::load();
         return isset($data['fragile']) ? $data['fragile'] : array();
+    }
+
+    /**
+     * Drop the merged in-memory copy (after a feed refresh, and in tests).
+     */
+    public static function flush() {
+        self::$data = null;
     }
 }

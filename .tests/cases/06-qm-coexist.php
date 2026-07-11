@@ -36,7 +36,7 @@ if (is_wp_error($run_id)) {
 
     $profiles_table = SSPA_Schema::table('profiles');
     $home = $wpdb->get_row($wpdb->prepare("SELECT * FROM $profiles_table WHERE run_id = %d AND page_key = 'home'", $run_id), ARRAY_A);
-    sspa_t($home && $home['sql_count'] > 10, 'degraded capture still counts queries (' . ($home ? $home['sql_count'] : '?') . ')');
+    sspa_t($home && $home['sql_count'] > 3, 'degraded capture still counts queries (' . ($home ? $home['sql_count'] : '?') . ')'); // low with warm Redis
     sspa_t($home && $home['page_gen_ms'] > 0, 'degraded capture still times the page');
 
     $blob = $home ? $home['profile_blob'] : null;

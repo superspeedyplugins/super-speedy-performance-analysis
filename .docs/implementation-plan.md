@@ -250,31 +250,37 @@ POSTs - the hook cascade is the cost being measured and this avoids the nonce sp
 entirely. Full-send-to-sink mail mode remains phase 7 (needs the superspeedy.org SMTP
 sink); construct mode measures build cost and strips recipients before transport.
 
-## Phase 5 - Community (submission + rules feed + hub MVP)
+## Phase 5 - Community (submission + rules feed + hub MVP)  [DONE 2026-07-11, except settings-snapshot opt-in]
 
 Goal: opt-in data flows to the hub; rules flow back. Hub companion plugin developed on this
 localhost per its own brainstorm - only its MVP endpoints block this phase.
 
-- [ ] `class-sspa-anonymiser.php`: payload builder (normalised SQL only, install UUID,
+- [x] `class-sspa-anonymiser.php`: payload builder (normalised SQL only, install UUID,
       salted domain hash, bucketed counts, plugin slugs+versions) + full payload preview UI
       before first submission
-- [ ] `class-sspa-submitter.php`: register install (UUID + per-install secret), signed
+- [x] `class-sspa-submitter.php`: register install (UUID + per-install secret), signed
       submissions, retry queue
-- [ ] `class-sspa-rules-feed.php`: fetch + signature verification (public key shipped),
+- [x] `class-sspa-rules-feed.php`: fetch + signature verification (public key shipped),
       24h cache, bundled snapshot fallback; rules consumed by heuristics, dependency map,
       security advice, whitelist/blacklist/fragile lists for isolation
-- [ ] Share tab: opt-in flow, payload preview, submission history, link to site's anonymous
+- [x] Share tab: opt-in flow, payload preview, submission history, link to site's anonymous
       entry; wire the share-before-delete prompt to the real flow
 - [ ] Settings-snapshot opt-in (feature detection data; allowlisted keys, bucketed values)
-- [ ] Hub MVP (separate plugin `super-speedy-performance-hub`, this localhost):
+- [x] Hub MVP (separate plugin `super-speedy-performance-hub`, this localhost):
       `POST /submissions` (validate, quarantine, store), `GET /rules` (compiled + signed from
       admin-edited rules), ingest tables + basic rollup cron. Fast-ajax mu route can come
       later; normal REST is fine for MVP. Track detail in the companion brainstorm.
-- [ ] e2e: submit from analysis plugin -> hub tables populated -> rules edit on hub ->
+- [x] e2e: submit from analysis plugin -> hub tables populated -> rules edit on hub ->
       analysis plugin picks it up and a recommendation text changes
 
 Acceptance: round trip works end to end on localhost with anonymisation verified (test greps
 payload for domain, emails, raw SQL literals - all absent).
+
+Notes: settings-snapshot opt-in deferred - it needs the hub classifier's settings_map
+(phase 7) to know which option keys are safe/useful; shipping it without the map would
+collect nothing. Rules feed signing is RSA-SHA256 with the hub's activation-generated
+keypair; the production public key gets bundled as rules/feed-pubkey.pem at superspeedy.org
+launch (option override exists for dev/rotation).
 
 ## Phase 6 - Agents (MCP, WP-CLI, skills)
 

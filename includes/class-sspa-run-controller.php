@@ -22,6 +22,9 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_cancel_run', array(__CLASS__, 'ajax_cancel_run'));
         add_action('wp_ajax_sspa_page_detail', array(__CLASS__, 'ajax_page_detail'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
+        add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
+        add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
+        add_action('wp_ajax_sspa_submit_now', array(__CLASS__, 'ajax_submit_now'));
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }
@@ -719,6 +722,12 @@ class SSPA_Run_Controller {
         foreach ($stale as $run_id) {
             self::fail((int) $run_id, 'stale - timed out');
         }
+
+        // Refresh the community rules feed daily-ish (transient-gated inside).
+        if (false === get_transient(SSPA_Rules_Feed::CACHE_KEY)) {
+            SSPA_Rules_Feed::refresh();
+            SSPA_Rules::flush();
+        }
     }
 
     // ---------------- AJAX ----------------
@@ -826,9 +835,39 @@ class SSPA_Run_Controller {
         ));
     }
 
+    public static function ajax_share_optin() {
+        self::ajax_guard();
+        update_option('sspa_share_optin', !empty($_POST['optin']) ? 1 : 0, false);
+        wp_send_json_success(array('optin' => SSPA_Submitter::opted_in()));
+    }
+
+    public static function ajax_payload_preview() {
+        self::ajax_guard();
+        $payload = SSPA_Anonymiser::build();
+        if (is_wp_error($payload)) {
+            wp_send_json_error($payload->get_error_message());
+        }
+        wp_send_json_success(array('payload' => wp_json_encode($payload, JSON_PRETTY_PRINT)));
+    }
+
+    public static function ajax_submit_now() {
+        self::ajax_guard();
+        $result = SSPA_Submitter::submit();
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success();
+    }
+
     public static function ajax_prune_blobs() {
         global $wpdb;
         self::ajax_guard();
+
+        // Share-before-delete: an opted-in site contributes its data before pruning it.
+        if (SSPA_Submitter::opted_in()) {
+            SSPA_Submitter::submit();
+        }
+
         $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
         $runs_table = SSPA_Schema::table('runs');
         $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $runs_table ORDER BY id DESC LIMIT %d", $keep));

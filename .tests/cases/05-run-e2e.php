@@ -43,7 +43,7 @@ $home = isset($by_key['home']) ? $by_key['home'] : null;
 sspa_t($home !== null, 'home profiled');
 if ($home) {
     sspa_t($home['page_gen_ms'] > 0, 'home page_gen_ms > 0 (' . $home['page_gen_ms'] . ')');
-    sspa_t($home['sql_count'] > 10, 'home ran queries (' . $home['sql_count'] . ')');
+    sspa_t($home['sql_count'] > 3, 'home ran queries (' . $home['sql_count'] . ')'); // low with warm Redis
     sspa_t($home['rows_returned_total'] !== null && $home['rows_returned_total'] > 0, 'row counts captured via shim (' . $home['rows_returned_total'] . ')');
     sspa_t((float) $home['sql_ms'] <= (float) $home['page_gen_ms'] * 1.1, 'sql_ms <= page_gen_ms');
     sspa_t((int) $home['response_code'] === 200, 'home responded 200');
@@ -55,7 +55,7 @@ $admin_dash = isset($by_key['admin-dashboard']) ? $by_key['admin-dashboard'] : n
 sspa_t($admin_dash !== null, 'admin dashboard profiled');
 if ($admin_dash) {
     sspa_t((int) $admin_dash['response_code'] === 200 && empty($admin_dash['blocked_by']), 'admin auth cookie accepted (code ' . $admin_dash['response_code'] . ')');
-    sspa_t($admin_dash['sql_count'] > 10, 'admin dashboard queries captured');
+    sspa_t($admin_dash['sql_count'] > 3, 'admin dashboard queries captured');
 }
 
 // Baseline noise-floor endpoint.

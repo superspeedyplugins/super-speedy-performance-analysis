@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,12 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.6.0 (11th July 2026) =
+* Phase 5 Community: opt-in sharing of anonymised results with superspeedy.org. The Share tab shows the EXACT payload before anything is sent: metric medians per generic page type, per-plugin attribution, measured isolation deltas, findings with normalised query fingerprints, plugin slugs and versions, bucketed site sizes. Never shared: your domain, URLs, raw SQL, emails or customer data - your site is a random ID.
+* Install registration with per-install secrets; every submission is HMAC-signed. Submission history on the Share tab; opted-in sites contribute before pruning detailed data.
+* Community rules feed: recommendation texts, thresholds, plugin categories, sector signatures and fragile lists can now improve without a plugin update. The feed is RSA-signed and verified before anything trusts it - a tampered feed is ignored and the bundled snapshot applies.
+* Companion hub plugin (MVP, ships in the repo's hub/ folder for now): receives and quarantines submissions, flattens measured impacts for the future public rankings, serves the signed rules feed. Destined for superspeedy.org.
 
 = 0.5.0 (11th July 2026) =
 * Phase 4 Cache Impact Analysis: profiles your slowest pages with the persistent object cache on vs off (per-request via the db.php shim - zero effect on visitors; site-wide object-cache.php swap available as an explicit fallback). Per plugin you learn who actually uses your Redis/Memcached: cache-blind plugins (identical queries either way) are named and shamed, cache-friendly plugins get credit. The off-mode is verified from the captures before any conclusion is drawn.

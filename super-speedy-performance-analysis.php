@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://superspeedy.org/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.5.0
+ * Version: 0.6.0
  * Author: Dave Hilditch
  * Author URI: https://superspeedy.org
  * License: GPLv2 or later
@@ -61,6 +61,9 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-analysis-engine.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-isolation-planner.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-dependency-map.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-probes.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-anonymiser.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-submitter.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules-feed.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-admin-page.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-insights.php';

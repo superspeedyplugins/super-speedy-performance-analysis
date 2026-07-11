@@ -89,6 +89,38 @@ jQuery(document).on('click', '#sspa-prune-blobs', function () {
 	});
 });
 
+// ---- Share tab ----
+
+jQuery(document).on('change', '#sspa-share-optin', function () {
+	var optin = jQuery(this).is(':checked') ? 1 : 0;
+	jQuery.post(ajaxurl, { action: 'sspa_share_optin', nonce: sspa_admin.nonce, optin: optin }, function () {
+		jQuery('#sspa-submit-now').prop('disabled', !optin);
+	});
+});
+
+jQuery(document).on('click', '#sspa-preview-payload', function () {
+	var pre = jQuery('#sspa-payload-preview');
+	if (pre.is(':visible')) {
+		pre.hide();
+		return;
+	}
+	pre.text('Building payload…').show();
+	jQuery.post(ajaxurl, { action: 'sspa_payload_preview', nonce: sspa_admin.nonce }, function (resp) {
+		pre.text(resp.success ? resp.data.payload : (resp.data || 'Could not build the payload.'));
+	});
+});
+
+jQuery(document).on('click', '#sspa-submit-now', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {
+		alert(resp.success ? 'Submitted - thank you for contributing!' : (resp.data || 'Submission failed.'));
+		window.location.reload();
+	}).fail(function () {
+		alert('Submission failed.');
+		btn.prop('disabled', false);
+	});
+});
+
 // ---- Run Analysis ----
 
 jQuery(document).on('click', '#sspa-run-analysis', function () {
