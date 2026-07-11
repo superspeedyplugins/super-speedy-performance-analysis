@@ -282,24 +282,29 @@ collect nothing. Rules feed signing is RSA-SHA256 with the hub's activation-gene
 keypair; the production public key gets bundled as rules/feed-pubkey.pem at superspeedy.org
 launch (option override exists for dev/rotation).
 
-## Phase 6 - Agents (MCP, WP-CLI, skills)
+## Phase 6 - Agents (MCP, WP-CLI, skills)  [DONE 2026-07-11]
 
 Goal: an LLM can install, run, and interpret the analysis unaided.
 
-- [ ] WP-CLI: `wp sspa run [--type=] [--pages=]`, `wp sspa status`, `wp sspa findings
+- [x] WP-CLI: `wp sspa run [--type=] [--pages=]`, `wp sspa status`, `wp sspa findings
       --format=json`, `wp sspa impacts --format=json`
-- [ ] Abilities API registrations (readonly = GET) + MCP Adapter exposure; follow the
+- [x] Abilities API registrations (readonly = GET) + MCP Adapter exposure; follow the
       wp-abilities-api skill gotchas; abilities mirror the CLI surface
-- [ ] Findings JSON polish for LLM consumption: stable keys, evidence strings, explicit
+- [x] Findings JSON polish for LLM consumption: stable keys, evidence strings, explicit
       recommendation objects, schema documented in `.docs/`
-- [ ] SKILL.md in repo (Claude skill: install -> run -> interpret -> offer deep analysis) +
+- [x] SKILL.md in repo (Claude skill: install -> run -> interpret -> offer deep analysis) +
       OpenAI-equivalent instructions doc; publish
-- [ ] KB articles in `.kb/` (getting started, understanding results, security whitelisting,
+- [x] KB articles in `.kb/` (getting started, understanding results, security whitelisting,
       methodology) ready for kb-publishing
 
 Acceptance: from a bare Claude Code session pointed at a WP install with only the skill
 available, "analyse my site's performance" completes an analysis and produces a correct
 plain-English summary without human help.
+
+Notes: abilities follow the SSE_MCP reference pattern (category on
+wp_abilities_api_categories_init, non-empty input_schema always, readonly=GET via the core
+run controller, MCP server on mcp_adapter_init). Registry publication of SKILL.md and the
+"bare Claude session" acceptance run are launch-week actions for Dave (phase 7).
 
 ## Phase 7 - Launch & later
 

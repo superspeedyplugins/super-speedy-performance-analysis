@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,14 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.7.0 (11th July 2026) =
+* Phase 6 Agents: AI assistants and scripts can now drive the whole plugin.
+* WP-CLI commands: wp sspa run (synchronous with progress, all run types), wp sspa status, wp sspa findings, wp sspa impacts, wp sspa report - JSON output throughout.
+* WordPress Abilities API (WP 6.9+): category super-speedy-performance with get-status, get-report, get-findings, get-plugin-impacts, get-site-metrics, run-analysis, run-deep-analysis and submit-results. Read-only abilities answer plain GETs on the core abilities REST controller; with the MCP Adapter plugin installed the same abilities appear as MCP tools automatically.
+* Agent-ready report JSON: stable schema (documented in .docs/agent-api.md) with plain-English headlines and explicit recommendation objects per finding - built for LLM consumption.
+* Guard rails for agents: all abilities require manage_options, submissions still require the site owner's opt-in on the Share tab, and run-analysis without include_writes performs GET requests only.
+* SKILL.md published in the repo (Claude agents) plus OpenAI-equivalent instructions; knowledge-base articles for getting started, understanding results, security whitelisting and methodology.
 
 = 0.6.0 (11th July 2026) =
 * Phase 5 Community: opt-in sharing of anonymised results with superspeedy.org. The Share tab shows the EXACT payload before anything is sent: metric medians per generic page type, per-plugin attribution, measured isolation deltas, findings with normalised query fingerprints, plugin slugs and versions, bucketed site sizes. Never shared: your domain, URLs, raw SQL, emails or customer data - your site is a random ID.

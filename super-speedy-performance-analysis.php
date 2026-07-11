@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://superspeedy.org/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.6.0
+ * Version: 0.7.0
  * Author: Dave Hilditch
  * Author URI: https://superspeedy.org
  * License: GPLv2 or later
@@ -67,6 +67,17 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules-feed.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-admin-page.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-insights.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-report.php';
+
+// Agent surfaces: Abilities API (WP 6.9+; MCP via the adapter plugin) and WP-CLI.
+if (function_exists('wp_register_ability')) {
+    require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-abilities.php';
+    SSPA_Abilities::init();
+}
+if (defined('WP_CLI') && WP_CLI) {
+    require_once SSPA_PLUGIN_DIR . 'includes/cli/class-sspa-cli.php';
+    WP_CLI::add_command('sspa', 'SSPA_CLI');
+}
 
 register_activation_hook(__FILE__, array('SSPA_Install', 'activate'));
 register_deactivation_hook(__FILE__, array('SSPA_Install', 'deactivate'));

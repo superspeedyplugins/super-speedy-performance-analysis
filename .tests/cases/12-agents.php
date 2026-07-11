@@ -1,0 +1,90 @@
+<?php
+// Agent surfaces: the Abilities API pipeline (validate -> permission -> execute ->
+// output-validate) and the WP-CLI commands, both returning the stable report schema.
+
+function sspa_t($ok, $label) {
+    echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
+}
+
+if (!function_exists('wp_register_ability') || !function_exists('wp_get_ability')) {
+    echo "PASS: SKIP - Abilities API not present on this WordPress\n";
+    return;
+}
+
+wp_set_current_user(1);
+
+// --- Readonly abilities ---
+$ability = wp_get_ability('super-speedy-performance/get-status');
+sspa_t(is_object($ability), 'get-status ability registered');
+$status = $ability ? $ability->execute(array()) : null;
+sspa_t(is_array($status) && isset($status['active'], $status['latest_done_run_id']), 'get-status executes through the full pipeline');
+sspa_t(is_array($status) && $status['latest_done_run_id'] > 0, 'latest done run visible (' . $status['latest_done_run_id'] . ')');
+
+$report = wp_get_ability('super-speedy-performance/get-report')->execute(array());
+sspa_t(is_array($report) && !is_wp_error($report), 'get-report executes');
+if (is_array($report)) {
+    sspa_t(1 === $report['schema'], 'report schema versioned');
+    sspa_t(is_int($report['score']) || $report['score'] === null, 'score typed');
+    sspa_t(!empty($report['pages']) && isset($report['pages'][0]['generation_ms']), 'pages with stable keys');
+    sspa_t(!empty($report['findings'][0]['headline']), 'findings carry headlines');
+    sspa_t(isset($report['findings'][0]['recommendation']['body']), 'findings carry explicit recommendation objects');
+    sspa_t(isset($report['site']['sector']), 'site block present (' . $report['site']['sector'] . ')');
+}
+
+$findings = wp_get_ability('super-speedy-performance/get-findings')->execute(array());
+sspa_t(is_array($findings) && isset($findings['total'], $findings['findings']), 'get-findings shape');
+
+$impacts = wp_get_ability('super-speedy-performance/get-plugin-impacts')->execute(array());
+sspa_t(is_array($impacts) && isset($impacts['total']) && $impacts['total'] >= 1, 'get-plugin-impacts returns measured impacts (' . $impacts['total'] . ')');
+
+$metrics = wp_get_ability('super-speedy-performance/get-site-metrics')->execute(array());
+sspa_t(is_array($metrics) && 'e-commerce' === $metrics['sector'], 'get-site-metrics sector (' . (is_array($metrics) ? $metrics['sector'] : '?') . ')');
+
+// --- Permission gate: a subscriber must be refused ---
+$subscriber_id = username_exists('sspa-perm-test');
+if (!$subscriber_id) {
+    $subscriber_id = wp_insert_user(array('user_login' => 'sspa-perm-test', 'user_pass' => wp_generate_password(), 'role' => 'subscriber'));
+}
+wp_set_current_user((int) $subscriber_id);
+sspa_t(get_current_user_id() > 0 && !current_user_can('manage_options'), 'low-privilege test user in place');
+$denied = wp_get_ability('super-speedy-performance/get-report')->execute(array());
+sspa_t(is_wp_error($denied), 'non-admin denied by permission callback');
+wp_set_current_user(1);
+
+// --- run-analysis ability starts an async run ---
+$started = wp_get_ability('super-speedy-performance/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
+sspa_t(is_array($started) && !empty($started['run_id']), 'run-analysis starts a run (' . (is_array($started) ? $started['run_id'] : '?') . ')');
+if (is_array($started)) {
+    $deadline = time() + 180;
+    do {
+        SSPA_Run_Controller::process_batch($started['run_id']);
+        $s = SSPA_Run_Controller::status($started['run_id']);
+    } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+    sspa_t($s && 'done' === $s['status'], 'ability-started run completes');
+}
+
+// --- submit-results refuses without owner opt-in ---
+update_option('sspa_share_optin', 0, false);
+$refused = wp_get_ability('super-speedy-performance/submit-results')->execute(array());
+sspa_t(is_wp_error($refused), 'submit-results refuses without owner opt-in');
+
+// --- WP-CLI commands (subprocess - proves registration end to end) ---
+if (class_exists('WP_CLI')) {
+    $json = WP_CLI::runcommand('sspa report', array('return' => true, 'launch' => true, 'exit_error' => false));
+    $cli_report = json_decode((string) $json, true);
+    sspa_t(is_array($cli_report) && 1 === $cli_report['schema'], 'wp sspa report emits the same schema');
+
+    $json = WP_CLI::runcommand('sspa findings --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
+    $cli_findings = json_decode((string) $json, true);
+    sspa_t(is_array($cli_findings), 'wp sspa findings --format=json parses');
+
+    $json = WP_CLI::runcommand('sspa impacts --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
+    $cli_impacts = json_decode((string) $json, true);
+    sspa_t(is_array($cli_impacts) && count($cli_impacts) >= 1, 'wp sspa impacts --format=json returns measured impacts');
+
+    $out = WP_CLI::runcommand('sspa status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
+    $cli_status = json_decode((string) $out, true);
+    sspa_t(is_array($cli_status) && isset($cli_status['status']), 'wp sspa status --format=json parses');
+} else {
+    echo "PASS: SKIP - WP_CLI not available in this context\n";
+}
