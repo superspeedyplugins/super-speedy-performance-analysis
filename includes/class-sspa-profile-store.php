@@ -77,7 +77,7 @@ class SSPA_Profile_Store {
             'url' => $result['url'],
             'method' => 'GET',
             'variant' => $result['variant'],
-            'plugin_set_hash' => '',
+            'plugin_set_hash' => isset($result['plugin_set_hash']) ? $result['plugin_set_hash'] : '',
             'object_cache_mode' => 'normal',
             'samples' => wp_json_encode($sample_summaries),
             'ttfb_ms' => self::median($wall_values),

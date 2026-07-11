@@ -7,6 +7,53 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Admin_Page {
 
+    /**
+     * Offer a quick before/after profile whenever an admin toggles a plugin normally -
+     * over time these spot profiles build the site's own per-plugin cost ledger.
+     */
+    public static function register_toggle_prompt() {
+        $note = function ($plugin, $action) {
+            $slug = dirname($plugin) !== '.' ? dirname($plugin) : basename($plugin, '.php');
+            if ('super-speedy-performance-analysis' === $slug) {
+                return;
+            }
+            set_transient('sspa_plugin_toggled', array('slug' => $slug, 'action' => $action), 10 * MINUTE_IN_SECONDS);
+        };
+        add_action('activated_plugin', function ($plugin) use ($note) {
+            $note($plugin, 'activated');
+        });
+        add_action('deactivated_plugin', function ($plugin) use ($note) {
+            $note($plugin, 'deactivated');
+        });
+        add_action('admin_notices', array(__CLASS__, 'toggle_prompt_notice'));
+    }
+
+    public static function toggle_prompt_notice() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        if (isset($_GET['sspa_dismiss_toggle'])) {
+            delete_transient('sspa_plugin_toggled');
+            return;
+        }
+        $toggled = get_transient('sspa_plugin_toggled');
+        if (!is_array($toggled) || SSPA_Run_Controller::active_run_id()) {
+            return;
+        }
+        $url = admin_url('admin.php?page=sspa&sspa_autospot=1#overview');
+        $dismiss = add_query_arg('sspa_dismiss_toggle', '1');
+        echo '<div class="notice notice-info is-dismissible"><p>';
+        printf(
+            /* translators: 1: plugin slug, 2: action */
+            esc_html__('You just %2$s %1$s - want a 30-second performance spot-check to see what it changed? Compare runs on the History tab afterwards.', 'super-speedy-performance-analysis'),
+            '<strong>' . esc_html($toggled['slug']) . '</strong>',
+            esc_html($toggled['action'])
+        );
+        echo ' <a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Run spot-check', 'super-speedy-performance-analysis') . '</a>';
+        echo ' <a href="' . esc_url($dismiss) . '">' . esc_html__('Dismiss', 'super-speedy-performance-analysis') . '</a>';
+        echo '</p></div>';
+    }
+
     public static function addmenu() {
         global $admin_page_hooks;
         if (isset($admin_page_hooks['superspeedy'])) {

@@ -56,14 +56,23 @@ class SSPA_Run_Controller {
             $user_id = $admins ? (int) $admins[0] : 0;
         }
 
-        $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
-        if (!$jobs) {
-            return new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
+        $type = !empty($args['type']) ? $args['type'] : 'baseline';
+
+        if ('deep' === $type) {
+            $plan = self::build_deep_plan($args);
+            if (is_wp_error($plan)) {
+                return $plan;
+            }
+        } else {
+            $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
+            if (!$jobs) {
+                return new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
+            }
         }
 
         $wpdb->insert(SSPA_Schema::table('runs'), array(
             'blog_id' => get_current_blog_id(),
-            'run_type' => !empty($args['type']) ? $args['type'] : 'baseline',
+            'run_type' => $type,
             'trigger_source' => !empty($args['trigger']) ? $args['trigger'] : 'manual',
             'status' => 'crawling',
             'plugin_set' => wp_json_encode(array(
@@ -75,10 +84,127 @@ class SSPA_Run_Controller {
         ));
         $run_id = (int) $wpdb->insert_id;
 
-        update_option('sspa_queue_' . $run_id, array('jobs' => $jobs, 'idx' => 0, 'user_id' => $user_id), false);
+        if ('deep' === $type) {
+            $plan['user_id'] = $user_id;
+            update_option('sspa_deep_' . $run_id, $plan, false);
+        } else {
+            update_option('sspa_queue_' . $run_id, array('jobs' => $jobs, 'idx' => 0, 'user_id' => $user_id), false);
+        }
         wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
 
         return $run_id;
+    }
+
+    /**
+     * Deep runs are adaptive: the isolation planner decides each next measurement. This
+     * builds its starting state from the latest completed run's findings.
+     *
+     * @return array|WP_Error {planner: state, pages: page_key => job, files: slug => file,
+     *                         theme: slug|null, source_run_id, hashes: []}
+     */
+    private static function build_deep_plan($args) {
+        global $wpdb;
+
+        $source_run_id = (int) $wpdb->get_var(
+            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type != 'deep' ORDER BY id DESC LIMIT 1"
+        );
+        if (!$source_run_id) {
+            return new WP_Error('sspa_no_baseline', __('Run a normal analysis first - deep analysis needs its findings to know what to test.', 'super-speedy-performance-analysis'));
+        }
+
+        $files = SSPA_Dependency_Map::slug_to_file();
+
+        // Suspects: explicit list, or every plugin named by the source run's findings.
+        if (!empty($args['suspects'])) {
+            $suspects = array_values(array_intersect((array) $args['suspects'], array_keys($files)));
+        } else {
+            $components = $wpdb->get_col($wpdb->prepare(
+                'SELECT DISTINCT component FROM ' . SSPA_Schema::table('findings') . "
+                 WHERE run_id = %d AND component IS NOT NULL
+                 AND finding_type IN ('slow_query','big_result_set','query_loop','dupe_queries','slow_http')",
+                $source_run_id
+            ));
+            $suspects = array_values(array_intersect($components, array_keys($files)));
+        }
+
+        // Worst page per suspect: where its attributed SQL+HTTP time is biggest.
+        $singles = array();
+        foreach ($suspects as $slug) {
+            $page_key = $wpdb->get_var($wpdb->prepare(
+                'SELECT p.page_key FROM ' . SSPA_Schema::table('component_stats') . ' cs
+                 JOIN ' . SSPA_Schema::table('profiles') . " p ON p.id = cs.profile_id
+                 WHERE cs.run_id = %d AND cs.component = %s AND p.blocked_by IS NULL
+                 ORDER BY (cs.sql_ms + cs.http_ms) DESC LIMIT 1",
+                $source_run_id,
+                $slug
+            ));
+            if ($page_key) {
+                $singles[] = array('plugin' => $slug, 'page_key' => $page_key);
+            }
+        }
+
+        // Slowest real front-end page: bisection target + theme-isolation page.
+        $slowest_page = $wpdb->get_var($wpdb->prepare(
+            'SELECT page_key FROM ' . SSPA_Schema::table('profiles') . "
+             WHERE run_id = %d AND variant = 'anon' AND page_key != 'baseline'
+             AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
+             ORDER BY page_gen_ms DESC LIMIT 1",
+            $source_run_id
+        ));
+
+        $default_theme = self::default_theme();
+        if ($default_theme && $slowest_page) {
+            $singles[] = array('plugin' => 'theme', 'page_key' => $slowest_page);
+        }
+
+        $bisects = array();
+        if (!isset($args['bisect']) || $args['bisect']) {
+            $candidates = array_diff(SSPA_Dependency_Map::bisect_candidates(), $suspects);
+            if ($slowest_page && count($candidates) > 1) {
+                $bisects[] = array('page_key' => $slowest_page, 'candidates' => array_values($candidates));
+            }
+        }
+
+        if (!$singles && !$bisects) {
+            return new WP_Error('sspa_nothing_to_test', __('No suspects to isolate - the last analysis produced no plugin findings.', 'super-speedy-performance-analysis'));
+        }
+
+        $planner = SSPA_Isolation_Planner::create($singles, $bisects);
+
+        // Resolve the involved pages back to crawlable jobs now, not mid-run.
+        $page_keys = array_keys($planner->state['pages']);
+        $pages = array();
+        foreach (SSPA_Catalogue::build($page_keys) as $job) {
+            $pages[$job['page_key']] = $job;
+        }
+
+        return array(
+            'planner' => $planner->state,
+            'pages' => $pages,
+            'files' => $files,
+            'theme' => $default_theme,
+            'source_run_id' => $source_run_id,
+            'hashes' => array(),
+        );
+    }
+
+    /**
+     * A stock twenty* theme to swap to for theme isolation; null when the active theme
+     * already is one (nothing meaningful to isolate) or none is installed.
+     */
+    private static function default_theme() {
+        $active = get_stylesheet();
+        if (strpos($active, 'twenty') === 0) {
+            return null;
+        }
+        $candidates = array();
+        foreach (wp_get_themes() as $slug => $theme) {
+            if (strpos($slug, 'twenty') === 0) {
+                $candidates[] = $slug;
+            }
+        }
+        rsort($candidates);
+        return $candidates ? $candidates[0] : null;
     }
 
     public static function active_run_id() {
@@ -121,6 +247,10 @@ class SSPA_Run_Controller {
         update_option($lock_key, time(), false);
 
         try {
+            if ('deep' === $run['run_type']) {
+                self::process_deep_batch($run_id);
+                return;
+            }
             $queue = get_option('sspa_queue_' . $run_id);
             if (!is_array($queue)) {
                 self::fail($run_id, 'queue missing');
@@ -153,6 +283,133 @@ class SSPA_Run_Controller {
         }
     }
 
+    private static function process_deep_batch($run_id) {
+        global $wpdb;
+        $plan = get_option('sspa_deep_' . $run_id);
+        if (!is_array($plan)) {
+            self::fail($run_id, 'deep plan missing');
+            return;
+        }
+
+        $planner = SSPA_Isolation_Planner::from_state($plan['planner']);
+        $crawler = new SSPA_Crawler();
+        $deadline = microtime(true) + self::BATCH_SECONDS;
+
+        while (microtime(true) < $deadline) {
+            $spec = $planner->next();
+            if ($spec === null) {
+                $plan['planner'] = $planner->state;
+                update_option('sspa_deep_' . $run_id, $plan, false);
+                self::finish_deep($run_id, $plan, $planner);
+                return;
+            }
+            if (!isset($plan['pages'][$spec['page_key']])) {
+                // Page no longer resolvable - record as fatal so the planner moves on.
+                $planner->record(array('fatal' => true, 'gen_ms' => null, 'sql_ms' => null, 'mem_bytes' => null, 'queries' => null, 'samples' => array()));
+            } else {
+                $job = $plan['pages'][$spec['page_key']];
+
+                // Materialise the exclusion payload for the mu-loader.
+                $exclude_files = array();
+                foreach ($spec['exclude'] as $slug) {
+                    if (isset($plan['files'][$slug])) {
+                        $exclude_files[] = $plan['files'][$slug];
+                    }
+                }
+                if ($exclude_files || $spec['theme_swap']) {
+                    $payload = array(
+                        'plugins' => $exclude_files,
+                        'theme' => $spec['theme_swap'] ? $plan['theme'] : null,
+                    );
+                    $hash = md5(wp_json_encode($payload));
+                    update_option('sspa_isolation_' . $hash, $payload, false);
+                    if (!in_array($hash, $plan['hashes'], true)) {
+                        $plan['hashes'][] = $hash;
+                    }
+                    $job['ps'] = $hash;
+                }
+
+                $result = $crawler->profile_job($job, $plan['user_id']);
+                $profile_id = SSPA_Profile_Store::save($run_id, $result);
+                $row = $wpdb->get_row($wpdb->prepare(
+                    'SELECT page_gen_ms, sql_ms, peak_mem_bytes, sql_count, response_code FROM ' . SSPA_Schema::table('profiles') . ' WHERE id = %d',
+                    $profile_id
+                ), ARRAY_A);
+
+                $samples_gen = array();
+                $all_failed = true;
+                foreach ($result['samples'] as $s) {
+                    if (isset($s['capture']['overview']['gen_ms'])) {
+                        $samples_gen[] = (float) $s['capture']['overview']['gen_ms'];
+                    }
+                    if (empty($s['error']) && empty($s['blocked_by'])) {
+                        $all_failed = false;
+                    }
+                }
+                $fatal = $all_failed || (int) $row['response_code'] >= 500 || $row['page_gen_ms'] === null;
+
+                $planner->record(array(
+                    'fatal' => $fatal,
+                    'gen_ms' => (float) $row['page_gen_ms'],
+                    'sql_ms' => (float) $row['sql_ms'],
+                    'mem_bytes' => (int) $row['peak_mem_bytes'],
+                    'queries' => (int) $row['sql_count'],
+                    'samples' => $samples_gen,
+                ));
+            }
+
+            $plan['planner'] = $planner->state;
+            update_option('sspa_deep_' . $run_id, $plan, false);
+
+            $run = self::run_row($run_id);
+            if (!$run || 'crawling' !== $run['status']) {
+                return; // cancelled mid-batch
+            }
+        }
+
+        wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
+    }
+
+    private static function finish_deep($run_id, $plan, $planner) {
+        global $wpdb;
+        SSPA_Helper_Files::restore_held_dropin();
+
+        foreach ($planner->impacts() as $impact) {
+            $wpdb->insert(SSPA_Schema::table('plugin_impacts'), array(
+                'blog_id' => get_current_blog_id(),
+                'plugin' => $impact['plugin'],
+                'page_key' => $impact['page_key'],
+                'method' => $impact['method'],
+                'delta_ttfb_ms' => $impact['delta_ttfb_ms'],
+                'delta_sql_ms' => $impact['delta_sql_ms'],
+                'delta_mem_bytes' => $impact['delta_mem_bytes'],
+                'delta_queries' => $impact['delta_queries'],
+                'noise_floor_ms' => $impact['noise_floor_ms'],
+                'confidence' => $impact['confidence'],
+                'baseline_run_id' => $plan['source_run_id'],
+                'test_run_id' => $run_id,
+                'created' => gmdate('Y-m-d H:i:s'),
+            ));
+        }
+
+        foreach ($plan['hashes'] as $hash) {
+            delete_option('sspa_isolation_' . $hash);
+        }
+        delete_option('sspa_deep_' . $run_id);
+
+        $wpdb->update(SSPA_Schema::table('runs'), array(
+            'status' => 'done',
+            'finished' => gmdate('Y-m-d H:i:s'),
+            'notes' => wp_json_encode(array(
+                'type' => 'deep',
+                'impacts' => count($planner->impacts()),
+                'measurements' => $planner->done_count(),
+                'unresolved' => $planner->unresolved(),
+                'truncated' => $planner->truncated(),
+            )),
+        ), array('id' => $run_id));
+    }
+
     private static function finish($run_id) {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
@@ -171,10 +428,21 @@ class SSPA_Run_Controller {
         ), array('id' => $run_id));
     }
 
+    private static function cleanup_run_state($run_id) {
+        delete_option('sspa_queue_' . $run_id);
+        $plan = get_option('sspa_deep_' . $run_id);
+        if (is_array($plan) && !empty($plan['hashes'])) {
+            foreach ($plan['hashes'] as $hash) {
+                delete_option('sspa_isolation_' . $hash);
+            }
+        }
+        delete_option('sspa_deep_' . $run_id);
+    }
+
     private static function fail($run_id, $note) {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
-        delete_option('sspa_queue_' . $run_id);
+        self::cleanup_run_state($run_id);
         $wpdb->update(SSPA_Schema::table('runs'), array(
             'status' => 'failed',
             'finished' => gmdate('Y-m-d H:i:s'),
@@ -184,7 +452,7 @@ class SSPA_Run_Controller {
 
     public static function cancel($run_id) {
         SSPA_Helper_Files::restore_held_dropin();
-        delete_option('sspa_queue_' . $run_id);
+        self::cleanup_run_state($run_id);
         self::set_status($run_id, 'cancelled', true);
     }
 
@@ -193,6 +461,21 @@ class SSPA_Run_Controller {
         $run = self::run_row($run_id);
         if (!$run) {
             return null;
+        }
+        if ('deep' === $run['run_type']) {
+            $plan = get_option('sspa_deep_' . $run_id);
+            if (is_array($plan)) {
+                $planner = SSPA_Isolation_Planner::from_state($plan['planner']);
+                $done = $planner->done_count();
+                $spec = $plan['planner']['current'];
+                return array(
+                    'run_id' => (int) $run['id'],
+                    'status' => $run['status'],
+                    'total' => $done + max(1, $planner->estimate_remaining()),
+                    'done' => $done,
+                    'current' => is_array($spec) ? $spec['kind'] . ': ' . $spec['page_key'] : null,
+                );
+            }
         }
         $queue = get_option('sspa_queue_' . $run_id);
         if (is_array($queue)) {
@@ -249,10 +532,19 @@ class SSPA_Run_Controller {
 
     public static function ajax_start_run() {
         self::ajax_guard();
-        $run_id = self::start(array(
-            'type' => 'baseline',
+        $type = (isset($_POST['type']) && 'deep' === $_POST['type']) ? 'deep' : 'baseline';
+        $args = array(
+            'type' => $type,
             'swap_dropin' => !empty($_POST['swap_dropin']),
-        ));
+        );
+        if ('deep' === $type && !empty($_POST['suspects'])) {
+            $args['suspects'] = array_map('sanitize_key', (array) $_POST['suspects']);
+            $args['bisect'] = false; // "Measure this plugin" targets one suspect only
+        }
+        if (isset($_POST['page_keys'])) {
+            $args['page_keys'] = array_map('sanitize_text_field', (array) $_POST['page_keys']);
+        }
+        $run_id = self::start($args);
         if (is_wp_error($run_id)) {
             wp_send_json_error($run_id->get_error_message());
         }

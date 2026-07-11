@@ -6,6 +6,9 @@ jQuery(function () {
 	var active = parseInt(jQuery('#sspa-run-panel').data('active-run'), 10);
 	if (active) {
 		sspa_drive_run(active);
+	} else if (window.location.search.indexOf('sspa_autospot=1') !== -1) {
+		// Arrived from the plugin-toggle notice: run a quick spot profile of key pages.
+		sspa_start_typed_run({ 'page_keys[]': ['home', 'shop', 'baseline'] }, jQuery('#sspa-run-analysis'));
 	}
 });
 
@@ -105,6 +108,36 @@ jQuery(document).on('click', '#sspa-run-analysis', function () {
 		sspa_drive_run(resp.data.run_id);
 	});
 });
+
+jQuery(document).on('click', '#sspa-run-deep', function () {
+	sspa_start_typed_run({ type: 'deep' }, jQuery(this));
+});
+
+jQuery(document).on('click', '.sspa-measure-plugin', function () {
+	var plugin = jQuery(this).data('plugin');
+	if (!confirm('Measure "' + plugin + '" by re-profiling its worst page with the plugin disabled for the test requests only? Visitors are unaffected.')) {
+		return;
+	}
+	sspa_start_typed_run({ type: 'deep', 'suspects[]': plugin }, jQuery(this));
+});
+
+function sspa_start_typed_run(extra, btn) {
+	btn.prop('disabled', true);
+	var payload = jQuery.extend({
+		action: 'sspa_start_run',
+		nonce: sspa_admin.nonce,
+		swap_dropin: jQuery('#sspa-swap-dropin').is(':checked') ? 1 : 0
+	}, extra);
+	jQuery.post(ajaxurl, payload, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || 'Could not start the analysis.');
+			btn.prop('disabled', false);
+			return;
+		}
+		window.location.hash = 'overview';
+		sspa_drive_run(resp.data.run_id);
+	});
+}
 
 jQuery(document).on('click', '#sspa-cancel-run', function () {
 	jQuery.post(ajaxurl, { action: 'sspa_cancel_run', nonce: sspa_admin.nonce }, function () {

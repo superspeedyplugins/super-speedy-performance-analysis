@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://superspeedy.org/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Author: Dave Hilditch
  * Author URI: https://superspeedy.org
  * License: GPLv2 or later
@@ -58,6 +58,8 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-profile-store.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-demographics.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-analysis-engine.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-isolation-planner.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-dependency-map.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-admin-page.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-insights.php';
@@ -72,4 +74,5 @@ if (is_admin()) {
     add_action('admin_menu', array('SSPA_Admin_Page', 'addmenu'), 20);
     // Cheap self-heal: reinstall helper files if missing or stale (secret/version change).
     add_action('admin_init', array('SSPA_Helper_Files', 'ensure_installed'));
+    SSPA_Admin_Page::register_toggle_prompt();
 }

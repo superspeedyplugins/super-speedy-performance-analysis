@@ -45,4 +45,9 @@ class SSPA_Rules {
         $data = self::load();
         return isset($data['sector_signatures']) ? $data['sector_signatures'] : array();
     }
+
+    public static function fragile() {
+        $data = self::load();
+        return isset($data['fragile']) ? $data['fragile'] : array();
+    }
 }

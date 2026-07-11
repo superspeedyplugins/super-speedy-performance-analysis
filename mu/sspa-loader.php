@@ -77,15 +77,38 @@ if (!defined('SAVEQUERIES')) {
     define('SAVEQUERIES', true);
 }
 
-// Virtual plugin-set override (deep analysis): the plugin stores the exclusion list under
-// a hash key; only token-bearing requests ever see the filtered set.
+// Virtual isolation override (deep analysis): the plugin stores {plugins: [files to
+// exclude], theme: slug|null} under a hash key; only token-bearing requests ever see the
+// filtered set. Real visitors are never affected and no (de)activation hooks fire.
 if (!empty($sspa_tok['flags']['ps'])) {
-    $sspa_exclude = get_option('sspa_pluginset_' . preg_replace('/[^a-f0-9]/', '', $sspa_tok['flags']['ps']));
-    if (is_array($sspa_exclude) && $sspa_exclude) {
-        add_filter('option_active_plugins', function ($plugins) use ($sspa_exclude) {
-            return array_values(array_diff((array) $plugins, $sspa_exclude));
-        });
+    $sspa_ps_hash = preg_replace('/[^a-f0-9]/', '', $sspa_tok['flags']['ps']);
+    $sspa_iso = get_option('sspa_isolation_' . $sspa_ps_hash);
+    if (is_array($sspa_iso)) {
+        if (!empty($sspa_iso['plugins']) && is_array($sspa_iso['plugins'])) {
+            $sspa_exclude = $sspa_iso['plugins'];
+            add_filter('option_active_plugins', function ($plugins) use ($sspa_exclude) {
+                return array_values(array_diff((array) $plugins, $sspa_exclude));
+            });
+            add_filter('site_option_active_sitewide_plugins', function ($plugins) use ($sspa_exclude) {
+                foreach ($sspa_exclude as $sspa_file) {
+                    unset($plugins[$sspa_file]);
+                }
+                return $plugins;
+            });
+        }
+        if (!empty($sspa_iso['theme'])) {
+            $sspa_theme = $sspa_iso['theme'];
+            add_filter('template', function () use ($sspa_theme) {
+                return $sspa_theme;
+            });
+            add_filter('stylesheet', function () use ($sspa_theme) {
+                return $sspa_theme;
+            });
+        }
+        // Canary: the crawler verifies the override actually applied to this request.
+        header('X-SSPA-PS: ' . $sspa_ps_hash);
     }
+    unset($sspa_iso, $sspa_ps_hash);
 }
 
 $sspa_bootstrap = '%%SSPA_PLUGIN_DIR%%profiler/bootstrap.php';

@@ -196,26 +196,26 @@ Acceptance: on the docker store with a deliberately bad test plugin (write one: 
 500-row query, a blocking HTTP call), all planted offences appear as findings naming the
 plugin; e2e test asserts exactly that.
 
-## Phase 3 - Deep analysis (culprit isolation)
+## Phase 3 - Deep analysis (culprit isolation)  [DONE 2026-07-11]
 
 Goal: "Run Deep Analysis" measures per-plugin cost with confidence labels.
 
-- [ ] MU loader: plugin-set override via `option_active_plugins` (+ sitewide) for token
+- [x] MU loader: plugin-set override via `option_active_plugins` (+ sitewide) for token
       requests; plugin-set hash echoed in canary and verified by crawler
-- [ ] Theme isolation: `template`/`stylesheet` override to a default theme for token requests
-- [ ] `class-sspa-dependency-map.php`: `Requires Plugins` headers + rules seed; fatal-probe
+- [x] Theme isolation: `template`/`stylesheet` override to a default theme for token requests
+- [x] `class-sspa-dependency-map.php`: `Requires Plugins` headers + rules seed; fatal-probe
       handling (500 during a half = dependency evidence, re-split)
-- [ ] `class-sspa-isolation.php` (pure logic, unit-tested against synthetic cost functions):
+- [x] `class-sspa-isolation.php` (pure logic, unit-tested against synthetic cost functions):
       single-out planner for flagged suspects (worst page each) + bisection planner for the
       slowest pages, multi-culprit recursion, request budget cap
-- [ ] Noise gate: baseline re-measure at deep-run start, delta threshold
+- [x] Noise gate: baseline re-measure at deep-run start, delta threshold
       max(3 x stddev, 30ms); "no measurable impact" recorded as a result, not discarded
-- [ ] `sspa_plugin_impacts` writes + Plugins tab upgrade: measured deltas, confidence badges,
+- [x] `sspa_plugin_impacts` writes + Plugins tab upgrade: measured deltas, confidence badges,
       "Measure this plugin" row action
-- [ ] Run Deep Analysis button + warning copy (honest per-request-only wording) + progress
-- [ ] Spot-profile prompt on `activated_plugin`/`deactivated_plugin` (admin notice, 1-page
+- [x] Run Deep Analysis button + warning copy (honest per-request-only wording) + progress
+- [x] Spot-profile prompt on `activated_plugin`/`deactivated_plugin` (admin notice, 1-page
       before/after, appends to plugin_impacts)
-- [ ] e2e: bad test plugin's measured delta within tolerance of its planted cost; fatal-probe
+- [x] e2e: bad test plugin's measured delta within tolerance of its planted cost; fatal-probe
       test with a dependent-plugin pair
 
 Acceptance: deep analysis on the local store correctly attributes the planted costs, degrades

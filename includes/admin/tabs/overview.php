@@ -168,10 +168,20 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         <button type="button" class="button button-primary" id="sspa-run-analysis"<?php disabled((bool) $sspa_active_run); ?>>
             <?php esc_html_e('Run Analysis', 'super-speedy-performance-analysis'); ?>
         </button>
+        <?php if ($sspa_last_run) : ?>
+        <button type="button" class="button" id="sspa-run-deep"<?php disabled((bool) $sspa_active_run); ?>>
+            <?php esc_html_e('Run Deep Analysis', 'super-speedy-performance-analysis'); ?>
+        </button>
+        <?php endif; ?>
         <button type="button" class="button" id="sspa-cancel-run" <?php echo $sspa_active_run ? '' : 'style="display:none"'; ?>>
             <?php esc_html_e('Cancel', 'super-speedy-performance-analysis'); ?>
         </button>
     </p>
+    <?php if ($sspa_last_run) : ?>
+    <p class="description">
+        <?php esc_html_e('Deep analysis (culprit isolation) measures each suspect plugin\'s true cost by re-profiling its worst page with that plugin disabled FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation/deactivation hooks. It also bisects your slowest page across all plugins to find costs the per-query attribution cannot see. Expect a few dozen extra requests to your site while it runs.', 'super-speedy-performance-analysis'); ?>
+    </p>
+    <?php endif; ?>
 
     <div id="sspa-progress" style="display:none">
         <div class="sspa-progress-bar"><div class="sspa-progress-fill" style="width:0%"></div></div>

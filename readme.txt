@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,16 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.4.0 (11th July 2026) =
+* Phase 3 Deep Analysis (culprit isolation): measures each suspect plugin's true cost by re-profiling its worst page with the plugin disabled FOR THE TEST REQUESTS ONLY. No plugin is ever really deactivated, no activation/deactivation hooks fire, and visitors always get the full site.
+* Bisection: the slowest page is binary-searched across all eligible plugins to find costs that per-query attribution cannot see (the coupon-plugin class of offender). Multiple culprits are found; a typical 8-plugin search takes about 12 measurements.
+* Dependency awareness: plugins required by others (Requires Plugins header) and fragile plugins (security etc) are never excluded during bisection; a fatal response is treated as dependency evidence and the search re-splits and continues.
+* Noise gate: every isolated delta must beat max(3x sample spread, 30ms) or it is honestly reported as "no measurable impact" - no fake findings on jittery hosts.
+* Theme isolation: your theme's true cost measured by swapping to a stock theme for test requests only.
+* Plugins tab now shows measured impact (+ms on worst page) with a green "measured" badge, plus a per-row "Measure" button to isolation-test any single plugin.
+* Quick spot-check prompt whenever you activate or deactivate a plugin - build your site's own before/after cost ledger over time.
+* Crash safety: isolation payloads are verified per-request via a response canary, cleaned up on finish/cancel/failure, and deep runs store their measurement profiles for inspection.
 
 = 0.3.0 (11th July 2026) =
 * Phase 2 analysis engine: your profiles now become plain-English findings. Heuristics cover slow queries (with shape classification: postmeta scans, SQL_CALC_FOUND_ROWS, ORDER BY rand(), leading-wildcard LIKE, nested taxonomy joins), large result sets (the usual RAM culprits), queries-in-loops (N+1), byte-identical duplicate queries, blocking HTTP calls during page render, autoloaded-options bloat, environment red flags (old PHP, missing object cache on large databases), overlapping plugins and security-blocked pages.

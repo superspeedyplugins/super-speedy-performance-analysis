@@ -112,3 +112,8 @@
 	padding: 1px 7px;
 	font-size: 11px;
 }
+
+#sspa_main .sspa-badge-measured {
+	background: #00a32a;
+	color: #fff;
+}

@@ -30,6 +30,9 @@ class SSPA_Crawler {
             if ($is_baseline) {
                 $flags['bl'] = '1';
             }
+            if (!empty($job['ps'])) {
+                $flags['ps'] = $job['ps'];
+            }
             $sample = $this->profiled_request($job['url'], $cookies, $flags);
             if ($sample['cached']) {
                 continue; // page cache served it - tells us nothing about PHP
@@ -47,6 +50,7 @@ class SSPA_Crawler {
             'variant' => $job['variant'],
             'samples' => $samples,
             'blocked_by' => $blocked_by,
+            'plugin_set_hash' => !empty($job['ps']) ? $job['ps'] : '',
         );
     }
 
@@ -121,6 +125,16 @@ class SSPA_Crawler {
             }
             $sample['error'] = 'no_canary';
             return $sample;
+        }
+
+        // Isolation runs must prove the override applied - a measurement of the wrong
+        // plugin set is worse than no measurement.
+        if (!empty($flags['ps'])) {
+            $ps_header = isset($headers['x-sspa-ps']) ? $headers['x-sspa-ps'] : null;
+            if ($ps_header !== $flags['ps']) {
+                $sample['error'] = 'ps_not_applied';
+                return $sample;
+            }
         }
 
         $capture = $this->fetch_capture($token['id']);

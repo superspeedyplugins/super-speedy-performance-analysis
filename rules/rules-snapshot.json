@@ -85,6 +85,7 @@
         "contact-form": ["contact-form-7", "wpforms-lite", "ninja-forms", "formidable", "fluentform"],
         "multilingual": ["sitepress-multilingual-cms", "polylang", "translatepress-multilingual", "weglot"]
     },
+    "fragile": ["woocommerce-payments", "wp-2fa", "two-factor"],
     "sector_signatures": {
         "job_listing": "jobs board",
         "download": "digital store",
