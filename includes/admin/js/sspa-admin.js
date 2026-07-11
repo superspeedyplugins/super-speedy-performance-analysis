@@ -92,25 +92,15 @@ jQuery(document).on('click', '#sspa-prune-blobs', function () {
 // ---- Run Analysis ----
 
 jQuery(document).on('click', '#sspa-run-analysis', function () {
-	var btn = jQuery(this);
-	btn.prop('disabled', true);
-	jQuery.post(ajaxurl, {
-		action: 'sspa_start_run',
-		nonce: sspa_admin.nonce,
-		swap_dropin: jQuery('#sspa-swap-dropin').is(':checked') ? 1 : 0
-	}, function (resp) {
-		if (!resp.success) {
-			alert(resp.data || 'Could not start the analysis.');
-			btn.prop('disabled', false);
-			return;
-		}
-		jQuery('#sspa-cancel-run').show();
-		sspa_drive_run(resp.data.run_id);
-	});
+	sspa_start_typed_run({}, jQuery(this));
 });
 
 jQuery(document).on('click', '#sspa-run-deep', function () {
 	sspa_start_typed_run({ type: 'deep' }, jQuery(this));
+});
+
+jQuery(document).on('click', '#sspa-run-cache', function () {
+	sspa_start_typed_run({ type: 'cache_impact' }, jQuery(this));
 });
 
 jQuery(document).on('click', '.sspa-measure-plugin', function () {
@@ -126,7 +116,8 @@ function sspa_start_typed_run(extra, btn) {
 	var payload = jQuery.extend({
 		action: 'sspa_start_run',
 		nonce: sspa_admin.nonce,
-		swap_dropin: jQuery('#sspa-swap-dropin').is(':checked') ? 1 : 0
+		swap_dropin: jQuery('#sspa-swap-dropin').is(':checked') ? 1 : 0,
+		include_writes: jQuery('#sspa-include-writes').is(':checked') ? 1 : 0
 	}, extra);
 	jQuery.post(ajaxurl, payload, function (resp) {
 		if (!resp.success) {

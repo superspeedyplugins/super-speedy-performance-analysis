@@ -23,6 +23,18 @@ if (!$sspa_last_run_id) : ?>
         $sspa_last_run_id
     ), ARRAY_A);
 
+    // Latest cache-impact results (component => saved_pct), if a cache run has been done.
+    $sspa_cache_notes = $wpdb->get_var(
+        'SELECT notes FROM ' . SSPA_Schema::table('runs') . " WHERE run_type = 'cache_impact' AND status = 'done' ORDER BY id DESC LIMIT 1"
+    );
+    $sspa_cache = array();
+    if ($sspa_cache_notes) {
+        $sspa_decoded = json_decode($sspa_cache_notes, true);
+        if (is_array($sspa_decoded) && !empty($sspa_decoded['components'])) {
+            $sspa_cache = $sspa_decoded['components'];
+        }
+    }
+
     // Latest measured impact per plugin (from deep-analysis isolation runs).
     $sspa_impacts = array();
     foreach ($wpdb->get_results(
@@ -48,6 +60,7 @@ if (!$sspa_last_run_id) : ?>
                 <th><?php esc_html_e('Slowest query (ms)', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('HTTP (ms)', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Measured impact', 'super-speedy-performance-analysis'); ?></th>
+                <th><?php esc_html_e('Object cache', 'super-speedy-performance-analysis'); ?></th>
                 <th></th>
             </tr>
         </thead>
@@ -72,6 +85,20 @@ if (!$sspa_last_run_id) : ?>
                     <?php else : ?>
                         <span class="sspa-badge"><?php esc_html_e('inferred', 'super-speedy-performance-analysis'); ?></span>
                     <?php endif; ?>
+                </td>
+                <td>
+                    <?php
+                    if (isset($sspa_cache[$c['component']]['saved_pct'])) {
+                        $pct = (int) $sspa_cache[$c['component']]['saved_pct'];
+                        if ($pct < 15) {
+                            echo '<span class="sspa-badge sspa-blocked">' . esc_html(sprintf(__('cache-blind (%d%%)', 'super-speedy-performance-analysis'), $pct)) . '</span>';
+                        } else {
+                            echo esc_html(sprintf(__('%d%% queries saved', 'super-speedy-performance-analysis'), $pct));
+                        }
+                    } else {
+                        echo '-';
+                    }
+                    ?>
                 </td>
                 <td>
                     <?php if ('plugin' === $c['component_type'] && 'super-speedy-performance-analysis' !== $c['component'] && strpos($c['component'], 'mu:') !== 0) : ?>

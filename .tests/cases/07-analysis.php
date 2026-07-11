@@ -53,6 +53,7 @@ add_action('wp_footer', function () {
 PHP;
 file_put_contents($bad_dir . '/sspa-bad-plugin.php', $bad_code);
 $activated = activate_plugin('sspa-bad-plugin/sspa-bad-plugin.php');
+wp_cache_flush(); // apache must see the fresh active_plugins despite Redis alloptions caching
 sspa_t(!is_wp_error($activated), 'bad plugin planted and activated');
 sleep(3); // opcache revalidation window before profiled requests
 

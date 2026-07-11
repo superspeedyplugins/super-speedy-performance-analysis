@@ -66,6 +66,15 @@ class SSPA_Insights {
             case 'slow_http':
                 $headline = sprintf(__('%1$s blocked page render for %2$sms calling %3$s (on %4$s)', 'super-speedy-performance-analysis'), $component, number_format((float) $e['ms']), $e['url'], $page);
                 break;
+            case 'blocking_mail':
+                $headline = sprintf(__('%1$s spent %2$sms building an email during %3$s', 'super-speedy-performance-analysis'), $component, number_format((float) $e['construct_ms']), $page);
+                break;
+            case 'cache_blind':
+                $headline = sprintf(__('%1$s ignores your object cache (%2$d queries with it, %3$d without - %4$d%% saved)', 'super-speedy-performance-analysis'), $component, (int) $e['queries_on'], (int) $e['queries_off'], (int) $e['saved_pct']);
+                break;
+            case 'cache_friendly':
+                $headline = sprintf(__('%1$s uses the object cache well (%2$d%% of its queries saved)', 'super-speedy-performance-analysis'), $component, (int) $e['saved_pct']);
+                break;
             case 'autoload_bloat':
                 $headline = sprintf(__('Autoloaded options are %s - loaded on every request', 'super-speedy-performance-analysis'), size_format((int) $e['autoload_bytes']));
                 break;

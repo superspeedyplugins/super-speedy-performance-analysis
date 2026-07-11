@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,13 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.5.0 (11th July 2026) =
+* Phase 4 Cache Impact Analysis: profiles your slowest pages with the persistent object cache on vs off (per-request via the db.php shim - zero effect on visitors; site-wide object-cache.php swap available as an explicit fallback). Per plugin you learn who actually uses your Redis/Memcached: cache-blind plugins (identical queries either way) are named and shamed, cache-friendly plugins get credit. The off-mode is verified from the captures before any conclusion is drawn.
+* Object cache column on the Plugins tab showing queries saved per plugin.
+* Email profiling: every analysis now measures your mail stack's construction cost via an intercepted test email (nothing is ever delivered - recipients are stripped before any transport work). Slow email construction becomes a finding attributed to the responsible plugin.
+* Opt-in write profiles: saves a TEMPORARY copy of a post/product and steps a TEMPORARY order through pending -> processing -> completed, measuring the full save/status hook cascade including the emails each transition builds. Temporary objects are created and deleted around each measurement - zero residue, no real content touched, no emails sent.
+* Safety rail hardened: profiled requests can never send mail in either interception mode, and failed mail construction is recorded rather than silently vanishing.
 
 = 0.4.0 (11th July 2026) =
 * Phase 3 Deep Analysis (culprit isolation): measures each suspect plugin's true cost by re-profiling its worst page with the plugin disabled FOR THE TEST REQUESTS ONLY. No plugin is ever really deactivated, no activation/deactivation hooks fire, and visitors always get the full site.

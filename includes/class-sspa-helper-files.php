@@ -161,10 +161,13 @@ class SSPA_Helper_Files {
      * plugins_loaded (cheap option check on admin requests only).
      */
     public static function stale_hold_check() {
+        $active = class_exists('SSPA_Run_Controller') ? SSPA_Run_Controller::active_run_id() : 0;
+        if (get_option('sspa_oc_hold') && !$active) {
+            self::restore_object_cache();
+        }
         if (!get_option('sspa_dropin_hold')) {
             return;
         }
-        $active = class_exists('SSPA_Run_Controller') ? SSPA_Run_Controller::active_run_id() : 0;
         if (!$active) {
             $restored = self::restore_held_dropin();
             add_action('admin_notices', function () use ($restored) {
@@ -176,6 +179,41 @@ class SSPA_Helper_Files {
         }
     }
 
+    /**
+     * Site-wide object-cache toggle fallback for cache-impact runs on hosts where our
+     * db.php shim (and its per-request filter) is unavailable. Same hold pattern as the
+     * db.php swap: crash-safe, restored on finish/fail and by the stale check.
+     */
+    public static function hold_object_cache() {
+        $path = WP_CONTENT_DIR . '/object-cache.php';
+        $hold = WP_CONTENT_DIR . '/object-cache.php.sspa-hold';
+        if (!file_exists($path) || file_exists($hold)) {
+            return false;
+        }
+        if (!rename($path, $hold)) {
+            return false;
+        }
+        update_option('sspa_oc_hold', time(), false);
+        return true;
+    }
+
+    public static function restore_object_cache() {
+        $path = WP_CONTENT_DIR . '/object-cache.php';
+        $hold = WP_CONTENT_DIR . '/object-cache.php.sspa-hold';
+        if (!file_exists($hold)) {
+            delete_option('sspa_oc_hold');
+            return true;
+        }
+        if (file_exists($path)) {
+            return false; // something recreated object-cache.php; do not clobber it
+        }
+        $ok = rename($hold, $path);
+        if ($ok) {
+            delete_option('sspa_oc_hold');
+        }
+        return $ok;
+    }
+
     public static function remove_all() {
         if (self::is_ours(self::mu_path())) {
             unlink(self::mu_path());
@@ -184,6 +222,7 @@ class SSPA_Helper_Files {
             unlink(self::dropin_path());
         }
         self::restore_held_dropin();
+        self::restore_object_cache();
     }
 
     public static function health() {

@@ -165,6 +165,12 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     <?php endif; ?>
 
     <p>
+        <label style="margin-right:1em">
+            <input type="checkbox" id="sspa-include-writes" value="1">
+            <?php esc_html_e('Include write profiles (saves a TEMPORARY copy of a post/product and steps a TEMPORARY order through processing - created and deleted automatically, no real content touched, no emails sent)', 'super-speedy-performance-analysis'); ?>
+        </label>
+    </p>
+    <p>
         <button type="button" class="button button-primary" id="sspa-run-analysis"<?php disabled((bool) $sspa_active_run); ?>>
             <?php esc_html_e('Run Analysis', 'super-speedy-performance-analysis'); ?>
         </button>
@@ -172,6 +178,11 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         <button type="button" class="button" id="sspa-run-deep"<?php disabled((bool) $sspa_active_run); ?>>
             <?php esc_html_e('Run Deep Analysis', 'super-speedy-performance-analysis'); ?>
         </button>
+        <?php if (wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php')) : ?>
+        <button type="button" class="button" id="sspa-run-cache"<?php disabled((bool) $sspa_active_run); ?>>
+            <?php esc_html_e('Run Cache Impact Analysis', 'super-speedy-performance-analysis'); ?>
+        </button>
+        <?php endif; ?>
         <?php endif; ?>
         <button type="button" class="button" id="sspa-cancel-run" <?php echo $sspa_active_run ? '' : 'style="display:none"'; ?>>
             <?php esc_html_e('Cancel', 'super-speedy-performance-analysis'); ?>

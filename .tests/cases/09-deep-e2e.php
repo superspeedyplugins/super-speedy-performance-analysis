@@ -29,6 +29,7 @@ add_action('wp_footer', function () {
 PHP;
 file_put_contents($bad_dir . '/sspa-bad-plugin.php', $bad_code);
 activate_plugin('sspa-bad-plugin/sspa-bad-plugin.php');
+wp_cache_flush(); // apache must see the fresh active_plugins despite Redis alloptions caching
 sleep(3); // opcache
 
 $plugins_before = get_option('active_plugins');

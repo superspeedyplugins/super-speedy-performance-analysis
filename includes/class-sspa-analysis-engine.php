@@ -39,6 +39,7 @@ class SSPA_Analysis_Engine {
         $this->query_hogs();
         $this->dupe_queries();
         $this->slow_http();
+        $this->blocking_mail();
         $this->autoload_bloat();
         $this->environment();
         $this->duplicate_functionality();
@@ -257,6 +258,33 @@ class SSPA_Analysis_Engine {
             // Blocking calls on front-end pages are worse than in wp-admin.
             $severity = (!$f['is_admin'] || $f['ms'] >= $threshold * 3) ? 'critical' : 'warn';
             $this->add($severity, 'slow_http', $f['component'], $f['page_key'], $f, 'slow_http');
+        }
+    }
+
+    private function blocking_mail() {
+        $threshold = (float) SSPA_Rules::threshold('slow_mail_ms');
+        $seen = array();
+        foreach ($this->captures as $profile_id => $capture) {
+            if (empty($capture['mail']['calls'])) {
+                continue;
+            }
+            foreach ($capture['mail']['calls'] as $call) {
+                if ($call['construct_ms'] === null || $call['construct_ms'] < $threshold) {
+                    continue;
+                }
+                $key = $call['component'];
+                if (isset($seen[$key]) && $seen[$key]['construct_ms'] >= $call['construct_ms']) {
+                    continue;
+                }
+                $seen[$key] = array(
+                    'construct_ms' => $call['construct_ms'],
+                    'component' => $call['component'],
+                    'page_key' => $this->page_key($profile_id),
+                );
+            }
+        }
+        foreach ($seen as $f) {
+            $this->add('warn', 'blocking_mail', $f['component'], $f['page_key'], $f, 'blocking_mail');
         }
     }
 

@@ -15,14 +15,21 @@ class SSPA_Catalogue {
     public static function build($only_page_keys = array()) {
         $jobs = array();
 
-        $add = function ($page_key, $url, $variant = 'anon') use (&$jobs) {
+        $add = function ($page_key, $url, $variant = 'anon', $flags = array()) use (&$jobs) {
             if ($url) {
-                $jobs[] = array('page_key' => $page_key, 'url' => $url, 'variant' => $variant);
+                $job = array('page_key' => $page_key, 'url' => $url, 'variant' => $variant);
+                if ($flags) {
+                    $job['flags'] = $flags;
+                }
+                $jobs[] = $job;
             }
         };
 
         // Noise-floor baseline (handled by the mu-loader, near-zero WP work).
         $add('baseline', home_url('/?sspa_baseline=1'));
+
+        // Mail stack construction cost (one intercepted wp_mail; nothing is delivered).
+        $add('mail-probe', home_url('/?sspa_mail_probe=1'), 'anon', array('mp' => '1', 'mail' => 'c'));
 
         // --- Front end ---
         $add('home', home_url('/'));

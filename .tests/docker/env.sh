@@ -4,7 +4,9 @@
 SSPA_NET=sspa-net
 SSPA_DB=sspa-db
 SSPA_WP=sspa-wp
+SSPA_REDIS=sspa-redis
 SSPA_PORT=8090
+REDIS_IMAGE=redis:7-alpine
 
 DB_IMAGE=mariadb:10.11
 WP_IMAGE=wordpress:php8.3-apache

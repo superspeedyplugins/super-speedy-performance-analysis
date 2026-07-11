@@ -7,6 +7,7 @@
         "query_hog_count": 50,
         "dupe_query_count": 5,
         "slow_http_ms": 100,
+        "slow_mail_ms": 100,
         "autoload_bytes": 1048576,
         "ram_hog_bytes": 67108864
     },
@@ -70,6 +71,18 @@
         "duplicate_functionality": {
             "title": "Overlapping plugins",
             "body": "Multiple active plugins provide the same functionality; each adds queries and RAM to every page. Keep one, remove the rest."
+        },
+        "blocking_mail": {
+            "title": "Slow email construction",
+            "body": "Building this email blocked the request for a long time - heavyweight templates or an SMTP plugin doing expensive setup on every send. Order status changes and checkouts wait on this."
+        },
+        "cache_blind": {
+            "title": "Ignores the object cache",
+            "body": "This component ran essentially the same queries with the object cache on and off - it caches nothing, so your Redis/Memcached investment does nothing for it. Prime candidate for replacement or a caching layer."
+        },
+        "cache_friendly": {
+            "title": "Uses the object cache well",
+            "body": "This component's query count drops sharply when the object cache is available - it is written cache-aware. Keep it."
         },
         "security_block": {
             "title": "Profiling requests blocked",

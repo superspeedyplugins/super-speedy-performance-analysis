@@ -33,6 +33,12 @@ class SSPA_Crawler {
             if (!empty($job['ps'])) {
                 $flags['ps'] = $job['ps'];
             }
+            if (!empty($job['oc_off'])) {
+                $flags['oc'] = '0';
+            }
+            if (!empty($job['flags']) && is_array($job['flags'])) {
+                $flags = array_merge($flags, $job['flags']);
+            }
             $sample = $this->profiled_request($job['url'], $cookies, $flags);
             if ($sample['cached']) {
                 continue; // page cache served it - tells us nothing about PHP
@@ -51,6 +57,7 @@ class SSPA_Crawler {
             'samples' => $samples,
             'blocked_by' => $blocked_by,
             'plugin_set_hash' => !empty($job['ps']) ? $job['ps'] : '',
+            'object_cache_mode' => !empty($job['oc_off']) ? 'disabled' : 'normal',
         );
     }
 

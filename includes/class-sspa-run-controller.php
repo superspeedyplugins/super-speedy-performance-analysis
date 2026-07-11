@@ -63,10 +63,18 @@ class SSPA_Run_Controller {
             if (is_wp_error($plan)) {
                 return $plan;
             }
+        } elseif ('cache_impact' === $type) {
+            $jobs = self::build_cache_impact_jobs($args, $oc_mode);
+            if (is_wp_error($jobs)) {
+                return $jobs;
+            }
         } else {
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
             if (!$jobs) {
                 return new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
+            }
+            if (!empty($args['include_writes'])) {
+                $jobs = array_merge($jobs, self::write_jobs());
             }
         }
 
@@ -88,7 +96,11 @@ class SSPA_Run_Controller {
             $plan['user_id'] = $user_id;
             update_option('sspa_deep_' . $run_id, $plan, false);
         } else {
-            update_option('sspa_queue_' . $run_id, array('jobs' => $jobs, 'idx' => 0, 'user_id' => $user_id), false);
+            $queue = array('jobs' => $jobs, 'idx' => 0, 'user_id' => $user_id);
+            if ('cache_impact' === $type) {
+                $queue['oc_mode'] = $oc_mode;
+            }
+            update_option('sspa_queue_' . $run_id, $queue, false);
         }
         wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
 
@@ -189,6 +201,75 @@ class SSPA_Run_Controller {
     }
 
     /**
+     * Cache-impact runs: each target page profiled twice, cache on vs cache off. Normal
+     * jobs come first so the site-wide fallback (renaming object-cache.php) only kicks in
+     * for the second half of the queue.
+     *
+     * @return array|WP_Error jobs; $oc_mode set by reference to 'flag' or 'sitewide'.
+     */
+    private static function build_cache_impact_jobs($args, &$oc_mode) {
+        global $wpdb;
+
+        $has_dropin = file_exists(WP_CONTENT_DIR . '/object-cache.php');
+        if (!wp_using_ext_object_cache() && !$has_dropin) {
+            return new WP_Error('sspa_no_object_cache', __('No persistent object cache detected - there is nothing to toggle. Install Redis/Memcached first.', 'super-speedy-performance-analysis'));
+        }
+
+        if ('ours' === SSPA_Helper_Files::dropin_status()) {
+            $oc_mode = 'flag'; // per-request disable via the shim: zero live impact
+        } elseif (!empty($args['oc_sitewide'])) {
+            $oc_mode = 'sitewide';
+        } else {
+            return new WP_Error('sspa_oc_needs_confirm', __('Per-request cache toggling needs the SSPA db.php shim. Without it the only option is briefly renaming object-cache.php SITE-WIDE - re-run with that option explicitly confirmed, at a low-traffic time.', 'super-speedy-performance-analysis'));
+        }
+
+        if (!empty($args['page_keys'])) {
+            $page_keys = (array) $args['page_keys'];
+        } else {
+            $source_run_id = (int) $wpdb->get_var(
+                'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
+            );
+            $page_keys = $source_run_id ? $wpdb->get_col($wpdb->prepare(
+                'SELECT page_key FROM ' . SSPA_Schema::table('profiles') . "
+                 WHERE run_id = %d AND variant = 'anon' AND page_key NOT IN ('baseline','mail-probe')
+                 AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
+                 ORDER BY page_gen_ms DESC LIMIT 3",
+                $source_run_id
+            )) : array();
+            if (!$page_keys) {
+                $page_keys = array('home');
+            }
+        }
+
+        $jobs = array();
+        $base_jobs = SSPA_Catalogue::build($page_keys);
+        foreach ($base_jobs as $job) {
+            $jobs[] = $job; // cache on
+        }
+        foreach ($base_jobs as $job) {
+            $job['oc_off'] = true; // cache off (second half - see sitewide note above)
+            $jobs[] = $job;
+        }
+        return $jobs ? $jobs : new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
+    }
+
+    /**
+     * Opt-in write profiles: the save/transition cascades measured against temporary
+     * duplicates the batch loop creates and deletes around each job. Never in run 1
+     * unless the user ticks the box.
+     */
+    private static function write_jobs() {
+        $jobs = array();
+        $write_url = home_url('/?sspa_write_probe=1');
+        $jobs[] = array('page_key' => 'write-save-post', 'url' => $write_url, 'variant' => 'anon', 'write' => 'save_post', 'post_type' => 'post');
+        if (class_exists('WooCommerce')) {
+            $jobs[] = array('page_key' => 'write-save-product', 'url' => $write_url, 'variant' => 'anon', 'write' => 'save_product', 'post_type' => 'product');
+            $jobs[] = array('page_key' => 'write-order-processing', 'url' => $write_url, 'variant' => 'anon', 'write' => 'order_processing');
+        }
+        return $jobs;
+    }
+
+    /**
      * A stock twenty* theme to swap to for theme isolation; null when the active theme
      * already is one (nothing meaningful to isolate) or none is installed.
      */
@@ -262,8 +343,36 @@ class SSPA_Run_Controller {
 
             while ($queue['idx'] < count($queue['jobs']) && microtime(true) < $deadline) {
                 $job = $queue['jobs'][$queue['idx']];
-                $result = $crawler->profile_job($job, $queue['user_id']);
-                SSPA_Profile_Store::save($run_id, $result);
+
+                // Site-wide cache toggle: engages when the queue reaches its cache-off half.
+                if (!empty($job['oc_off']) && isset($queue['oc_mode']) && 'sitewide' === $queue['oc_mode'] && !get_option('sspa_oc_hold')) {
+                    SSPA_Helper_Files::hold_object_cache();
+                }
+
+                // Write profiles run against a temp duplicate created just for this job.
+                $temp_id = 0;
+                $temp_is_order = false;
+                if (!empty($job['write'])) {
+                    $temp_is_order = ('order_processing' === $job['write']);
+                    $temp_id = $temp_is_order
+                        ? SSPA_Probes::create_temp_order()
+                        : SSPA_Probes::create_temp_copy($job['post_type']);
+                    if (!$temp_id) {
+                        $queue['idx']++; // nothing to duplicate on this site - skip quietly
+                        update_option('sspa_queue_' . $run_id, $queue, false);
+                        continue;
+                    }
+                    $job['flags'] = array('wp' => $job['write'], 'tid' => (string) $temp_id, 'mail' => 'c');
+                }
+
+                try {
+                    $result = $crawler->profile_job($job, $queue['user_id']);
+                    SSPA_Profile_Store::save($run_id, $result);
+                } finally {
+                    if ($temp_id) {
+                        SSPA_Probes::delete_temp($temp_id, $temp_is_order);
+                    }
+                }
                 $queue['idx']++;
                 update_option('sspa_queue_' . $run_id, $queue, false);
 
@@ -274,7 +383,11 @@ class SSPA_Run_Controller {
             }
 
             if ($queue['idx'] >= count($queue['jobs'])) {
-                self::finish($run_id);
+                if ('cache_impact' === $run['run_type']) {
+                    self::finish_cache($run_id);
+                } else {
+                    self::finish($run_id);
+                }
             } else {
                 wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
             }
@@ -410,6 +523,91 @@ class SSPA_Run_Controller {
         ), array('id' => $run_id));
     }
 
+    /**
+     * Cache-impact analysis: per component, query counts with the object cache on vs off.
+     * Identical counts = cache-blind (the component ignores the object cache entirely).
+     */
+    private static function finish_cache($run_id) {
+        global $wpdb;
+        SSPA_Helper_Files::restore_object_cache();
+        delete_option('sspa_queue_' . $run_id);
+
+        // Verify the off half really ran without a persistent cache (from the captures).
+        $verified = true;
+        $off_profiles = $wpdb->get_results($wpdb->prepare(
+            'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND object_cache_mode = 'disabled'",
+            $run_id
+        ), ARRAY_A);
+        foreach ($off_profiles as $p) {
+            $capture = $p['profile_blob'] ? json_decode((string) @gzuncompress($p['profile_blob']), true) : null;
+            if (is_array($capture) && !empty($capture['cache']['persistent'])) {
+                $verified = false;
+            }
+        }
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            'SELECT p.object_cache_mode, cs.component, cs.component_type, SUM(cs.query_count) qc, SUM(cs.sql_ms) sql_ms
+             FROM ' . SSPA_Schema::table('component_stats') . ' cs
+             JOIN ' . SSPA_Schema::table('profiles') . ' p ON p.id = cs.profile_id
+             WHERE cs.run_id = %d GROUP BY p.object_cache_mode, cs.component, cs.component_type',
+            $run_id
+        ), ARRAY_A);
+
+        $components = array();
+        foreach ($rows as $r) {
+            $key = $r['component'];
+            if (!isset($components[$key])) {
+                $components[$key] = array('type' => $r['component_type'], 'on' => 0, 'off' => 0, 'sql_ms_on' => 0, 'sql_ms_off' => 0);
+            }
+            $mode = ('disabled' === $r['object_cache_mode']) ? 'off' : 'on';
+            $components[$key][$mode] += (int) $r['qc'];
+            $components[$key]['sql_ms_' . $mode] += (float) $r['sql_ms'];
+        }
+
+        $now = gmdate('Y-m-d H:i:s');
+        foreach ($components as $component => $c) {
+            if (in_array($component, array('super-speedy-performance-analysis', 'mu:sspa-loader', 'core'), true)) {
+                continue;
+            }
+            if ($c['off'] < 20 || !$verified) {
+                continue;
+            }
+            $saved_pct = round(100 * ($c['off'] - $c['on']) / $c['off']);
+            $components[$component]['saved_pct'] = $saved_pct;
+            if ($saved_pct < 15) {
+                $wpdb->insert(SSPA_Schema::table('findings'), array(
+                    'run_id' => $run_id,
+                    'severity' => 'warn',
+                    'finding_type' => 'cache_blind',
+                    'component' => $component,
+                    'page_key' => null,
+                    'evidence' => wp_json_encode(array('queries_on' => $c['on'], 'queries_off' => $c['off'], 'saved_pct' => $saved_pct)),
+                    'recommendation_key' => 'cache_blind',
+                    'confidence' => 'measured',
+                    'created' => $now,
+                ));
+            } elseif ($saved_pct >= 50) {
+                $wpdb->insert(SSPA_Schema::table('findings'), array(
+                    'run_id' => $run_id,
+                    'severity' => 'info',
+                    'finding_type' => 'cache_friendly',
+                    'component' => $component,
+                    'page_key' => null,
+                    'evidence' => wp_json_encode(array('queries_on' => $c['on'], 'queries_off' => $c['off'], 'saved_pct' => $saved_pct)),
+                    'recommendation_key' => 'cache_friendly',
+                    'confidence' => 'measured',
+                    'created' => $now,
+                ));
+            }
+        }
+
+        $wpdb->update(SSPA_Schema::table('runs'), array(
+            'status' => $verified ? 'done' : 'failed',
+            'finished' => $now,
+            'notes' => wp_json_encode(array('type' => 'cache_impact', 'verified' => $verified, 'components' => $components)),
+        ), array('id' => $run_id));
+    }
+
     private static function finish($run_id) {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
@@ -442,6 +640,7 @@ class SSPA_Run_Controller {
     private static function fail($run_id, $note) {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
+        SSPA_Helper_Files::restore_object_cache();
         self::cleanup_run_state($run_id);
         $wpdb->update(SSPA_Schema::table('runs'), array(
             'status' => 'failed',
@@ -452,6 +651,7 @@ class SSPA_Run_Controller {
 
     public static function cancel($run_id) {
         SSPA_Helper_Files::restore_held_dropin();
+        SSPA_Helper_Files::restore_object_cache();
         self::cleanup_run_state($run_id);
         self::set_status($run_id, 'cancelled', true);
     }
@@ -532,10 +732,15 @@ class SSPA_Run_Controller {
 
     public static function ajax_start_run() {
         self::ajax_guard();
-        $type = (isset($_POST['type']) && 'deep' === $_POST['type']) ? 'deep' : 'baseline';
+        $type = 'baseline';
+        if (isset($_POST['type']) && in_array($_POST['type'], array('deep', 'cache_impact'), true)) {
+            $type = $_POST['type'];
+        }
         $args = array(
             'type' => $type,
             'swap_dropin' => !empty($_POST['swap_dropin']),
+            'oc_sitewide' => !empty($_POST['oc_sitewide']),
+            'include_writes' => !empty($_POST['include_writes']),
         );
         if ('deep' === $type && !empty($_POST['suspects'])) {
             $args['suspects'] = array_map('sanitize_key', (array) $_POST['suspects']);

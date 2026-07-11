@@ -15,21 +15,36 @@ if (!class_exists('SSPA_Capture')) {
         private $flags;
         private $http_pending = array();
         private $http_calls = array();
-        private $mail_count = 0;
-        private $mail_components = array();
+        private $mail_mode = 'suppress';
+        private $mail_calls = array();
+        private $mail_pending = null;
         private $conditionals = array();
 
         public function __construct($token_id, $flags) {
             $this->token_id = $token_id;
             $this->flags = $flags;
+            if (isset($flags['mail']) && 'c' === $flags['mail']) {
+                $this->mail_mode = 'construct';
+            }
         }
 
         public function arm() {
             add_filter('pre_http_request', array($this, 'http_start'), 9999, 3);
             add_action('http_api_debug', array($this, 'http_end'), 10, 5);
-            // Safety rail: no profiled request may ever send real mail. Construction cost
-            // measurement comes in phase 4; for now we short-circuit and count.
-            add_filter('pre_wp_mail', array($this, 'intercept_mail'), 9999, 2);
+            // Safety rail: no profiled request may ever send real mail.
+            // - suppress (default): short-circuit wp_mail entirely, count + attribute.
+            // - construct: let the mail stack BUILD the message (measuring template/SMTP
+            //   plugin setup cost), then strip every recipient at phpmailer_init so
+            //   PHPMailer::preSend() aborts before any transport I/O.
+            if ('construct' === $this->mail_mode) {
+                add_filter('wp_mail', array($this, 'mail_construct_start'), 1);
+                add_action('phpmailer_init', array($this, 'mail_construct_end'), PHP_INT_MAX);
+                // Construction can abort before phpmailer_init (e.g. an invalid From
+                // address makes setFrom() throw). Record those too or they vanish.
+                add_action('wp_mail_failed', array($this, 'mail_construct_failed'));
+            } else {
+                add_filter('pre_wp_mail', array($this, 'intercept_mail'), 9999, 2);
+            }
             add_action('wp', array($this, 'snapshot_conditionals'));
             register_shutdown_function(array($this, 'finalize'));
         }
@@ -72,15 +87,46 @@ if (!class_exists('SSPA_Capture')) {
         }
 
         public function intercept_mail($short_circuit, $atts) {
-            $this->mail_count++;
+            $this->mail_calls[] = array('frames' => $this->trigger_frames(), 'construct_ms' => null);
+            return true; // report success to the caller, send nothing
+        }
+
+        public function mail_construct_start($atts) {
+            $this->mail_pending = array('start' => microtime(true), 'frames' => $this->trigger_frames());
+            return $atts;
+        }
+
+        public function mail_construct_end($phpmailer) {
+            if ($this->mail_pending) {
+                $this->mail_calls[] = array(
+                    'frames' => $this->mail_pending['frames'],
+                    'construct_ms' => (microtime(true) - $this->mail_pending['start']) * 1000,
+                );
+                $this->mail_pending = null;
+            }
+            // The no-send guarantee: preSend() throws before any transport work when
+            // there are no recipients; wp_mail() catches it and returns false.
+            $phpmailer->clearAllRecipients();
+        }
+
+        public function mail_construct_failed($error) {
+            if ($this->mail_pending) {
+                $this->mail_calls[] = array(
+                    'frames' => $this->mail_pending['frames'],
+                    'construct_ms' => (microtime(true) - $this->mail_pending['start']) * 1000,
+                );
+                $this->mail_pending = null;
+            }
+        }
+
+        private function trigger_frames() {
             $frames = array();
             foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 16) as $f) {
                 if (isset($f['file'])) {
                     $frames[] = array($f['file'], isset($f['line']) ? $f['line'] : 0, (isset($f['class']) ? $f['class'] . '::' : '') . $f['function']);
                 }
             }
-            $this->mail_components[] = $frames;
-            return true; // report success to the caller, send nothing
+            return $frames;
         }
 
         public function snapshot_conditionals() {
@@ -290,12 +336,23 @@ if (!class_exists('SSPA_Capture')) {
 
         private function collect_mail($map) {
             $components = array();
-            foreach ($this->mail_components as $frames) {
-                $attr = $map->attribute($frames);
+            $calls = array();
+            $total_construct_ms = 0;
+            foreach ($this->mail_calls as $call) {
+                $attr = $map->attribute($call['frames']);
                 $key = $attr['component'];
                 $components[$key] = isset($components[$key]) ? $components[$key] + 1 : 1;
+                $ms = ($call['construct_ms'] !== null) ? round($call['construct_ms'], 2) : null;
+                $total_construct_ms += (float) $ms;
+                $calls[] = array('component' => $key, 'construct_ms' => $ms);
             }
-            return array('count' => $this->mail_count, 'by_component' => $components);
+            return array(
+                'count' => count($this->mail_calls),
+                'mode' => $this->mail_mode,
+                'total_construct_ms' => round($total_construct_ms, 2),
+                'by_component' => $components,
+                'calls' => $calls,
+            );
         }
 
         private function aggregate_components($sql, $http, $mail) {

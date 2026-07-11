@@ -16,6 +16,12 @@ if ! docker ps --format '{{.Names}}' | grep -qx $SSPA_DB; then
     echo "started $SSPA_DB"
 fi
 
+if ! docker ps --format '{{.Names}}' | grep -qx $SSPA_REDIS; then
+    docker rm -f $SSPA_REDIS >/dev/null 2>&1 || true
+    docker run -d --name $SSPA_REDIS --network $SSPA_NET $REDIS_IMAGE >/dev/null
+    echo "started $SSPA_REDIS"
+fi
+
 if ! docker ps --format '{{.Names}}' | grep -qx $SSPA_WP; then
     docker rm -f $SSPA_WP >/dev/null 2>&1 || true
     docker run -d --name $SSPA_WP --network $SSPA_NET \
@@ -68,6 +74,11 @@ if ! cli core is-installed >/dev/null 2>&1; then
         }
         echo count($products) . " orders created\n";
     '
+
+    echo "enabling Redis object cache..."
+    cli config set WP_REDIS_HOST $SSPA_REDIS
+    cli plugin install redis-cache --activate
+    cli redis enable
 
     echo "activating $PLUGIN_SLUG..."
     sync_plugin

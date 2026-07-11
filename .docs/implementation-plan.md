@@ -222,27 +222,33 @@ Acceptance: deep analysis on the local store correctly attributes the planted co
 politely on noise, and never leaves the live plugin set touched (verified by test polling
 `active_plugins` throughout the run).
 
-## Phase 4 - Cache impact + mail/order profiling
+## Phase 4 - Cache impact + mail/order profiling  [DONE 2026-07-11]
 
 Goal: the Redis-effectiveness dataset and the email/order-processing measurements.
 
-- [ ] Shim: `enable_loading_object_cache_dropin` filter for token+cache-off requests;
+- [x] Shim: `enable_loading_object_cache_dropin` filter for token+cache-off requests;
       cache_impact run type re-profiling the top pages cache-on vs cache-off
-- [ ] Site-wide toggle fallback (rename object-cache.php) behind the same pre-run
+- [x] Site-wide toggle fallback (rename object-cache.php) behind the same pre-run
       warning pattern as the db.php swap (off-peak advice, crash-safe restore)
-- [ ] Cache-blind / cache-friendly findings per component; Plugins tab column
-- [ ] `class-sspa-mail-interceptor.php`: forced recipient override during ALL profiled
+- [x] Cache-blind / cache-friendly findings per component; Plugins tab column
+- [x] `class-sspa-mail-interceptor.php`: forced recipient override during ALL profiled
       requests (safety rail); wp_mail overhead profile (construct-only mode timing build +
       transport swap); mail timings attributed to trigger component
-- [ ] Write profiles (opt-in, never run 1): temp duplicate product/post/order, POST with
+- [x] Write profiles (opt-in, never run 1): temp duplicate product/post/order, POST with
       server-generated nonce under the admin session (spike first - see risks), delete after;
       order-processing profile: temp order pending -> processing -> completed, hook cascade +
       email count/time per transition
-- [ ] e2e: cache_impact run distinguishes a planted cache-blind plugin from a cache-friendly
+- [x] e2e: cache_impact run distinguishes a planted cache-blind plugin from a cache-friendly
       one; write profile leaves zero residue (post counts identical before/after)
 
 Acceptance: cache and mail findings appear with credible numbers on the local store; no mail
 ever leaves the box during profiled requests (asserted by a mail-log check in e2e).
+
+Notes: write probes run the save/status cascade server-side inside profiled requests
+(template_redirect handler gated on the signed token) instead of simulating admin-form
+POSTs - the hook cascade is the cost being measured and this avoids the nonce spike
+entirely. Full-send-to-sink mail mode remains phase 7 (needs the superspeedy.org SMTP
+sink); construct mode measures build cost and strips recipients before transport.
 
 ## Phase 5 - Community (submission + rules feed + hub MVP)
 
