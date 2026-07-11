@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.0';
+    const DB_VERSION = '1.1';
 
     public static function table($name) {
         global $wpdb;
@@ -137,6 +137,20 @@ class SSPA_Schema {
             KEY page_key (page_key)
         ) $charset_collate;");
 
+        $captures = self::table('captures');
+        // Scratch space: the profiler (running inside the profiled request) writes its
+        // capture here keyed by token; the crawler ingests and deletes it. Orphans are
+        // pruned by the hourly cleanup cron.
+        dbDelta("CREATE TABLE $captures (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            token_id char(32) NOT NULL,
+            capture longblob NULL,
+            created datetime NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY token_id (token_id),
+            KEY created (created)
+        ) $charset_collate;");
+
         dbDelta("CREATE TABLE $site_metrics (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             blog_id bigint(20) unsigned NOT NULL DEFAULT 1,
@@ -157,7 +171,7 @@ class SSPA_Schema {
 
     public static function drop_tables() {
         global $wpdb;
-        foreach (array('runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics') as $name) {
+        foreach (array('runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
             $table = self::table($name);
             $wpdb->query("DROP TABLE IF EXISTS $table");
         }

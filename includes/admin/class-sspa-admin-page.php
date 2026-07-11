@@ -35,6 +35,9 @@ class SSPA_Admin_Page {
 
     public static function enqueue_assets() {
         wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery'), SSPA_VERSION, true);
+        wp_localize_script('sspa-admin', 'sspa_admin', array(
+            'nonce' => wp_create_nonce('sspa_admin'),
+        ));
         wp_enqueue_style('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-admin.css', array(), SSPA_VERSION);
     }
 

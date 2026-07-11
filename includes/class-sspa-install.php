@@ -2,13 +2,24 @@
 defined('ABSPATH') || exit;
 
 /**
- * Activation and upgrade handling. Phase 1 adds the mu-loader and db.php shim
- * install/verify/health-check logic here (see .docs/implementation-plan.md).
+ * Activation, deactivation and upgrade handling.
  */
 class SSPA_Install {
 
     public static function activate() {
         SSPA_Schema::create_tables();
+        SSPA_Token::secret();
+        SSPA_Helper_Files::ensure_installed();
+    }
+
+    public static function deactivate() {
+        // Remove everything we placed outside the plugin folder and restore any hold.
+        SSPA_Helper_Files::remove_all();
+        wp_clear_scheduled_hook('sspa_cleanup_event');
+        $run_id = SSPA_Run_Controller::active_run_id();
+        if ($run_id) {
+            SSPA_Run_Controller::cancel($run_id);
+        }
     }
 
     public static function maybe_upgrade() {

@@ -85,79 +85,79 @@ Goal: installable empty plugin, repo pushed, framework in place.
 Acceptance: verified on the local install - activates cleanly, all six tables exist,
 tabbed page renders (5 tabs/5 panels), wp-cli loads without error.
 
-## Phase 1 - Capture engine (the profiler + crawler)
+## Phase 1 - Capture engine (the profiler + crawler)  [DONE 2026-07-11, except real-QM cross-check]
 
 Goal: "Run Analysis" completes a full read-only baseline on the local dev store and stores
 credible numbers. The hardest phase; everything else consumes what it produces.
 
 Infrastructure:
 
-- [ ] `class-sspa-token.php`: HMAC token (URL + expiry + nonce), single-use enforcement via
+- [x] `class-sspa-token.php`: HMAC token (URL + expiry + nonce), single-use enforcement via
       short-TTL option/transient store; header transport `X-SSPA-Token`
-- [ ] MU loader `mu/sspa-loader.php`: verify token; arm profiler (require
+- [x] MU loader `mu/sspa-loader.php`: verify token; arm profiler (require
       `profiler/bootstrap.php` by absolute path); define DONOTCACHEPAGE/DONOTCACHEOBJECT;
       echo response canary; no-op fast path without token. Install/verify/remove logic in
       `class-sspa-install.php` with health check on admin page ("mu loader active: yes")
-- [ ] db.php shim `dropins/db.php`: token check -> define SAVEQUERIES + instantiate
+- [x] db.php shim `dropins/db.php`: token check -> define SAVEQUERIES + instantiate
       `SSPA_Profiling_WPDB`; else return inert (core creates stock wpdb). Install only when
       wp-content/db.php absent
-- [ ] db.php conflict handling (pre-run, user choice - see brainstorm 2.1a):
-  - [ ] Detect existing db.php + identify owner (QM / LudicrousDB / W3TC / unknown)
-  - [ ] QM's: skip prompt, read `result`/`trace` from QM_DB entries in the sql collector
-  - [ ] Foreign: pre-run modal - "Run degraded" vs "Temporarily swap db.php for this run"
+- [x] db.php conflict handling (pre-run, user choice - see brainstorm 2.1a):
+  - [x] Detect existing db.php + identify owner (QM / LudicrousDB / W3TC / unknown)
+  - [x] QM's: skip prompt, read `result`/`trace` from QM_DB entries in the sql collector
+  - [x] Foreign: pre-run modal - "Run degraded" vs "Temporarily swap db.php for this run"
         with the explicit warning (their DB caching OFF site-wide for the duration; advise
         low-traffic window)
-  - [ ] Swap mechanics: rename to `db.php.sspa-hold`, copy ours in, restore on run end AND
+  - [x] Swap mechanics: rename to `db.php.sspa-hold`, copy ours in, restore on run end AND
         run-controller shutdown handler AND a stale-hold check on every plugin load (restore
         + admin notice if no run active)
-  - [ ] Degraded mode: SAVEQUERIES via mu loader, row-count-dependent metrics marked
+  - [x] Degraded mode: SAVEQUERIES via mu loader, row-count-dependent metrics marked
         unavailable, confidence flag plumbed through to findings
 
 Profiler (`profiler/`):
 
-- [ ] `SSPA_Profiling_WPDB`: per query capture sql, duration, rows returned / affected,
+- [x] `SSPA_Profiling_WPDB`: per query capture sql, duration, rows returned / affected,
       error, `debug_backtrace` frames (trimmed, args stripped)
-- [ ] `class-sspa-component-map.php`: stack frame file path -> plugin slug / theme / child /
+- [x] `class-sspa-component-map.php`: stack frame file path -> plugin slug / theme / child /
       mu-plugin / core; top non-core caller per event
-- [ ] Collectors: http (pre_http_request + http_api_debug), overview (timer_stop, peak mem,
+- [x] Collectors: http (pre_http_request + http_api_debug), overview (timer_stop, peak mem,
       response code, included file count), cache ($wp_object_cache hits/misses, backend,
       alloptions size), conditionals
-- [ ] `class-sspa-serializer.php`: profile JSON schema v1 (documented in
+- [x] `class-sspa-serializer.php`: profile JSON schema v1 (documented in
       `.docs/profile-schema.md`); full SQL kept for top-20 slowest + over-threshold queries,
       fingerprints elsewhere (`class-sspa-fingerprint.php` - literals -> ?, IN-list collapse,
       whitespace)
-- [ ] Delivery: profiler writes JSON to a temp row keyed by token at shutdown (not into the
+- [x] Delivery: profiler writes JSON to a temp row keyed by token at shutdown (not into the
       response body, which themes can mangle)
 
 Crawler + catalogue:
 
-- [ ] `class-sspa-catalogue.php`: static keys (home, blog, search-many, search-zero, 404,
+- [x] `class-sspa-catalogue.php`: static keys (home, blog, search-many, search-zero, 404,
       feed, sitemap, cart/checkout/my-account when Woo, REST posts, heartbeat) + CPT/tax
       discovery with representative-entry selection (newest / most-commented / biggest term)
-- [ ] wp-admin GET catalogue: dashboard, plugins, media, posts/products/orders lists,
+- [x] wp-admin GET catalogue: dashboard, plugins, media, posts/products/orders lists,
       orders-list-with-customer-search, edit + new post/product/order
-- [ ] `class-sspa-auth.php`: `wp_generate_auth_cookie` for the initiating admin; flagged
+- [x] `class-sspa-auth.php`: `wp_generate_auth_cookie` for the initiating admin; flagged
       `sspa-test-customer` account (create on demand, visible in UI, deletable)
-- [ ] `class-sspa-crawler.php`: warmups + 3 samples, median + spread, hello-world baseline
+- [x] `class-sspa-crawler.php`: warmups + 3 samples, median + spread, hello-world baseline
       endpoint, cached-response detection (headers + canary) with sample discard, timeout
       and 500 handling as recorded outcomes
-- [ ] `class-sspa-run-controller.php`: run state machine (queued -> crawling -> analysing ->
+- [x] `class-sspa-run-controller.php`: run state machine (queued -> crawling -> analysing ->
       done/failed), WP-Cron batches with politeness delay, progress reporting (polled by the
       admin JS), resumable after crash
-- [ ] `class-sspa-security-detect.php`: classify blocked responses (403/503/challenge/login
+- [x] `class-sspa-security-detect.php`: classify blocked responses (403/503/challenge/login
       bounce with valid cookie), identify security plugin from active list + response
       signatures, continue run, emit `security_block` finding with whitelisting advice
-- [ ] `class-sspa-profile-store.php`: gzcompressed blob storage + `sspa_component_stats`
+- [x] `class-sspa-profile-store.php`: gzcompressed blob storage + `sspa_component_stats`
       extraction per profile
 
 Testing (start the harness now, grow it each phase):
 
-- [ ] `.tests/` e2e: wp-cli-driven run against the local store; assert run completes, page
+- [x] `.tests/` e2e: wp-cli-driven run against the local store; assert run completes, page
       count, profiles have sane values (page_gen > 0, sql_ms <= page_gen, rows captured)
 - [ ] Cross-check test: same page profiled by us and by QM (with its symlink) - sql count,
       sql time and row totals within tolerance
-- [ ] Unit-style tests: fingerprint normaliser, component map, token verify
-- [ ] Note local-dev gotchas per superspeedy-dev-env skill in `.tests/README.md`
+- [x] Unit-style tests: fingerprint normaliser, component map, token verify
+- [x] Note local-dev gotchas per superspeedy-dev-env skill in `.tests/README.md`
 
 Acceptance: full baseline (3 variants where applicable) on the local dev store completes
 unattended in < ~10 min, Pages tab shows real numbers, QM cross-check passes, kill -9 during

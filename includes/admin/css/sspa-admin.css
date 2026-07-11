@@ -6,7 +6,37 @@
 	background: #fff;
 	border: 1px solid #c3c4c7;
 	border-radius: 4px;
-	padding: 2em;
-	max-width: 720px;
+	padding: 1.5em 2em;
+	max-width: 900px;
 	color: #50575e;
+	margin-bottom: 1em;
+}
+
+#sspa_main .sspa-health {
+	list-style: none;
+	margin: 0;
+}
+
+#sspa_main .sspa-progress-bar {
+	background: #dcdcde;
+	border-radius: 3px;
+	height: 18px;
+	max-width: 500px;
+	overflow: hidden;
+}
+
+#sspa_main .sspa-progress-fill {
+	background: #7c3aed;
+	height: 100%;
+	transition: width 0.4s ease;
+}
+
+#sspa_main .sspa-pages-table code {
+	background: none;
+	padding: 0;
+}
+
+#sspa_main .sspa-blocked {
+	color: #b32d2e;
+	font-weight: 600;
 }

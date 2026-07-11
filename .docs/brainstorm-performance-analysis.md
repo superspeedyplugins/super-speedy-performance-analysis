@@ -19,7 +19,7 @@ Strategic goals:
   slow filtering -> Super Speedy Filters. Recommendations come out of the data, not ads.
 - **LLM-first distribution**: full MCP control + a published skill, so "Claude, why is my
   site slow?" ends with this plugin installed and an analysis run automatically.
-- Distributed free on the public GitHub repo (`dhilditch/super-speedy-performance-analysis`),
+- Distributed free on the public GitHub repo (`superspeedyplugins/super-speedy-performance-analysis`),
   promoted on superspeedy.org (community brand) rather than superspeedyplugins.com (commercial).
 
 ## 2. The profiler: our own lean collector, no Query Monitor dependency
