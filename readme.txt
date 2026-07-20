@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.7.1
+Stable tag: 0.7.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.7.2 (20th July 2026) =
+* Updated super-speedy-settings to the latest version
 
 = 0.7.1 (11th July 2026) =
 * Hub client hardening, proven against a real second site: submissions and the rules feed now use ?rest_route= URLs, which work on every WordPress regardless of the hub's permalink or trailing-slash redirect setup (pretty /wp-json/ URLs 301 on some hosts, silently breaking POST submissions).
