@@ -10,6 +10,26 @@ fi
 
 sync_plugin
 
+# Pre-flight: several cases silently degrade into failures (sector "general", tiny deep
+# deltas, no write profiles) when the WooCommerce sample data has gone missing - reseed.
+PRODUCTS=$(cli post list --post_type=product --post_status=publish --format=count 2>/dev/null | tr -dc '0-9')
+if [ "${PRODUCTS:-0}" -lt 5 ]; then
+    echo "sample products missing ($PRODUCTS) - reseeding WooCommerce sample data..."
+    cli import "$CONTAINER_PLUGIN_DIR/../woocommerce/sample-data/sample_products.xml" --authors=create --quiet || true
+    cli eval '
+        if (count(wc_get_orders(array("limit" => -1, "return" => "ids"))) < 3) {
+            foreach (get_posts(array("post_type" => "product", "numberposts" => 3)) as $prod) {
+                $order = wc_create_order();
+                $order->add_product(wc_get_product($prod->ID), 2);
+                $order->set_address(array("first_name" => "Test", "last_name" => "Customer", "email" => "test@example.com"), "billing");
+                $order->calculate_totals();
+                $order->update_status("processing");
+            }
+        }
+        echo "orders: " . count(wc_get_orders(array("limit" => -1, "return" => "ids"))) . "\n";
+    '
+fi
+
 FILTER="${1:-}"
 FAILED=0
 RAN=0

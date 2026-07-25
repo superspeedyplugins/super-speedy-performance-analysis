@@ -47,7 +47,6 @@ class SSPA_CLI {
         }
         if (!empty($assoc_args['suspects'])) {
             $start_args['suspects'] = array_map('trim', explode(',', $assoc_args['suspects']));
-            $start_args['bisect'] = false;
         }
         if (!empty($assoc_args['include-writes'])) {
             $start_args['include_writes'] = true;
@@ -58,7 +57,9 @@ class SSPA_CLI {
             WP_CLI::error($run_id->get_error_message());
         }
 
-        $deadline = time() + 30 * MINUTE_IN_SECONDS;
+        // A full sweep (deep) legitimately runs for hours - every plugin on every page,
+        // in up to three cache modes.
+        $deadline = time() + ('deep' === $type ? 6 * HOUR_IN_SECONDS : 30 * MINUTE_IN_SECONDS);
         $last_done = -1;
         do {
             SSPA_Run_Controller::process_batch($run_id);

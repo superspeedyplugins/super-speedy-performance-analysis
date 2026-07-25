@@ -63,14 +63,35 @@ write cascades).
 
 ### Impact (deep analysis)
 
-`plugin`, `page_key`, `method` (single_out|bisect|cache_toggle), `delta_generation_ms`,
-`delta_sql_ms`, `delta_mem_bytes`, `delta_queries`, `noise_floor_ms`, `confidence`
-(measured = proven; none = below noise floor), `measured_at`.
+Deep analysis is a two-phase sweep: every eligible plugin is screened on its busiest
+pages, and plugins showing measurable impact are then measured on every page plus extra
+cache modes. Expect one impact row per plugin per measured page per cache mode - many
+rows for impactful plugins, a few screening rows for innocent ones.
+
+`plugin`, `page_key`, `method` (single_out; bisect appears only in pre-0.8 data),
+`object_cache_mode` (`normal` = the cache in its natural warmed state - the steady-state
+number to headline; `disabled` and `prime` appear for impacted plugins on sites with a
+persistent object cache; `warm` only in pre-0.9.1 data), `delta_generation_ms`,
+`delta_sql_ms`, `delta_http_ms`, `delta_mem_bytes`, `delta_queries`, `noise_floor_ms`,
+`confidence` (measured = proven; none = |delta| below noise floor), `measured_at`.
+
+When summarising a plugin, aggregate its `normal` rows: net delta across pages, plus the
+single biggest cost or saving. A plugin whose `disabled` deltas are much worse than its
+`normal` deltas depends heavily on the object cache.
+
+**Sign convention (all `delta_*` fields):** baseline (all plugins active) minus the
+measurement with the plugin virtually excluded. **Positive = the plugin ADDS that much**
+(cost). **Negative = the plugin SAVES that much** - the page got slower without it, i.e.
+the plugin is speeding the site up (common for search/filter replacement plugins). Never
+describe a negative delta as the plugin being slow.
 
 ## Guarantees agents can rely on
 
 - Page keys are stable across runs - compare runs by page_key.
 - `confidence: measured` numbers came from re-measurement with a verified plugin-set
-  canary; deltas below `noise_floor_ms` are never reported as measured.
+  canary; deltas whose absolute value is below `noise_floor_ms` are never reported as
+  measured.
+- Single-out impacts compare against a baseline re-measured seconds before the excluded
+  measurement (drift control), and the excluded plugin set gets its own warm-up request.
 - Profiled requests never send mail and never change the live plugin set.
 - `run-analysis` without `include_writes` performs GET requests only.

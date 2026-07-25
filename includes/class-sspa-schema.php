@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.1';
+    const DB_VERSION = '1.3';
 
     public static function table($name) {
         global $wpdb;
@@ -123,8 +123,10 @@ class SSPA_Schema {
             plugin varchar(191) NOT NULL,
             page_key varchar(64) NOT NULL,
             method varchar(16) NOT NULL,
+            object_cache_mode varchar(16) NOT NULL DEFAULT 'normal',
             delta_ttfb_ms float NULL,
             delta_sql_ms float NULL,
+            delta_http_ms float NULL,
             delta_mem_bytes bigint(20) NULL,
             delta_queries int(11) NULL,
             noise_floor_ms float NULL,

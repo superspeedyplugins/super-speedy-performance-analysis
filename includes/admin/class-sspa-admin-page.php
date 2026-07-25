@@ -121,6 +121,25 @@ class SSPA_Admin_Page {
                 echo '</div>';
             }
             ?>
+
+            <!-- Floating run monitor: visible on every tab while a run is active,
+                 minimisable, survives page reloads (re-armed from the active run). -->
+            <div id="sspa-runner" data-active-run="<?php echo esc_attr(SSPA_Run_Controller::active_run_id()); ?>" style="display:none">
+                <div class="sspa-runner-head">
+                    <span class="sspa-runner-title"><?php esc_html_e('Analysis running', 'super-speedy-performance-analysis'); ?></span>
+                    <span class="sspa-runner-mini-summary"></span>
+                    <button type="button" class="sspa-runner-toggle" aria-label="<?php esc_attr_e('Minimise', 'super-speedy-performance-analysis'); ?>">&#8211;</button>
+                </div>
+                <div class="sspa-runner-body">
+                    <div class="sspa-progress-bar"><div class="sspa-progress-fill" style="width:0%"></div></div>
+                    <p class="sspa-runner-counts"></p>
+                    <p class="sspa-runner-current"></p>
+                    <p class="sspa-runner-eta"></p>
+                    <p class="sspa-runner-actions">
+                        <button type="button" class="button" id="sspa-runner-cancel"><?php esc_html_e('Cancel run', 'super-speedy-performance-analysis'); ?></button>
+                    </p>
+                </div>
+            </div>
         </div>
         <?php
     }

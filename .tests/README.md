@@ -40,6 +40,12 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
 - **opcache revalidation**: apache revalidates changed PHP files at most every 2s
   (`opcache.revalidate_freq=2`). Tests that swap `wp-content/db.php` sleep 3s before
   sending profiled requests.
+- **Sample data can vanish** (observed Jul 2026: 0 products, 0 orders in a long-lived
+  env; up.sh's import line ends in `|| true` so a failed seed is silent). The symptom is
+  a 5-case failure cluster: sector "general" instead of e-commerce, "product page
+  profiled" fails, deep deltas tiny (~25ms - the bad plugin's queries are cheap on an
+  empty postmeta), no save-product write profile. `run-tests.sh` now pre-flight checks
+  the product count and reseeds automatically.
 
 ## Dev: submitting to the local hub (localhost:8081)
 
@@ -67,6 +73,17 @@ slashes, which kills POSTs.
   no db.php hold left behind.
 - `06-qm-coexist.php` - a foreign/QM db.php is detected, never clobbered, runs degrade
   gracefully; hold/swap mechanics displace and restore it correctly.
+- `07-analysis.php` - findings engine against a planted bad plugin (slow query, big
+  result set, N+1, dupes), score dented, sector inferred.
+- `09-deep-e2e.php` - the deep sweep end to end: the bad plugin measured by virtual
+  exclusion in every cache mode (disabled/prime/warm with Redis present), impacts
+  attributed and linked, live plugin set untouched, isolation options cleaned up.
+  (`08-isolation-planner.php` was the retired adaptive planner/bisection unit test -
+  the 0.8.0 exhaustive sweep supersedes it.)
+- `10-cache-mail-write.php` - cache-impact run, mail construction profiling, write
+  profiles against temporary objects.
+- `11-community.php` - anonymised submission, hub round trip, signed rules feed.
+- `12-agents.php` - Abilities API + WP-CLI surfaces and the report schema.
 
 ## Not yet covered (planned)
 

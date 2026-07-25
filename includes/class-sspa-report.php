@@ -131,17 +131,21 @@ class SSPA_Report {
         global $wpdb;
         $out = array();
         foreach ($wpdb->get_results(
-            'SELECT plugin, page_key, method, delta_ttfb_ms, delta_sql_ms, delta_mem_bytes,
+            'SELECT plugin, page_key, method, object_cache_mode, delta_ttfb_ms, delta_sql_ms, delta_http_ms, delta_mem_bytes,
                     delta_queries, noise_floor_ms, confidence, created
-             FROM ' . SSPA_Schema::table('plugin_impacts') . ' ORDER BY id DESC LIMIT 100',
+             FROM ' . SSPA_Schema::table('plugin_impacts') . ' ORDER BY id DESC LIMIT 1000',
             ARRAY_A
         ) as $i) {
             $out[] = array(
                 'plugin' => $i['plugin'],
                 'page_key' => $i['page_key'],
                 'method' => $i['method'],
+                'object_cache_mode' => $i['object_cache_mode'],
+                // Positive = the plugin adds this much to the page; NEGATIVE = it SAVES
+                // this much (the page got slower with the plugin excluded).
                 'delta_generation_ms' => $i['delta_ttfb_ms'] !== null ? round((float) $i['delta_ttfb_ms'], 1) : null,
                 'delta_sql_ms' => $i['delta_sql_ms'] !== null ? round((float) $i['delta_sql_ms'], 1) : null,
+                'delta_http_ms' => $i['delta_http_ms'] !== null ? round((float) $i['delta_http_ms'], 1) : null,
                 'delta_mem_bytes' => $i['delta_mem_bytes'] !== null ? (int) $i['delta_mem_bytes'] : null,
                 'delta_queries' => $i['delta_queries'] !== null ? (int) $i['delta_queries'] : null,
                 'noise_floor_ms' => $i['noise_floor_ms'] !== null ? round((float) $i['noise_floor_ms'], 1) : null,

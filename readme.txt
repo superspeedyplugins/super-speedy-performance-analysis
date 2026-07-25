@@ -4,7 +4,7 @@ Donate link: https://superspeedy.org/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.7.2
+Stable tag: 0.9.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,31 @@ This plugin is free and open source, developed in the open at https://github.com
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.1 (24th July 2026) =
+* HOTFIX: Deep Analysis was unusably slow on plugin-heavy sites (a 40+ hour estimate was seen in the wild) because every plugin got every page in all three cache modes up front. It now runs in TWO PHASES. Phase 1 screens every plugin in a single cache mode on just its busiest pages (top attributed pages plus the site's slowest page, 2 samples per cell) - a fast first pass over everything. Phase 2 then automatically gives only the plugins that showed a measurable impact the full treatment: every remaining page, plus object-cache-disabled and cache-priming measurements. Innocent plugins never cost more than their screening cells - typically a 20-30x reduction in requests.
+* The floating monitor shows which phase is running and the time remaining for the current phase.
+* Cache-mode labelling simplified: `normal` (the cache in its natural, warmed state) is the headline number; `disabled` and `prime` are added for impacted plugins. The separate `warm` label is gone - it duplicated `normal`.
+
+= 0.9.0 (24th July 2026) =
+* Deep Analysis is now a comprehensive sweep: EVERY eligible plugin measured on EVERY profiled page (not just each suspect's worst page), each cell proven by re-measuring the page with the plugin virtually disabled for the test requests only. One button, walk away, come back to a complete per-plugin cost map.
+* Object cache modes: with a persistent object cache (Redis/Memcached) and the SSPA `db.php` shim present, every plugin/page cell is measured three ways - object cache disabled, priming (first cache-enabled request) and warm cache - so you can see who depends on your cache and who ignores it.
+* Floating run monitor: a minimisable popover visible on every tab shows exactly which plugin is being tested on which page in which cache mode, with a progress bar, elapsed time and estimated time remaining. It survives page reloads and resumes automatically; runs no longer hijack your screen with surprise refreshes.
+* Per-page breakdown on the Plugins tab: measured impact now aggregates across all pages ("adds 320ms across 5 of 22 pages") with a click-through page-by-page, mode-by-mode grid. The per-plugin Measure button now measures that plugin on every page too.
+* Long runs are safe: staleness is now judged by progress rather than age (a wedged run is re-kicked after 30 minutes and only failed after 3 hours without progress), so an hours-long sweep is never killed mid-flight. `wp sspa run --type=deep` allows 6 hours.
+* The adaptive bisection planner is retired - the sweep measures every plugin on every page directly, which supersedes it.
+* Measured impacts gained an `object_cache_mode` dimension throughout (database, report JSON, abilities, community payload); agents are told to headline the warm-cache numbers.
+
+= 0.8.0 (24th July 2026) =
+* FIXED: plugins that SPEED YOUR SITE UP are now reported correctly. Deep analysis measured them but reported "no measurable impact" (the noise gate only looked at positive deltas), and the Plugins tab rendered negative deltas garbled as `+-2,000ms`. Speed-up plugins now show a green `saves Xms` measured impact - the noise gate works on the delta's absolute value, so savings are first-class measured results.
+* FIXED: runs started from the Plugins tab (the per-plugin Measure button) appeared to do nothing - the page never switched to the Overview tab where the progress bar lives. It now switches automatically.
+* FIXED: after a deep or cache-impact run, the Overview showed site score 0 with no insights, and the Pages/Plugins tabs displayed the deep run's partial plugin-set-modified profiles instead of your last real analysis. All tabs now pin to the latest full analysis, and the Overview gained a "Latest deep analysis" summary card.
+* FIXED: the quick spot-check (plugin toggle prompt) recorded itself as a full baseline run, hijacking every results view and deep-analysis suspect selection. Page-filtered runs are now typed as spot runs.
+* FIXED: theme isolation results were measured but never displayed (stored under a synthetic slug no view matched). They now appear under your real theme slug on the Plugins tab.
+* Accuracy: single-plugin measurements now re-measure the baseline seconds before the excluded measurement (instead of reusing one from minutes earlier), and the excluded plugin set gets its own warm-up request - server drift and cold caches no longer masquerade as plugin cost.
+* Measured impacts now include the HTTP/API time delta alongside generation, SQL, query-count and RAM deltas, and the Plugins tab shows all of them per plugin.
+* The Plugins tab and knowledge base now explain the attribution trap: a plugin that replaces a slow feature (search, filters) is credited with the queries it runs even when it is far faster than what it replaced - the measured impact is the true verdict.
+* Agent API: the delta sign convention is now documented explicitly (positive = the plugin adds time, negative = it saves time) so AI assistants cannot misreport a saving as a slowdown.
 
 = 0.7.2 (20th July 2026) =
 * Updated super-speedy-settings to the latest version

@@ -3,7 +3,9 @@ defined('ABSPATH') || exit;
 
 global $wpdb;
 $sspa_runs_table = SSPA_Schema::table('runs');
-$sspa_last_run_id = (int) $wpdb->get_var("SELECT id FROM $sspa_runs_table WHERE status = 'done' ORDER BY id DESC LIMIT 1");
+// Profiling runs only - deep-run profiles include plugin-set-modified re-measurements
+// of the same pages, which read as duplicate/garbled rows here.
+$sspa_last_run_id = (int) $wpdb->get_var("SELECT id FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1");
 
 if (!$sspa_last_run_id) : ?>
     <div class="sspa-placeholder">

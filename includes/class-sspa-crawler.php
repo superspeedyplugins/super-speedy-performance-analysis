@@ -18,14 +18,36 @@ class SSPA_Crawler {
         $cookies = SSPA_Auth::cookies_for($job['variant'], $user_id);
         $is_baseline = ('baseline' === $job['page_key']);
 
-        for ($i = 0; $i < self::WARMUPS && !$is_baseline; $i++) {
-            $this->send($job['url'], $cookies, null); // unsigned: warms caches, not profiled
+        // Sweep "prime" cells skip the warm-up on purpose: they measure the FIRST
+        // cache-enabled request. Sample count is per-job overridable for the same reason.
+        $warmups = !empty($job['skip_warmup']) ? 0 : self::WARMUPS;
+        $samples_wanted = isset($job['samples']) ? max(1, (int) $job['samples']) : self::SAMPLES;
+
+        for ($i = 0; $i < $warmups && !$is_baseline; $i++) {
+            if (!empty($job['ps']) || !empty($job['oc_off'])) {
+                // The warm-up must run the SAME configuration as the samples (reduced
+                // plugin set and/or cache-bypassed) - only token requests see either
+                // override, so it is signed; its capture and single-use marker are
+                // discarded and it is never measured.
+                $wflags = array('v' => $job['variant']);
+                if (!empty($job['ps'])) {
+                    $wflags['ps'] = $job['ps'];
+                }
+                if (!empty($job['oc_off'])) {
+                    $wflags['oc'] = '0';
+                }
+                $token = SSPA_Token::mint($job['url'], $wflags);
+                $this->send($job['url'], $cookies, $token['header']);
+                $this->discard_capture($token['id']);
+            } else {
+                $this->send($job['url'], $cookies, null); // unsigned: warms caches, not profiled
+            }
         }
 
         $samples = array();
         $blocked_by = null;
-        $attempts = self::SAMPLES + 2; // allow retries for cache-served responses
-        for ($i = 0; count($samples) < self::SAMPLES && $i < $attempts; $i++) {
+        $attempts = $samples_wanted + 2; // allow retries for cache-served responses
+        for ($i = 0; count($samples) < $samples_wanted && $i < $attempts; $i++) {
             $flags = array('v' => $job['variant']);
             if ($is_baseline) {
                 $flags['bl'] = '1';
@@ -57,7 +79,9 @@ class SSPA_Crawler {
             'samples' => $samples,
             'blocked_by' => $blocked_by,
             'plugin_set_hash' => !empty($job['ps']) ? $job['ps'] : '',
-            'object_cache_mode' => !empty($job['oc_off']) ? 'disabled' : 'normal',
+            'object_cache_mode' => !empty($job['oc_label'])
+                ? $job['oc_label']
+                : (!empty($job['oc_off']) ? 'disabled' : 'normal'),
         );
     }
 

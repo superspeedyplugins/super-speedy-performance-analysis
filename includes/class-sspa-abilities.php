@@ -123,7 +123,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/get-plugin-impacts', array(
             'label' => __('Get measured plugin impacts', 'super-speedy-performance-analysis'),
-            'description' => __('Per-plugin costs measured by isolation testing (deep analysis): the generation-time, SQL and memory each plugin adds to its worst page. confidence=measured means proven by re-measurement; none means below the noise floor.', 'super-speedy-performance-analysis'),
+            'description' => __('Per-plugin costs measured by the deep-analysis sweep: one row per plugin per page per cache mode, with generation-time, SQL, HTTP, query-count and memory deltas. Positive deltas = the plugin adds that much; negative = it SAVES that much (never call a negative delta slow). confidence=measured means proven by re-measurement; none means below the noise floor. Headline the warm (or normal) cache mode.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => $no_input,
             'output_schema' => array(
@@ -178,7 +178,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/run-deep-analysis', array(
             'label' => __('Run deep analysis (culprit isolation)', 'super-speedy-performance-analysis'),
-            'description' => __('Measure suspect plugins\' true cost by re-profiling with each virtually disabled for test requests only (visitors unaffected), plus bisection of the slowest page. Requires a completed analysis first. Asynchronous - poll get-status, then get-plugin-impacts.', 'super-speedy-performance-analysis'),
+            'description' => __('Sweep every eligible plugin (or the given suspects) across every profiled page, re-measuring each page with each plugin virtually disabled for test requests only (visitors unaffected) - in three object-cache modes when a persistent cache is present. Thorough and slow by design. Requires a completed analysis first. Asynchronous - poll get-status, then get-plugin-impacts.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',
@@ -278,7 +278,6 @@ class SSPA_Abilities {
         $args = array('type' => 'deep', 'trigger' => 'mcp');
         if (!empty($input['suspects'])) {
             $args['suspects'] = array_map('sanitize_key', (array) $input['suspects']);
-            $args['bisect'] = false;
         }
         $run_id = SSPA_Run_Controller::start($args);
         if (is_wp_error($run_id)) {

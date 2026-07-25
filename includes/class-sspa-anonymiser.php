@@ -96,9 +96,9 @@ class SSPA_Anonymiser {
         }
 
         $impacts = $wpdb->get_results(
-            'SELECT plugin, page_key, method, delta_ttfb_ms, delta_sql_ms, delta_mem_bytes,
-                    delta_queries, noise_floor_ms, confidence
-             FROM ' . SSPA_Schema::table('plugin_impacts') . ' ORDER BY id DESC LIMIT 200',
+            'SELECT plugin, page_key, method, object_cache_mode, delta_ttfb_ms, delta_sql_ms, delta_http_ms,
+                    delta_mem_bytes, delta_queries, noise_floor_ms, confidence
+             FROM ' . SSPA_Schema::table('plugin_impacts') . ' ORDER BY id DESC LIMIT 1000',
             ARRAY_A
         );
 

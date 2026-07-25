@@ -5,7 +5,9 @@ global $wpdb;
 $sspa_health = SSPA_Helper_Files::health();
 $sspa_active_run = SSPA_Run_Controller::active_run_id();
 $sspa_runs_table = SSPA_Schema::table('runs');
-$sspa_last_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' ORDER BY id DESC LIMIT 1", ARRAY_A);
+// Score/insights only exist on profiling runs - a deep or cache run here would render
+// score 0 and an empty insight list.
+$sspa_last_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", ARRAY_A);
 $sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign'), true);
 $sspa_run_notes = $sspa_last_run ? json_decode((string) $sspa_last_run['notes'], true) : null;
 $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
@@ -45,6 +47,43 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             </ol>
         </div>
     </div>
+
+    <?php
+    // Deep runs land back on this tab when they finish - surface their outcome here
+    // instead of leaving the results buried in the Plugins tab.
+    $sspa_deep_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type = 'deep' ORDER BY id DESC LIMIT 1", ARRAY_A);
+    if ($sspa_deep_run) :
+        $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
+        $sspa_deep_notes = is_array($sspa_deep_notes) ? $sspa_deep_notes : array(); ?>
+    <div class="sspa-placeholder">
+        <h2><?php esc_html_e('Latest deep analysis', 'super-speedy-performance-analysis'); ?></h2>
+        <p>
+            <?php
+            printf(
+                /* translators: 1: date, 2: plugins, 3: pages, 4: measurable impacts */
+                esc_html__('%1$s: swept %2$d plugin(s) across %3$d page(s) - %4$d measurable impact(s) found.', 'super-speedy-performance-analysis'),
+                esc_html(get_date_from_gmt($sspa_deep_run['finished'], get_option('date_format') . ' ' . get_option('time_format'))),
+                isset($sspa_deep_notes['plugins']) ? (int) $sspa_deep_notes['plugins'] : 0,
+                isset($sspa_deep_notes['pages']) ? (int) $sspa_deep_notes['pages'] : 0,
+                isset($sspa_deep_notes['impacts']) ? (int) $sspa_deep_notes['impacts'] : 0
+            );
+            if (!empty($sspa_deep_notes['phase2_plugins'])) {
+                echo ' ' . esc_html(sprintf(
+                    __('%d plugin(s) showed impact in the screening pass and got the full page-by-page treatment%s.', 'super-speedy-performance-analysis'),
+                    (int) $sspa_deep_notes['phase2_plugins'],
+                    count((array) ($sspa_deep_notes['modes'] ?? array())) > 1 ? __(' including object-cache-disabled and priming measurements', 'super-speedy-performance-analysis') : ''
+                ));
+            }
+            $sspa_unres = $sspa_deep_notes['unresolved'] ?? 0;
+            $sspa_unres = is_array($sspa_unres) ? count($sspa_unres) : (int) $sspa_unres;
+            if ($sspa_unres) {
+                echo ' ' . esc_html(sprintf(__('%d cell(s) could not be measured (page failed without the plugin - usually a dependency).', 'super-speedy-performance-analysis'), $sspa_unres));
+            }
+            ?>
+            <?php esc_html_e('Results are in the Plugins tab, "Measured impact" column.', 'super-speedy-performance-analysis'); ?>
+        </p>
+    </div>
+    <?php endif; ?>
 
     <?php if ($sspa_demo) :
         $m = $sspa_demo['metrics']; ?>
@@ -190,12 +229,8 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     </p>
     <?php if ($sspa_last_run) : ?>
     <p class="description">
-        <?php esc_html_e('Deep analysis (culprit isolation) measures each suspect plugin\'s true cost by re-profiling its worst page with that plugin disabled FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation/deactivation hooks. It also bisects your slowest page across all plugins to find costs the per-query attribution cannot see. Expect a few dozen extra requests to your site while it runs.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('Deep analysis runs in two phases. Phase 1 screens EVERY eligible plugin by re-measuring its busiest pages with that plugin disabled FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation/deactivation hooks. Phase 2 then gives only the plugins that showed a measurable impact the full treatment: every remaining page, plus object-cache-disabled and cache-priming measurements when a persistent cache is present. Start it, walk away - the floating monitor shows exactly where it is up to and how long the current phase has left. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic.', 'super-speedy-performance-analysis'); ?>
     </p>
     <?php endif; ?>
 
-    <div id="sspa-progress" style="display:none">
-        <div class="sspa-progress-bar"><div class="sspa-progress-fill" style="width:0%"></div></div>
-        <p class="sspa-progress-text"></p>
-    </div>
 </div>

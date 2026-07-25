@@ -117,3 +117,109 @@
 	background: #00a32a;
 	color: #fff;
 }
+
+#sspa_main .sspa-impact-adds {
+	color: #d63638;
+}
+
+#sspa_main .sspa-impact-saves {
+	color: #00a32a;
+}
+
+#sspa_main .sspa-impact-detail {
+	color: #50575e;
+}
+
+/* Floating run monitor */
+#sspa-runner {
+	position: fixed;
+	right: 24px;
+	bottom: 24px;
+	width: 340px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+	z-index: 99990;
+	font-size: 13px;
+}
+
+#sspa-runner .sspa-runner-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	background: #1d2327;
+	color: #fff;
+	border-radius: 5px 5px 0 0;
+	cursor: pointer;
+}
+
+#sspa-runner .sspa-runner-title {
+	font-weight: 600;
+	flex: 1;
+}
+
+#sspa-runner .sspa-runner-mini-summary {
+	color: #c3c4c7;
+	display: none;
+}
+
+#sspa-runner .sspa-runner-toggle {
+	background: none;
+	border: none;
+	color: #fff;
+	font-size: 16px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0 2px;
+}
+
+#sspa-runner .sspa-runner-body {
+	padding: 10px 12px 12px;
+}
+
+#sspa-runner .sspa-runner-body p {
+	margin: 6px 0 0;
+}
+
+#sspa-runner .sspa-runner-current {
+	color: #1d2327;
+	font-weight: 500;
+	min-height: 1.4em;
+	overflow-wrap: anywhere;
+}
+
+#sspa-runner .sspa-runner-eta {
+	color: #50575e;
+}
+
+#sspa-runner.sspa-runner-min {
+	width: 260px;
+}
+
+#sspa-runner.sspa-runner-min .sspa-runner-body {
+	display: none;
+}
+
+#sspa-runner.sspa-runner-min .sspa-runner-mini-summary {
+	display: inline;
+}
+
+#sspa-runner .sspa-progress-bar {
+	height: 8px;
+	background: #dcdcde;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+#sspa-runner .sspa-progress-fill {
+	height: 100%;
+	background: #2271b1;
+	transition: width 0.4s ease;
+}
+
+#sspa_main .sspa-impact-noise {
+	color: #787c82;
+	font-size: 12px;
+}

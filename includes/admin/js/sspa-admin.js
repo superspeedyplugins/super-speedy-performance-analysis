@@ -2,8 +2,8 @@ jQuery(function () {
 	var hash = window.location.hash.replace('#', '');
 	sspa_click_tab(hash || 'overview');
 
-	// Resume progress display if a run is already active when the page loads.
-	var active = parseInt(jQuery('#sspa-run-panel').data('active-run'), 10);
+	// Resume the floating monitor if a run is already active when the page loads.
+	var active = parseInt(jQuery('#sspa-runner').data('active-run'), 10);
 	if (active) {
 		sspa_drive_run(active);
 	} else if (window.location.search.indexOf('sspa_autospot=1') !== -1) {
@@ -74,6 +74,68 @@ function sspa_esc(str) {
 	return jQuery('<span>').text(str == null ? '' : String(str)).html();
 }
 
+// ---- Plugins drill-down: per-page x cache-mode measured impacts ----
+
+jQuery(document).on('click', '.sspa-impact-details', function (e) {
+	e.preventDefault();
+	var link = jQuery(this);
+	var row = link.closest('tr');
+	var existing = row.next('.sspa-impact-detail-row');
+	if (existing.length) {
+		existing.toggle();
+		return;
+	}
+	var cols = row.children('td').length;
+	var detail = jQuery('<tr class="sspa-impact-detail-row"><td colspan="' + cols + '">Loading&hellip;</td></tr>');
+	row.after(detail);
+	jQuery.post(ajaxurl, { action: 'sspa_plugin_detail', nonce: sspa_admin.nonce, plugin: link.data('plugin') }, function (resp) {
+		if (!resp.success) {
+			detail.children('td').text(resp.data || 'No detail available.');
+			return;
+		}
+		var rows = resp.data.rows;
+		var modeOrder = ['normal', 'disabled', 'prime', 'warm'];
+		var modeLabels = { normal: 'Standard (cache warm)', disabled: 'No object cache', prime: 'Cache priming', warm: 'Warm cache' };
+		var modes = modeOrder.filter(function (m) {
+			return rows.some(function (r) { return r.object_cache_mode === m; });
+		});
+		var byPage = {};
+		rows.forEach(function (r) {
+			(byPage[r.page_key] = byPage[r.page_key] || {})[r.object_cache_mode] = r;
+		});
+		var html = '<div class="sspa-detail"><h4>Measured impact of <code>' + sspa_esc(link.data('plugin')) + '</code> per page</h4>';
+		html += '<table class="widefat"><thead><tr><th>Page</th>';
+		modes.forEach(function (m) {
+			html += '<th>' + modeLabels[m] + '</th>';
+		});
+		html += '</tr></thead><tbody>';
+		Object.keys(byPage).forEach(function (page) {
+			html += '<tr><td><code>' + sspa_esc(page) + '</code></td>';
+			modes.forEach(function (m) {
+				var r = byPage[page][m];
+				html += '<td>' + (r ? sspa_impact_cell(r) : '-') + '</td>';
+			});
+			html += '</tr>';
+		});
+		html += '</tbody></table>';
+		html += '<p class="description">"adds" = the plugin costs that much page-generation time; "saves" = the page is SLOWER without it (the plugin is speeding it up); "within noise" = no measurable difference on that page.</p></div>';
+		detail.children('td').html(html);
+	});
+});
+
+function sspa_impact_cell(r) {
+	if (r.confidence !== 'measured') {
+		return '<span class="sspa-impact-noise">within &plusmn;' + Math.round(r.noise_floor_ms) + 'ms noise</span>';
+	}
+	var d = parseFloat(r.delta_ttfb_ms);
+	var cls = d < 0 ? 'sspa-impact-saves' : 'sspa-impact-adds';
+	var label = (d < 0 ? 'saves ' : 'adds ') + Math.abs(Math.round(d)) + 'ms';
+	var sql = Math.round(parseFloat(r.delta_sql_ms));
+	var q = parseInt(r.delta_queries, 10);
+	var sub = 'SQL ' + (sql >= 0 ? '+' : '−') + Math.abs(sql) + 'ms · ' + (q >= 0 ? '+' : '−') + Math.abs(q) + ' queries';
+	return '<strong class="' + cls + '">' + label + '</strong><br><small>' + sub + '</small>';
+}
+
 // ---- Prune stored blobs ----
 
 jQuery(document).on('click', '#sspa-prune-blobs', function () {
@@ -137,7 +199,7 @@ jQuery(document).on('click', '#sspa-run-cache', function () {
 
 jQuery(document).on('click', '.sspa-measure-plugin', function () {
 	var plugin = jQuery(this).data('plugin');
-	if (!confirm('Measure "' + plugin + '" by re-profiling its worst page with the plugin disabled for the test requests only? Visitors are unaffected.')) {
+	if (!confirm('Measure "' + plugin + '" on every profiled page with the plugin disabled for the test requests only? Visitors are unaffected.')) {
 		return;
 	}
 	sspa_start_typed_run({ type: 'deep', 'suspects[]': plugin }, jQuery(this));
@@ -157,44 +219,127 @@ function sspa_start_typed_run(extra, btn) {
 			btn.prop('disabled', false);
 			return;
 		}
-		window.location.hash = 'overview';
+		// No tab switch, no reload: the floating monitor shows progress wherever you are.
 		sspa_drive_run(resp.data.run_id);
+	}).fail(function () {
+		alert('Could not start the analysis (request failed).');
+		btn.prop('disabled', false);
 	});
 }
 
-jQuery(document).on('click', '#sspa-cancel-run', function () {
+jQuery(document).on('click', '#sspa-cancel-run, #sspa-runner-cancel', function () {
+	if (!confirm('Cancel the running analysis?')) {
+		return;
+	}
 	jQuery.post(ajaxurl, { action: 'sspa_cancel_run', nonce: sspa_admin.nonce }, function () {
 		window.location.reload();
 	});
 });
 
-// The browser drives batches sequentially; WP-Cron is the backup for headless progress.
+// ---- Floating run monitor ----
+
+jQuery(document).on('click', '#sspa-runner .sspa-runner-toggle, #sspa-runner .sspa-runner-head', function (e) {
+	if (jQuery(e.target).is('#sspa-runner-cancel')) {
+		return;
+	}
+	var runner = jQuery('#sspa-runner');
+	runner.toggleClass('sspa-runner-min');
+	try {
+		window.localStorage.setItem('sspa_runner_min', runner.hasClass('sspa-runner-min') ? '1' : '0');
+	} catch (err) { /* private mode */ }
+	e.preventDefault();
+});
+
+function sspa_runner_show() {
+	var runner = jQuery('#sspa-runner');
+	try {
+		if (window.localStorage.getItem('sspa_runner_min') === '1') {
+			runner.addClass('sspa-runner-min');
+		}
+	} catch (err) { /* private mode */ }
+	runner.show();
+}
+
+function sspa_fmt_duration(seconds) {
+	if (seconds === null || seconds === undefined || isNaN(seconds)) {
+		return null;
+	}
+	seconds = Math.max(0, Math.round(seconds));
+	var h = Math.floor(seconds / 3600);
+	var m = Math.floor((seconds % 3600) / 60);
+	if (h > 0) {
+		return h + 'h ' + m + 'm';
+	}
+	if (m > 0) {
+		return m + 'm';
+	}
+	return seconds + 's';
+}
+
+function sspa_runner_update(s) {
+	var runner = jQuery('#sspa-runner');
+	var pct = s.total ? Math.min(100, Math.round((s.done / s.total) * 100)) : 0;
+	runner.find('.sspa-progress-fill').css('width', pct + '%');
+	runner.find('.sspa-runner-counts').text(s.done + ' / ' + s.total + ' measurements (' + pct + '%)');
+	runner.find('.sspa-runner-current').text(s.current ? 'Now testing: ' + s.current : (s.status === 'analysing' ? 'Analysing results…' : ''));
+	var eta = sspa_fmt_duration(s.eta_seconds);
+	var elapsed = sspa_fmt_duration(s.elapsed_seconds);
+	var bits = [];
+	if (elapsed) {
+		bits.push('Elapsed ' + elapsed);
+	}
+	if (eta) {
+		// Phase 1 is the fast screen; phase 2 length depends on what it finds.
+		bits.push('~' + eta + (s.run_type === 'deep' && s.phase === 1 ? ' left in screening' : ' left'));
+	}
+	runner.find('.sspa-runner-eta').text(bits.join(' · '));
+	runner.find('.sspa-runner-mini-summary').text(pct + '%' + (eta ? ' · ~' + eta + ' left' : ''));
+	var title = { deep: 'Deep analysis running', cache_impact: 'Cache impact analysis running' }[s.run_type] || 'Analysis running';
+	if (s.run_type === 'deep' && s.phase) {
+		title += s.phase === 1 ? ' - phase 1/2: screening all plugins' : ' - phase 2/2: confirming impacted plugins';
+	}
+	runner.find('.sspa-runner-title').text(title);
+}
+
+function sspa_runner_finish(status) {
+	var runner = jQuery('#sspa-runner').removeClass('sspa-runner-min');
+	var label = status === 'done' ? 'Analysis complete ✓ loading results…' : 'Analysis ' + status + ' - reloading…';
+	runner.find('.sspa-runner-title').text(label);
+	runner.find('.sspa-runner-mini-summary').text('');
+	runner.find('.sspa-progress-fill').css('width', '100%');
+	runner.find('.sspa-runner-current, .sspa-runner-eta, .sspa-runner-actions').hide();
+	setTimeout(function () {
+		window.location.reload();
+	}, 1500);
+}
+
+// The browser drives batches sequentially; WP-Cron is the backup for headless progress,
+// and the hourly janitor re-kicks a run whose driver disappeared.
 function sspa_drive_run(runId) {
-	jQuery('#sspa-progress').show();
-	jQuery('#sspa-run-analysis').prop('disabled', true);
+	sspa_runner_show();
+	jQuery('#sspa-run-analysis, #sspa-run-deep, #sspa-run-cache, .sspa-measure-plugin').prop('disabled', true);
 	jQuery('#sspa-cancel-run').show();
 
+	var failures = 0;
 	function step() {
 		jQuery.post(ajaxurl, { action: 'sspa_process_batch', nonce: sspa_admin.nonce, run_id: runId }, function (resp) {
+			failures = 0;
 			if (!resp.success || !resp.data) {
-				window.location.reload();
+				sspa_runner_finish('finished');
 				return;
 			}
 			var s = resp.data;
-			var pct = s.total ? Math.round((s.done / s.total) * 100) : 0;
-			jQuery('#sspa-progress .sspa-progress-fill').css('width', pct + '%');
-			jQuery('#sspa-progress .sspa-progress-text').text(
-				s.status === 'crawling'
-					? s.done + ' / ' + s.total + (s.current ? ' - profiling: ' + s.current : '')
-					: s.status
-			);
-			if (s.status === 'crawling') {
-				setTimeout(step, 500);
+			sspa_runner_update(s);
+			if (s.status === 'crawling' || s.status === 'analysing') {
+				setTimeout(step, 400);
 			} else {
-				window.location.reload();
+				sspa_runner_finish(s.status);
 			}
 		}).fail(function () {
-			setTimeout(step, 3000);
+			// Transient network/server hiccups must not kill an hours-long run.
+			failures++;
+			jQuery('#sspa-runner .sspa-runner-current').text(failures > 1 ? 'Connection hiccup, retrying… (' + failures + ')' : '');
+			setTimeout(step, Math.min(30000, 3000 * failures));
 		});
 	}
 	step();

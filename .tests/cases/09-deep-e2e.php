@@ -1,6 +1,7 @@
 <?php
-// Deep analysis end to end: plant the bad plugin, baseline it, then let deep analysis
-// measure its true cost by virtual exclusion - and prove the live site was never touched.
+// Deep analysis end to end: plant the bad plugin, baseline it, then let the deep SWEEP
+// measure its true cost by virtual exclusion on every profiled page (in every cache mode
+// when an object cache is present) - and prove the live site was never touched.
 
 function sspa_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
@@ -45,7 +46,7 @@ do {
 sspa_t($status && 'done' === $status['status'], 'baseline spot run done');
 
 // --- Deep run targeting the suspect ---
-$deep_id = SSPA_Run_Controller::start(array('type' => 'deep', 'suspects' => array('sspa-bad-plugin'), 'bisect' => false, 'user_id' => 1));
+$deep_id = SSPA_Run_Controller::start(array('type' => 'deep', 'suspects' => array('sspa-bad-plugin'), 'user_id' => 1));
 if (is_wp_error($deep_id)) {
     echo 'FAIL: deep start: ' . $deep_id->get_error_message() . "\n";
     return;
@@ -57,20 +58,36 @@ do {
 } while ($status && in_array($status['status'], array('crawling', 'analysing'), true) && time() < $deadline);
 sspa_t($status && 'done' === $status['status'], 'deep run done: ' . ($status ? $status['status'] : 'null'));
 
-// --- The measured impact must be real and attributed ---
-$impact = $wpdb->get_row($wpdb->prepare(
+// --- The measured impacts must be real, attributed, and cover every cache mode ---
+$impacts = $wpdb->get_results($wpdb->prepare(
     'SELECT * FROM ' . SSPA_Schema::table('plugin_impacts') . " WHERE test_run_id = %d AND plugin = 'sspa-bad-plugin'",
     $deep_id
 ), ARRAY_A);
-sspa_t($impact !== null, 'plugin_impacts row written for sspa-bad-plugin');
-if ($impact) {
-    sspa_t('single_out' === $impact['method'], 'method single_out');
-    sspa_t('measured' === $impact['confidence'], 'confidence measured');
-    sspa_t((float) $impact['delta_ttfb_ms'] > 200, 'measured generation delta credible (+' . $impact['delta_ttfb_ms'] . 'ms)');
-    sspa_t((float) $impact['delta_sql_ms'] > 100, 'measured SQL delta credible (+' . $impact['delta_sql_ms'] . 'ms)');
-    sspa_t((int) $impact['delta_queries'] > 50, 'measured query-count delta credible (+' . $impact['delta_queries'] . ')');
-    sspa_t((float) $impact['noise_floor_ms'] >= 30, 'noise floor recorded (' . $impact['noise_floor_ms'] . 'ms)');
-    sspa_t((int) $impact['baseline_run_id'] === (int) $run_id, 'baseline run linked');
+sspa_t(count($impacts) >= 1, 'plugin_impacts row(s) written for sspa-bad-plugin (' . count($impacts) . ')');
+
+// Phase 1 screens in 'normal' mode; the impacted plugin graduates to phase 2, which
+// with Redis + our db.php shim adds disabled + prime measurements.
+$expected_modes = (wp_using_ext_object_cache() && 'ours' === SSPA_Helper_Files::dropin_status())
+    ? array('disabled', 'normal', 'prime')
+    : array('normal');
+$modes_seen = array_unique(array_map(function ($i) {
+    return $i['object_cache_mode'];
+}, $impacts));
+sort($modes_seen);
+$expected_sorted = $expected_modes;
+sort($expected_sorted);
+sspa_t($modes_seen === $expected_sorted, 'cache modes covered: ' . implode(',', $modes_seen) . ' (expected ' . implode(',', $expected_sorted) . ')');
+
+// The bad plugin's cost is raw SQL in wp_footer - it must be measured in EVERY mode.
+foreach ($impacts as $impact) {
+    $mode = $impact['object_cache_mode'];
+    sspa_t('single_out' === $impact['method'], "[$mode] method single_out");
+    sspa_t('measured' === $impact['confidence'], "[$mode] confidence measured");
+    sspa_t((float) $impact['delta_ttfb_ms'] > 200, "[$mode] generation delta credible (+" . $impact['delta_ttfb_ms'] . 'ms)');
+    sspa_t((float) $impact['delta_sql_ms'] > 100, "[$mode] SQL delta credible (+" . $impact['delta_sql_ms'] . 'ms)');
+    sspa_t((int) $impact['delta_queries'] > 50, "[$mode] query-count delta credible (+" . $impact['delta_queries'] . ')');
+    sspa_t((float) $impact['noise_floor_ms'] >= 30, "[$mode] noise floor recorded (" . $impact['noise_floor_ms'] . 'ms)');
+    sspa_t((int) $impact['baseline_run_id'] === (int) $run_id, "[$mode] baseline run linked");
 }
 
 // --- Deep run stored its measurement profiles with plugin-set hashes ---

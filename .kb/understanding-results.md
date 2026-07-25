@@ -33,6 +33,25 @@ virtually disabled for the test requests only, and the difference is the plugin'
 cost. Anything below the measurement noise floor is honestly reported as "no measurable
 impact" - the plugin is not guilty on this site, whatever its reputation.
 
+A measured impact can be **negative** - shown as "saves Xms" in green. That means the
+page got *slower* when the plugin was excluded: the plugin is actively speeding your
+site up. This is normal for performance plugins that replace a slow core or WooCommerce
+feature (search, filtering, archives).
+
+## The attribution trap (read this before blaming a plugin)
+
+The SQL/query columns credit work to **whichever component runs it**. A plugin that
+*replaces* a slow feature - say a search plugin that takes over product or order search -
+runs the search query itself, so the search time appears under *its* name, while the
+slow native code it replaced no longer runs at all and is credited to nobody. On the
+attribution columns alone, the plugin making your search fast can look like your biggest
+SQL spender.
+
+The **Measured impact** column is the antidote: it compares the real page with and
+without the plugin. If a plugin's attribution looks expensive, click **Measure** and
+trust the measured verdict - "adds" means it genuinely costs you time, "saves" means it
+is earning its keep.
+
 ## Special pages
 
 - **baseline** - a near-empty request measuring your server's noise floor.

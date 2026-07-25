@@ -37,12 +37,10 @@ class SSPA_Dependency_Map {
     }
 
     /**
-     * Active plugin slugs that are safe candidates for bisection: not us, not fragile,
-     * not a dependency root of another active plugin, not WooCommerce on a Woo site
-     * (excluding it fatals most storefront pages - it can still be a single-out suspect,
-     * where a fatal is itself recorded as evidence).
+     * Active plugin slugs that are safe to virtually exclude in the deep sweep: not us,
+     * not fragile, not a dependency root of another active plugin.
      */
-    public static function bisect_candidates() {
+    public static function isolation_candidates() {
         $active = array();
         foreach ((array) get_option('active_plugins', array()) as $file) {
             $active[] = dirname($file) !== '.' ? dirname($file) : basename($file, '.php');
