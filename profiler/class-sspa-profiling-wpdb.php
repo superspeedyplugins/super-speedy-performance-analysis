@@ -7,10 +7,17 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
     class SSPA_Profiling_WPDB extends wpdb {
 
         const MAX_LOGGED_QUERIES = 20000;
-        const MAX_FRAMES = 14;
+        const MAX_FRAMES = 32;
 
         public $sspa_log = array();
         public $sspa_truncated = false;
+        /**
+         * How many queries had their backtrace cut off at MAX_FRAMES. A deep stack that hits
+         * the ceiling can hide the plugin-to-plugin boundary, which is what caller-mode
+         * attribution needs, so a high number here means the limit is costing us chains
+         * rather than there being none to find. Measured rather than assumed.
+         */
+        public $sspa_frames_truncated = 0;
 
         public function query($query) {
             $start = microtime(true);
@@ -23,7 +30,10 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
             }
 
             $frames = array();
-            foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::MAX_FRAMES + 2) as $f) {
+            // Ask for one more than we keep: if the extra frame exists, the stack was deeper
+            // than MAX_FRAMES and we know we truncated rather than having to guess.
+            $raw = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::MAX_FRAMES + 3);
+            foreach ($raw as $f) {
                 if (!isset($f['file'])) {
                     continue;
                 }
@@ -35,6 +45,9 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
                 if (count($frames) >= self::MAX_FRAMES) {
                     break;
                 }
+            }
+            if (count($frames) >= self::MAX_FRAMES && count($raw) > self::MAX_FRAMES) {
+                $this->sspa_frames_truncated++;
             }
 
             $is_write = (bool) preg_match('/^\s*(insert|update|delete|replace|create|alter|drop|truncate)\b/i', (string) $query);

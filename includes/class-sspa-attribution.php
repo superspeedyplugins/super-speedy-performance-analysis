@@ -49,7 +49,7 @@ class SSPA_Attribution {
         $run_id = (int) $run_id;
 
         if (self::sanitise_mode($mode) === self::MODE_CODE_OWNER) {
-            return $wpdb->get_results($wpdb->prepare(
+            $rows = $wpdb->get_results($wpdb->prepare(
                 'SELECT cs.profile_id, p.page_key, cs.component, cs.component_type,
                         cs.query_count, cs.sql_ms, cs.rows_returned, cs.slowest_query_ms, cs.http_ms
                  FROM ' . SSPA_Schema::table('component_stats') . ' cs
@@ -57,6 +57,11 @@ class SSPA_Attribution {
                  WHERE cs.run_id = %d',
                 $run_id
             ), ARRAY_A);
+            foreach ($rows as &$row) {
+                $row['ran_in'] = array(); // in code-owner mode the component IS the executor
+            }
+            unset($row);
+            return $rows;
         }
 
         $rows = array();
@@ -80,6 +85,7 @@ class SSPA_Attribution {
                     'rows_returned' => $agg['rows'],
                     'slowest_query_ms' => $agg['slowest_ms'],
                     'http_ms' => $agg['http_ms'],
+                    'ran_in' => self::top_executors($agg['ran_in']),
                 );
             }
         }
@@ -112,7 +118,8 @@ class SSPA_Attribution {
         $bump = function (&$agg, $key, $type) {
             if (!isset($agg[$key])) {
                 $agg[$key] = array('type' => $type, 'query_count' => 0, 'sql_ms' => 0.0,
-                                   'rows' => 0, 'slowest_ms' => 0.0, 'http_ms' => 0.0);
+                                   'rows' => 0, 'slowest_ms' => 0.0, 'http_ms' => 0.0,
+                                   'ran_in' => array());
             }
         };
 
@@ -120,6 +127,11 @@ class SSPA_Attribution {
             foreach ($capture['sql']['queries'] as $q) {
                 list($component, $type) = self::caller_of($q, isset($q['ctype']) ? $q['ctype'] : 'plugin');
                 $bump($agg, $component, $type);
+                $executor = self::executor_of($q);
+                if ($executor !== null && $executor !== $component) {
+                    $agg[$component]['ran_in'][$executor] = isset($agg[$component]['ran_in'][$executor])
+                        ? $agg[$component]['ran_in'][$executor] + 1 : 1;
+                }
                 $agg[$component]['query_count']++;
                 $agg[$component]['sql_ms'] += (float) $q['ms'];
                 $agg[$component]['rows'] += (int) $q['rows'];
@@ -141,6 +153,32 @@ class SSPA_Attribution {
             $a['slowest_ms'] = round($a['slowest_ms'], 3);
         }
         return $agg;
+    }
+
+    /**
+     * Where the query actually RAN, when that differs from who is being charged. This is the
+     * other half of the sentence: "plugin-b ran 70 queries" is far less useful than
+     * "plugin-b ran 70 queries, 70 of them inside woocommerce".
+     *
+     * @return string|null
+     */
+    private static function executor_of($entry) {
+        if (!empty($entry['chain']) && is_array($entry['chain']) && isset($entry['chain'][0])) {
+            $parts = explode(':', $entry['chain'][0], 2);
+            if (count($parts) === 2 && $parts[1] !== '') {
+                return $parts[1];
+            }
+        }
+        return null;
+    }
+
+    /** Busiest executors first, so a finding can name the one that matters. */
+    private static function top_executors($ran_in) {
+        if (empty($ran_in)) {
+            return array();
+        }
+        arsort($ran_in);
+        return array_slice($ran_in, 0, 3, true);
     }
 
     /** @return array [component, type] */

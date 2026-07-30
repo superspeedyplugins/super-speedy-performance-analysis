@@ -12,8 +12,8 @@ if ! docker ps --format '{{.Names}}' | grep -qx $SSPA_DB; then
         -e MARIADB_DATABASE=wordpress \
         -e MARIADB_USER=wp -e MARIADB_PASSWORD=wp \
         -e MARIADB_ROOT_PASSWORD=root \
-        $DB_IMAGE >/dev/null
-    echo "started $SSPA_DB"
+        $DB_IMAGE --performance-schema=ON >/dev/null
+    echo "started $SSPA_DB (performance_schema ON)"
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx $SSPA_REDIS; then
@@ -40,6 +40,14 @@ for i in $(seq 1 60); do
     sleep 2
     [ "$i" = 60 ] && { echo "db never came up"; exit 1; }
 done
+# The WordPress db user cannot read performance_schema by default - that denial is the
+# normal case on a real site, and the Tools tab generates this exact GRANT for it. Granting
+# it here is what lets the digest tests (16-digests.php) exercise the real path instead of
+# only the graceful no-op.
+docker exec $SSPA_DB mariadb -uroot -proot \
+    -e "GRANT SELECT ON performance_schema.* TO 'wp'@'%'; FLUSH PRIVILEGES;" >/dev/null 2>&1 \
+    && echo "granted wp SELECT on performance_schema" || echo "WARN: performance_schema grant failed"
+
 # Give the wordpress entrypoint a moment to finish copying core files on first boot.
 for i in $(seq 1 30); do
     if cli core version >/dev/null 2>&1; then break; fi

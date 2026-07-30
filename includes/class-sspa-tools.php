@@ -192,8 +192,9 @@ class SSPA_Tools {
             'performance_schema' => array(
                 'label' => __('MySQL query fingerprints', 'super-speedy-performance-analysis'),
                 'adds' => __('MySQL\'s own normalised query statistics: how many rows were REALLY examined per query, not the optimiser\'s estimate, and which queries used no index.', 'super-speedy-performance-analysis'),
-                'status' => $ps['status'],
-                'used' => false,
+                // Read by the analysis engine as of phase 4, so ACTIVE once it is readable.
+                'status' => ($ps['status'] === self::STATUS_AVAILABLE) ? self::STATUS_ACTIVE : $ps['status'],
+                'used' => true,
                 'detail' => $ps['detail'],
                 'install' => 'performance_schema',
             ),
@@ -223,6 +224,52 @@ class SSPA_Tools {
                 'detail' => '',
                 'install' => 'spx',
             ),
+        );
+    }
+
+    /**
+     * How often a query's backtrace was cut off at MAX_FRAMES on the most recent run.
+     *
+     * Caller-mode attribution needs to see the frame where one component calls into another.
+     * If the stack was truncated before reaching it, the chain looks single-component and the
+     * N+1 goes unreported. This turns "we think 14 frames is enough" into a number, measured
+     * on the site in front of you rather than on a two-plugin test box.
+     *
+     * @return array|null {queries, truncated, pct} or null when no run has been profiled.
+     */
+    public static function frame_truncation() {
+        global $wpdb;
+
+        $run_id = (int) $wpdb->get_var(
+            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done'
+             AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
+        );
+        if (!$run_id) {
+            return null;
+        }
+
+        $queries = 0;
+        $truncated = 0;
+        foreach ($wpdb->get_col($wpdb->prepare(
+            'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . '
+             WHERE run_id = %d AND profile_blob IS NOT NULL',
+            $run_id
+        )) as $blob) {
+            $json = @gzuncompress($blob);
+            $capture = $json ? json_decode($json, true) : null;
+            if (!is_array($capture) || empty($capture['sql'])) {
+                continue;
+            }
+            $queries += isset($capture['sql']['queries']) ? count($capture['sql']['queries']) : 0;
+            $truncated += isset($capture['sql']['frames_truncated']) ? (int) $capture['sql']['frames_truncated'] : 0;
+        }
+        if ($queries === 0) {
+            return null;
+        }
+        return array(
+            'queries' => $queries,
+            'truncated' => $truncated,
+            'pct' => round($truncated / $queries * 100, 1),
         );
     }
 

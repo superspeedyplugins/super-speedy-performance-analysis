@@ -58,9 +58,11 @@ sspa_t($caps['explain']['used'] === true, 'EXPLAIN marked as actually used by th
 
 // Honesty rule: an extension being present must NEVER be reported as in use, because
 // nothing reads it yet. Reporting otherwise would be documenting vapourware in the UI.
-foreach (array('performance_schema', 'excimer', 'tideways_xhprof', 'spx') as $key) {
+foreach (array('excimer', 'tideways_xhprof', 'spx') as $key) {
     sspa_t(isset($caps[$key]) && $caps[$key]['used'] === false, "$key correctly marked not-yet-used");
 }
+// performance_schema IS read as of phase 4, so it must no longer claim otherwise.
+sspa_t($caps['performance_schema']['used'] === true, 'performance_schema marked as used (phase 4 reads it)');
 
 // --- Generated steps are specific to THIS server ---
 $steps = SSPA_Tools::install_steps('excimer');

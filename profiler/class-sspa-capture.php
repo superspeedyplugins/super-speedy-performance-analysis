@@ -320,6 +320,9 @@ if (!class_exists('SSPA_Capture')) {
                 'dupe_count' => $dupe_count,
                 'dupe_details' => $dupe_details,
                 'truncated' => !empty($wpdb->sspa_truncated),
+                // Diagnostic for attribution coverage, not for the user: how many queries had
+                // their stack cut at MAX_FRAMES, potentially hiding the calling component.
+                'frames_truncated' => isset($wpdb->sspa_frames_truncated) ? (int) $wpdb->sspa_frames_truncated : 0,
                 'queries' => $queries,
             );
         }

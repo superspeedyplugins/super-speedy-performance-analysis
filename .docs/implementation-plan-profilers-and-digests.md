@@ -318,7 +318,7 @@ and component-stat tables. Bump `SSPA_Schema` version and add the upgrade path i
 | 1 | **Attribution fix** (section 0) - **DONE, in 0.9.2** | Live bug; everything else inherits it |
 | 2 | `EXPLAIN` enrichment (A0) - **DONE, in 0.9.2** | Works for every user, no install, no grant |
 | 3 | Tools tab + detection + install popovers (C) - **DONE, in 0.9.2** | Needed before anything requiring an install is worth offering |
-| 4 | `performance_schema` digests (A1) | Highest value of the SQL work; gated on the grant |
+| 4 | `performance_schema` digests (A1) - **DONE, in 0.9.2** | Highest value of the SQL work; gated on the grant |
 | 5 | Collector interface + Excimer (B) | Correct attribution, production-safe |
 | 6 | XHProf-family collector (B) | Exact call counts for author reports |
 | 7 | Function detail in hub submissions and author reports | Depends on 1, 5, 6 |
@@ -469,6 +469,47 @@ detected platform*, not merely present.
 Also asserted: `SSPA_Tools` never calls `exec`, `shell_exec`, `passthru`, `proc_open`, `popen`,
 `system`, `file_put_contents` or `ini_set`. Those are grep assertions over its own source, so
 the hard rules cannot be quietly broken later.
+
+### Phase 4 as built (0.9.2) - performance_schema digests
+
+`includes/class-sspa-digests.php`. Snapshot before the run (`SSPA_Run_Controller::start()`),
+snapshot after, diff, and hand the delta to the analysis engine.
+
+- The digest table is cumulative AND server-wide, so absolute totals are meaningless. Only the
+  delta counts, and even the delta includes other traffic - so nothing is reported unless it
+  matches a query THIS run captured. Unmatched digests are other people's business.
+- `SUM_TIMER_WAIT` is **picoseconds**; asserted in the tests, because getting it wrong would
+  silently report milliseconds as microseconds.
+- The `DIGEST IS NULL` overflow bucket is detected. A full digest table means collapsed rows,
+  and reporting numbers off a truncated table would be quietly wrong.
+- Join key: `sspa_sql_fingerprint()` run over both sides after stripping backticks and
+  collapsing whitespace. MySQL's `DIGEST_TEXT` already parameterises to `?` and so do we, so
+  the two shapes converge.
+- New finding **`over_examining_query`**: rows examined vs rows returned. Thresholds
+  `rows_examined_ratio` (100) and `rows_examined_min` (1000).
+- Degrades silently to a no-op where the database user cannot read `performance_schema`, which
+  is the common case. Asserted: no findings invented, no stray option left behind.
+
+**Why this finding matters more than it sounds.** It is the only signal that catches a query
+reading a huge number of rows to return almost none. Our own capture sees the rows that came
+BACK ("0 rows, fast"); EXPLAIN gives the optimiser's estimate. Only MySQL's counters say what
+the server actually did. The test fixture proves it: a `LIKE '%needle%'` over postmeta,
+**16,752 rows examined to return 0** - completely invisible to every other signal we have.
+
+**The test harness had to change to test this at all.** `.tests/docker/up.sh` now starts
+MariaDB with `--performance-schema=ON` and grants the WordPress user `SELECT` on it (the same
+GRANT the Tools tab generates). Without that the whole feature was exercised only through its
+no-op path - the first version of `16-digests.php` passed while the real path never ran, the
+same vacuous-assertion trap as phase 1b. The test is adaptive: it asserts the real path where
+the digest table is readable and the graceful-degradation path where it is not, so it stays
+honest on any environment.
+
+**A test-order flake worth knowing.** `07-analysis.php` asserts the site score is dented below
+80. On the first full run against a freshly rebuilt docker environment it scored 82, because
+three `warn` findings did not fire on a cold, freshly seeded database; in isolation and on a
+warm environment it scores 76. Not caused by this phase - it is the sample-data/warm-state
+sensitivity the test README already documents. If it recurs, check the seeding before
+suspecting the analysis engine.
 
 ### Phase 1b - the alternative not taken
 

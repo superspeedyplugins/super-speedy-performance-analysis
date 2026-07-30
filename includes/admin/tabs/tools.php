@@ -103,6 +103,25 @@ $sspa_status_label = array(
     </ul>
 <?php endif; ?>
 
+<?php $sspa_trunc = SSPA_Tools::frame_truncation(); ?>
+<?php if ($sspa_trunc !== null) : ?>
+    <h3><?php esc_html_e('Attribution coverage', 'super-speedy-performance-analysis'); ?></h3>
+    <p>
+        <?php
+        printf(
+            /* translators: 1: truncated count, 2: total queries, 3: percentage */
+            esc_html__('On the last analysis, %1$s of %2$s captured queries (%3$s%%) had their call stack cut short.', 'super-speedy-performance-analysis'),
+            esc_html(number_format($sspa_trunc['truncated'])),
+            esc_html(number_format($sspa_trunc['queries'])),
+            esc_html($sspa_trunc['pct'])
+        );
+        ?>
+    </p>
+    <p class="description">
+        <?php esc_html_e('Working out which plugin CALLED a query needs the stack to reach the calling plugin. A cut stack can hide that, so a plugin looping over another plugin\'s API would be missed. A low percentage here means the Caller attribution mode on the Plugins tab is seeing what it needs to.', 'super-speedy-performance-analysis'); ?>
+    </p>
+<?php endif; ?>
+
 <h3><?php esc_html_e('This server', 'super-speedy-performance-analysis'); ?></h3>
 <table class="widefat striped sspa-env">
     <tbody>

@@ -77,6 +77,22 @@ class SSPA_Insights {
                 ) . $via_note;
                 $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
+            case 'over_examining_query':
+                $headline = sprintf(
+                    /* translators: 1: component, 2: rows examined, 3: rows returned, 4: page */
+                    __('%1$s ran a query that read %2$s rows to return %3$s (on %4$s)', 'super-speedy-performance-analysis'),
+                    $component,
+                    number_format((int) $e['examined']),
+                    number_format((int) $e['sent']),
+                    $page
+                ) . $via_note;
+                $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . "\n" . sprintf(
+                    /* translators: 1: ratio, 2: number of times the query ran */
+                    __('That is %1$sx more rows read than returned, across %2$d executions. These are MySQL\'s own counters - what the database actually did, not an estimate.', 'super-speedy-performance-analysis'),
+                    number_format((int) $e['ratio']),
+                    (int) $e['count']
+                ));
+                break;
             case 'big_result_set':
                 $headline = sprintf(__('%1$s fetched %2$s rows in a single query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((int) $e['rows']), $page) . $via_note;
                 $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
@@ -84,6 +100,25 @@ class SSPA_Insights {
             case 'query_loop':
                 $headline = sprintf(__('%1$s ran %2$d queries on %3$s', 'super-speedy-performance-analysis'), $component, (int) $e['query_count'], $page);
                 $detail = sprintf(__('%1$sms of SQL, %2$s rows fetched. Query counts like this usually mean queries inside a loop and grow with your content.', 'super-speedy-performance-analysis'), number_format((float) $e['sql_ms'], 1), number_format((int) $e['rows']));
+                // Name where they ran. "plugin-b ran 70 queries" is much less actionable than
+                // "70 of them inside woocommerce" - that says it is looping over an API.
+                if (!empty($e['ran_in']) && is_array($e['ran_in'])) {
+                    $parts = array();
+                    foreach ($e['ran_in'] as $where => $count) {
+                        $parts[] = sprintf(
+                            /* translators: 1: query count, 2: component the queries ran inside */
+                            __('%1$d inside %2$s', 'super-speedy-performance-analysis'),
+                            (int) $count,
+                            $where
+                        );
+                    }
+                    $detail .= ' ' . sprintf(
+                        /* translators: %s: a list like "70 inside woocommerce" */
+                        __('These did not all run in %1$s\'s own code: %2$s. That is the signature of looping over another plugin\'s API instead of asking for everything at once.', 'super-speedy-performance-analysis'),
+                        $component,
+                        implode(', ', $parts)
+                    );
+                }
                 break;
             case 'dupe_queries':
                 $headline = sprintf(__('%1$s ran the identical query %2$d times on %3$s', 'super-speedy-performance-analysis'), $component, (int) $e['count'], $page);

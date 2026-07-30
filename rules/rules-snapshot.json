@@ -10,7 +10,9 @@
         "slow_mail_ms": 100,
         "autoload_bytes": 1048576,
         "ram_hog_bytes": 67108864,
-        "unindexed_scan_rows": 500
+        "unindexed_scan_rows": 500,
+        "rows_examined_ratio": 100,
+        "rows_examined_min": 1000
     },
     "recommendations": {
         "slow_query_postmeta": {
@@ -92,6 +94,11 @@
         "unindexed_query": {
             "title": "Query with no usable index",
             "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape.",
+            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+        },
+        "over_examining_query": {
+            "title": "Query reads far more rows than it returns",
+            "body": "MySQL read a very large number of rows to produce a small answer. That is wasted disk and CPU on every single request, and it is the shape that turns a fast site slow as your content grows. It usually means a missing or unusable index, a join in the wrong order, or a filter MySQL cannot push down into the index. This figure is what the database actually did, not an estimate.",
             "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
         }
     },

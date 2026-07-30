@@ -44,6 +44,9 @@ class SSPA_Run_Controller {
             return new WP_Error('sspa_run_active', __('An analysis is already running.', 'super-speedy-performance-analysis'));
         }
 
+        // Baseline the MySQL digest counters before any profiling traffic. They are
+        // cumulative and server-wide, so only the delta across this run means anything.
+        // Silently a no-op when the database user cannot read performance_schema.
         SSPA_Helper_Files::ensure_installed();
         $health = SSPA_Helper_Files::health();
         if (!$health['mu']) {
@@ -95,6 +98,11 @@ class SSPA_Run_Controller {
             'started' => gmdate('Y-m-d H:i:s'),
         ));
         $run_id = (int) $wpdb->insert_id;
+
+        // Baseline MySQL's digest counters before any profiling traffic. They are cumulative
+        // and server-wide, so only the delta across this run means anything. A silent no-op
+        // when the database user cannot read performance_schema, which is the common case.
+        SSPA_Digests::begin($run_id);
 
         $queue = array(
             'jobs' => $jobs,
@@ -875,6 +883,7 @@ class SSPA_Run_Controller {
 
         $demographics = SSPA_Demographics::snapshot($run_id);
         $engine = new SSPA_Analysis_Engine();
+        $engine->set_digests(SSPA_Digests::collect($run_id));
         $finding_count = $engine->analyse($run_id, $demographics);
         $score = SSPA_Analysis_Engine::score($run_id);
 

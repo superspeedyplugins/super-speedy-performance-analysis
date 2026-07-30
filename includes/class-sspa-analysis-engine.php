@@ -15,6 +15,12 @@ class SSPA_Analysis_Engine {
     private $findings = 0;
     private $plans = array();
     private $flagged_slow = array();
+    private $digests = array();
+
+    /** MySQL digest deltas for this run, keyed by fingerprint hash. May be empty. */
+    public function set_digests($digests) {
+        $this->digests = is_array($digests) ? $digests : array();
+    }
 
     public function analyse($run_id, $demographics) {
         global $wpdb;
@@ -43,6 +49,7 @@ class SSPA_Analysis_Engine {
         $this->slow_queries();
         $this->big_result_sets();
         $this->unindexed_queries();
+        $this->over_examining_queries();
         $this->query_hogs();
         $this->dupe_queries();
         $this->slow_http();
@@ -132,6 +139,92 @@ class SSPA_Analysis_Engine {
                     'table' => $plan['table'],
                 ),
                 'unindexed_query'
+            );
+        }
+    }
+
+    /**
+     * Queries that read far more rows than they returned.
+     *
+     * This is the one thing only performance_schema can tell us. Our own capture sees the
+     * rows that came BACK; EXPLAIN gives the optimiser's estimate of what it will read.
+     * MySQL's digest counters give what it actually read. A query returning 12 rows after
+     * examining 400,000 is doing a full scan behind an index that looks fine, and it is
+     * invisible to every other signal we have.
+     *
+     * Only queries THIS run captured are reported. The digest table is server-wide, so
+     * anything unmatched belongs to other traffic and is none of our business.
+     */
+    private function over_examining_queries() {
+        if (empty($this->digests)) {
+            return;
+        }
+        $ratio_threshold = (float) SSPA_Rules::threshold('rows_examined_ratio');
+        if ($ratio_threshold <= 0) {
+            $ratio_threshold = 100;
+        }
+        $min_examined = (int) SSPA_Rules::threshold('rows_examined_min');
+        if ($min_examined <= 0) {
+            $min_examined = 1000;
+        }
+
+        require_once SSPA_PLUGIN_DIR . 'profiler/fingerprint.php';
+
+        // Map fingerprint hash -> the component we attributed it to, so a digest can be
+        // blamed on a plugin rather than reported as a floating query.
+        $owners = array();
+        foreach ($this->captures as $profile_id => $capture) {
+            if (empty($capture['sql']['queries'])) {
+                continue;
+            }
+            foreach ($capture['sql']['queries'] as $q) {
+                if (empty($q['fp'])) {
+                    continue;
+                }
+                $key = md5(sspa_sql_fingerprint(SSPA_Digests::normalise($q['fp'])));
+                if (!isset($owners[$key])) {
+                    $owners[$key] = array(
+                        'component' => $q['component'],
+                        'page_key' => $this->page_key($profile_id),
+                        'fp' => $q['fp'],
+                    );
+                }
+            }
+        }
+
+        foreach ($this->digests as $key => $d) {
+            if (!isset($owners[$key])) {
+                continue; // other traffic on this database server, not ours to report
+            }
+            if ($d['examined'] < $min_examined) {
+                continue;
+            }
+            $sent = max((int) $d['sent'], 1);
+            $ratio = $d['examined'] / $sent;
+            if ($ratio < $ratio_threshold) {
+                continue;
+            }
+            $owner = $owners[$key];
+            if ($this->skip_component($owner['component'])) {
+                continue;
+            }
+            $this->add(
+                $ratio >= $ratio_threshold * 10 ? 'critical' : 'warn',
+                'over_examining_query',
+                $owner['component'],
+                $owner['page_key'],
+                array(
+                    'fp' => $owner['fp'],
+                    'sql' => $owner['fp'],
+                    'examined' => (int) $d['examined'],
+                    'sent' => (int) $d['sent'],
+                    'ratio' => round($ratio),
+                    'count' => (int) $d['calls'],
+                    'ms' => (float) $d['ms'],
+                    'no_index' => (int) $d['no_index'],
+                    'tmp_disk' => (int) $d['tmp_disk'],
+                ),
+                'over_examining_query'
             );
         }
     }
@@ -294,7 +387,15 @@ class SSPA_Analysis_Engine {
                 'query_loop',
                 $component,
                 $r['page_key'],
-                array('query_count' => (int) $r['query_count'], 'sql_ms' => (float) $r['sql_ms'], 'rows' => (int) $r['rows_returned']),
+                array(
+                    'query_count' => (int) $r['query_count'],
+                    'sql_ms' => (float) $r['sql_ms'],
+                    'rows' => (int) $r['rows_returned'],
+                    // Which components these queries actually ran INSIDE. Without this the
+                    // finding names the looping plugin but cannot say it was looping over
+                    // someone else's API, which is the actionable half.
+                    'ran_in' => isset($r['ran_in']) ? $r['ran_in'] : array(),
+                ),
                 'query_loop'
             );
         }

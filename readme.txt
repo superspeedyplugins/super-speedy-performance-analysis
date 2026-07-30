@@ -32,6 +32,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.9.2 (30th July 2026) =
+* NEW: MySQL query fingerprints. Where your database lets us read its performance_schema statistics, the analysis now reports how many rows MySQL ACTUALLY read to answer each query, rather than how many it returned or what the optimiser guessed. New finding for queries that read far more than they return - a query reading 400,000 rows to hand back 12 is doing a hidden full scan, and it is invisible to every other measurement. Needs one read-only GRANT, which the Tools tab writes out for you; without it, everything else still works.
+* The N+1 finding now says where those queries actually ran, so "this plugin ran 70 queries" becomes "70 of them inside WooCommerce" - which is the difference between a plugin being busy and a plugin looping over someone else's API.
+* Query call stacks are captured deeper (32 frames, was 14), and the Tools tab reports how often a stack was still cut short, so you can tell whether attribution is seeing everything it needs to.
 * NEW Tools tab: reports what your server can do for deeper analysis, and for anything missing generates the exact commands for YOUR operating system, PHP version and init system - not generic documentation you have to translate. Every command has a copy button, and there is a ready-written message you can paste into a support ticket, because most sites cannot install a PHP extension themselves.
 * The plugin never installs anything itself: it does not edit php.ini, run pecl, or restart anything. It shows you what to run, with the reason for each step.
 * The Tools tab also generates the exact read-only GRANT statement your database user needs, with your real username filled in, and tells you plainly when something is detected but not yet used by the plugin.
