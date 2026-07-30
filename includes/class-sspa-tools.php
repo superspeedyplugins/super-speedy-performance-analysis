@@ -1,0 +1,374 @@
+<?php
+defined('ABSPATH') || exit;
+
+/**
+ * Detects what this server can do for deeper analysis, and generates the exact commands to
+ * enable what it cannot - for THIS operating system, THIS PHP version and THIS SAPI, rather
+ * than generic documentation the user has to translate.
+ *
+ * HARD RULES, and they are not negotiable:
+ * - Never edit php.ini. Never run pecl. Never invoke a package manager. Never restart PHP.
+ *   Everything here is text for a human to read, copy and run themselves.
+ * - Never ship a compiled extension in the plugin zip.
+ * - Every command is shown with the reason it is needed.
+ *
+ * The majority of WordPress sites are on shared hosting and can install nothing at all, so
+ * the "ask your host" path is a first-class output, not an afterthought.
+ */
+class SSPA_Tools {
+
+    const STATUS_ACTIVE = 'active';       // present AND used by this plugin today
+    const STATUS_AVAILABLE = 'available'; // present, but this plugin does not use it yet
+    const STATUS_MISSING = 'missing';     // not present, and installable
+    const STATUS_BLOCKED = 'blocked';     // present but refused (e.g. a missing GRANT)
+
+    /** Facts about this server, used to generate accurate commands. */
+    public static function environment() {
+        $ini_dir = defined('PHP_CONFIG_FILE_SCAN_DIR') ? PHP_CONFIG_FILE_SCAN_DIR : '';
+        $scanned = function_exists('php_ini_scanned_files') ? php_ini_scanned_files() : '';
+        if ($ini_dir === '' && $scanned) {
+            $first = trim(strtok($scanned, ','));
+            if ($first !== '') {
+                $ini_dir = dirname($first);
+            }
+        }
+
+        return array(
+            'os' => PHP_OS_FAMILY,
+            'uname' => php_uname('s') . ' ' . php_uname('r'),
+            'distro' => self::distro(),
+            'pkg' => self::package_manager(),
+            'php' => PHP_VERSION,
+            'php_short' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
+            'zts' => defined('PHP_ZTS') ? (bool) PHP_ZTS : null,
+            'sapi' => php_sapi_name(),
+            'ini_dir' => $ini_dir,
+            'ini_loaded' => function_exists('php_ini_loaded_file') ? php_ini_loaded_file() : '',
+            'restart' => self::restart_command(),
+            'mysql' => self::mysql_version(),
+        );
+    }
+
+    private static function distro() {
+        if (PHP_OS_FAMILY !== 'Linux' || !@is_readable('/etc/os-release')) {
+            return PHP_OS_FAMILY;
+        }
+        $raw = @file_get_contents('/etc/os-release');
+        if (!is_string($raw)) {
+            return PHP_OS_FAMILY;
+        }
+        if (preg_match('/^PRETTY_NAME="?([^"\n]+)"?/m', $raw, $m)) {
+            return trim($m[1]);
+        }
+        return PHP_OS_FAMILY;
+    }
+
+    /** @return string apt|dnf|apk|brew|unknown */
+    private static function package_manager() {
+        if (PHP_OS_FAMILY === 'Darwin') {
+            return 'brew';
+        }
+        $distro = strtolower(self::distro());
+        foreach (array('debian' => 'apt', 'ubuntu' => 'apt', 'mint' => 'apt',
+                       'rocky' => 'dnf', 'alma' => 'dnf', 'centos' => 'dnf',
+                       'red hat' => 'dnf', 'rhel' => 'dnf', 'fedora' => 'dnf',
+                       'alpine' => 'apk') as $needle => $pkg) {
+            if (strpos($distro, $needle) !== false) {
+                return $pkg;
+            }
+        }
+        return 'unknown';
+    }
+
+    /**
+     * The restart command for THIS init system, not an assumed one. Handing an Alpine user a
+     * systemctl line, or a Mac user either, is the generic-documentation failure this class
+     * exists to avoid.
+     */
+    private static function restart_command() {
+        $sapi = php_sapi_name();
+        $ver = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+        $nodot = PHP_MAJOR_VERSION . PHP_MINOR_VERSION;
+
+        if (PHP_OS_FAMILY === 'Darwin') {
+            return 'brew services restart php';
+        }
+        if (self::package_manager() === 'apk') {
+            // Alpine runs OpenRC, and names the service php-fpm83 rather than php8.3-fpm.
+            return 'sudo rc-service php-fpm' . $nodot . ' restart';
+        }
+        if (strpos($sapi, 'apache') !== false) {
+            return 'sudo systemctl restart apache2';
+        }
+        if (strpos($sapi, 'litespeed') !== false) {
+            return 'sudo systemctl restart lsws';
+        }
+        return 'sudo systemctl restart php' . $ver . '-fpm';
+    }
+
+    private static function mysql_version() {
+        global $wpdb;
+        $suppress = $wpdb->suppress_errors(true);
+        $v = $wpdb->get_var('SELECT VERSION()');
+        $wpdb->suppress_errors($suppress);
+        return $v !== null ? (string) $v : '';
+    }
+
+    /**
+     * The performance_schema ladder from the plan: is it compiled in, switched on, and can
+     * OUR database user actually read the digest table? Each rung gives a different, and
+     * differently fixable, answer.
+     *
+     * @return array {status, detail, on, readable, db_user, digest_rows}
+     */
+    public static function performance_schema() {
+        global $wpdb;
+        $suppress = $wpdb->suppress_errors(true);
+
+        $var = $wpdb->get_row("SHOW VARIABLES LIKE 'performance_schema'", ARRAY_A);
+        $on = $var && isset($var['Value']) && in_array(strtolower($var['Value']), array('on', '1'), true);
+
+        $readable = false;
+        $rows = null;
+        if ($on) {
+            $rows = $wpdb->get_var('SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest');
+            $readable = ($rows !== null && $wpdb->last_error === '');
+        }
+        $db_user = $wpdb->get_var('SELECT CURRENT_USER()');
+        $wpdb->suppress_errors($suppress);
+
+        if (!$var) {
+            $status = self::STATUS_MISSING;
+            $detail = __('This MySQL server does not report a performance_schema setting at all.', 'super-speedy-performance-analysis');
+        } elseif (!$on) {
+            $status = self::STATUS_MISSING;
+            $detail = __('performance_schema is switched off on the database server. MariaDB ships with it off by default.', 'super-speedy-performance-analysis');
+        } elseif (!$readable) {
+            $status = self::STATUS_BLOCKED;
+            $detail = __('performance_schema is on, but this site\'s database user is not allowed to read it. One GRANT fixes this.', 'super-speedy-performance-analysis');
+        } else {
+            $status = self::STATUS_AVAILABLE;
+            $detail = __('performance_schema is on and readable.', 'super-speedy-performance-analysis');
+        }
+
+        return array(
+            'status' => $status,
+            'detail' => $detail,
+            'on' => $on,
+            'readable' => $readable,
+            'db_user' => (string) $db_user,
+            'digest_rows' => $rows !== null ? (int) $rows : null,
+        );
+    }
+
+    /** The GRANT this site actually needs, with its real user and host filled in. */
+    public static function grant_sql() {
+        $ps = self::performance_schema();
+        $user = $ps['db_user'] !== '' ? $ps['db_user'] : 'youruser@localhost';
+        // CURRENT_USER() returns user@host; quote both halves for a valid GRANT.
+        $parts = explode('@', $user, 2);
+        $quoted = "'" . str_replace("'", '', $parts[0]) . "'@'" . (isset($parts[1]) ? str_replace("'", '', $parts[1]) : 'localhost') . "'";
+        return "GRANT SELECT ON performance_schema.* TO $quoted;\nFLUSH PRIVILEGES;";
+    }
+
+    /**
+     * Every capability, with what it adds and whether this server has it.
+     *
+     * `used` is deliberately explicit: an extension being present does NOT mean this plugin
+     * does anything with it yet, and the UI must never imply otherwise.
+     */
+    public static function capabilities() {
+        $ps = self::performance_schema();
+
+        return array(
+            'explain' => array(
+                'label' => __('Query plans (EXPLAIN)', 'super-speedy-performance-analysis'),
+                'adds' => __('Shows WHY a query is slow: a missing index, a temporary table, a filesort. Also catches queries that are fast today but will not scale.', 'super-speedy-performance-analysis'),
+                'status' => self::STATUS_ACTIVE,
+                'used' => true,
+                'detail' => __('Built in. Needs nothing installed and no extra database permission.', 'super-speedy-performance-analysis'),
+                'install' => null,
+            ),
+            'performance_schema' => array(
+                'label' => __('MySQL query fingerprints', 'super-speedy-performance-analysis'),
+                'adds' => __('MySQL\'s own normalised query statistics: how many rows were REALLY examined per query, not the optimiser\'s estimate, and which queries used no index.', 'super-speedy-performance-analysis'),
+                'status' => $ps['status'],
+                'used' => false,
+                'detail' => $ps['detail'],
+                'install' => 'performance_schema',
+            ),
+            'excimer' => array(
+                'label' => __('excimer (function-level profiling)', 'super-speedy-performance-analysis'),
+                'adds' => __('Which FUNCTION inside a plugin is burning the time. A sampling profiler with negligible overhead, maintained by the Wikimedia Foundation and used in production on Wikipedia.', 'super-speedy-performance-analysis'),
+                'status' => extension_loaded('excimer') ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
+                'used' => false,
+                'detail' => '',
+                'install' => 'excimer',
+            ),
+            'tideways_xhprof' => array(
+                'label' => __('tideways_xhprof (exact call counts)', 'super-speedy-performance-analysis'),
+                'adds' => __('Counts every function call exactly, which is what proves a plugin is running the same query in a loop. Higher overhead than excimer, so it is for one page at a time.', 'super-speedy-performance-analysis'),
+                'status' => (extension_loaded('tideways_xhprof') || extension_loaded('xhprof')) ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
+                'used' => false,
+                'detail' => extension_loaded('xhprof') && !extension_loaded('tideways_xhprof')
+                    ? __('The original xhprof is present. tideways_xhprof is the better-maintained successor.', 'super-speedy-performance-analysis')
+                    : '',
+                'install' => 'tideways_xhprof',
+            ),
+            'spx' => array(
+                'label' => __('SPX (standalone profiler)', 'super-speedy-performance-analysis'),
+                'adds' => __('A self-hosted profiler with its own flamegraph and timeline interface. Nothing leaves your server. We detect it and link to it rather than rebuilding what it already does well.', 'super-speedy-performance-analysis'),
+                'status' => extension_loaded('spx') ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
+                'used' => false,
+                'detail' => '',
+                'install' => 'spx',
+            ),
+        );
+    }
+
+    /** Third-party APM agents already on this server. Informational only. */
+    public static function detected_apms() {
+        $found = array();
+        foreach (array(
+            'newrelic' => 'New Relic',
+            'ddtrace' => 'Datadog APM',
+            'blackfire' => 'Blackfire',
+            'opentelemetry' => 'OpenTelemetry',
+            'elastic_apm' => 'Elastic APM',
+        ) as $ext => $label) {
+            if (extension_loaded($ext)) {
+                $found[$ext] = $label;
+            }
+        }
+        return $found;
+    }
+
+    /**
+     * Copy-pasteable steps for this server.
+     *
+     * @return array of {title, why, code} blocks
+     */
+    public static function install_steps($key) {
+        $env = self::environment();
+
+        if ($key === 'performance_schema') {
+            $ps = self::performance_schema();
+            $steps = array();
+            if (!$ps['on']) {
+                $steps[] = array(
+                    'title' => __('1. Switch performance_schema on', 'super-speedy-performance-analysis'),
+                    'why' => __('MariaDB ships with it off. This needs a MySQL restart, so it is the one step that causes a moment of downtime.', 'super-speedy-performance-analysis'),
+                    'code' => "# Add to my.cnf (or /etc/mysql/conf.d/99-perfschema.cnf), then restart MySQL\n[mysqld]\nperformance_schema = ON",
+                );
+            }
+            $steps[] = array(
+                'title' => $ps['on'] ? __('1. Grant read access', 'super-speedy-performance-analysis') : __('2. Grant read access', 'super-speedy-performance-analysis'),
+                'why' => __('Run as a database administrator. This is READ-ONLY access to performance statistics - it grants nothing over your site\'s data and cannot change anything.', 'super-speedy-performance-analysis'),
+                'code' => self::grant_sql(),
+            );
+            return $steps;
+        }
+
+        $ext_packages = array(
+            'excimer' => 'excimer',
+            'tideways_xhprof' => 'tideways_xhprof',
+            'spx' => 'spx',
+        );
+        if (!isset($ext_packages[$key])) {
+            return array();
+        }
+        $pkg = $ext_packages[$key];
+
+        $build_deps = array(
+            'apt' => 'sudo apt-get install -y php-pear php' . $env['php_short'] . '-dev',
+            'dnf' => 'sudo dnf install -y php-pear php-devel',
+            'apk' => 'sudo apk add php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-pear php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-dev build-base',
+            'brew' => '# Homebrew PHP already ships pecl',
+            'unknown' => '# Install the PECL toolchain for your distribution (php-pear and the PHP dev headers)',
+        );
+
+        $steps = array();
+        $steps[] = array(
+            'title' => __('1. Install the build tools', 'super-speedy-performance-analysis'),
+            'why' => sprintf(
+                /* translators: %s: detected operating system */
+                __('PECL compiles the extension, so it needs the PHP development headers. Detected: %s.', 'super-speedy-performance-analysis'),
+                $env['distro']
+            ),
+            'code' => isset($build_deps[$env['pkg']]) ? $build_deps[$env['pkg']] : $build_deps['unknown'],
+        );
+
+        if ($key === 'spx') {
+            $steps[] = array(
+                'title' => __('2. Build and install SPX', 'super-speedy-performance-analysis'),
+                'why' => __('SPX is not on PECL, so it is built from source. Licence: GPL-3.', 'super-speedy-performance-analysis'),
+                'code' => "git clone https://github.com/NoiseByNorthwest/php-spx.git\ncd php-spx\nphpize\n./configure\nmake\nsudo make install",
+            );
+        } else {
+            $steps[] = array(
+                'title' => __('2. Install the extension', 'super-speedy-performance-analysis'),
+                'why' => __('Both are free and open source (Apache 2.0) and send nothing anywhere. They are local extensions, not a service.', 'super-speedy-performance-analysis'),
+                'code' => 'sudo pecl install ' . $pkg,
+            );
+        }
+
+        $ini_dir = $env['ini_dir'] !== '' ? $env['ini_dir'] : '/etc/php/' . $env['php_short'] . '/' . ($env['sapi'] === 'cli' ? 'cli' : 'fpm') . '/conf.d';
+        $steps[] = array(
+            'title' => __('3. Enable it', 'super-speedy-performance-analysis'),
+            'why' => sprintf(
+                /* translators: %s: the ini scan directory detected on this server */
+                __('Write a dedicated ini file rather than editing php.ini, so a PHP upgrade does not wipe it. This server scans: %s. Note the web server and the command line often use SEPARATE ini directories - the extension must be enabled for the one your site runs under.', 'super-speedy-performance-analysis'),
+                $ini_dir
+            ),
+            'code' => 'echo "extension=' . $pkg . '.so" | sudo tee ' . $ini_dir . '/20-' . $pkg . '.ini',
+        );
+        $steps[] = array(
+            'title' => __('4. Restart PHP', 'super-speedy-performance-analysis'),
+            'why' => sprintf(
+                /* translators: %s: the detected PHP SAPI */
+                __('A reload is not enough for a new extension. Detected SAPI: %s.', 'super-speedy-performance-analysis'),
+                $env['sapi']
+            ),
+            'code' => $env['restart'],
+        );
+        $steps[] = array(
+            'title' => __('5. Check it worked', 'super-speedy-performance-analysis'),
+            'why' => __('Then press Re-check on this page.', 'super-speedy-performance-analysis'),
+            'code' => 'php -m | grep ' . $pkg,
+        );
+
+        return $steps;
+    }
+
+    /**
+     * A message the site owner can paste into a support ticket. For the shared-hosting
+     * majority this is the only route that ends in success, so it is generated properly
+     * rather than left as "ask your host".
+     */
+    public static function host_message($key) {
+        $caps = self::capabilities();
+        $env = self::environment();
+        if (!isset($caps[$key])) {
+            return '';
+        }
+        $cap = $caps[$key];
+
+        if ($key === 'performance_schema') {
+            return sprintf(
+                __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and need read access to MySQL's performance_schema statistics.\n\nCould you please:\n1. Ensure performance_schema is enabled on the database server (MariaDB has it off by default).\n2. Run: %s\n\nThis is read-only access to query statistics. It grants no access to any data and cannot modify anything.\n\nMySQL version reported to my site: %s\n\nThank you.", 'super-speedy-performance-analysis'),
+                str_replace("\n", ' ', self::grant_sql()),
+                $env['mysql']
+            );
+        }
+
+        return sprintf(
+            __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and would like the PHP extension \"%1\$s\" installed.\n\nIt is free and open source, it runs entirely on the server, and it sends no data anywhere. It is a diagnostic profiler.\n\nMy environment as far as I can see it:\n- PHP %2\$s (%3\$s)\n- %4\$s\n- PHP ini scan directory: %5\$s\n\nThe usual install is:\n  sudo pecl install %1\$s\n  echo \"extension=%1\$s.so\" > %5\$s/20-%1\$s.ini\n  %6\$s\n\nIf this is not something you can install on my plan, could you let me know? Thank you.", 'super-speedy-performance-analysis'),
+            $key,
+            $env['php'],
+            $env['sapi'],
+            $env['distro'],
+            $env['ini_dir'] !== '' ? $env['ini_dir'] : '(unknown)',
+            $env['restart']
+        );
+    }
+}

@@ -223,3 +223,44 @@
 	color: #787c82;
 	font-size: 12px;
 }
+
+/* --- Tools tab ---------------------------------------------------------- */
+#sspa_main .sspa-status {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+#sspa_main .sspa-status-active { background: #d5e5d5; color: #1e4620; }
+#sspa_main .sspa-status-available { background: #d8e6f3; color: #14487a; }
+#sspa_main .sspa-status-blocked { background: #f8e5b9; color: #6b4e00; }
+#sspa_main .sspa-status-missing { background: #e8e8e8; color: #50575e; }
+
+#sspa_main .sspa-not-used {
+	color: #8a6d3b;
+	font-size: 12px;
+}
+
+#sspa_main .sspa-code-block {
+	position: relative;
+	margin: 0 0 16px;
+}
+#sspa_main .sspa-code-block pre {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	padding: 12px 90px 12px 12px;
+	margin: 0;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+#sspa_main .sspa-code-block .sspa-copy {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+}
+#sspa_main .sspa-env td:first-child { width: 220px; font-weight: 600; }
+#sspa_main .sspa-tools td { vertical-align: top; }

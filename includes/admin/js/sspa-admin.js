@@ -344,3 +344,36 @@ function sspa_drive_run(runId) {
 	}
 	step();
 }
+
+// --- Tools tab: installation steps + copy to clipboard ---------------------
+// Steps are inert text. Nothing here installs, edits or restarts anything; the user runs
+// the commands themselves, or sends them to their host.
+jQuery(function ($) {
+	$(document).on('click', '.sspa-steps-toggle', function () {
+		var $btn = $(this);
+		var $row = $('#' + $btn.data('target'));
+		var open = $row.is(':visible');
+		$row.toggle(!open);
+		$btn.attr('aria-expanded', open ? 'false' : 'true')
+			.text(open ? sspa_tools_i18n.show : sspa_tools_i18n.hide);
+	});
+
+	$(document).on('click', '.sspa-copy', function () {
+		var $btn = $(this);
+		var text = $btn.closest('.sspa-code-block').find('code').text();
+		var done = function () {
+			var original = $btn.text();
+			$btn.text(sspa_tools_i18n.copied);
+			setTimeout(function () { $btn.text(original); }, 1500);
+		};
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(text).then(done, function () {});
+			return;
+		}
+		// Fallback for non-secure contexts, where the clipboard API is unavailable.
+		var $tmp = $('<textarea>').val(text).css({position: 'fixed', opacity: 0}).appendTo('body');
+		$tmp[0].select();
+		try { document.execCommand('copy'); done(); } catch (e) {}
+		$tmp.remove();
+	});
+});

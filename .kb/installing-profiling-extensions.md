@@ -1,29 +1,40 @@
 # Installing the optional profiling extras
 
 Super Speedy Performance Analysis works fully on its own. Everything on this page is
-**optional** and adds extra depth: which *function* inside a plugin is slow, and how many rows
-MySQL really examined rather than how many it returned.
+**optional**.
 
-The Tools tab tells you which of these your server already has, and generates the exact
-commands for your server, your PHP version and your operating system. Use this page if you
-want to understand what you are installing and why before you run anything.
+Go to **Super Speedy → Performance Analysis → Tools**. It reports what your server can already
+do, and for anything missing it generates the exact commands for *your* operating system, PHP
+version and init system - not generic documentation you have to translate. There is a copy
+button on every command, and a "paste this to your host" message for the many sites that
+cannot run these themselves.
 
-## What you get, and what it costs you
+**The plugin never installs anything itself.** It does not edit `php.ini`, run `pecl`, or
+restart anything. It shows you what to run.
 
-| Extra | What it adds | Needs |
-|---|---|---|
-| `EXPLAIN` analysis | How MySQL plans each query: missing indexes, filesorts, temp tables | Nothing. Already on |
-| MySQL query fingerprints | **Actual** rows examined per query, not estimates | A one-line `GRANT`, sometimes a MySQL restart |
-| `excimer` | Which function is burning the time, safe on live sites | A PHP extension |
-| `tideways_xhprof` | Exact call counts, for finding N+1 loops | A PHP extension |
+## What is live today
 
-Nothing here sends data anywhere. All of it is read locally by the plugin and stays on your
-server.
+| Extra | What it adds | Needs | Status |
+|---|---|---|---|
+| `EXPLAIN` query plans | Why a query is slow: missing index, filesort, temp table. Also catches queries that are fast now but will not scale | Nothing | **Live now** |
+| Environment report | What your server supports, and the commands to enable the rest | Nothing | **Live now** |
+| MySQL query fingerprints | **Actual** rows examined per query, not the optimiser's estimate | A one-line `GRANT`, sometimes a MySQL restart | Detected; not read yet |
+| `excimer` | Which function is burning the time, safe on live sites | A PHP extension | Detected; not read yet |
+| `tideways_xhprof` | Exact call counts, for finding N+1 loops | A PHP extension | Detected; not read yet |
+
+**Read that status column before you install anything.** The Tools tab detects the extensions
+and generates correct installation steps for them today, but the plugin does not yet *read*
+them - that support is still being built. Installing them now gets you ready, and gets your
+host's part done in advance, but it will not change your analysis yet. The Tools tab labels
+each one the same way, so it will never claim to be using something it is not.
+
+Nothing here sends data anywhere. All of it is read locally and stays on your server.
 
 ## Can I install these at all?
 
-Open **Super Speedy → Performance Analysis → Tools**. Each card says Available, Not installed,
-or Blocked by your hosting.
+Open **Super Speedy → Performance Analysis → Tools**. Each row is marked **Active** (present
+and in use), **Available** (present), **Needs permission** (present but the database user
+cannot read it), or **Not installed**.
 
 The short version:
 
@@ -32,9 +43,9 @@ The short version:
   already and needs nothing.
 - **VPS, managed WordPress hosting with SSH, or your own server**: all of it is available.
 
-If a card says Blocked by your hosting, use the **Send these steps to my host** button. It
-writes a short, polite, specific message you can paste into a support ticket. Hosts turn these
-down far more often when the request is vague.
+Where something is missing, press **Show installation steps**. Underneath the commands there
+is a ready-written message you can paste into a support ticket. Hosts turn down vague requests
+far more often than specific ones.
 
 ---
 
@@ -79,16 +90,25 @@ FLUSH PRIVILEGES;
 This is **read-only**. It grants no ability to change any data, and it is the only permission
 the plugin asks for.
 
-### Step 3: re-run an analysis
+### Step 3: re-check
 
-Go back to the Tools tab and press Re-check. The card should turn green, and your next
-analysis will include real `rows examined` figures per query.
+Go back to the Tools tab and press Re-check. The status should change from "Needs permission"
+to "Available".
+
+Note that this gets the permission in place ready; the plugin does not read the digest
+statistics yet. The `EXPLAIN` analysis below is what is doing the work today.
 
 ### What if my host says no?
 
-You still get the `EXPLAIN` analysis, which covers the most common problem by far: a query
-with no usable index. The difference is that `EXPLAIN` gives the optimiser's *estimate* and
-`performance_schema` gives what actually happened.
+You still get the `EXPLAIN` analysis, which is live today and covers the most common problem
+by far: a query with no usable index. The difference is that `EXPLAIN` gives the optimiser's
+*estimate* of how many rows will be read, and `performance_schema` gives what actually
+happened.
+
+One real limit worth knowing: `EXPLAIN` only runs on queries whose full SQL was kept, and to
+protect your data the plugin only keeps the full text of the slowest and largest queries per
+page - everything else is stored as a fingerprint with all values stripped. So query plans
+cover the queries most worth explaining, not every query on the page.
 
 ---
 
@@ -126,6 +146,9 @@ echo "extension=excimer.so" | sudo tee /etc/php/8.3/cli/conf.d/20-excimer.ini
 
 ### Restart PHP
 
+The correct command depends on your init system - the Tools tab shows the right one for your
+server (systemd, OpenRC on Alpine, or Homebrew on macOS). On a typical systemd host:
+
 ```bash
 sudo systemctl restart php8.3-fpm     # or php-fpm, depending on your distribution
 ```
@@ -160,11 +183,10 @@ sudo systemctl restart php8.3-fpm
 
 ### Important: it is slower on purpose
 
-Tracing every single function call is expensive and it distorts timings. Because of that:
-
-- The plugin only switches it on for the specific page you press **Deep dive** on.
-- The plugin **refuses** to switch it on during a Deep Analysis measured-impact run, because
-  it would corrupt the very numbers those runs exist to produce.
+Tracing every single function call is expensive and it distorts timings. When support for it
+is built, it will be enabled only for a single page you explicitly ask about, and never during
+a Deep Analysis measured-impact run, because it would corrupt the very numbers those runs
+exist to produce.
 
 If you only install one of the two extensions, install `excimer`.
 
@@ -175,22 +197,28 @@ If you only install one of the two extensions, install `excimer`.
 If you want flamegraphs and a timeline view, [php-spx](https://github.com/NoiseByNorthwest/php-spx)
 is excellent, self-hosted, and keeps all data on your own server. Licence: GPL-3.
 
-Super Speedy Performance Analysis **detects** it and links to it, but does not read its data,
-because its own interface is already better than anything we would rebuild.
+Super Speedy Performance Analysis **detects** it, but does not read its data: its own
+interface is already better than anything we would rebuild.
 
 ---
 
 ## Frequently asked
 
 **Will any of this slow down my site?**
-`excimer` and the MySQL fingerprints, no. `tideways_xhprof` does add real overhead, which is
-why the plugin only enables it for a single page you explicitly ask about, and never during a
+Simply having `excimer` loaded, or granting the MySQL permission, costs you nothing measurable.
+`tideways_xhprof` does add real overhead while it is actively profiling, which is why it will
+only ever be enabled for a single page you explicitly ask about, and never during a
 measurement run.
 
 **Does any of this send data to Super Speedy Plugins, or anyone else?**
 No. These are local extensions and a local database table. Nothing leaves your server. If you
 separately opt in to sharing anonymised results on the Share tab, you see the exact payload
 first, as always.
+
+**Should I install these now?**
+Only if you want to be ready, or if getting a host to act takes you a while. `excimer` and
+`tideways_xhprof` are detected but not yet read by the plugin. The `performance_schema` GRANT
+is worth requesting early, because host tickets are slow.
 
 **I installed the extension and the Tools tab still says Not installed.**
 Almost always PHP-FPM was not restarted, or the extension was enabled for the CLI but not for

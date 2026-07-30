@@ -317,7 +317,7 @@ and component-stat tables. Bump `SSPA_Schema` version and add the upgrade path i
 |---|---|---|
 | 1 | **Attribution fix** (section 0) - **DONE, in 0.9.2** | Live bug; everything else inherits it |
 | 2 | `EXPLAIN` enrichment (A0) - **DONE, in 0.9.2** | Works for every user, no install, no grant |
-| 3 | Tools tab + detection + install popovers (C) | Needed before anything requiring an install is worth offering |
+| 3 | Tools tab + detection + install popovers (C) - **DONE, in 0.9.2** | Needed before anything requiring an install is worth offering |
 | 4 | `performance_schema` digests (A1) | Highest value of the SQL work; gated on the grant |
 | 5 | Collector interface + Excimer (B) | Correct attribution, production-safe |
 | 6 | XHProf-family collector (B) | Exact call counts for author reports |
@@ -438,6 +438,37 @@ like a bug - `wp_posts` on the docker site has 132 rows against an `unindexed_sc
 threshold of 500, so the finding was correctly suppressed. The fixture now scans `wp_postmeta`
 (~1,070 rows) instead. On a real site with real tables the threshold is a low bar; if findings
 prove noisy, tune it through the rules feed rather than in code.
+
+### Phase 3 as built (0.9.2) - the Tools tab
+
+`includes/class-sspa-tools.php` + `includes/admin/tabs/tools.php`, a new Tools tab.
+
+- Detects the `performance_schema` ladder (compiled in / switched on / readable by OUR user),
+  the profiling extensions, and any third-party APM agent already loaded.
+- Generates installation steps **for this server**: distro from `/etc/os-release`, package
+  manager, PHP version and SAPI, the real ini scan directory from `PHP_CONFIG_FILE_SCAN_DIR`,
+  and the correct restart command for the init system. Copy button on every block.
+- Generates a paste-into-a-support-ticket message, since most WordPress sites cannot install
+  a PHP extension themselves and that path has to be first class rather than a footnote.
+- The `GRANT` is generated with the site's real `CURRENT_USER()`, correctly quoted, asking for
+  `SELECT ON performance_schema.*` and nothing more.
+
+**The honesty rule, enforced by tests.** Every capability carries a `used` flag that is
+separate from its status. `performance_schema`, `excimer`, `tideways_xhprof` and `spx` are all
+`used => false`, and the tab renders "Detected, but this plugin does not read it yet" for any
+of them that is present. Detecting a thing is not the same as using it, and the UI must never
+blur the two. `15-tools.php` asserts each one stays `used => false` until its phase lands.
+
+**Testing on Alpine caught two real bugs** that a systemd-only assumption would have shipped:
+the generated restart command was `systemctl` on a distro that runs OpenRC, and the build-deps
+line was `php8-dev` where Alpine names it `php83-dev`. Both are now derived from the detected
+distro, and asserted. The lesson generalises: the whole point of this tab is that it is not
+generic documentation, so any command it prints needs a test that it is right *for the
+detected platform*, not merely present.
+
+Also asserted: `SSPA_Tools` never calls `exec`, `shell_exec`, `passthru`, `proc_open`, `popen`,
+`system`, `file_put_contents` or `ini_set`. Those are grep assertions over its own source, so
+the hard rules cannot be quietly broken later.
 
 ### Phase 1b - the alternative not taken
 

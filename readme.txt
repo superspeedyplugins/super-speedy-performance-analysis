@@ -32,6 +32,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.9.2 (30th July 2026) =
+* NEW Tools tab: reports what your server can do for deeper analysis, and for anything missing generates the exact commands for YOUR operating system, PHP version and init system - not generic documentation you have to translate. Every command has a copy button, and there is a ready-written message you can paste into a support ticket, because most sites cannot install a PHP extension themselves.
+* The plugin never installs anything itself: it does not edit php.ini, run pecl, or restart anything. It shows you what to run, with the reason for each step.
+* The Tools tab also generates the exact read-only GRANT statement your database user needs, with your real username filled in, and tells you plainly when something is detected but not yet used by the plugin.
 * NEW: query plan analysis. Every distinct query whose full SQL was captured is now run through MySQL's EXPLAIN, so a slow query is reported with the REASON it is slow - no usable index, a temporary table, a filesort - instead of just the fact that it was slow. Needs nothing installed, no extra database permission, and works on any host.
 * NEW finding: "query with no usable index". These are the queries that are fast today because your tables are small and get linearly slower as you grow - the single most common cause of a site that was fine last year. EXPLAIN is the only way to see them before they hurt.
 * EXPLAIN never executes your queries (that would be EXPLAIN ANALYZE, which is deliberately not used), only ever runs on SELECTs, and runs after profiling rather than during it, so it cannot affect any measurement.

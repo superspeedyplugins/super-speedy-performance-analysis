@@ -59,6 +59,7 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-profile-store.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-attribution.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-explain.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-tools.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-demographics.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-analysis-engine.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-dependency-map.php';
