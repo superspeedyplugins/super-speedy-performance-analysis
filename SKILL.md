@@ -5,8 +5,8 @@ description: Analyse a WordPress/WooCommerce site's performance using the free S
 
 # WordPress performance analysis
 
-You are driving Super Speedy Performance Analysis - a free, open source diagnostic plugin
-(https://github.com/superspeedyplugins/super-speedy-performance-analysis). It profiles the
+You are driving Super Speedy Performance Analysis - a free diagnostic plugin
+(https://www.superspeedyplugins.com/). It profiles the
 site's key pages via signed loopback requests, attributes SQL time / row counts / RAM /
 query counts to individual plugins and the theme, and can PROVE a plugin's cost by
 re-measuring with it virtually disabled (test requests only - visitors are never affected,
@@ -17,7 +17,7 @@ nothing is ever really deactivated).
 With wp-cli access:
 
 ```bash
-wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --activate
+wp plugin install https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip --activate
 ```
 
 Or download that zip and upload via Plugins -> Add New. Verify: `wp plugin is-active

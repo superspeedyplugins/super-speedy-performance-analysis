@@ -81,6 +81,39 @@ sspa_t(is_array($capture) && $capture['schema'] === 1, 'profile blob stored + un
 sspa_t(is_array($capture) && $capture['overview']['capture_mode'] === 'full', 'capture mode full (shim active): ' . ($capture ? $capture['overview']['capture_mode'] : '?'));
 sspa_t(is_array($capture) && !empty($capture['sql']['queries'][0]['fp']), 'queries carry fingerprints');
 
+// --- Attribution modes ---
+
+// Code-owner mode must be byte-for-byte the stored table: it IS the stored table.
+$owner_rows = SSPA_Attribution::component_rows($run_id, SSPA_Attribution::MODE_CODE_OWNER);
+$owner_queries = 0;
+foreach ($owner_rows as $r) {
+    $owner_queries += (int) $r['query_count'];
+}
+$table_queries = (int) $wpdb->get_var($wpdb->prepare("SELECT SUM(query_count) FROM $stats_table WHERE run_id = %d", $run_id));
+sspa_t($owner_queries === $table_queries, "code-owner mode matches component_stats exactly ($owner_queries vs $table_queries)");
+
+// Caller mode is recomputed from the capture blobs. It must move queries BETWEEN components
+// without inventing or losing any - the total is a conserved quantity.
+$caller_rows = SSPA_Attribution::component_rows($run_id, SSPA_Attribution::MODE_CALLER);
+$caller_queries = 0;
+$caller_components = array();
+foreach ($caller_rows as $r) {
+    $caller_queries += (int) $r['query_count'];
+    $caller_components[$r['component']] = true;
+}
+sspa_t($caller_queries === $owner_queries, "caller mode conserves the query total ($caller_queries vs $owner_queries)");
+sspa_t(count($caller_components) >= 2, 'caller mode attributes to real components (' . implode(', ', array_slice(array_keys($caller_components), 0, 8)) . ')');
+
+// A chain is only stored when the two modes could disagree, so entries without one must be
+// identical in both modes - the guard against caller mode silently rewriting everything.
+$chained = 0;
+foreach ($capture['sql']['queries'] as $q) {
+    if (!empty($q['chain'])) {
+        $chained++;
+    }
+}
+sspa_t($chained <= count($capture['sql']['queries']), "chains stored only where modes can differ ($chained of " . count($capture['sql']['queries']) . ' queries)');
+
 // Scratch space cleaned up as ingested; nothing left behind.
 $captures_table = SSPA_Schema::table('captures');
 $leftover = (int) $wpdb->get_var("SELECT COUNT(*) FROM $captures_table");

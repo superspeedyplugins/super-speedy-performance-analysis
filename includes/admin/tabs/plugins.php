@@ -11,19 +11,56 @@ if (!$sspa_last_run_id) : ?>
         <p><?php esc_html_e('Per-plugin costs will appear here after your first analysis.', 'super-speedy-performance-analysis'); ?></p>
     </div>
 <?php else :
-    // Worst single page per component + totals across the run.
-    $sspa_components = $wpdb->get_results($wpdb->prepare(
-        'SELECT cs.component, cs.component_type,
-                SUM(cs.sql_ms) total_sql_ms, SUM(cs.query_count) total_queries,
-                SUM(cs.rows_returned) total_rows, SUM(cs.http_ms) total_http_ms,
-                MAX(cs.slowest_query_ms) slowest_query_ms,
-                MAX(cs.sql_ms) worst_page_sql_ms
-         FROM ' . SSPA_Schema::table('component_stats') . ' cs
-         WHERE cs.run_id = %d
-         GROUP BY cs.component, cs.component_type
-         ORDER BY total_sql_ms DESC',
-        $sspa_last_run_id
-    ), ARRAY_A);
+    // Attribution mode is a read-only view switch (no state written, nothing recomputed on
+    // the stored numbers), so a plain query arg is enough - no nonce, no option.
+    $sspa_attrib_mode = SSPA_Attribution::sanitise_mode(
+        isset($_GET['attrib']) ? sanitize_key(wp_unslash($_GET['attrib'])) : ''
+    );
+
+    // Worst single page per component + totals across the run. Grouped in PHP rather than
+    // SQL because caller mode is recomputed from the capture blobs, not stored in a table.
+    $sspa_grouped = array();
+    foreach (SSPA_Attribution::component_rows($sspa_last_run_id, $sspa_attrib_mode) as $sspa_row) {
+        $sspa_key = $sspa_row['component'] . '|' . $sspa_row['component_type'];
+        if (!isset($sspa_grouped[$sspa_key])) {
+            $sspa_grouped[$sspa_key] = array(
+                'component' => $sspa_row['component'],
+                'component_type' => $sspa_row['component_type'],
+                'total_sql_ms' => 0, 'total_queries' => 0, 'total_rows' => 0,
+                'total_http_ms' => 0, 'slowest_query_ms' => 0, 'worst_page_sql_ms' => 0,
+            );
+        }
+        $sspa_g = &$sspa_grouped[$sspa_key];
+        $sspa_g['total_sql_ms'] += (float) $sspa_row['sql_ms'];
+        $sspa_g['total_queries'] += (int) $sspa_row['query_count'];
+        $sspa_g['total_rows'] += (int) $sspa_row['rows_returned'];
+        $sspa_g['total_http_ms'] += (float) $sspa_row['http_ms'];
+        $sspa_g['slowest_query_ms'] = max($sspa_g['slowest_query_ms'], (float) $sspa_row['slowest_query_ms']);
+        $sspa_g['worst_page_sql_ms'] = max($sspa_g['worst_page_sql_ms'], (float) $sspa_row['sql_ms']);
+        unset($sspa_g);
+    }
+    usort($sspa_grouped, function ($a, $b) {
+        return $b['total_sql_ms'] <=> $a['total_sql_ms'];
+    });
+    $sspa_components = $sspa_grouped;
+    ?>
+    <div class="sspa-attrib-switch" style="margin:0 0 12px;">
+        <strong><?php esc_html_e('Attribution:', 'super-speedy-performance-analysis'); ?></strong>
+        <?php
+        $sspa_base = remove_query_arg('attrib');
+        foreach (SSPA_Attribution::modes() as $sspa_mode_key => $sspa_mode_label) :
+            $sspa_is_on = ($sspa_mode_key === $sspa_attrib_mode);
+            ?>
+            <a href="<?php echo esc_url(add_query_arg('attrib', $sspa_mode_key, $sspa_base)); ?>"
+               class="button button-small<?php echo $sspa_is_on ? ' button-primary' : ''; ?>"
+               aria-pressed="<?php echo $sspa_is_on ? 'true' : 'false'; ?>">
+                <?php echo esc_html($sspa_mode_label); ?>
+            </a>
+        <?php endforeach; ?>
+        <p class="description"><?php echo esc_html(SSPA_Attribution::describe($sspa_attrib_mode)); ?>
+            <?php esc_html_e('Measured impact below is unaffected: it comes from disabling the plugin and re-measuring, so it does not depend on attribution at all.', 'super-speedy-performance-analysis'); ?></p>
+    </div>
+    <?php
 
     // Latest cache-impact results (component => saved_pct), if a cache run has been done.
     $sspa_cache_notes = $wpdb->get_var(

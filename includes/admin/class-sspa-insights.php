@@ -46,14 +46,40 @@ class SSPA_Insights {
         $headline = '';
         $detail = '';
 
+        // Where the work happened inside a library bundled in ANOTHER component, say so.
+        // The cost is charged here because this component asked for it, but the code being
+        // blamed is not this component's own - see SSPA_Component_Map::attribute().
+        $via_note = '';
+        if (!empty($e['via'])) {
+            $via_note = ' ' . sprintf(
+                __('(work done in %s, charged here because this is what called it)', 'super-speedy-performance-analysis'),
+                $e['via']
+            );
+        }
+
+        // What EXPLAIN said is wrong with the query plan, when we managed to get one.
+        $plan_line = !empty($e['plan_note'])
+            ? sprintf(__('Query plan: %s. (Row counts are MySQL\'s estimate, not a measurement.)', 'super-speedy-performance-analysis'), $e['plan_note'])
+            : '';
+
         switch ($finding['finding_type']) {
             case 'slow_query':
-                $headline = sprintf(__('%1$s ran a %2$sms query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((float) $e['ms']), $page);
-                $detail = !empty($e['sql']) ? $e['sql'] : '';
+                $headline = sprintf(__('%1$s ran a %2$sms query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((float) $e['ms']), $page) . $via_note;
+                $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
+                break;
+            case 'unindexed_query':
+                $headline = sprintf(
+                    /* translators: 1: component, 2: table, 3: page */
+                    __('%1$s runs a query with no usable index on %2$s (%3$s)', 'super-speedy-performance-analysis'),
+                    $component,
+                    !empty($e['table']) ? $e['table'] : __('a large table', 'super-speedy-performance-analysis'),
+                    $page
+                ) . $via_note;
+                $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
             case 'big_result_set':
-                $headline = sprintf(__('%1$s fetched %2$s rows in a single query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((int) $e['rows']), $page);
-                $detail = !empty($e['sql']) ? $e['sql'] : '';
+                $headline = sprintf(__('%1$s fetched %2$s rows in a single query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((int) $e['rows']), $page) . $via_note;
+                $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
             case 'query_loop':
                 $headline = sprintf(__('%1$s ran %2$d queries on %3$s', 'super-speedy-performance-analysis'), $component, (int) $e['query_count'], $page);

@@ -224,6 +224,8 @@ if (!class_exists('SSPA_Capture')) {
                         'component' => $attr['component'],
                         'ctype' => $attr['type'],
                         'caller' => $attr['caller'],
+                        'via' => $attr['via'],
+                        'chain' => (count($attr['chain']) > 1) ? $attr['chain'] : null,
                     );
                 }
             } elseif (!empty($wpdb->queries) && is_array($wpdb->queries)) {
@@ -246,6 +248,8 @@ if (!class_exists('SSPA_Capture')) {
                             'component' => $attr['component'],
                             'ctype' => $attr['type'],
                             'caller' => $attr['caller'],
+                            'via' => $attr['via'],
+                            'chain' => (count($attr['chain']) > 1) ? $attr['chain'] : null,
                         );
                     }
                 }
@@ -285,6 +289,8 @@ if (!class_exists('SSPA_Capture')) {
                     'component' => $e['component'],
                     'ctype' => $e['ctype'],
                     'caller' => $e['caller'],
+                    'via' => $e['via'],
+                    'chain' => $e['chain'],
                 );
             }
 
@@ -327,6 +333,8 @@ if (!class_exists('SSPA_Capture')) {
                 $call['component'] = $attr['component'];
                 $call['ctype'] = $attr['type'];
                 $call['caller'] = $attr['caller'];
+                $call['via'] = $attr['via'];
+                $call['chain'] = (count($attr['chain']) > 1) ? $attr['chain'] : null;
                 $call['ms'] = ($call['ms'] !== null) ? round($call['ms'], 1) : null;
                 $total_ms += (float) $call['ms'];
                 $calls[] = $call;

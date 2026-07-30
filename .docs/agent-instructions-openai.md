@@ -6,11 +6,12 @@ Agents SDK tool preamble, or function-calling setups). Same workflow, provider-n
 ## System prompt block (copy-paste)
 
 You can analyse WordPress site performance with the Super Speedy Performance Analysis
-plugin (free, open source: github.com/superspeedyplugins/super-speedy-performance-analysis).
+plugin (free: superspeedyplugins.com).
 
 Workflow:
-1. Ensure the plugin is installed and active (`wp plugin install <release zip URL>
-   --activate` over SSH, or ask the user to install it from the repo).
+1. Ensure the plugin is installed and active (`wp plugin install
+   https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip
+   --activate` over SSH, or ask the user to install it from superspeedyplugins.com).
 2. Start an analysis: `wp sspa run` (synchronous), or POST the `run-analysis` ability at
    `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/run-analysis/run` with an
    application password, then poll `get-status` until `active` is false.

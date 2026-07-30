@@ -13,6 +13,8 @@ class SSPA_Analysis_Engine {
     private $captures = array();
     private $demographics;
     private $findings = 0;
+    private $plans = array();
+    private $flagged_slow = array();
 
     public function analyse($run_id, $demographics) {
         global $wpdb;
@@ -34,8 +36,13 @@ class SSPA_Analysis_Engine {
             }
         }
 
+        // Query plans first: the heuristics below attach them to their findings so a slow
+        // query is reported WITH the reason it is slow, not just the fact of it.
+        $this->build_plans();
+
         $this->slow_queries();
         $this->big_result_sets();
+        $this->unindexed_queries();
         $this->query_hogs();
         $this->dupe_queries();
         $this->slow_http();
@@ -46,6 +53,87 @@ class SSPA_Analysis_Engine {
         $this->security_blocks();
 
         return $this->findings;
+    }
+
+    /**
+     * EXPLAIN every distinct query whose full SQL we kept, once per run. Keyed by
+     * fingerprint so the same query shape on ten pages costs one EXPLAIN, not ten.
+     *
+     * @see SSPA_Explain for why this is safe and why fingerprint-only queries are skipped.
+     */
+    private function build_plans() {
+        $this->plans = array();
+        $seen_sql = array();
+
+        foreach ($this->captures as $profile_id => $capture) {
+            if (empty($capture['sql']['queries'])) {
+                continue;
+            }
+            foreach ($capture['sql']['queries'] as $q) {
+                if (empty($q['sql']) || empty($q['fp'])) {
+                    continue; // fingerprint-only: literals are gone, any plan would be fiction
+                }
+                $key = md5($q['fp']);
+                if (isset($seen_sql[$key])) {
+                    continue;
+                }
+                if (count($seen_sql) >= SSPA_Explain::MAX_PER_RUN) {
+                    break 2;
+                }
+                $seen_sql[$key] = true;
+                $plan = SSPA_Explain::explain($q['sql']);
+                if ($plan !== null) {
+                    $plan['component'] = $q['component'];
+                    $plan['fp'] = $q['fp'];
+                    $plan['sql'] = $q['sql'];
+                    $plan['page_key'] = $this->page_key($profile_id);
+                    $this->plans[$key] = $plan;
+                }
+            }
+        }
+    }
+
+    /** @return array|null The plan for a fingerprint, if one was produced. */
+    private function plan_for($fp) {
+        $key = md5((string) $fp);
+        return isset($this->plans[$key]) ? $this->plans[$key] : null;
+    }
+
+    /**
+     * Queries that are not slow enough to be flagged today but have no usable index, so they
+     * degrade as the site grows. EXPLAIN is the only way to see these: on a small database a
+     * full table scan is fast, right up until it is not.
+     */
+    private function unindexed_queries() {
+        $threshold = (int) SSPA_Rules::threshold('unindexed_scan_rows');
+        if ($threshold <= 0) {
+            $threshold = 500;
+        }
+        foreach ($this->plans as $key => $plan) {
+            if (empty($plan['scan']) || (int) $plan['est_rows'] < $threshold) {
+                continue;
+            }
+            if (isset($this->flagged_slow[$key])) {
+                continue; // already reported as a slow query, with the plan attached
+            }
+            if ($this->skip_component($plan['component'])) {
+                continue;
+            }
+            $this->add(
+                'warn',
+                'unindexed_query',
+                $plan['component'],
+                $plan['page_key'],
+                array(
+                    'sql' => $plan['sql'],
+                    'fp' => $plan['fp'],
+                    'rows' => (int) $plan['est_rows'],
+                    'plan_note' => SSPA_Explain::summarise($plan),
+                    'table' => $plan['table'],
+                ),
+                'unindexed_query'
+            );
+        }
     }
 
     private function add($severity, $type, $component, $page_key, $evidence, $rec_key, $confidence = 'inferred') {
@@ -98,18 +186,23 @@ class SSPA_Analysis_Engine {
                     'fp' => $q['fp'],
                     'caller' => $q['caller'],
                     'component' => $q['component'],
+                    'via' => isset($q['via']) ? $q['via'] : null,
                     'page_key' => $this->page_key($profile_id),
                 );
             }
         }
         foreach ($seen as $f) {
             $shape = self::classify_query_shape($f['sql']);
+            $plan = $this->plan_for($f['fp']);
+            if ($plan !== null) {
+                $this->flagged_slow[md5($f['fp'])] = true;
+            }
             $this->add(
                 $f['ms'] >= $threshold * 5 ? 'critical' : 'warn',
                 'slow_query',
                 $f['component'],
                 $f['page_key'],
-                $f + array('shape' => $shape),
+                $f + array('shape' => $shape, 'plan_note' => SSPA_Explain::summarise($plan)),
                 'slow_query_' . $shape
             );
         }
@@ -154,8 +247,10 @@ class SSPA_Analysis_Engine {
                     'rows' => (int) $q['rows'],
                     'ms' => $q['ms'],
                     'sql' => $q['sql'] !== null ? $q['sql'] : $q['fp'],
+                    'fp' => $q['fp'],
                     'caller' => $q['caller'],
                     'component' => $q['component'],
+                    'via' => isset($q['via']) ? $q['via'] : null,
                     'page_key' => $this->page_key($profile_id),
                 );
             }
@@ -166,26 +261,26 @@ class SSPA_Analysis_Engine {
                 'big_result_set',
                 $f['component'],
                 $f['page_key'],
-                $f,
+                $f + array('plan_note' => SSPA_Explain::summarise($this->plan_for($f['fp']))),
                 'big_result_set'
             );
         }
     }
 
     private function query_hogs() {
-        global $wpdb;
         $threshold = (int) SSPA_Rules::threshold('query_hog_count');
-        $rows = $wpdb->get_results($wpdb->prepare(
-            'SELECT cs.component, cs.query_count, cs.sql_ms, cs.rows_returned, p.page_key
-             FROM ' . SSPA_Schema::table('component_stats') . ' cs
-             JOIN ' . SSPA_Schema::table('profiles') . " p ON p.id = cs.profile_id
-             WHERE cs.run_id = %d AND cs.component_type = 'plugin' AND cs.query_count >= %d",
-            $this->run_id,
-            $threshold
-        ), ARRAY_A);
+
+        // CALLER mode, deliberately, and regardless of the display setting. This finding is
+        // the N+1 detector: a plugin calling wc_get_product() in a loop instead of one
+        // aggregate query is the plugin's fault, not WooCommerce's, and code-owner mode
+        // would file the whole thing under WooCommerce and let the plugin off.
+        $rows = SSPA_Attribution::component_rows($this->run_id, SSPA_Attribution::MODE_CALLER);
 
         $worst = array();
         foreach ($rows as $r) {
+            if ($r['component_type'] !== 'plugin' || (int) $r['query_count'] < $threshold) {
+                continue;
+            }
             if ($this->skip_component($r['component'])) {
                 continue;
             }

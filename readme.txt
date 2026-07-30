@@ -1,10 +1,10 @@
 === Super Speedy Performance Analysis ===
 Contributors: dhilditch
-Donate link: https://superspeedy.org/
+Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.1
+Stable tag: 0.9.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -21,15 +21,26 @@ Super Speedy Performance Analysis diagnoses your site's performance the way an e
 * Deep analysis isolates the real culprits by virtually disabling plugins for test requests only - your live visitors are never affected - and measures each suspect's true cost.
 * Optionally share anonymised results with the community at superspeedy.org to help build an open database of plugin performance. You see the exact payload before anything is sent.
 
-This plugin is free and open source, developed in the open at https://github.com/superspeedyplugins/super-speedy-performance-analysis - issues and contributions welcome.
+This plugin is free. Download it from https://www.superspeedyplugins.com/ - once installed it checks for its own updates from superspeedyplugins.com, so new versions appear on your Plugins screen like any other update.
 
 == Installation ==
 
-1. Upload the plugin to /wp-content/plugins/ or install from a GitHub release zip.
+1. Upload the plugin to /wp-content/plugins/ or install the zip from https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip
 2. Activate it through the Plugins menu.
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.2 (30th July 2026) =
+* NEW: query plan analysis. Every distinct query whose full SQL was captured is now run through MySQL's EXPLAIN, so a slow query is reported with the REASON it is slow - no usable index, a temporary table, a filesort - instead of just the fact that it was slow. Needs nothing installed, no extra database permission, and works on any host.
+* NEW finding: "query with no usable index". These are the queries that are fast today because your tables are small and get linearly slower as you grow - the single most common cause of a site that was fine last year. EXPLAIN is the only way to see them before they hurt.
+* EXPLAIN never executes your queries (that would be EXPLAIN ANALYZE, which is deliberately not used), only ever runs on SELECTs, and runs after profiling rather than during it, so it cannot affect any measurement.
+* FIXED: shared library misattribution. When two plugins bundle the same library (Freemius, Action Scheduler, Guzzle and anything else under a `vendor` directory), PHP loads only one copy, and whichever plugin happened to own that copy on disk was charged for every other plugin's use of it. Attribution now walks past the shared library to the plugin that actually called in, and reports the library separately: "WP All Import, work done in action-scheduler (in woocommerce)". A plugin using its OWN bundled library is still charged for it, and ordinary cross-plugin API calls (a plugin calling `wc_get_product()`) still resolve to the API's owner, not the caller.
+* Attribution now records the full component chain for every query and HTTP call, so the same capture answers two different questions: which component's code RAN (the default), and which component ASKED for the work. The second is the honest answer when a plugin calls a WooCommerce function seventy times in a loop instead of once - that is the plugin's fault, not WooCommerce's.
+* The "plugin ran N queries" finding (the N+1 detector) now always names the plugin that made the calls, even when the queries themselves ran inside WooCommerce or another plugin's code. Previously a plugin looping over another plugin's API was invisible: the cost was filed under the API's owner.
+* NEW on the Plugins tab: a Code owner / Caller attribution switch, for exploring the same run both ways. It only changes how the run is presented - nothing is re-profiled and no stored number changes. Measured impact is unaffected either way, because it comes from disabling the plugin and re-measuring rather than from attribution.
+* Attribution has always been a hypothesis and measured impact the experiment - Deep Analysis was never affected by this, because virtually disabling a plugin removes its calls into a shared library no matter whose folder that library sits in.
+* Updates now come from superspeedyplugins.com instead of GitHub, so the Plugins screen offers new versions again while the source repo is still private. No licence key needed - the plugin stays free and the download is ungated.
 
 = 0.9.1 (24th July 2026) =
 * HOTFIX: Deep Analysis was unusably slow on plugin-heavy sites (a 40+ hour estimate was seen in the wild) because every plugin got every page in all three cache modes up front. It now runs in TWO PHASES. Phase 1 screens every plugin in a single cache mode on just its busiest pages (top attributed pages plus the site's slowest page, 2 samples per cell) - a fast first pass over everything. Phase 2 then automatically gives only the plugins that showed a measurable impact the full treatment: every remaining page, plus object-cache-disabled and cache-priming measurements. Innocent plugins never cost more than their screening cells - typically a 20-30x reduction in requests.

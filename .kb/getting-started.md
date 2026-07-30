@@ -5,8 +5,8 @@ WooCommerce site down - and names the plugin responsible, with evidence.
 
 ## Install
 
-1. Download the latest release zip from
-   https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases
+1. Download the latest zip from
+   https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip
 2. Plugins -> Add New -> Upload Plugin -> activate.
 3. Go to **Super Speedy -> Performance Analysis**.
 
