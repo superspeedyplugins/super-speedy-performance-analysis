@@ -101,6 +101,26 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             ?>
             <?php esc_html_e('Results are in the Plugins tab, "Measured impact" column.', 'super-speedy-performance-analysis'); ?>
         </p>
+        <?php if (!empty($sspa_deep_notes['fatal_cells'])) : ?>
+        <div class="notice notice-info inline">
+            <p>
+                <strong><?php esc_html_e('Hard dependencies discovered:', 'super-speedy-performance-analysis'); ?></strong>
+                <?php
+                $sspa_fatal_bits = array();
+                foreach ((array) $sspa_deep_notes['fatal_cells'] as $sspa_fc) {
+                    $sspa_fatal_bits[] = sprintf(
+                        /* translators: 1: plugin slug, 2: page key */
+                        __('%1$s (page: %2$s)', 'super-speedy-performance-analysis'),
+                        $sspa_fc['plugin'],
+                        $sspa_fc['page_key']
+                    );
+                }
+                echo esc_html(implode(', ', $sspa_fatal_bits) . '. ');
+                esc_html_e('These pages fatally error when that plugin is disabled, so its cost there cannot be measured - other code depends on it at runtime. This only ever happens inside the analysis\'s own test requests: no visitor saw an error, and the plugin was never actually deactivated. If WordPress emailed you a "technical issue" warning during the run, it was reacting to one of these test requests and usually blames the plugin whose file threw (often WooCommerce) rather than the excluded one.', 'super-speedy-performance-analysis');
+                ?>
+            </p>
+        </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 

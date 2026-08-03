@@ -655,11 +655,18 @@ class SSPA_Run_Controller {
         $deltas = self::sweep_deltas($run_id, $hashes);
         $measured = 0;
         $unresolved = 0;
+        $fatal_cells = array();
         $now = gmdate('Y-m-d H:i:s');
 
         foreach ($deltas as $d) {
             if (!empty($d['unresolved'])) {
                 $unresolved++;
+                if (!empty($d['fatal'])) {
+                    $fatal_cells[$d['slug'] . '|' . $d['page_key']] = array(
+                        'plugin' => $d['slug'],
+                        'page_key' => $d['page_key'],
+                    );
+                }
                 continue;
             }
             if (!empty($d['measured'])) {
@@ -702,6 +709,7 @@ class SSPA_Run_Controller {
                 'pages' => isset($sweep['pages']) ? (int) $sweep['pages'] : null,
                 'phase2_plugins' => isset($sweep['phase2_plugins']) ? (int) $sweep['phase2_plugins'] : 0,
                 'modes' => !empty($sweep['oc_capable']) ? array('normal', 'disabled', 'prime') : array('normal'),
+                'fatal_cells' => array_values($fatal_cells),
             )),
         ), array('id' => $run_id));
     }
@@ -742,7 +750,16 @@ class SSPA_Run_Controller {
             }
             $slug = $hashes[$p['plugin_set_hash']];
             if (!$ok || !isset($baselines[$key])) {
-                $deltas[] = array('slug' => $slug, 'page_key' => $p['page_key'], 'mode' => $p['object_cache_mode'], 'unresolved' => true);
+                $deltas[] = array(
+                    'slug' => $slug,
+                    'page_key' => $p['page_key'],
+                    'mode' => $p['object_cache_mode'],
+                    'unresolved' => true,
+                    // The page fatals with this plugin excluded but was fine at baseline:
+                    // a hard data/runtime dependency discovered by experiment. Reported,
+                    // not measured.
+                    'fatal' => (int) $p['response_code'] >= 500 && isset($baselines[$key]),
+                );
                 continue;
             }
 

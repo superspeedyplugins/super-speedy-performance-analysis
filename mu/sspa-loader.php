@@ -55,6 +55,17 @@ if (!$sspa_tok) {
 // real visitor, and a stored copy answers later profiling requests without running PHP.
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
+// A fatal on a profiled request - above all in deep analysis, where a plugin is
+// virtually excluded and a dependant may break without it - is a MEASUREMENT RESULT
+// (the cell is reported unresolved), not a site emergency. Without this, core's fatal
+// handler emails the admin a "technical issue" recovery-mode warning blaming whichever
+// plugin's file happened to throw. Core sets this same constant for its own loopback
+// sandbox tests; it only short-circuits the fatal handler, nothing else. Real visitor
+// requests never reach this code, so their protection is unchanged.
+if (!defined('WP_SANDBOX_SCRAPING')) {
+    define('WP_SANDBOX_SCRAPING', true);
+}
+
 // Baseline endpoint: answer with near-zero WordPress work so the crawler can measure the
 // server's noise floor. Deliberately before single-use marking (no DB write needed).
 if (!empty($sspa_tok['flags']['bl'])) {

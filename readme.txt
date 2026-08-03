@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.5
+Stable tag: 0.9.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.6 (3rd August 2026) =
+* FIXED: during Deep Analysis, a page that fatally errors while a plugin is virtually excluded (for example the WooCommerce orders screen without WooCommerce Subscriptions, whose order types it needs) triggered WordPress's built-in fatal-error email, telling the site owner their site had a technical issue and blaming the plugin whose file threw. Profiling requests now set the same sandbox flag WordPress uses for its own loopback tests, so these controlled test failures no longer send recovery-mode emails or trigger recovery mode. Real visitor requests are unaffected and keep WordPress's full protection.
+* Deep Analysis now reports such pages as discovered hard dependencies: the run summary names the plugin and page that cannot run without it, explains that only the analysis's own test requests saw the error, and that the plugin was never actually deactivated. Measurement was never affected - failed cells were already excluded from every impact number.
+* To be clear about what Deep Analysis never does: it does not deactivate plugins. It excludes one plugin at a time for its own signed test requests only, and plugins that others declare as required (WooCommerce on this site, via the Requires Plugins header) are never candidates at all.
 
 = 0.9.5 (3rd August 2026) =
 * FIXED: a custom post type whose archive URL embeds a taxonomy placeholder (a knowledge base at /kb/%kb_category%/, for example) was profiled at the literal placeholder URL, which can never verify the signed profiling token, so the page silently produced no data. The placeholder is now filled in with the taxonomy's biggest term, and the page is skipped entirely if no term exists.
