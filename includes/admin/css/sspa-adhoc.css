@@ -1,0 +1,150 @@
+/* Admin-bar "Analyse this page" popover - same design language as the plugin's
+   floating run monitor (#sspa-runner): white card, dark header, 6px radius. */
+
+#sspa-adhoc-pop {
+	position: fixed;
+	top: 40px;
+	right: 12px;
+	width: 400px;
+	max-width: calc(100vw - 24px);
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+	z-index: 100000;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+@media screen and (max-width: 782px) {
+	#sspa-adhoc-pop {
+		top: 54px;
+	}
+}
+
+#sspa-adhoc-pop .sspa-adhoc-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	background: #1d2327;
+	color: #fff;
+	border-radius: 5px 5px 0 0;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-title {
+	font-weight: 600;
+	flex: 1;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-close {
+	background: none;
+	border: none;
+	color: #fff;
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0 2px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-body {
+	padding: 10px 12px 12px;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+#sspa-adhoc-pop h4 {
+	margin: 12px 0 4px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: #50575e;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stats {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stat {
+	flex: 1 1 40%;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 6px 8px;
+	display: flex;
+	flex-direction: column;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stat-value {
+	font-size: 16px;
+	font-weight: 600;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stat-label {
+	color: #50575e;
+	font-size: 11px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table td {
+	padding: 3px 0;
+	border-bottom: 1px solid #f0f0f1;
+	vertical-align: top;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table td:last-child {
+	text-align: right;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-sql code {
+	font-size: 11px;
+	word-break: break-all;
+	background: none;
+	padding: 0;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-error {
+	color: #b32d2e;
+	font-weight: 500;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-note {
+	color: #50575e;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-actions {
+	margin: 12px 0 0;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-elapsed {
+	color: #50575e;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Self-contained spinner: WP's .spinner CSS is admin-only and this popover also
+   renders on the front end. */
+#sspa-adhoc-pop .sspa-adhoc-spin {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	margin-right: 6px;
+	vertical-align: -2px;
+	border: 2px solid #c3c4c7;
+	border-top-color: #1d2327;
+	border-radius: 50%;
+	animation: sspa-adhoc-rotate 0.8s linear infinite;
+}
+
+@keyframes sspa-adhoc-rotate {
+	to {
+		transform: rotate(360deg);
+	}
+}

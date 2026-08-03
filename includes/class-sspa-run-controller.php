@@ -76,6 +76,15 @@ class SSPA_Run_Controller {
             if (is_wp_error($jobs)) {
                 return $jobs;
             }
+        } elseif ('adhoc' === $type) {
+            // Admin-bar "Analyse this page": one URL, stored under a URL-derived page
+            // key. Runs of this type are excluded from the Overview/Pages "latest
+            // analysis" queries so a one-page check never replaces a full run.
+            $job = SSPA_Adhoc::job_for(!empty($args['url']) ? $args['url'] : '');
+            if (is_wp_error($job)) {
+                return $job;
+            }
+            $jobs = array($job);
         } else {
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
             if (!$jobs) {

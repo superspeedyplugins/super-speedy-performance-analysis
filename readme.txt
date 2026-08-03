@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.7
+Stable tag: 0.9.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.8 (4th August 2026) =
+* NEW: "Analyse this page" in the admin toolbar. On any page of your site - front end or wp-admin - click the button and the plugin profiles the exact URL you are looking at while you watch, then shows the results in a popover: generation time, SQL, HTTP and RAM, where the PHP time went (per plugin), and the slowest queries. Click it again later on the same page and the stored result reopens instantly, with a Re-run button.
+* These one-page checks are stored separately from full analyses, so they never replace your site-wide results on the Overview and Pages tabs.
+* Admins only, same-site URLs only, and the profiling requests are the same signed, cache-busted, never-cached requests the full analysis uses.
 
 = 0.9.7 (3rd August 2026) =
 * NEW: bootstrap decomposition - the answer to "every page is slow but no single plugin shows up". Many sites pay a flat PHP cost on every request (plugin loading plus init hooks) that is spread across dozens of plugins in slices too small for one-at-a-time exclusion to see. Every profiled page now records where that time went, with nothing to install: the request broken into phases (core, plugin file loading, plugin boot callbacks, theme setup, init, routing, render), the PHP cost of EVERY plugin individually (file load time plus its callbacks on the expensive hooks), and the slowest single hook callbacks by name.
