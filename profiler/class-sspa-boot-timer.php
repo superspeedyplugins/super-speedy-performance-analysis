@@ -123,6 +123,9 @@ if (!class_exists('SSPA_Boot_Timer')) {
          * @return array Capture-ready summary.
          */
         public function report($map) {
+            // Called from the capture's shutdown handler, i.e. after output: this mark
+            // closes the ledger so the segment table accounts for the WHOLE request.
+            $this->mark('request_end');
             $segments = $this->segments();
 
             // Per-plugin include cost, slugged, largest first.
@@ -177,7 +180,12 @@ if (!class_exists('SSPA_Boot_Timer')) {
             );
         }
 
-        /** Named phases in ms, derived from the milestone ledger. Missing marks yield no row. */
+        /**
+         * Named phases in ms, derived from the milestone ledger. Missing marks yield no
+         * row. The phases are contiguous and end at request_end, so they sum to the
+         * whole request - a table that only accounted for part of the generation time
+         * made the remainder look unmeasurable when it was simply the render phase.
+         */
         private function segments() {
             $m = array();
             foreach ($this->milestones as $k => $v) {
@@ -190,14 +198,22 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 'plugins_loaded_callbacks' => array('includes_done', 'plugins_loaded_done'),
                 'theme_load_and_setup' => array('plugins_loaded_done', 'init_start'),
                 'init_callbacks' => array('init_start', 'init_done'),
+                'post_init_boot' => array('init_done', 'wp_loaded'),
                 'routing_and_query' => array('wp_loaded', 'template_redirect'),
             );
+            $accounted_to = null;
             foreach ($pairs as $name => $ends) {
                 list($from, $to) = $ends;
                 if (!isset($m[$to]) || (null !== $from && !isset($m[$from]))) {
                     continue;
                 }
                 $seg[$name] = round($m[$to] - (null === $from ? 0 : $m[$from]), 1);
+                $accounted_to = max($accounted_to, $m[$to]);
+            }
+            // Everything after the last milestone: template render + output on front-end
+            // pages, screen render on wp-admin (where template_redirect never fires).
+            if (isset($m['request_end']) && null !== $accounted_to && $m['request_end'] > $accounted_to) {
+                $seg['render_and_output'] = round($m['request_end'] - $accounted_to, 1);
             }
             return $seg;
         }

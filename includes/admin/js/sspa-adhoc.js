@@ -70,7 +70,9 @@
 				plugins_loaded_callbacks: 'Plugin boot (plugins_loaded)',
 				theme_load_and_setup: 'Theme load + setup',
 				init_callbacks: 'init callbacks',
-				routing_and_query: 'Routing + main query'
+				post_init_boot: 'Post-init boot (widgets, REST)',
+				routing_and_query: 'Routing + main query',
+				render_and_output: 'Template render + output'
 			};
 			html += '<h4>Where the PHP time went</h4><table class="sspa-adhoc-table">';
 			Object.keys(d.boot.segments).forEach(function (k) {

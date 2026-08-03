@@ -54,6 +54,15 @@ if ($profile) {
     sspa_t((int) $profile['response_code'] === 200, 'responded 200');
     $capture = $profile['profile_blob'] ? json_decode(gzuncompress($profile['profile_blob']), true) : null;
     sspa_t(is_array($capture) && !empty($capture['boot']['segments']), 'boot decomposition present for the popover');
+    if (is_array($capture) && !empty($capture['boot']['segments'])) {
+        $segs = $capture['boot']['segments'];
+        sspa_t(isset($segs['render_and_output']), 'render phase has a row (' . (isset($segs['render_and_output']) ? $segs['render_and_output'] : '?') . 'ms)');
+        // The whole point of the segment table: it must account for the whole request,
+        // not stop at template_redirect and leave the render time looking unmeasurable.
+        $sum = array_sum($segs);
+        $gen = (float) $capture['overview']['gen_ms'];
+        sspa_t($gen > 0 && abs($sum - $gen) < max(20, $gen * 0.15), "segments sum to gen time ($sum vs $gen)");
+    }
 }
 
 // A one-page check must never become the "latest analysis" on the Overview/Pages tabs.

@@ -91,7 +91,9 @@ jQuery(document).on('click', '.sspa-page-row', function () {
 				plugins_loaded_callbacks: 'plugins_loaded callbacks (plugin boot)',
 				theme_load_and_setup: 'Theme load + setup',
 				init_callbacks: 'init callbacks',
-				routing_and_query: 'Routing + main query'
+				post_init_boot: 'Post-init boot (widgets, REST)',
+				routing_and_query: 'Routing + main query',
+				render_and_output: 'Template render + output'
 			};
 			html += '<table class="widefat"><thead><tr><th>Request phase</th><th>ms</th></tr></thead><tbody>';
 			Object.keys(d.boot.segments || {}).forEach(function (k) {

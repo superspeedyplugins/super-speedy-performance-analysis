@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.8
+Stable tag: 0.9.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.9 (4th August 2026) =
+* FIXED: the "Where the PHP time went" phase table stopped at routing, so on a real page its rows summed to well under the generation time and the difference looked unmeasurable - when it was simply the template render. The table now accounts for the whole request: new "Post-init boot" and "Template render + output" rows close the gap, and the phases sum to the page's generation time.
 
 = 0.9.8 (4th August 2026) =
 * NEW: "Analyse this page" in the admin toolbar. On any page of your site - front end or wp-admin - click the button and the plugin profiles the exact URL you are looking at while you watch, then shows the results in a popover: generation time, SQL, HTTP and RAM, where the PHP time went (per plugin), and the slowest queries. Click it again later on the same page and the stored result reopens instantly, with a Re-run button.
