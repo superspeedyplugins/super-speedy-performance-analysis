@@ -81,6 +81,41 @@ jQuery(document).on('click', '.sspa-page-row', function () {
 			});
 			html += '</tbody></table>';
 		}
+		if (d.boot) {
+			// The PHP floor decomposed: request phases, then per-plugin PHP cost
+			// (file include + timed hook callbacks), then the slowest single callbacks.
+			html += '<h4>Where the PHP time went</h4>';
+			var segNames = {
+				core_before_plugins: 'WordPress core (before plugins)',
+				plugin_includes: 'Plugin file loading',
+				plugins_loaded_callbacks: 'plugins_loaded callbacks (plugin boot)',
+				theme_load_and_setup: 'Theme load + setup',
+				init_callbacks: 'init callbacks',
+				routing_and_query: 'Routing + main query'
+			};
+			html += '<table class="widefat"><thead><tr><th>Request phase</th><th>ms</th></tr></thead><tbody>';
+			Object.keys(d.boot.segments || {}).forEach(function (k) {
+				html += '<tr><td>' + sspa_esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + '</td></tr>';
+			});
+			html += '</tbody></table>';
+			var comps = d.boot.components || {};
+			var compKeys = Object.keys(comps).filter(function (k) { return comps[k] >= 1; }).slice(0, 25);
+			if (compKeys.length) {
+				html += '<h4>PHP cost per plugin (load + hook callbacks)</h4><table class="widefat"><thead><tr><th>Plugin</th><th>Load ms</th><th>Hook ms</th><th>Total ms</th></tr></thead><tbody>';
+				compKeys.forEach(function (k) {
+					var inc = (d.boot.includes && d.boot.includes[k]) ? d.boot.includes[k] : 0;
+					html += '<tr><td><code>' + sspa_esc(k) + '</code></td><td>' + inc.toFixed(1) + '</td><td>' + (comps[k] - inc).toFixed(1) + '</td><td>' + comps[k].toFixed(1) + '</td></tr>';
+				});
+				html += '</tbody></table>';
+			}
+			if (d.boot.top_callbacks && d.boot.top_callbacks.length) {
+				html += '<h4>Slowest hook callbacks</h4><table class="widefat"><thead><tr><th>ms</th><th>Hook</th><th>Callback</th><th>Component</th></tr></thead><tbody>';
+				d.boot.top_callbacks.forEach(function (c) {
+					html += '<tr><td>' + c.ms.toFixed(1) + '</td><td><code>' + sspa_esc(c.hook) + '</code></td><td>' + sspa_esc(c.label) + '</td><td><code>' + sspa_esc(c.component) + '</code></td></tr>';
+				});
+				html += '</tbody></table>';
+			}
+		}
 		html += '</div>';
 		detail.children('td').html(html);
 	});

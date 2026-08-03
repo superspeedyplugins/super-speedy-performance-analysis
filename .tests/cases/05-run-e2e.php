@@ -81,6 +81,17 @@ sspa_t(is_array($capture) && $capture['schema'] === 1, 'profile blob stored + un
 sspa_t(is_array($capture) && $capture['overview']['capture_mode'] === 'full', 'capture mode full (shim active): ' . ($capture ? $capture['overview']['capture_mode'] : '?'));
 sspa_t(is_array($capture) && !empty($capture['sql']['queries'][0]['fp']), 'queries carry fingerprints');
 
+// --- Bootstrap decomposition (the PHP-floor instrument) ---
+$boot = is_array($capture) && isset($capture['boot']) ? $capture['boot'] : null;
+sspa_t(is_array($boot), 'boot decomposition captured');
+sspa_t(is_array($boot) && isset($boot['segments']['plugin_includes']) && $boot['segments']['plugin_includes'] > 0, 'plugin include phase timed (' . ($boot ? round($boot['segments']['plugin_includes'] ?? -1, 1) : '?') . 'ms)');
+sspa_t(is_array($boot) && isset($boot['includes']['woocommerce']), 'woocommerce include time attributed (' . ($boot && isset($boot['includes']['woocommerce']) ? $boot['includes']['woocommerce'] : '?') . 'ms)');
+sspa_t(is_array($boot) && !empty($boot['hooks']['init']['ms']), 'init callbacks timed (' . ($boot && isset($boot['hooks']['init']['ms']) ? $boot['hooks']['init']['ms'] : '?') . 'ms)');
+sspa_t(is_array($boot) && isset($boot['components']['woocommerce']) && $boot['components']['woocommerce'] > 0, 'woocommerce total PHP cost attributed');
+// The wrapped hooks must not have broken WooCommerce's boot: the home page rendered
+// (checked above) AND woocommerce registered its init work as normal.
+sspa_t(is_array($boot) && !empty($boot['top_callbacks']), 'slowest callbacks named');
+
 // --- Attribution modes ---
 
 // Code-owner mode must be byte-for-byte the stored table: it IS the stored table.

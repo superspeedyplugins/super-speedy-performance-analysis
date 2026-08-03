@@ -28,7 +28,16 @@ if (!class_exists('SSPA_Capture')) {
             }
         }
 
+        private $boot_timer = null;
+
         public function arm() {
+            // Armed from the mu-loader, i.e. BEFORE any regular plugin loads - the only
+            // vantage point from which per-plugin include timing is possible.
+            require_once __DIR__ . '/class-sspa-boot-timer.php';
+            if (class_exists('SSPA_Boot_Timer')) {
+                $this->boot_timer = new SSPA_Boot_Timer();
+                $this->boot_timer->install();
+            }
             add_filter('pre_http_request', array($this, 'http_start'), 9999, 3);
             add_action('http_api_debug', array($this, 'http_end'), 10, 5);
             // Safety rail: no profiled request may ever send real mail.
@@ -188,6 +197,7 @@ if (!class_exists('SSPA_Capture')) {
                 'cache' => $cache,
                 'conditionals' => $this->conditionals,
                 'components' => $this->aggregate_components($sql, $http, $mail),
+                'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
             );
 
             $json = function_exists('wp_json_encode') ? wp_json_encode($payload) : json_encode($payload);

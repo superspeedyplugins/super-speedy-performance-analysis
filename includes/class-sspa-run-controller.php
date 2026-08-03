@@ -1171,6 +1171,7 @@ class SSPA_Run_Controller {
                 return $c;
             }, $capture['http']['calls']) : array(),
             'dupes' => isset($capture['sql']['dupe_details']) ? $capture['sql']['dupe_details'] : array(),
+            'boot' => isset($capture['boot']) ? $capture['boot'] : null,
         ));
     }
 
