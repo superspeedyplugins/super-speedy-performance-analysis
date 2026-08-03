@@ -33,6 +33,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 = 0.9.3 (3rd August 2026) =
 * Updated the shared Super Speedy settings module: AI agents can check your licence and install other Super Speedy plugins over MCP, now also exposed on AI Engine's MCP endpoint when AI Engine is active
+* New Check frequency setting - cap licence, update and changelog checks to once a day or once a week, and see when the licence was last checked
+* Licence and changelog checks fail fast when superspeedyplugins.com cannot be reached, instead of hanging the settings page
+* The newest installed copy of the shared Super Speedy settings code now runs site-wide, whichever plugin loads first - previously the alphabetically-first plugin's often-older copy won
 
 = 0.9.2 (30th July 2026) =
 * NEW: MySQL query fingerprints. Where your database lets us read its performance_schema statistics, the analysis now reports how many rows MySQL ACTUALLY read to answer each query, rather than how many it returned or what the optimiser guessed. New finding for queries that read far more than they return - a query reading 400,000 rows to hand back 12 is doing a hidden full scan, and it is invisible to every other measurement. Needs one read-only GRANT, which the Tools tab writes out for you; without it, everything else still works.
