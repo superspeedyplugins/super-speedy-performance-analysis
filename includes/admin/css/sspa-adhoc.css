@@ -5,7 +5,7 @@
 	position: fixed;
 	top: 40px;
 	right: 12px;
-	width: 400px;
+	width: 720px;
 	max-width: calc(100vw - 24px);
 	background: #fff;
 	border: 1px solid #c3c4c7;
@@ -48,9 +48,27 @@
 }
 
 #sspa-adhoc-pop .sspa-adhoc-body {
-	padding: 10px 12px 12px;
-	max-height: 70vh;
+	padding: 10px 14px 14px;
+	max-height: 80vh;
 	overflow-y: auto;
+}
+
+/* Two-column results; queries and actions span both. Collapses on narrow screens. */
+#sspa-adhoc-pop .sspa-adhoc-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0 20px;
+	align-items: start;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-span {
+	grid-column: 1 / -1;
+}
+
+@media screen and (max-width: 760px) {
+	#sspa-adhoc-pop .sspa-adhoc-grid {
+		grid-template-columns: 1fr;
+	}
 }
 
 #sspa-adhoc-pop h4 {

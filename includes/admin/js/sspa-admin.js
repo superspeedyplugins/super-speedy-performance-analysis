@@ -117,6 +117,17 @@ jQuery(document).on('click', '.sspa-page-row', function () {
 				});
 				html += '</tbody></table>';
 			}
+			var rb = d.boot.render;
+			if (rb && (rb.timed_ms > 0 || (rb.untimed_ms !== null && rb.untimed_ms > 0))) {
+				html += '<h4>Render breakdown (wp_head/wp_footer/content filters, shortcodes, widgets)</h4><table class="widefat"><thead><tr><th>ms</th><th>Unit</th><th>Kind</th><th>Component</th></tr></thead><tbody>';
+				(rb.top || []).forEach(function (t) {
+					html += '<tr><td>' + t.ms.toFixed(1) + '</td><td>' + sspa_esc(t.label) + '</td><td><code>' + sspa_esc(t.hook) + '</code></td><td><code>' + sspa_esc(t.component) + '</code></td></tr>';
+				});
+				if (rb.untimed_ms !== null && rb.untimed_ms > 0) {
+					html += '<tr><td>' + rb.untimed_ms.toFixed(1) + '</td><td>Theme templates + direct output (untimed remainder)</td><td>-</td><td><code>theme</code></td></tr>';
+				}
+				html += '</tbody></table>';
+			}
 		}
 		html += '</div>';
 		detail.children('td').html(html);

@@ -28,7 +28,16 @@ if (!class_exists('SSPA_Boot_Timer')) {
             'plugins_loaded', 'after_setup_theme', 'init', 'widgets_init', 'wp_loaded',
             'wp_enqueue_scripts', 'admin_init', 'admin_menu', 'admin_enqueue_scripts',
             'template_redirect', 'rest_api_init',
+            // Render phase. the_content is a FILTER - the wrap-on-entry callback passes
+            // the value through untouched.
+            'wp_head', 'wp_footer', 'the_content',
         );
+
+        /**
+         * Pseudo-hooks + real hooks whose callback time belongs to the RENDER phase, so
+         * the "Template render + output" segment can be decomposed per component.
+         */
+        private static $render_hooks = array('wp_head', 'wp_footer', 'the_content', 'shortcode', 'widget');
 
         private $milestones = array();   // name => seconds since $timestart
         private $plugin_ms = array();    // plugin file (dir/file.php) => include ms
@@ -79,9 +88,55 @@ if (!class_exists('SSPA_Boot_Timer')) {
             }, PHP_INT_MIN);
 
             foreach (self::$hooks as $hook) {
-                add_action($hook, function () use ($hook) {
+                // Filter-safe: returns the first argument untouched, so wrapping works
+                // for the_content and any future filter as well as for actions.
+                add_filter($hook, function ($value = null) use ($hook) {
                     $this->wrap_pending($hook);
+                    return $value;
                 }, PHP_INT_MIN);
+            }
+
+            // Shortcodes and widgets are the render phase's named units of work; both
+            // registries are plain arrays, fully populated by wp_loaded, and safe to
+            // wrap in place.
+            add_action('wp_loaded', function () {
+                $this->wrap_shortcodes();
+                $this->wrap_widgets();
+            }, PHP_INT_MAX);
+        }
+
+        private function wrap_shortcodes() {
+            global $shortcode_tags;
+            if (!is_array($shortcode_tags)) {
+                return;
+            }
+            foreach ($shortcode_tags as $tag => $callback) {
+                $shortcode_tags[$tag] = function (...$args) use ($callback, $tag) {
+                    $t0 = microtime(true);
+                    $result = call_user_func_array($callback, $args);
+                    $this->callbacks[] = array('shortcode', $callback, (microtime(true) - $t0) * 1000, '[' . $tag . ']');
+                    return $result;
+                };
+            }
+        }
+
+        private function wrap_widgets() {
+            global $wp_registered_widgets;
+            if (!is_array($wp_registered_widgets)) {
+                return;
+            }
+            foreach ($wp_registered_widgets as $id => $widget) {
+                if (!isset($widget['callback']) || !is_callable($widget['callback'])) {
+                    continue;
+                }
+                $callback = $widget['callback'];
+                $label = !empty($widget['name']) ? $widget['name'] : $id;
+                $wp_registered_widgets[$id]['callback'] = function (...$args) use ($callback, $label) {
+                    $t0 = microtime(true);
+                    $result = call_user_func_array($callback, $args);
+                    $this->callbacks[] = array('widget', $callback, (microtime(true) - $t0) * 1000, $label);
+                    return $result;
+                };
             }
         }
 
@@ -138,13 +193,18 @@ if (!class_exists('SSPA_Boot_Timer')) {
             }
 
             // Attribute each timed callback to its component; keep the slowest few
-            // individually so "init cost 90ms" comes with named offenders.
+            // individually so "init cost 90ms" comes with named offenders. Render-phase
+            // work (wp_head/wp_footer/the_content callbacks, shortcodes, widgets) also
+            // feeds a render sub-report so the render segment stops being one number.
             $hooks = array();
             $components = $includes; // combined ranking starts from include cost
             $top = array();
+            $render = array('timed_ms' => 0, 'untimed_ms' => null, 'components' => array(), 'top' => array());
             foreach ($this->callbacks as $c) {
-                list($hook, $callable, $ms) = $c;
-                $label = $this->callable_label($callable);
+                $hook = $c[0];
+                $callable = $c[1];
+                $ms = $c[2];
+                $label = isset($c[3]) ? $c[3] : $this->callable_label($callable);
                 $file = $this->callable_file($callable);
                 $cls = $file ? $map->classify_file($file) : array('component' => 'core', 'type' => 'core');
                 $component = $cls['component'];
@@ -159,7 +219,15 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 if ('core' !== $component) {
                     $components[$component] = round((isset($components[$component]) ? $components[$component] : 0) + $ms, 2);
                 }
-                $top[] = array('hook' => $hook, 'label' => $label, 'component' => $component, 'ms' => round($ms, 2));
+                $entry = array('hook' => $hook, 'label' => $label, 'component' => $component, 'ms' => round($ms, 2));
+                $top[] = $entry;
+
+                if (in_array($hook, self::$render_hooks, true)) {
+                    $render['timed_ms'] += $ms;
+                    $render['components'][$component] =
+                        round((isset($render['components'][$component]) ? $render['components'][$component] : 0) + $ms, 2);
+                    $render['top'][] = $entry;
+                }
             }
             foreach ($hooks as &$h) {
                 $h['ms'] = round($h['ms'], 2);
@@ -167,9 +235,19 @@ if (!class_exists('SSPA_Boot_Timer')) {
             }
             unset($h);
             arsort($components);
-            usort($top, function ($a, $b) {
+            $by_ms = function ($a, $b) {
                 return $b['ms'] <=> $a['ms'];
-            });
+            };
+            usort($top, $by_ms);
+            usort($render['top'], $by_ms);
+            $render['top'] = array_slice($render['top'], 0, 10);
+            arsort($render['components']);
+            $render['timed_ms'] = round($render['timed_ms'], 1);
+            if (isset($segments['render_and_output'])) {
+                // The residual is code no wrapped surface covers: the theme's template
+                // files themselves and direct output. Named so the UI can say so.
+                $render['untimed_ms'] = round(max(0, $segments['render_and_output'] - $render['timed_ms']), 1);
+            }
 
             return array(
                 'segments' => $segments,
@@ -177,6 +255,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 'hooks' => $hooks,
                 'components' => array_slice($components, 0, 100, true),
                 'top_callbacks' => array_slice($top, 0, 15),
+                'render' => $render,
             );
         }
 
@@ -240,7 +319,19 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 }
                 if (is_array($callable) && 2 === count($callable) && method_exists($callable[0], $callable[1])) {
                     $ref = new ReflectionMethod($callable[0], $callable[1]);
-                    return $ref->getFileName() ?: null;
+                    $file = $ref->getFileName() ?: null;
+                    // A plugin subclass calling through a core base method (every widget:
+                    // [WC_Widget_X, 'display_callback'] resolves to WP_Widget in core)
+                    // should be attributed to the SUBCLASS's file, or all widgets read
+                    // as "core".
+                    if ($file && is_object($callable[0]) && false !== strpos(str_replace('\\', '/', $file), '/wp-includes/')) {
+                        $cref = new ReflectionClass($callable[0]);
+                        $cfile = $cref->getFileName() ?: null;
+                        if ($cfile && false === strpos(str_replace('\\', '/', $cfile), '/wp-includes/')) {
+                            $file = $cfile;
+                        }
+                    }
+                    return $file;
                 }
                 if (is_object($callable) && method_exists($callable, '__invoke')) {
                     $ref = new ReflectionMethod($callable, '__invoke');

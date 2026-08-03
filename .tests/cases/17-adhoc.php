@@ -62,6 +62,9 @@ if ($profile) {
         $sum = array_sum($segs);
         $gen = (float) $capture['overview']['gen_ms'];
         sspa_t($gen > 0 && abs($sum - $gen) < max(20, $gen * 0.15), "segments sum to gen time ($sum vs $gen)");
+        $render = isset($capture['boot']['render']) ? $capture['boot']['render'] : null;
+        sspa_t(is_array($render) && isset($render['timed_ms'], $render['untimed_ms']), 'render breakdown present (timed ' . ($render ? $render['timed_ms'] : '?') . 'ms, untimed ' . ($render ? $render['untimed_ms'] : '?') . 'ms)');
+        sspa_t(is_array($render) && $render['timed_ms'] > 0, 'render-phase callbacks timed (wp_head/footer at minimum)');
     }
 }
 

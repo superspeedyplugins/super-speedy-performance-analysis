@@ -52,11 +52,13 @@
 	}
 
 	function renderResult(d) {
-		var html = '';
+		var left = '';
+		var right = '';
+		var full = '';
 		if (d.blocked_by) {
-			html += '<p class="sspa-adhoc-error">Blocked by ' + esc(d.blocked_by) + '</p>';
+			full += '<p class="sspa-adhoc-error sspa-adhoc-span">Blocked by ' + esc(d.blocked_by) + '</p>';
 		}
-		html += '<div class="sspa-adhoc-stats">' +
+		left += '<div class="sspa-adhoc-stats">' +
 			stat(d.gen_ms !== null ? d.gen_ms + 'ms' : '?', 'Generation') +
 			stat(d.sql_ms !== null ? d.sql_ms + 'ms / ' + d.sql_count : '?', 'SQL / queries') +
 			stat(d.http_ms !== null ? d.http_ms + 'ms' : '0ms', 'HTTP') +
@@ -74,34 +76,47 @@
 				routing_and_query: 'Routing + main query',
 				render_and_output: 'Template render + output'
 			};
-			html += '<h4>Where the PHP time went</h4><table class="sspa-adhoc-table">';
+			left += '<h4>Where the PHP time went</h4><table class="sspa-adhoc-table">';
 			Object.keys(d.boot.segments).forEach(function (k) {
-				html += '<tr><td>' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
+				left += '<tr><td>' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
 			});
-			html += '</table>';
+			left += '</table>';
+
 			var comps = d.boot.components || {};
-			var keys = Object.keys(comps).filter(function (k) { return comps[k] >= 5; }).slice(0, 8);
+			var keys = Object.keys(comps).filter(function (k) { return comps[k] >= 5; }).slice(0, 10);
 			if (keys.length) {
-				html += '<h4>Top plugins (load + hooks)</h4><table class="sspa-adhoc-table">';
+				right += '<h4>Top plugins (load + hooks)</h4><table class="sspa-adhoc-table">';
 				keys.forEach(function (k) {
-					html += '<tr><td><code>' + esc(k) + '</code></td><td>' + comps[k].toFixed(1) + 'ms</td></tr>';
+					right += '<tr><td><code>' + esc(k) + '</code></td><td>' + comps[k].toFixed(1) + 'ms</td></tr>';
 				});
-				html += '</table>';
+				right += '</table>';
+			}
+
+			var r = d.boot.render;
+			if (r && (r.timed_ms > 0 || r.untimed_ms !== null)) {
+				right += '<h4>Render breakdown</h4><table class="sspa-adhoc-table">';
+				(r.top || []).slice(0, 6).forEach(function (t) {
+					right += '<tr><td>' + esc(t.label) + ' <small>' + esc(t.hook) + ' · ' + esc(t.component) + '</small></td><td>' + t.ms.toFixed(1) + 'ms</td></tr>';
+				});
+				if (r.untimed_ms !== null && r.untimed_ms > 0) {
+					right += '<tr><td>Theme templates + direct output <small>(untimed remainder)</small></td><td>' + r.untimed_ms.toFixed(1) + 'ms</td></tr>';
+				}
+				right += '</table>';
 			}
 		}
 		if (d.queries && d.queries.length) {
-			html += '<h4>Slowest queries</h4><table class="sspa-adhoc-table">';
+			full += '<div class="sspa-adhoc-span"><h4>Slowest queries</h4><table class="sspa-adhoc-table">';
 			d.queries.forEach(function (q) {
-				html += '<tr><td class="sspa-adhoc-sql"><code>' + esc(q.sql.length > 90 ? q.sql.slice(0, 90) + '…' : q.sql) + '</code><br><small>' + esc(q.component) + '</small></td><td>' + q.ms + 'ms</td></tr>';
+				full += '<tr><td class="sspa-adhoc-sql"><code>' + esc(q.sql.length > 110 ? q.sql.slice(0, 110) + '…' : q.sql) + '</code><br><small>' + esc(q.component) + '</small></td><td>' + q.ms + 'ms</td></tr>';
 			});
-			html += '</table>';
+			full += '</table></div>';
 		}
-		html += '<p class="sspa-adhoc-actions">' +
+		full += '<p class="sspa-adhoc-actions sspa-adhoc-span">' +
 			'<button type="button" class="button button-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button> ' +
 			'<a class="button" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + '</a>' +
 			(d.created ? ' <span class="sspa-adhoc-note">' + esc(d.created) + ' · ' + esc(d.variant) + '</span>' : '') +
 			'</p>';
-		body(html);
+		body('<div class="sspa-adhoc-grid"><div>' + left + '</div><div>' + right + '</div>' + full + '</div>');
 	}
 
 	function stat(value, label) {

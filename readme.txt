@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.9
+Stable tag: 0.9.10
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.10 (4th August 2026) =
+* NEW: render breakdown. The "Template render + output" phase is no longer a single number: every wp_head/wp_footer/content-filter callback, every shortcode and every widget is individually timed and attributed to its plugin, with the remainder honestly labelled as the theme's own template code. Widgets are attributed to the plugin that provides them, not to WordPress core.
+* The "Analyse this page" popover is now a two-column layout - roughly double the width, phases and stats on the left, per-plugin costs and the render breakdown on the right, slowest queries across the bottom - so results fit without scrolling.
+* The same render breakdown appears in the Pages tab drill-down.
 
 = 0.9.9 (4th August 2026) =
 * FIXED: the "Where the PHP time went" phase table stopped at routing, so on a real page its rows summed to well under the generation time and the difference looked unmeasurable - when it was simply the template render. The table now accounts for the whole request: new "Post-init boot" and "Template render + output" rows close the gap, and the phases sum to the page's generation time.
