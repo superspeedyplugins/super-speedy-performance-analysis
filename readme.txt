@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.2
+Stable tag: 0.9.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.3 (3rd August 2026) =
+* Updated the shared Super Speedy settings module: AI agents can check your licence and install other Super Speedy plugins over MCP, now also exposed on AI Engine's MCP endpoint when AI Engine is active
 
 = 0.9.2 (30th July 2026) =
 * NEW: MySQL query fingerprints. Where your database lets us read its performance_schema statistics, the analysis now reports how many rows MySQL ACTUALLY read to answer each query, rather than how many it returned or what the optimiser guessed. New finding for queries that read far more than they return - a query reading 400,000 rows to hand back 12 is doing a hidden full scan, and it is invisible to every other measurement. Needs one read-only GRANT, which the Tools tab writes out for you; without it, everything else still works.
