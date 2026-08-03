@@ -56,7 +56,7 @@ class SSPA_Profile_Store {
         $sql_ms = $metric(array('sql', 'total_ms'));
         $http_ms = $metric(array('http', 'total_ms'));
         $php_ms = null;
-        if ($gen_ms !== null) {
+        if ($gen_ms !== null && $sql_ms !== null) {
             $php_ms = max(0, $gen_ms - (float) $sql_ms - (float) $http_ms);
         }
 

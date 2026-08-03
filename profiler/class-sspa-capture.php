@@ -315,9 +315,12 @@ if (!class_exists('SSPA_Capture')) {
             return array(
                 'mode' => $mode,
                 'count' => ($mode === 'none' && isset($wpdb->num_queries)) ? (int) $wpdb->num_queries : count($entries),
-                'total_ms' => round($total_ms, 3),
-                'rows_total' => $total_rows,
-                'dupe_count' => $dupe_count,
+                // With no per-query capture these are UNKNOWN, not zero. Storing 0 made a
+                // blind run (e.g. riding an active Query Monitor on an anonymous request)
+                // indistinguishable from a page that genuinely spent no time in SQL.
+                'total_ms' => ($mode === 'none') ? null : round($total_ms, 3),
+                'rows_total' => ($mode === 'none') ? null : $total_rows,
+                'dupe_count' => ($mode === 'none') ? null : $dupe_count,
                 'dupe_details' => $dupe_details,
                 'truncated' => !empty($wpdb->sspa_truncated),
                 // Diagnostic for attribution coverage, not for the user: how many queries had

@@ -39,8 +39,11 @@ add_action('wp_footer', function () {
     // Sin 2: big result set - fetch 500+ rows in one query.
     $wpdb->get_results("SELECT meta_id, post_id, meta_key FROM {$wpdb->postmeta} LIMIT 600");
 
-    // Sin 3: slow query with a classifiable shape (ORDER BY rand()).
-    $wpdb->get_results("SELECT p1.ID FROM {$wpdb->posts} p1, {$wpdb->posts} p2, {$wpdb->posts} p3 ORDER BY rand() LIMIT 5");
+    // Sin 3: slow query with a classifiable shape (ORDER BY rand()). Must land DECISIVELY
+    // over the critical line (slow_query_ms x 5 = 250ms): the plain 3-way self-join
+    // measured ~237ms on Apple Silicon - a knife-edge warn that broke the score assertion.
+    // The x2 factor pushes it to ~800ms here.
+    $wpdb->get_results("SELECT p1.ID FROM {$wpdb->posts} p1, {$wpdb->posts} p2, {$wpdb->posts} p3, (SELECT ID FROM {$wpdb->posts} LIMIT 2) p4 ORDER BY rand() LIMIT 5");
 
     // Sin 4: byte-identical duplicate queries (missing caching).
     for ($i = 0; $i < 8; $i++) {

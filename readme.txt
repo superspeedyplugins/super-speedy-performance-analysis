@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.3
+Stable tag: 0.9.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,16 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.4 (3rd August 2026) =
+* FIXED: pages served by a full-page cache or CDN were silently skipped. Every profiling request now carries a unique cache-busting query argument (signed into the token, so it cannot be stripped), guaranteeing the request reaches PHP instead of being answered from nginx, Varnish, LiteSpeed or a CDN cache - previously the home page, shop and product pages of any cached site produced no data at all.
+* Profiled responses now send Cache-Control no-store, so a cache can never store one and serve it to a real visitor.
+* Runs that still could not measure some pages now say so loudly: a warning on the Overview names how many pages went unmeasured, the Pages tab marks each one "not measured - cache served it", and the count is stored with the run instead of the score quietly ignoring them.
+* FIXED: with Query Monitor's db.php in place, EVERY query was attributed to Query Monitor - its database class is the innermost frame of every query stack, and attribution stopped there. The database layer (Query Monitor's, LudicrousDB's, or any other wpdb subclass) is now skipped, so queries are attributed to the plugin that actually ran them.
+* FIXED: with Query Monitor ACTIVE, anonymous (logged-out) page profiles captured no per-query data at all - Query Monitor only collects for logged-in viewers. The health check now warns about this instead of claiming full detail, and the temporary db.php swap is offered for Query Monitor too, not just for unknown drop-ins.
+* NEW: detects an orphaned Query Monitor db.php (the plugin deactivated but its drop-in left behind, which blocks our capture layer) and offers a one-click replacement - the old file is renamed, never deleted.
+* When no per-query capture was possible, SQL time and row totals are now stored as unknown rather than zero, so a blind measurement can no longer be mistaken for a page that spent no time in SQL.
+* Cache-served responses are recognised from more signals (x-fastcgi-cache, the Age header and others), so they are classified as cached rather than reported as a generic canary failure.
 
 = 0.9.3 (3rd August 2026) =
 * Updated the shared Super Speedy settings module: AI agents can check your licence and install other Super Speedy plugins over MCP, now also exposed on AI Engine's MCP endpoint when AI Engine is active

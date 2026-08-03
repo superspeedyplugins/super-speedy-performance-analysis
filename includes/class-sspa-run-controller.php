@@ -23,6 +23,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_page_detail', array(__CLASS__, 'ajax_page_detail'));
         add_action('wp_ajax_sspa_plugin_detail', array(__CLASS__, 'ajax_plugin_detail'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
+        add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
         add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
         add_action('wp_ajax_sspa_submit_now', array(__CLASS__, 'ajax_submit_now'));
@@ -887,10 +888,25 @@ class SSPA_Run_Controller {
         $finding_count = $engine->analyse($run_id, $demographics);
         $score = SSPA_Analysis_Engine::score($run_id);
 
+        // Pages where every sample came back without our canary (a page cache or CDN
+        // answered before PHP ran) have NULL metrics and silently distort the score if
+        // they pass unmentioned. Count them into the run so the UI can be honest.
+        $profiles = SSPA_Schema::table('profiles');
+        $unmeasured = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $profiles
+             WHERE run_id = %d AND page_gen_ms IS NULL AND blocked_by IS NULL
+               AND page_key <> 'baseline'",
+            $run_id
+        ));
+
+        $notes = array('score' => $score, 'findings' => $finding_count);
+        if ($unmeasured > 0) {
+            $notes['unmeasured_pages'] = $unmeasured;
+        }
         $wpdb->update(SSPA_Schema::table('runs'), array(
             'status' => 'done',
             'finished' => gmdate('Y-m-d H:i:s'),
-            'notes' => wp_json_encode(array('score' => $score, 'findings' => $finding_count)),
+            'notes' => wp_json_encode($notes),
         ), array('id' => $run_id));
     }
 
@@ -1060,6 +1076,15 @@ class SSPA_Run_Controller {
             wp_send_json_error($run_id->get_error_message());
         }
         wp_send_json_success(self::status($run_id));
+    }
+
+    public static function ajax_replace_stale_dropin() {
+        self::ajax_guard();
+        $result = SSPA_Helper_Files::replace_stale_qm_dropin();
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success();
     }
 
     public static function ajax_process_batch() {

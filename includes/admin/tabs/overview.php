@@ -8,7 +8,11 @@ $sspa_runs_table = SSPA_Schema::table('runs');
 // Score/insights only exist on profiling runs - a deep or cache run here would render
 // score 0 and an empty insight list.
 $sspa_last_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", ARRAY_A);
-$sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign'), true);
+// Offer the temporary swap for foreign drop-ins AND an active Query Monitor's (anon
+// requests capture nothing through QM's). A stale QM drop-in gets the permanent
+// replace button on the health line instead.
+$sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign'), true)
+    || ('qm' === $sspa_health['dropin'] && empty($sspa_health['stale_qm']));
 $sspa_run_notes = $sspa_last_run ? json_decode((string) $sspa_last_run['notes'], true) : null;
 $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
 ?>
@@ -47,6 +51,21 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             </ol>
         </div>
     </div>
+
+    <?php if (!empty($sspa_run_notes['unmeasured_pages'])) : ?>
+    <div class="notice notice-error inline">
+        <p>
+            <strong><?php esc_html_e('Incomplete run:', 'super-speedy-performance-analysis'); ?></strong>
+            <?php
+            printf(
+                /* translators: %d: number of pages */
+                esc_html__('%d page(s) could not be measured - a page cache or CDN answered before PHP ran, so they have no data and the score above ignores them. See the Pages tab for which ones. If this persists after updating the plugin, exclude requests carrying the X-SSPA-Token header (or the sspa_nc query argument) from your cache.', 'super-speedy-performance-analysis'),
+                (int) $sspa_run_notes['unmeasured_pages']
+            );
+            ?>
+        </p>
+    </div>
+    <?php endif; ?>
 
     <?php
     // Deep runs land back on this tab when they finish - surface their outcome here
@@ -145,7 +164,12 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                     echo '&#9989; ' . esc_html__('Query capture (db.php): full detail - row counts and errors per query', 'super-speedy-performance-analysis');
                     break;
                 case 'qm':
-                    echo '&#9989; ' . esc_html__('Query capture: riding Query Monitor\'s db.php - full detail available', 'super-speedy-performance-analysis');
+                    if (!empty($sspa_health['stale_qm'])) {
+                        echo '&#10060; ' . esc_html__('Query capture: Query Monitor\'s db.php is still installed but Query Monitor is DEACTIVATED. This orphaned drop-in blocks our capture layer and misattributes every query.', 'super-speedy-performance-analysis');
+                        echo ' <button type="button" class="button button-small" id="sspa-replace-stale-dropin">' . esc_html__('Replace it with ours', 'super-speedy-performance-analysis') . '</button>';
+                    } else {
+                        echo '&#9888;&#65039; ' . esc_html__('Query capture: riding Query Monitor\'s db.php. Logged-in page profiles get full detail, but Query Monitor collects nothing for anonymous (logged-out) requests, so front-end profiles will have no per-query data - and its per-query backtraces inflate every timing. Tick the swap below (or deactivate Query Monitor) for clean, complete capture.', 'super-speedy-performance-analysis');
+                    }
                     break;
                 case 'foreign':
                     echo '&#9888;&#65039; ' . sprintf(

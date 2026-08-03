@@ -36,8 +36,9 @@ class SSPA_Crawler {
                 if (!empty($job['oc_off'])) {
                     $wflags['oc'] = '0';
                 }
-                $token = SSPA_Token::mint($job['url'], $wflags);
-                $this->send($job['url'], $cookies, $token['header']);
+                $wurl = $this->bust_url($job['url']);
+                $token = SSPA_Token::mint($wurl, $wflags);
+                $this->send($wurl, $cookies, $token['header']);
                 $this->discard_capture($token['id']);
             } else {
                 $this->send($job['url'], $cookies, null); // unsigned: warms caches, not profiled
@@ -92,10 +93,14 @@ class SSPA_Crawler {
         $chain = array();
         $current_url = $url;
         for ($hop = 0; $hop <= 2; $hop++) {
-            $token = SSPA_Token::mint($current_url, $flags);
+            // Unique query arg per request: page caches and CDNs key on the URL, so a
+            // fresh arg guarantees a cache MISS and the request actually reaches PHP.
+            // The token signature binds to path+query, so the arg cannot be stripped.
+            $hop_url = $this->bust_url($current_url);
+            $token = SSPA_Token::mint($hop_url, $flags);
             $chain[] = $token['id'];
             $start = microtime(true);
-            $response = $this->send($current_url, $cookies, $token['header']);
+            $response = $this->send($hop_url, $cookies, $token['header']);
             $wall_ms = (microtime(true) - $start) * 1000;
 
             if (is_wp_error($response) || $hop === 2) {
@@ -211,11 +216,26 @@ class SSPA_Crawler {
         return $headers;
     }
 
+    /**
+     * A fresh sspa_nc value per request; replaces any value carried over from a
+     * previous hop's redirect Location. String surgery rather than add_query_arg(),
+     * which decodes and does NOT re-encode the existing query string (a %20 in the
+     * catalogue's search URL would come back as a literal space).
+     */
+    private function bust_url($url) {
+        $url = rtrim(preg_replace('/([?&])sspa_nc=[a-f0-9]*(&|$)/', '$1', $url), '?&');
+        return $url . ((strpos($url, '?') === false) ? '?' : '&') . 'sspa_nc=' . bin2hex(random_bytes(6));
+    }
+
     private function looks_cached($headers) {
-        foreach (array('x-cache', 'cf-cache-status', 'x-litespeed-cache', 'x-cache-status', 'x-proxy-cache', 'x-srcache-fetch-status') as $h) {
+        foreach (array('x-cache', 'cf-cache-status', 'x-litespeed-cache', 'x-cache-status', 'x-proxy-cache', 'x-srcache-fetch-status', 'x-fastcgi-cache', 'x-vercel-cache', 'x-qc-cache') as $h) {
             if (isset($headers[$h]) && stripos((string) (is_array($headers[$h]) ? end($headers[$h]) : $headers[$h]), 'hit') !== false) {
                 return true;
             }
+        }
+        // Age > 0 is a shared-cache signal (Varnish, CDNs) even when no x-cache header names it.
+        if (isset($headers['age']) && (int) (is_array($headers['age']) ? end($headers['age']) : $headers['age']) > 0) {
+            return true;
         }
         return false;
     }

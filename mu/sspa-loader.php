@@ -51,6 +51,10 @@ if (!$sspa_tok) {
     return;
 }
 
+// A profiled response must never be stored by any cache layer: it would be served to a
+// real visitor, and a stored copy answers later profiling requests without running PHP.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
 // Baseline endpoint: answer with near-zero WordPress work so the crawler can measure the
 // server's noise floor. Deliberately before single-use marking (no DB write needed).
 if (!empty($sspa_tok['flags']['bl'])) {

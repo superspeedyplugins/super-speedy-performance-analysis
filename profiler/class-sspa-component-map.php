@@ -11,6 +11,7 @@ if (!class_exists('SSPA_Component_Map')) {
         private $abspath;
         private $own_dir;
         private $reflection_cache = array();
+        private $db_layer_cache = array();
 
         /**
          * Directory names that mark third-party code vendored INSIDE a component. PHP loads
@@ -308,12 +309,36 @@ if (!class_exists('SSPA_Component_Map')) {
                 if ($name === '' || strpos($name, 'require') === 0 || strpos($name, 'include') === 0) {
                     continue;
                 }
+                if ($this->is_db_layer($name)) {
+                    // A wpdb subclass executing the query (QM_DB, LudicrousDB, ...) is the
+                    // transport, not the spender. Without this, riding Query Monitor's
+                    // db.php attributes EVERY query to query-monitor, because QM_DB->query
+                    // is the innermost resolvable frame of every stack.
+                    continue;
+                }
                 $file = $this->resolve_callable_file($name);
                 if ($file) {
                     $frames[] = array($file, 0, $name);
                 }
             }
             return $this->attribute($frames);
+        }
+
+        /** True when the callable is a method of wpdb or any wpdb subclass. */
+        private function is_db_layer($name) {
+            $pos = strpos($name, '->');
+            if ($pos === false) {
+                $pos = strpos($name, '::');
+            }
+            if ($pos === false) {
+                return false;
+            }
+            $class = substr($name, 0, $pos);
+            if (!isset($this->db_layer_cache[$class])) {
+                $this->db_layer_cache[$class] = class_exists($class, false)
+                    && ('wpdb' === $class || is_subclass_of($class, 'wpdb'));
+            }
+            return $this->db_layer_cache[$class];
         }
 
         private function resolve_callable_file($name) {

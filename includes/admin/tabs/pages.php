@@ -48,6 +48,8 @@ if (!$sspa_last_run_id) : ?>
                     <?php
                     if ($p['blocked_by']) {
                         echo '<span class="sspa-blocked">' . esc_html(sprintf(__('blocked by %s', 'super-speedy-performance-analysis'), $p['blocked_by'])) . '</span>';
+                    } elseif ($p['page_gen_ms'] === null && 'baseline' !== $p['page_key']) {
+                        echo '<span class="sspa-blocked">' . esc_html__('not measured - cache served it', 'super-speedy-performance-analysis') . '</span>';
                     } else {
                         echo (int) $p['response_code'];
                     }

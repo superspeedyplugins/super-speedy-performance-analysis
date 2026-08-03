@@ -12,6 +12,22 @@ jQuery(function () {
 	}
 });
 
+// Replace an orphaned Query Monitor db.php (QM deactivated, drop-in left behind).
+jQuery(document).on('click', '#sspa-replace-stale-dropin', function () {
+	var btn = jQuery(this).prop('disabled', true).text('Replacing…');
+	jQuery.post(ajaxurl, { action: 'sspa_replace_stale_dropin', nonce: sspa_admin.nonce }, function (resp) {
+		if (resp.success) {
+			window.location.reload();
+		} else {
+			btn.prop('disabled', false);
+			alert(resp.data || 'Could not replace the drop-in.');
+		}
+	}).fail(function () {
+		btn.prop('disabled', false);
+		alert('Could not replace the drop-in.');
+	});
+});
+
 jQuery(document).on('click', '#sspa_main .nav-tab-wrapper .nav-tab', function (e) {
 	var slug = jQuery(this).data('tab');
 	window.history.pushState(null, null, '#' + slug);

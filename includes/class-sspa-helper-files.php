@@ -225,6 +225,46 @@ class SSPA_Helper_Files {
         self::restore_object_cache();
     }
 
+    /** True when the Query Monitor PLUGIN is active. Its db.php can outlive deactivation. */
+    public static function qm_plugin_active() {
+        if (in_array('query-monitor/query-monitor.php', (array) get_option('active_plugins', array()), true)) {
+            return true;
+        }
+        if (is_multisite()) {
+            $network = (array) get_site_option('active_sitewide_plugins', array());
+            if (isset($network['query-monitor/query-monitor.php'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A Query Monitor db.php whose plugin is deactivated: an orphan that blocks our capture. */
+    public static function dropin_is_stale_qm() {
+        return self::dropin_status() === 'qm' && !self::qm_plugin_active();
+    }
+
+    /**
+     * Replace an orphaned Query Monitor db.php with our conditional drop-in. The old file
+     * is renamed, never deleted, and Query Monitor reinstates its own copy if reactivated.
+     *
+     * @return true|WP_Error
+     */
+    public static function replace_stale_qm_dropin() {
+        if (!self::dropin_is_stale_qm()) {
+            return new WP_Error('sspa_not_stale', __('wp-content/db.php is not a leftover Query Monitor drop-in.', 'super-speedy-performance-analysis'));
+        }
+        $path = self::dropin_path();
+        if (!rename($path, WP_CONTENT_DIR . '/db.php.qm-stale-' . gmdate('Ymd-His'))) {
+            return new WP_Error('sspa_rename_failed', __('Could not rename wp-content/db.php - check file permissions.', 'super-speedy-performance-analysis'));
+        }
+        $results = self::ensure_installed();
+        if (empty($results['dropin'])) {
+            return new WP_Error('sspa_install_failed', __('Renamed the old drop-in but could not install ours - wp-content is not writable.', 'super-speedy-performance-analysis'));
+        }
+        return true;
+    }
+
     public static function health() {
         $mu_content = self::generate('mu/sspa-loader.php');
         $mu_ok = file_exists(self::mu_path()) && file_get_contents(self::mu_path()) === $mu_content;
@@ -233,6 +273,8 @@ class SSPA_Helper_Files {
             'dropin' => self::dropin_status(),
             'dropin_owner' => in_array(self::dropin_status(), array('qm', 'foreign'), true) ? self::dropin_owner_label() : null,
             'hold' => (bool) get_option('sspa_dropin_hold'),
+            'stale_qm' => self::dropin_is_stale_qm(),
+            'qm_active' => self::qm_plugin_active(),
         );
     }
 }
