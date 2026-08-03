@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.4
+Stable tag: 0.9.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.5 (3rd August 2026) =
+* FIXED: a custom post type whose archive URL embeds a taxonomy placeholder (a knowledge base at /kb/%kb_category%/, for example) was profiled at the literal placeholder URL, which can never verify the signed profiling token, so the page silently produced no data. The placeholder is now filled in with the taxonomy's biggest term, and the page is skipped entirely if no term exists.
 
 = 0.9.4 (3rd August 2026) =
 * FIXED: pages served by a full-page cache or CDN were silently skipped. Every profiling request now carries a unique cache-busting query argument (signed into the token, so it cannot be stripped), guaranteeing the request reaches PHP instead of being answered from nginx, Varnish, LiteSpeed or a CDN cache - previously the home page, shop and product pages of any cached site produced no data at all.

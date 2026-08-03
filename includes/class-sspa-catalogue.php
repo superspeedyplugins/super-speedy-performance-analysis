@@ -80,7 +80,7 @@ class SSPA_Catalogue {
                 continue;
             }
             if ($cpt->has_archive) {
-                $archive = get_post_type_archive_link($cpt->name);
+                $archive = self::resolve_permastruct_tokens(get_post_type_archive_link($cpt->name));
                 $add('cpt-' . $cpt->name . '-archive', $archive);
             }
             $single = get_posts(array('numberposts' => 1, 'post_type' => $cpt->name, 'post_status' => 'publish'));
@@ -137,6 +137,37 @@ class SSPA_Catalogue {
         }
 
         return $jobs;
+    }
+
+    /**
+     * A CPT whose rewrite embeds a taxonomy (e.g. a KB at /kb/%kb_category%/) returns its
+     * permastruct TEMPLATE from get_post_type_archive_link(), placeholder and all.
+     * Requesting the literal %token% URL runs PHP, but the percent signs are re-encoded in
+     * transit so the profiling token's signed path never matches and every sample is
+     * wasted. Substitute each placeholder with the taxonomy's biggest term; null (page
+     * skipped) when a placeholder cannot be resolved.
+     */
+    private static function resolve_permastruct_tokens($url) {
+        if (!$url || strpos($url, '%') === false) {
+            return $url;
+        }
+        if (!preg_match_all('/%([a-z0-9_-]+)%/i', $url, $m)) {
+            return $url;
+        }
+        foreach ($m[1] as $i => $token) {
+            $slug = null;
+            if (taxonomy_exists($token)) {
+                $terms = get_terms(array('taxonomy' => $token, 'orderby' => 'count', 'order' => 'DESC', 'number' => 1, 'hide_empty' => true));
+                if (!is_wp_error($terms) && $terms) {
+                    $slug = $terms[0]->slug;
+                }
+            }
+            if (null === $slug) {
+                return null;
+            }
+            $url = str_replace($m[0][$i], $slug, $url);
+        }
+        return $url;
     }
 
     private static function biggest_term_link($taxonomy) {
