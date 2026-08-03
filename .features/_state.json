@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "compiled": "2026-08-02",
+  "previous_compile": "2026-07-28",
+  "compiled_against": {
+    "git_sha": "c9d785a",
+    "plugin_version": "0.9.2",
+    "working_tree_dirty": false
+  },
+  "also_covered": [],
+  "changelog_high_water_mark": "0.9.2",
+  "notes": "Incremental re-run. The 0.9.2 changelog section GREW since the last compile without the version number changing - the previous run saw only the update-source bullet, this one covers the other 14. A version-number high-water mark is not sufficient for this repo while it is pre-1.0; diff from git_sha as well. Covered: commits 3a5c48b (attribution fix, caller mode, EXPLAIN), 39ca41a (Tools tab), c9d785a (performance_schema digests). New doc: .features/server-tools.md. Plugin is still free, no edition split, no licence gate, and still not published - neither the zip nor the update JSON exists on superspeedyplugins.com."
+}
