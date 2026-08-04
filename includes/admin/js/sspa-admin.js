@@ -12,6 +12,22 @@ jQuery(function () {
 	}
 });
 
+// Re-check the Tools tab in place - no page reload, so the active tab is kept.
+jQuery(document).on('click', '#sspa-tools-recheck', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	jQuery.post(ajaxurl, { action: 'sspa_tools_recheck', nonce: sspa_admin.nonce }, function (resp) {
+		if (resp.success) {
+			jQuery('#sspa_main div.tab-contents[data-tab="tools"]').html(resp.data.html);
+		} else {
+			btn.prop('disabled', false);
+			alert(resp.data || 'Re-check failed.');
+		}
+	}).fail(function () {
+		btn.prop('disabled', false);
+		alert('Re-check failed.');
+	});
+});
+
 // Replace an orphaned Query Monitor db.php (QM deactivated, drop-in left behind).
 jQuery(document).on('click', '#sspa-replace-stale-dropin', function () {
 	var btn = jQuery(this).prop('disabled', true).text('Replacing…');

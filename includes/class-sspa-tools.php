@@ -354,8 +354,12 @@ class SSPA_Tools {
         } else {
             $steps[] = array(
                 'title' => __('2. Install the extension', 'super-speedy-performance-analysis'),
-                'why' => __('Both are free and open source (Apache 2.0) and send nothing anywhere. They are local extensions, not a service.', 'super-speedy-performance-analysis'),
-                'code' => 'sudo pecl install ' . $pkg,
+                'why' => __('Both are free and open source (Apache 2.0) and send nothing anywhere. They are local extensions, not a service. If this step fails with "shtool ... does not exist or is not executable", your server mounts /tmp with noexec (a common hardening default) - temporarily allow execution there for the build, then restore it.', 'super-speedy-performance-analysis'),
+                'code' => 'sudo pecl install ' . $pkg . "\n\n"
+                    . "# If that fails with a 'shtool ... not executable' error (/tmp is mounted noexec):\n"
+                    . "sudo mount -o remount,exec /tmp\n"
+                    . 'sudo pecl install ' . $pkg . "\n"
+                    . "sudo mount -o remount,noexec /tmp   # restore the hardening",
             );
         }
 

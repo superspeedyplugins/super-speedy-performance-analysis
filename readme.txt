@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.3
+Stable tag: 0.10.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.4 (4th August 2026) =
+* The Tools tab's PECL install steps now include the fix for the "shtool ... does not exist or is not executable" failure: hardened servers mount /tmp with noexec, which breaks pecl's build. The verified fix is a temporary exec remount of /tmp for the build, restoring noexec afterwards - proven on a real hardened server.
+* The Tools tab's Re-check button now rechecks in place over ajax instead of reloading the page, so it no longer dumps you back on the first tab.
 
 = 0.10.3 (4th August 2026) =
 * The panel header now reads "Super Speedy Performance Analysis" with a version pill, matching the Super Speedy Imports design - so screenshots also say which version produced the numbers.

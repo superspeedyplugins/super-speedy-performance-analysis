@@ -24,6 +24,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_plugin_detail', array(__CLASS__, 'ajax_plugin_detail'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
+        add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
         add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
         add_action('wp_ajax_sspa_submit_now', array(__CLASS__, 'ajax_submit_now'));
@@ -1102,6 +1103,18 @@ class SSPA_Run_Controller {
             wp_send_json_error($run_id->get_error_message());
         }
         wp_send_json_success(self::status($run_id));
+    }
+
+    /**
+     * Re-render the Tools tab in place: the old Re-check link reloaded the whole page
+     * and lost the active tab. The template is self-contained, so re-including it
+     * re-runs every detection fresh.
+     */
+    public static function ajax_tools_recheck() {
+        self::ajax_guard();
+        ob_start();
+        include SSPA_PLUGIN_DIR . 'includes/admin/tabs/tools.php';
+        wp_send_json_success(array('html' => ob_get_clean()));
     }
 
     public static function ajax_replace_stale_dropin() {

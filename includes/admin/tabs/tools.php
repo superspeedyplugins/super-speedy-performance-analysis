@@ -85,9 +85,9 @@ $sspa_status_label = array(
 </table>
 
 <p>
-    <a href="<?php echo esc_url(add_query_arg('sspa_recheck', time())); ?>" class="button">
+    <button type="button" class="button" id="sspa-tools-recheck">
         <?php esc_html_e('Re-check', 'super-speedy-performance-analysis'); ?>
-    </a>
+    </button>
     <span class="description"><?php esc_html_e('After installing an extension, restart PHP (not just reload) before re-checking.', 'super-speedy-performance-analysis'); ?></span>
 </p>
 
