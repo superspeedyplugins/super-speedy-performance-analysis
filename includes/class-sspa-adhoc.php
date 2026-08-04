@@ -42,10 +42,16 @@ class SSPA_Adhoc {
         }
         wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), SSPA_VERSION);
         wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery'), SSPA_VERSION, true);
+        // The wordmark ships in the shared settings submodule; zips built without
+        // submodules simply get a text-only header.
+        $logo = file_exists(SSPA_PLUGIN_DIR . 'super-speedy-settings/super-speedy-plugins-white.svg')
+            ? SSPA_PLUGIN_URL . 'super-speedy-settings/super-speedy-plugins-white.svg'
+            : '';
         wp_localize_script('sspa-adhoc', 'sspa_adhoc', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
             'results_url' => admin_url('admin.php?page=sspa#pages'),
+            'logo_url' => $logo,
             'i18n' => array(
                 'running' => __('Profiling this page…', 'super-speedy-performance-analysis'),
                 'running_detail' => __('Warm-up + 3 measured samples, then analysis. Usually under a minute.', 'super-speedy-performance-analysis'),
@@ -55,6 +61,8 @@ class SSPA_Adhoc {
                 'fresh' => __('Fresh result', 'super-speedy-performance-analysis'),
                 'full' => __('Open in Performance Analysis', 'super-speedy-performance-analysis'),
                 'close' => __('Close', 'super-speedy-performance-analysis'),
+                'copied' => __('Copied', 'super-speedy-performance-analysis'),
+                'copy_hint' => __('Click to copy the full query', 'super-speedy-performance-analysis'),
             ),
         ));
     }

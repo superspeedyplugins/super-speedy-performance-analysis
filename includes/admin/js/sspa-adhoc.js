@@ -10,6 +10,11 @@
 		return $('<span>').text(str == null ? '' : String(str)).html();
 	}
 
+	// Attribute context needs quotes escaped too - SQL can legitimately contain them.
+	function escAttr(str) {
+		return esc(str).replace(/"/g, '&quot;');
+	}
+
 	function pageUrl() {
 		return window.location.href.split('#')[0];
 	}
@@ -19,11 +24,17 @@
 		if (el.length) {
 			return el;
 		}
+		var logo = sspa_adhoc.logo_url
+			? '<img class="sspa-adhoc-logo" src="' + esc(sspa_adhoc.logo_url) + '" alt="Super Speedy Plugins">'
+			: '<span class="sspa-adhoc-logo-text">Super Speedy Plugins</span>';
 		el = $(
 			'<div id="sspa-adhoc-pop" style="display:none">' +
-			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">Page analysis</span>' +
+			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">&#9889; Page analysis</span>' +
+			logo +
 			'<button type="button" class="sspa-adhoc-close" aria-label="' + esc(sspa_adhoc.i18n.close) + '">&times;</button></div>' +
 			'<div class="sspa-adhoc-body"></div>' +
+			// The screenshot line: anyone sharing this panel shares where it came from.
+			'<div class="sspa-adhoc-foot">Powered by <strong>Super Speedy Performance Analysis</strong> &middot; free from <a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener">superspeedyplugins.com</a></div>' +
 			'</div>'
 		);
 		$('body').append(el);
@@ -113,9 +124,10 @@
 			}
 		}
 		if (d.queries && d.queries.length) {
-			full += '<div class="sspa-adhoc-span"><h4>Slowest queries</h4><table class="sspa-adhoc-table">';
+			full += '<div class="sspa-adhoc-span"><h4>Slowest queries <small>' + esc(sspa_adhoc.i18n.copy_hint) + '</small></h4><table class="sspa-adhoc-table">';
 			d.queries.forEach(function (q) {
-				full += '<tr><td class="sspa-adhoc-sql"><code>' + esc(q.sql.length > 110 ? q.sql.slice(0, 110) + '…' : q.sql) + '</code><br><small>' + esc(q.component) + '</small></td><td>' + q.ms + 'ms</td></tr>';
+				full += '<tr class="sspa-adhoc-qrow" data-sql="' + escAttr(q.sql) + '" title="' + escAttr(sspa_adhoc.i18n.copy_hint) + '">' +
+					'<td class="sspa-adhoc-sql"><code>' + esc(q.sql.length > 160 ? q.sql.slice(0, 160) + '…' : q.sql) + '</code><br><small>' + esc(q.component) + '</small></td><td>' + q.ms + 'ms</td></tr>';
 			});
 			full += '</table></div>';
 		}
@@ -216,5 +228,29 @@
 
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-rerun', function () {
 		start();
+	});
+
+	// Click a query row: copy the FULL query (the cell only shows the start) and confirm
+	// with a small toast that rises and fades where you clicked.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-qrow', function (e) {
+		var sql = $(this).attr('data-sql') || '';
+		if (!sql) {
+			return;
+		}
+		function toast() {
+			var t = $('<span class="sspa-adhoc-toast">' + esc(sspa_adhoc.i18n.copied) + '</span>');
+			$('body').append(t);
+			t.css({ left: e.pageX + 'px', top: (e.pageY - 10) + 'px' });
+			window.setTimeout(function () { t.remove(); }, 1300);
+		}
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(sql).then(toast, function () {});
+			return;
+		}
+		// Non-secure contexts (plain-http dev sites): the clipboard API is unavailable.
+		var tmp = $('<textarea>').val(sql).css({ position: 'fixed', opacity: 0 }).appendTo('body');
+		tmp[0].select();
+		try { document.execCommand('copy'); toast(); } catch (err) { /* nothing to do */ }
+		tmp.remove();
 	});
 })(jQuery);

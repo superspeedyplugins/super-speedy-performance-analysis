@@ -1,19 +1,36 @@
-/* Admin-bar "Analyse this page" popover - same design language as the plugin's
-   floating run monitor (#sspa-runner): white card, dark header, 6px radius. */
+/* Admin-bar "Analyse this page" panel.
+   Design language borrowed from Super Speedy Imports' "Velocity Pro" run modal
+   (assets/ssi-run-now.css): purple primary, soft surfaces, 12/8px radii, deep shadow.
+   Everything scoped under #sspa-adhoc-pop so nothing leaks either way; system font
+   stacks only (no bundled webfonts for a diagnostic popover). */
 
 #sspa-adhoc-pop {
+	/* palette - mirrors the Velocity Pro tokens */
+	--sspa-primary: #8035be;
+	--sspa-primary-dark: #6612a4;
+	--sspa-primary-soft: rgba(128, 53, 190, 0.08);
+	--sspa-surface: #f9f9fb;
+	--sspa-outline: #e3e4e8;
+	--sspa-ink: #1a1c1d;
+	--sspa-muted: #595f64;
+	--sspa-faint: #8c8f94;
+	--sspa-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+	--sspa-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
 	position: fixed;
 	top: 40px;
 	right: 12px;
 	left: 12px;
 	width: auto;
 	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 6px;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+	border: 1px solid var(--sspa-outline);
+	border-radius: 12px;
+	box-shadow: 0 20px 45px -12px rgba(26, 28, 29, 0.45);
 	z-index: 100000;
+	font-family: var(--sspa-font);
 	font-size: 13px;
-	color: #1d2327;
+	color: var(--sspa-ink);
+	overflow: hidden; /* keeps the head/foot corners rounded */
 }
 
 @media screen and (max-width: 782px) {
@@ -22,44 +39,183 @@
 	}
 }
 
+/* ── Header: dark bar carrying the wordmark ─────────────────────────── */
+
 #sspa-adhoc-pop .sspa-adhoc-head {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 8px 10px;
-	background: #1d2327;
+	gap: 12px;
+	padding: 12px 18px;
+	background: var(--sspa-ink);
 	color: #fff;
-	border-radius: 5px 5px 0 0;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-title {
-	font-weight: 600;
+	font-weight: 700;
+	font-size: 15px;
+	letter-spacing: -0.01em;
 	flex: 1;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-logo {
+	height: 16px;
+	width: auto;
+	display: block;
+	opacity: 0.95;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-logo-text {
+	color: #c3c4c7;
+	font-weight: 600;
+	letter-spacing: 0.02em;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-close {
 	background: none;
 	border: none;
 	color: #fff;
-	font-size: 18px;
+	font-size: 20px;
 	line-height: 1;
 	cursor: pointer;
 	padding: 0 2px;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-body {
-	padding: 10px 14px 14px;
-	max-height: 80vh;
+	padding: 12px 18px 14px;
+	max-height: 76vh;
 	overflow-y: auto;
 }
 
+/* ── Footer: the screenshot attribution line ────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-foot {
+	padding: 8px 18px;
+	background: var(--sspa-surface);
+	border-top: 1px solid var(--sspa-outline);
+	color: var(--sspa-muted);
+	font-size: 12px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-foot a {
+	color: var(--sspa-primary);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-foot a:hover {
+	text-decoration: underline;
+}
+
+/* ── Section headings ───────────────────────────────────────────────── */
+
+#sspa-adhoc-pop h4 {
+	margin: 14px 0 6px;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--sspa-primary);
+}
+
+#sspa-adhoc-pop h4 small {
+	color: var(--sspa-faint);
+	font-weight: 500;
+	text-transform: none;
+	letter-spacing: 0;
+	margin-left: 6px;
+}
+
+/* ── Stat tiles ─────────────────────────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-stats {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stat {
+	flex: 1 1 40%;
+	background: var(--sspa-surface);
+	border: 1px solid var(--sspa-outline);
+	border-radius: 8px;
+	padding: 8px 12px;
+	display: flex;
+	flex-direction: column;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stat-value {
+	font-size: 18px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	font-variant-numeric: tabular-nums;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-stat-label {
+	color: var(--sspa-muted);
+	font-size: 11px;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table td {
+	padding: 4px 0;
+	border-bottom: 1px solid #f0f0f1;
+	vertical-align: top;
+	/* Callback and class names have no spaces; without this they refuse to wrap and
+	   blow the column out sideways. */
+	overflow-wrap: anywhere;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table td:last-child {
+	width: 76px;
+	text-align: right;
+	white-space: nowrap;
+	font-family: var(--sspa-font-mono);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table small,
+#sspa-adhoc-pop .sspa-adhoc-note {
+	color: var(--sspa-faint);
+}
+
+#sspa-adhoc-pop code {
+	font-family: var(--sspa-font-mono);
+	font-size: 12px;
+	background: none;
+	padding: 0;
+	color: inherit;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-sql code {
+	font-size: 11px;
+	word-break: break-all;
+}
+
+/* Copyable query rows */
+#sspa-adhoc-pop .sspa-adhoc-qrow {
+	cursor: copy;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-qrow:hover td {
+	background: var(--sspa-primary-soft);
+}
+
+/* ── Layout grid ────────────────────────────────────────────────────── */
+
 /* Two-column results; top bar and queries span both. minmax(0,1fr) + min-width:0 stop
-   unbreakable content (namespaced class names have no spaces) from expanding a column
-   past its share and pushing the numbers off-screen. Collapses on narrow screens. */
+   unbreakable content from expanding a column past its share. */
 #sspa-adhoc-pop .sspa-adhoc-grid {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	gap: 0 24px;
+	gap: 0 28px;
 	align-items: start;
 }
 
@@ -77,14 +233,15 @@
 	}
 }
 
-/* Provenance + actions bar, pinned above the results. */
+/* ── Provenance + actions bar ───────────────────────────────────────── */
+
 #sspa-adhoc-pop .sspa-adhoc-topbar {
 	display: flex;
 	align-items: center;
 	gap: 10px;
 	padding: 2px 0 10px;
-	border-bottom: 1px solid #dcdcde;
-	margin-bottom: 10px;
+	border-bottom: 1px solid var(--sspa-outline);
+	margin-bottom: 12px;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-badge {
@@ -110,7 +267,8 @@
 
 #sspa-adhoc-pop .sspa-adhoc-open {
 	margin-left: auto;
-	color: #2271b1;
+	color: var(--sspa-primary);
+	font-weight: 600;
 	text-decoration: none;
 	white-space: nowrap;
 }
@@ -119,95 +277,16 @@
 	text-decoration: underline;
 }
 
-#sspa-adhoc-pop h4 {
-	margin: 12px 0 4px;
-	font-size: 12px;
-	text-transform: uppercase;
-	letter-spacing: 0.02em;
-	color: #50575e;
-}
+/* ── Buttons (own class: themes restyle .button, often with !important) ─ */
 
-#sspa-adhoc-pop .sspa-adhoc-stats {
-	display: flex;
-	gap: 8px;
-	flex-wrap: wrap;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-stat {
-	flex: 1 1 40%;
-	background: #f6f7f7;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	padding: 6px 8px;
-	display: flex;
-	flex-direction: column;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-stat-value {
-	font-size: 16px;
-	font-weight: 600;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-stat-label {
-	color: #50575e;
-	font-size: 11px;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-table {
-	width: 100%;
-	border-collapse: collapse;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-table {
-	table-layout: fixed;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-table td {
-	padding: 3px 0;
-	border-bottom: 1px solid #f0f0f1;
-	vertical-align: top;
-	/* Callback and class names have no spaces; without this they refuse to wrap and
-	   blow the column out sideways. */
-	overflow-wrap: anywhere;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-table td:last-child {
-	width: 72px;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-table td:last-child {
-	text-align: right;
-	white-space: nowrap;
-	font-variant-numeric: tabular-nums;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-sql code {
-	font-size: 11px;
-	word-break: break-all;
-	background: none;
-	padding: 0;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-error {
-	color: #b32d2e;
-	font-weight: 500;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-note {
-	color: #50575e;
-}
-
-/* Self-contained buttons under our OWN class name. Deliberately not .button: themes
-   restyle that class aggressively (this very site's theme does it with !important via
-   `.woocommerce .button`), and wp-admin's .button CSS does not exist on the front end
-   anyway. A class nothing else targets needs no specificity war at all. */
 #sspa-adhoc-pop .sspa-adhoc-btn {
 	display: inline-block;
-	padding: 5px 14px;
-	border: 1px solid #1d2327;
-	border-radius: 4px;
+	padding: 5px 16px;
+	border: 1px solid var(--sspa-primary);
+	border-radius: 8px;
 	background: #fff;
-	color: #1d2327;
+	color: var(--sspa-primary);
+	font-family: var(--sspa-font);
 	font-size: 13px;
 	font-weight: 600;
 	line-height: 1.6;
@@ -216,20 +295,29 @@
 }
 
 #sspa-adhoc-pop .sspa-adhoc-btn-primary {
-	background: #1d2327;
+	background: var(--sspa-primary);
 	color: #fff;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-btn:hover {
-	opacity: 0.85;
+	background: var(--sspa-primary-dark);
+	border-color: var(--sspa-primary-dark);
+	color: #fff;
+}
+
+/* ── Progress + errors ──────────────────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-error {
+	color: #ba1a1a;
+	font-weight: 600;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-elapsed {
-	color: #50575e;
+	color: var(--sspa-muted);
 	font-variant-numeric: tabular-nums;
 }
 
-/* Self-contained spinner: WP's .spinner CSS is admin-only and this popover also
+/* Self-contained spinner: WP's .spinner CSS is admin-only and this panel also
    renders on the front end. */
 #sspa-adhoc-pop .sspa-adhoc-spin {
 	display: inline-block;
@@ -237,8 +325,8 @@
 	height: 14px;
 	margin-right: 6px;
 	vertical-align: -2px;
-	border: 2px solid #c3c4c7;
-	border-top-color: #1d2327;
+	border: 2px solid var(--sspa-outline);
+	border-top-color: var(--sspa-primary);
 	border-radius: 50%;
 	animation: sspa-adhoc-rotate 0.8s linear infinite;
 }
@@ -246,5 +334,38 @@
 @keyframes sspa-adhoc-rotate {
 	to {
 		transform: rotate(360deg);
+	}
+}
+
+/* ── Copied toast (appended to body, positioned at the click point) ─── */
+
+.sspa-adhoc-toast {
+	position: absolute;
+	z-index: 100001;
+	background: var(--sspa-ink, #1a1c1d);
+	color: #fff;
+	padding: 3px 10px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	pointer-events: none;
+	animation: sspa-adhoc-toast 1.3s ease forwards;
+}
+
+@keyframes sspa-adhoc-toast {
+	0% {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	15% {
+		opacity: 1;
+		transform: translateY(-4px);
+	}
+	70% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-14px);
 	}
 }

@@ -3,8 +3,8 @@ Contributors: dhilditch
 Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
-Tested up to: 6.9
-Stable tag: 0.9.12
+Tested up to: 7.0
+Stable tag: 0.9.13
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.13 (4th August 2026) =
+* The "Analyse this page" panel is now branded and styled to match the Super Speedy design language: purple accents, rounded corners, the Super Speedy Plugins wordmark in the header, and a "Powered by Super Speedy Performance Analysis - free from superspeedyplugins.com" footer, so screenshots of your results say where they came from.
+* Slow queries are click-to-copy: the row shows the start of the query, clicking it copies the FULL query to your clipboard and confirms with a small "Copied" toast that fades out.
+* Tested up to WordPress 7.0.
 
 = 0.9.12 (4th August 2026) =
 * The "Analyse this page" popover is now a full-width panel under the toolbar - no scrolling, and room for everything.
