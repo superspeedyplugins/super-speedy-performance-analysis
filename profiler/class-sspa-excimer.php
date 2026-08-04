@@ -66,6 +66,7 @@ if (!class_exists('SSPA_Excimer')) {
 
             $functions = array();
             $components = array();
+            $by_caller = array(); // leaf fn => [driving component => samples]
             $total = 0;
 
             foreach ($log as $entry) {
@@ -93,6 +94,17 @@ if (!class_exists('SSPA_Excimer')) {
                     $name = self::frame_name($f);
                     if ('' === $name) {
                         continue;
+                    }
+                    // Split the LEAF function's self time by the component the whole
+                    // stack attributes to - "63ms in WP_Object_Cache::get" becomes
+                    // "driven by woocommerce 30ms, rank-math 12ms". The map's chain walk
+                    // already decided who owns each sample; this just files the leaf's
+                    // time under it.
+                    if (0 === $i) {
+                        if (!isset($by_caller[$name])) {
+                            $by_caller[$name] = array();
+                        }
+                        $by_caller[$name][$comp] = (isset($by_caller[$name][$comp]) ? $by_caller[$name][$comp] : 0) + $count;
                     }
                     if (!isset($functions[$name])) {
                         $file = isset($f['file']) ? (string) $f['file'] : '';
@@ -126,6 +138,13 @@ if (!class_exists('SSPA_Excimer')) {
             });
             $rows = array();
             foreach (array_slice($functions, 0, self::MAX_FUNCTIONS, true) as $name => $fn) {
+                $drivers = array();
+                if (isset($by_caller[$name])) {
+                    arsort($by_caller[$name]);
+                    foreach (array_slice($by_caller[$name], 0, 4, true) as $c => $samples) {
+                        $drivers[$c] = round($samples * self::PERIOD_MS, 1);
+                    }
+                }
                 $rows[] = array(
                     'fn' => $name,
                     'file' => $fn['file'],
@@ -134,6 +153,7 @@ if (!class_exists('SSPA_Excimer')) {
                     'ctype' => $fn['ctype'],
                     'incl_ms' => round($fn['incl'] * self::PERIOD_MS, 1),
                     'self_ms' => round($fn['self'] * self::PERIOD_MS, 1),
+                    'by' => $drivers,
                 );
             }
 

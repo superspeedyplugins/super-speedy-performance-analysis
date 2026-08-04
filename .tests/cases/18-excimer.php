@@ -46,10 +46,19 @@ if (is_array($p)) {
     // sampled components, and every component must carry positive time.
     sspa_t(isset($p['components']['woocommerce']) || isset($p['components']['core']), 'components attributed (' . implode(', ', array_slice(array_keys($p['components']), 0, 4)) . ')');
     $sane = true;
+    $has_by = false;
     foreach ($p['functions'] as $fn) {
         if ($fn['self_ms'] > $fn['incl_ms'] + 0.01) {
             $sane = false;
         }
+        if (!empty($fn['by'])) {
+            $has_by = true;
+            // The drivers split can never exceed the function's own self time.
+            if (array_sum($fn['by']) > $fn['self_ms'] + 0.5) {
+                $sane = false;
+            }
+        }
     }
-    sspa_t($sane, 'self <= inclusive for every function');
+    sspa_t($sane, 'self <= inclusive and drivers <= self for every function');
+    sspa_t($has_by, 'at least one function carries a driven-by split');
 }

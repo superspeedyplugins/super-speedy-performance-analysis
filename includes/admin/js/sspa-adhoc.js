@@ -170,7 +170,14 @@
 			var fns = d.profile.functions.slice().sort(function (a, b) { return b.self_ms - a.self_ms; });
 			full += '<div class="sspa-adhoc-span" id="sspa-adhoc-byfn"><h4>By function, self time first <small>Excimer sampling, ' + esc(String(d.profile.samples)) + ' samples at ' + esc(String(d.profile.period_ms)) + 'ms - statistical, sees inside theme templates</small></h4><table class="sspa-adhoc-table sspa-adhoc-fn-table">';
 			fns.slice(0, 10).forEach(function (f) {
-				full += '<tr><td><code>' + esc(f.fn) + '</code>' + (f.file ? ' <small>' + esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + '</td><td><code>' + esc(f.component) + '</code></td><td>' + f.self_ms.toFixed(0) + 'ms self</td><td>' + f.incl_ms.toFixed(0) + 'ms incl</td></tr>';
+				var by = '';
+				var byKeys = f.by ? Object.keys(f.by) : [];
+				// Worth a line when the time is driven by someone other than the
+				// function's owner, or split across several drivers.
+				if (byKeys.length > 1 || (byKeys.length === 1 && byKeys[0] !== f.component)) {
+					by = '<br><small>driven by: ' + byKeys.map(function (c) { return esc(c) + ' ' + f.by[c].toFixed(0) + 'ms'; }).join(' · ') + '</small>';
+				}
+				full += '<tr><td><code>' + esc(f.fn) + '</code>' + (f.file ? ' <small>' + esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + by + '</td><td><code>' + esc(f.component) + '</code></td><td>' + f.self_ms.toFixed(0) + 'ms self</td><td>' + f.incl_ms.toFixed(0) + 'ms incl</td></tr>';
 			});
 			full += '</table></div>';
 		}

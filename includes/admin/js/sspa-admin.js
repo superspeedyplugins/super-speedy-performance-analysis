@@ -136,7 +136,12 @@ jQuery(document).on('click', '.sspa-page-row', function () {
 			if (d.profile && d.profile.functions && d.profile.functions.length) {
 				html += '<h4>By function (Excimer sampling - ' + d.profile.samples + ' samples at ' + d.profile.period_ms + 'ms)</h4><table class="widefat"><thead><tr><th>Incl ms</th><th>Self ms</th><th>Function</th><th>Component</th></tr></thead><tbody>';
 				d.profile.functions.forEach(function (f) {
-					html += '<tr><td>' + f.incl_ms.toFixed(0) + '</td><td>' + f.self_ms.toFixed(0) + '</td><td><code>' + sspa_esc(f.fn) + '</code>' + (f.file ? ' <small>' + sspa_esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + '</td><td><code>' + sspa_esc(f.component) + '</code></td></tr>';
+					var by = '';
+					var byKeys = f.by ? Object.keys(f.by) : [];
+					if (byKeys.length > 1 || (byKeys.length === 1 && byKeys[0] !== f.component)) {
+						by = '<br><small>driven by: ' + byKeys.map(function (c) { return sspa_esc(c) + ' ' + f.by[c].toFixed(0) + 'ms'; }).join(' · ') + '</small>';
+					}
+					html += '<tr><td>' + f.incl_ms.toFixed(0) + '</td><td>' + f.self_ms.toFixed(0) + '</td><td><code>' + sspa_esc(f.fn) + '</code>' + (f.file ? ' <small>' + sspa_esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + by + '</td><td><code>' + sspa_esc(f.component) + '</code></td></tr>';
 				});
 				html += '</tbody></table>';
 			}
