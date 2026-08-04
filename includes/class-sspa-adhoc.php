@@ -63,6 +63,10 @@ class SSPA_Adhoc {
                 'close' => __('Close', 'super-speedy-performance-analysis'),
                 'copied' => __('Copied', 'super-speedy-performance-analysis'),
                 'copy_hint' => __('Click to copy the full query', 'super-speedy-performance-analysis'),
+                'as_visitor' => __('profiled as a logged-out visitor', 'super-speedy-performance-analysis'),
+                'as_admin' => __('profiled as admin', 'super-speedy-performance-analysis'),
+                'just_now' => __('just now', 'super-speedy-performance-analysis'),
+                'ago' => __('%s ago', 'super-speedy-performance-analysis'),
             ),
         ));
     }
@@ -167,6 +171,9 @@ class SSPA_Adhoc {
         wp_send_json_success(array(
             'found' => true,
             'created' => get_date_from_gmt($row['created'], get_option('date_format') . ' ' . get_option('time_format')),
+            // Server-side age so the popover can say "5m ago" without the viewer doing
+            // timezone arithmetic against the site's clock.
+            'age_seconds' => max(0, time() - (int) strtotime($row['created'] . ' UTC')),
             'variant' => $row['variant'],
             'gen_ms' => null !== $row['page_gen_ms'] ? round((float) $row['page_gen_ms'], 1) : null,
             'sql_ms' => null !== $row['sql_ms'] ? round((float) $row['sql_ms'], 1) : null,

@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.9.14
+Stable tag: 0.9.15
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.15 (4th August 2026) =
+* The panel's provenance line now leads with a relative age ("5m ago", "just now") computed server-side, so you never have to reconcile the timestamp against the server's timezone.
+* The cryptic "anon" label now says what it means: "profiled as a logged-out visitor" (or "profiled as admin" for wp-admin URLs) - front-end pages are deliberately measured the way a real visitor gets them, without the admin bar and admin-only hooks.
 
 = 0.9.14 (4th August 2026) =
 * NEW: every phase in "Where the PHP time went" is now expandable - click a phase to see which plugins its time belongs to (plugin file loading per plugin, plugins_loaded/init/wp_loaded callbacks per plugin, the render phase per plugin), with anything our instruments could not see honestly labelled. Works on already-stored results too - the data was always captured, just not shown.

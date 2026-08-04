@@ -15,6 +15,25 @@
 		return esc(str).replace(/"/g, '&quot;');
 	}
 
+	// "5m ago" from a server-computed age, so nobody reconciles server vs local clocks.
+	function agoText(seconds) {
+		if (seconds == null || isNaN(seconds)) {
+			return '';
+		}
+		if (seconds < 45) {
+			return sspa_adhoc.i18n.just_now;
+		}
+		var v;
+		if (seconds < 3600) {
+			v = Math.round(seconds / 60) + 'm';
+		} else if (seconds < 86400) {
+			v = Math.round(seconds / 3600) + 'h';
+		} else {
+			v = Math.round(seconds / 86400) + 'd';
+		}
+		return sspa_adhoc.i18n.ago.replace('%s', v);
+	}
+
 	function pageUrl() {
 		return window.location.href.split('#')[0];
 	}
@@ -71,7 +90,7 @@
 		var bar = '<div class="sspa-adhoc-topbar sspa-adhoc-span">' +
 			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button>' +
 			'<span class="sspa-adhoc-badge ' + (cached ? 'is-cached' : 'is-fresh') + '">' + esc(cached ? sspa_adhoc.i18n.cached : sspa_adhoc.i18n.fresh) + '</span>' +
-			(d.created ? '<span class="sspa-adhoc-note">' + esc(d.created) + ' · ' + esc(d.variant) + '</span>' : '') +
+			(d.created ? '<span class="sspa-adhoc-note"><strong>' + esc(cached ? agoText(d.age_seconds) : sspa_adhoc.i18n.just_now) + '</strong> · ' + esc(d.created) + ' · ' + esc('admin' === d.variant ? sspa_adhoc.i18n.as_admin : sspa_adhoc.i18n.as_visitor) + '</span>' : '') +
 			'<a class="sspa-adhoc-open" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + ' &rarr;</a>' +
 			'</div>';
 		if (d.blocked_by) {
