@@ -232,6 +232,16 @@
 	padding-left: 24px;
 }
 
+/* By-function table: two trailing numeric columns */
+#sspa-adhoc-pop .sspa-adhoc-fn-table td:nth-last-child(2) {
+	width: 90px;
+	text-align: right;
+	white-space: nowrap;
+	font-family: var(--sspa-font-mono);
+	font-size: 12px;
+	color: var(--sspa-muted);
+}
+
 /* Copyable query rows */
 #sspa-adhoc-pop .sspa-adhoc-qrow {
 	cursor: copy;

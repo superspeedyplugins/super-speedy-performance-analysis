@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.9.15
+Stable tag: 0.10.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,12 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.0 (4th August 2026) =
+* NEW: function-level profiling via the excimer PHP extension. When excimer is installed (the Tools tab generates the exact install steps for your server, or a ready-to-paste message for your host), every profiled page automatically gains a "By function" breakdown: which exact functions the time was spent in, with self and inclusive milliseconds, each attributed to its plugin or theme - including inside theme template files, which nothing else can see. Appears in both the "Analyse this page" panel and the Pages tab drill-down.
+* Because excimer records a complete call stack for every sample, attribution uses the same shared-library-aware walk as the SQL analysis - a plugin is never blamed for a vendor library another plugin called into.
+* Sampling has negligible overhead (the same profiler runs on every Wikipedia request), so it runs during the normal measurement pass without distorting any of the numbers.
+* Everything still works without excimer - the breakdown simply does not appear, and the Tools tab card now switches to "in use" once the extension is present.
 
 = 0.9.15 (4th August 2026) =
 * The panel's provenance line now leads with a relative age ("5m ago", "just now") computed server-side, so you never have to reconcile the timestamp against the server's timezone.

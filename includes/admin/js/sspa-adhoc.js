@@ -160,6 +160,13 @@
 				right += '</table>';
 			}
 		}
+		if (d.profile && d.profile.functions && d.profile.functions.length) {
+			full += '<div class="sspa-adhoc-span"><h4>By function <small>Excimer sampling, ' + esc(String(d.profile.samples)) + ' samples at ' + esc(String(d.profile.period_ms)) + 'ms - statistical, sees inside theme templates</small></h4><table class="sspa-adhoc-table sspa-adhoc-fn-table">';
+			d.profile.functions.slice(0, 10).forEach(function (f) {
+				full += '<tr><td><code>' + esc(f.fn) + '</code>' + (f.file ? ' <small>' + esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + '</td><td><code>' + esc(f.component) + '</code></td><td>' + f.self_ms.toFixed(0) + 'ms self</td><td>' + f.incl_ms.toFixed(0) + 'ms</td></tr>';
+			});
+			full += '</table></div>';
+		}
 		if (d.queries && d.queries.length) {
 			full += '<div class="sspa-adhoc-span"><h4>Slowest queries <small>' + esc(sspa_adhoc.i18n.copy_hint) + '</small></h4><table class="sspa-adhoc-table">';
 			d.queries.forEach(function (q) {

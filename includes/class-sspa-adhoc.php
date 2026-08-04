@@ -182,6 +182,7 @@ class SSPA_Adhoc {
             'peak_mem' => $row['peak_mem_bytes'] ? size_format((int) $row['peak_mem_bytes']) : null,
             'blocked_by' => $row['blocked_by'],
             'boot' => (is_array($capture) && isset($capture['boot'])) ? $capture['boot'] : null,
+            'profile' => (is_array($capture) && isset($capture['profile'])) ? $capture['profile'] : null,
             'queries' => $queries,
         ));
     }

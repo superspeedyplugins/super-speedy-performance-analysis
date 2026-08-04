@@ -117,6 +117,13 @@ jQuery(document).on('click', '.sspa-page-row', function () {
 				});
 				html += '</tbody></table>';
 			}
+			if (d.profile && d.profile.functions && d.profile.functions.length) {
+				html += '<h4>By function (Excimer sampling - ' + d.profile.samples + ' samples at ' + d.profile.period_ms + 'ms)</h4><table class="widefat"><thead><tr><th>Incl ms</th><th>Self ms</th><th>Function</th><th>Component</th></tr></thead><tbody>';
+				d.profile.functions.forEach(function (f) {
+					html += '<tr><td>' + f.incl_ms.toFixed(0) + '</td><td>' + f.self_ms.toFixed(0) + '</td><td><code>' + sspa_esc(f.fn) + '</code>' + (f.file ? ' <small>' + sspa_esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + '</td><td><code>' + sspa_esc(f.component) + '</code></td></tr>';
+				});
+				html += '</tbody></table>';
+			}
 			var rb = d.boot.render;
 			if (rb && (rb.timed_ms > 0 || (rb.untimed_ms !== null && rb.untimed_ms > 0))) {
 				html += '<h4>Render breakdown (wp_head/wp_footer/content filters, shortcodes, widgets)</h4><table class="widefat"><thead><tr><th>ms</th><th>Unit</th><th>Kind</th><th>Component</th></tr></thead><tbody>';

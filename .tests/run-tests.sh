@@ -10,6 +10,9 @@ fi
 
 sync_plugin
 
+# Excimer for the phase-5 sampling collector - idempotent, self-heals a recreated env.
+"$PLUGIN_DIR/.tests/docker/install-excimer.sh" || true
+
 # Pre-flight: several cases silently degrade into failures (sector "general", tiny deep
 # deltas, no write profiles) when the WooCommerce sample data has gone missing - reseed.
 PRODUCTS=$(cli post list --post_type=product --post_status=publish --format=count 2>/dev/null | tr -dc '0-9')

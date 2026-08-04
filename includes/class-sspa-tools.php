@@ -200,9 +200,9 @@ class SSPA_Tools {
             ),
             'excimer' => array(
                 'label' => __('excimer (function-level profiling)', 'super-speedy-performance-analysis'),
-                'adds' => __('Which FUNCTION inside a plugin is burning the time. A sampling profiler with negligible overhead, maintained by the Wikimedia Foundation and used in production on Wikipedia.', 'super-speedy-performance-analysis'),
+                'adds' => __('Which FUNCTION inside a plugin is burning the time - including inside theme template files, which no other instrument can see. A sampling profiler with negligible overhead, maintained by the Wikimedia Foundation and used in production on Wikipedia. When installed, every profiled page gains a "By function" breakdown automatically.', 'super-speedy-performance-analysis'),
                 'status' => extension_loaded('excimer') ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
-                'used' => false,
+                'used' => extension_loaded('excimer'),
                 'detail' => '',
                 'install' => 'excimer',
             ),
