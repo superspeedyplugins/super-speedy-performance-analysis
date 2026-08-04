@@ -301,6 +301,12 @@
 		pop().hide();
 	});
 
+	$(document).on('keydown', function (e) {
+		if ('Escape' === e.key && $('#sspa-adhoc-pop').is(':visible')) {
+			pop().hide();
+		}
+	});
+
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-rerun', function () {
 		start();
 	});
