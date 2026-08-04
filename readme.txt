@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.4
+Stable tag: 0.10.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.5 (4th August 2026) =
+* The "untimed remainder" rows are now the doorway to the function view: when the sampling profiler ran, clicking any untimed row jumps to the "By function" table and highlights it - that table is where the remainder's time gets named, function by function.
+* The panel's "By function" table now lists functions by SELF time first. Sorted by inclusive time, the top rows were WordPress's own bootstrap include chain - plumbing, not culprits. Self time names the functions actually burning the CPU.
 
 = 0.10.4 (4th August 2026) =
 * The Tools tab's PECL install steps now include the fix for the "shtool ... does not exist or is not executable" failure: hardened servers mount /tmp with noexec, which breaks pecl's build. The verified fix is a temporary exec remount of /tmp for the build, restoring noexec afterwards - proven on a real hardened server.

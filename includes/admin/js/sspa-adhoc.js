@@ -134,7 +134,8 @@
 				var gap = d.boot.segments[k] - shown;
 				if (gap > 1) {
 					var gapLabel = k === 'render_and_output' ? 'theme templates + direct output (untimed)' : 'untimed / core framework';
-					left += '<tr class="sspa-adhoc-sub" data-parent="' + escAttr(k) + '" style="display:none"><td><small>' + gapLabel + '</small></td><td><small>' + gap.toFixed(1) + 'ms</small></td></tr>';
+					var gapLink = d.profile && d.profile.functions && d.profile.functions.length;
+					left += '<tr class="sspa-adhoc-sub' + (gapLink ? ' sspa-adhoc-tobyfn" title="See the By function table - the sampling profiler names this time' : '') + '" data-parent="' + escAttr(k) + '" style="display:none"><td><small>' + gapLabel + (gapLink ? ' &darr;' : '') + '</small></td><td><small>' + gap.toFixed(1) + 'ms</small></td></tr>';
 				}
 			});
 			left += '</table>';
@@ -156,15 +157,20 @@
 					right += '<tr><td>' + esc(t.label) + ' <small>' + esc(t.hook) + ' · ' + esc(t.component) + '</small></td><td>' + t.ms.toFixed(1) + 'ms</td></tr>';
 				});
 				if (r.untimed_ms !== null && r.untimed_ms > 0) {
-					right += '<tr><td>Theme templates + direct output <small>(untimed remainder)</small></td><td>' + r.untimed_ms.toFixed(1) + 'ms</td></tr>';
+					var linkable = d.profile && d.profile.functions && d.profile.functions.length;
+					right += '<tr' + (linkable ? ' class="sspa-adhoc-tobyfn" title="See the By function table - the sampling profiler names this time"' : '') + '><td>Theme templates + direct output <small>(untimed remainder' + (linkable ? ' - click for the function view' : '') + ')</small></td><td>' + r.untimed_ms.toFixed(1) + 'ms</td></tr>';
 				}
 				right += '</table>';
 			}
 		}
 		if (d.profile && d.profile.functions && d.profile.functions.length) {
-			full += '<div class="sspa-adhoc-span"><h4>By function <small>Excimer sampling, ' + esc(String(d.profile.samples)) + ' samples at ' + esc(String(d.profile.period_ms)) + 'ms - statistical, sees inside theme templates</small></h4><table class="sspa-adhoc-table sspa-adhoc-fn-table">';
-			d.profile.functions.slice(0, 10).forEach(function (f) {
-				full += '<tr><td><code>' + esc(f.fn) + '</code>' + (f.file ? ' <small>' + esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + '</td><td><code>' + esc(f.component) + '</code></td><td>' + f.self_ms.toFixed(0) + 'ms self</td><td>' + f.incl_ms.toFixed(0) + 'ms</td></tr>';
+			// SELF time ordering: inclusive puts the bootstrap include-chain on top,
+			// which names plumbing, not culprits. Self time names where CPU was burnt -
+			// which is exactly what the "untimed remainder" rows link here for.
+			var fns = d.profile.functions.slice().sort(function (a, b) { return b.self_ms - a.self_ms; });
+			full += '<div class="sspa-adhoc-span" id="sspa-adhoc-byfn"><h4>By function, self time first <small>Excimer sampling, ' + esc(String(d.profile.samples)) + ' samples at ' + esc(String(d.profile.period_ms)) + 'ms - statistical, sees inside theme templates</small></h4><table class="sspa-adhoc-table sspa-adhoc-fn-table">';
+			fns.slice(0, 10).forEach(function (f) {
+				full += '<tr><td><code>' + esc(f.fn) + '</code>' + (f.file ? ' <small>' + esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + '</td><td><code>' + esc(f.component) + '</code></td><td>' + f.self_ms.toFixed(0) + 'ms self</td><td>' + f.incl_ms.toFixed(0) + 'ms incl</td></tr>';
 			});
 			full += '</table></div>';
 		}
@@ -310,6 +316,19 @@
 
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-rerun', function () {
 		start();
+	});
+
+	// Untimed-remainder rows: jump to the By-function table, which is where the
+	// sampling profiler names that time.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-tobyfn', function (e) {
+		e.stopPropagation();
+		var target = $('#sspa-adhoc-byfn');
+		if (!target.length) {
+			return;
+		}
+		target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+		target.addClass('sspa-adhoc-flash');
+		window.setTimeout(function () { target.removeClass('sspa-adhoc-flash'); }, 1600);
 	});
 
 	// Expand/collapse a request phase into its per-component contributions.

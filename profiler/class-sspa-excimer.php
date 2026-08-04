@@ -96,11 +96,12 @@ if (!class_exists('SSPA_Excimer')) {
                     }
                     if (!isset($functions[$name])) {
                         $file = isset($f['file']) ? (string) $f['file'] : '';
-                        $cls = $file ? $map->classify_file($file) : array('component' => 'core');
+                        $cls = $file ? $map->classify_file($file) : array('component' => 'core', 'type' => 'core');
                         $functions[$name] = array(
                             'incl' => 0,
                             'self' => 0,
                             'component' => $cls['component'],
+                            'ctype' => isset($cls['type']) ? $cls['type'] : 'core',
                             'file' => $file ? basename($file) : '',
                             'line' => isset($f['line']) ? (int) $f['line'] : 0,
                         );
@@ -130,6 +131,7 @@ if (!class_exists('SSPA_Excimer')) {
                     'file' => $fn['file'],
                     'line' => $fn['line'],
                     'component' => $fn['component'],
+                    'ctype' => $fn['ctype'],
                     'incl_ms' => round($fn['incl'] * self::PERIOD_MS, 1),
                     'self_ms' => round($fn['self'] * self::PERIOD_MS, 1),
                 );

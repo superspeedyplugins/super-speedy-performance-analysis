@@ -259,6 +259,32 @@
 	color: var(--sspa-muted);
 }
 
+/* Untimed-remainder rows link to the By-function table */
+#sspa-adhoc-pop .sspa-adhoc-tobyfn {
+	cursor: pointer;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-tobyfn:hover td {
+	background: var(--sspa-primary-soft);
+}
+
+#sspa-adhoc-pop .sspa-adhoc-flash {
+	animation: sspa-adhoc-flash 1.6s ease;
+	border-radius: 6px;
+}
+
+@keyframes sspa-adhoc-flash {
+	0%,
+	60% {
+		background: var(--sspa-primary-soft);
+		box-shadow: 0 0 0 2px var(--sspa-primary);
+	}
+	100% {
+		background: transparent;
+		box-shadow: none;
+	}
+}
+
 /* Copyable query rows */
 #sspa-adhoc-pop .sspa-adhoc-qrow {
 	cursor: copy;
