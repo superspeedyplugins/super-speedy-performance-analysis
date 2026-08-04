@@ -58,8 +58,8 @@
 }
 
 #sspa-adhoc-pop .sspa-adhoc-logo {
-	/* ~5.5:1 icon+wordmark lockup: 20px tall renders ~110px wide */
-	height: 20px;
+	/* ~4.7:1 text-only wordmark: 18px tall renders ~85px wide */
+	height: 18px;
 	width: auto;
 	display: block;
 	opacity: 0.95;

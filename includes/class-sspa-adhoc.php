@@ -42,9 +42,10 @@ class SSPA_Adhoc {
         }
         wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), SSPA_VERSION);
         wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery'), SSPA_VERSION, true);
-        // The CURRENT white lockup (icon + wordmark), bundled with the plugin - the
-        // settings submodule's copy is an older mark and submodules are absent from
-        // some zips anyway. Source of truth: marketing/site/company-icons-and-logos.
+        // The CURRENT white wordmark (text only, per Dave - no icon), bundled with the
+        // plugin - the settings submodule's copy is an older mark and submodules are
+        // absent from some zips anyway. Source of truth:
+        // marketing/site/company-icons-and-logos/super-speedy-plugins-logo-white-text-only.svg
         $logo = SSPA_PLUGIN_URL . 'includes/admin/img/super-speedy-plugins-white.svg';
         wp_localize_script('sspa-adhoc', 'sspa_adhoc', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
