@@ -57,6 +57,22 @@
 	flex: 1;
 }
 
+/* Version pill, same treatment as SSI's run-modal pills (soft purple, fully rounded)
+   adapted for the dark header. */
+#sspa-adhoc-pop .sspa-adhoc-version {
+	display: inline-block;
+	margin-left: 10px;
+	padding: 2px 9px;
+	border-radius: 999px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	color: #dcc6f5;
+	background: rgba(128, 53, 190, 0.35);
+	border: 1px solid rgba(128, 53, 190, 0.7);
+	vertical-align: 1px;
+}
+
 #sspa-adhoc-pop .sspa-adhoc-logo {
 	/* ~4.7:1 text-only wordmark: 18px tall renders ~85px wide */
 	height: 18px;

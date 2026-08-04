@@ -52,6 +52,7 @@ class SSPA_Adhoc {
             'nonce' => wp_create_nonce('sspa_admin'),
             'results_url' => admin_url('admin.php?page=sspa#pages'),
             'logo_url' => $logo,
+            'version' => SSPA_VERSION,
             'i18n' => array(
                 'running' => __('Profiling this page…', 'super-speedy-performance-analysis'),
                 'running_detail' => __('Warm-up + 3 measured samples, then analysis. Usually under a minute.', 'super-speedy-performance-analysis'),

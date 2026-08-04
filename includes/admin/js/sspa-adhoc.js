@@ -48,7 +48,8 @@
 			: '<span class="sspa-adhoc-logo-text">Super Speedy Plugins</span>';
 		el = $(
 			'<div id="sspa-adhoc-pop" style="display:none">' +
-			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">&#9889; Page analysis</span>' +
+			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">Super Speedy Performance Analysis' +
+			'<span class="sspa-adhoc-version">v' + esc(sspa_adhoc.version) + '</span></span>' +
 			logo +
 			'<button type="button" class="sspa-adhoc-close" aria-label="' + esc(sspa_adhoc.i18n.close) + '">&times;</button></div>' +
 			'<div class="sspa-adhoc-body"></div>' +

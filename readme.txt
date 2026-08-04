@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.2
+Stable tag: 0.10.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.3 (4th August 2026) =
+* The panel header now reads "Super Speedy Performance Analysis" with a version pill, matching the Super Speedy Imports design - so screenshots also say which version produced the numbers.
 
 = 0.10.2 (4th August 2026) =
 * The panel header wordmark is now the text-only version, without the icon.
