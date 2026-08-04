@@ -97,6 +97,15 @@
 		if (d.blocked_by) {
 			full += '<p class="sspa-adhoc-error sspa-adhoc-span">Blocked by ' + esc(d.blocked_by) + '</p>';
 		}
+		// Measurement-path honesty: a loopback that bypassed the CDN was measured
+		// WITHOUT CDN-added headers, so header-dependent behaviour (e.g. WooCommerce
+		// using Cloudflare's country instead of its MaxMind database) differs from
+		// what real visitors experience.
+		if (d.via_cloudflare === false) {
+			full += '<p class="sspa-adhoc-note sspa-adhoc-span sspa-adhoc-pathnote">&#9432; The profiling request went directly to the origin server, not through Cloudflare - CDN-added headers (visitor country, WAF marks) were absent on this measurement. Costs that only occur without those headers (such as WooCommerce\'s MaxMind lookup) may not apply to real visitors.</p>';
+		} else if (d.via_cloudflare === true) {
+			full += '<p class="sspa-adhoc-note sspa-adhoc-span sspa-adhoc-pathnote">&#9432; Profiled through Cloudflare' + (d.cf_country ? ' (visitor country header: ' + esc(d.cf_country) + ')' : ' - no visitor country header; IP Geolocation is off in Cloudflare') + '.</p>';
+		}
 		left += '<div class="sspa-adhoc-stats">' +
 			stat(d.gen_ms !== null ? d.gen_ms + 'ms' : '?', 'Generation') +
 			stat(d.sql_ms !== null ? d.sql_ms + 'ms / ' + d.sql_count : '?', 'SQL / queries') +

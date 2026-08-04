@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.7
+Stable tag: 0.10.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.8 (4th August 2026) =
+* NEW: the panel discloses the measurement path. Profiling requests are loopbacks from your server to itself, and on many hosts those bypass your CDN - arriving WITHOUT the headers Cloudflare adds for real visitors (the country header, WAF marks). Behaviour keyed on those headers then differs between the measured path and the visitor path: WooCommerce's MaxMind lookup, for example, only runs when no country header is present. Every capture records whether it passed through Cloudflare and whether the country header was present, and the panel says so plainly - including a note when Cloudflare was traversed but IP Geolocation is switched off.
 
 = 0.10.7 (4th August 2026) =
 * NEW: the untimed rows expand IN PLACE to the functions that were actually running during that specific phase. Every profiler sample carries a timestamp, so samples are bucketed into the request phases - clicking the render remainder shows the functions sampled during render, clicking the plugin-boot gap shows what ran during plugin boot. Each phase gets its own list instead of one global table answering every click the same way.

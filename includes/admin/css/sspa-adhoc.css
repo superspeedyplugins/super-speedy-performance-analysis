@@ -259,6 +259,14 @@
 	color: var(--sspa-muted);
 }
 
+#sspa-adhoc-pop .sspa-adhoc-pathnote {
+	background: var(--sspa-surface);
+	border: 1px solid var(--sspa-outline);
+	border-radius: 8px;
+	padding: 6px 10px;
+	margin: 0 0 6px;
+}
+
 /* Untimed-remainder rows: expand in place (phase-scoped profiler data) or link to
    the By-function table (older captures). */
 #sspa-adhoc-pop .sspa-adhoc-tobyfn,

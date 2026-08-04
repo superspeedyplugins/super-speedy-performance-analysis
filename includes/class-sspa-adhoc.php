@@ -184,6 +184,8 @@ class SSPA_Adhoc {
             'blocked_by' => $row['blocked_by'],
             'boot' => (is_array($capture) && isset($capture['boot'])) ? $capture['boot'] : null,
             'profile' => (is_array($capture) && isset($capture['profile'])) ? $capture['profile'] : null,
+            'via_cloudflare' => (is_array($capture) && array_key_exists('via_cloudflare', $capture['overview'])) ? (bool) $capture['overview']['via_cloudflare'] : null,
+            'cf_country' => (is_array($capture) && isset($capture['overview']['cf_country'])) ? $capture['overview']['cf_country'] : null,
             'queries' => $queries,
         ));
     }

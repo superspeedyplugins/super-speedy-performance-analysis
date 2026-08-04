@@ -178,6 +178,13 @@ if (!class_exists('SSPA_Capture')) {
             $overview = array(
                 'gen_ms' => isset($timestart) ? (microtime(true) - $timestart) * 1000 : null,
                 'peak_mem' => memory_get_peak_usage(true),
+                // The measurement path matters: a loopback that bypasses a CDN arrives
+                // WITHOUT CDN-added headers (Cloudflare geolocation, WAF marks), so
+                // behaviour keyed on them - e.g. WooCommerce skipping MaxMind when
+                // CF-IPCountry is present - differs from what real visitors get.
+                // Recording the truth per request turns that from a guess into data.
+                'via_cloudflare' => !empty($_SERVER['HTTP_CF_RAY']),
+                'cf_country' => isset($_SERVER['HTTP_CF_IPCOUNTRY']) ? strtoupper((string) $_SERVER['HTTP_CF_IPCOUNTRY']) : null,
                 'code' => function_exists('http_response_code') ? http_response_code() : null,
                 'included_files' => count(get_included_files()),
                 'is_admin' => function_exists('is_admin') ? is_admin() : null,
