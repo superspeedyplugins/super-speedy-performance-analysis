@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.10
+Stable tag: 0.9.11
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.11 (4th August 2026) =
+* FIXED: the popover's Re-run and Full detail buttons no longer use the generic "button" class, which themes restyle unpredictably (some with !important) and which has no styling at all on the front end of most themes. They now carry the plugin's own class with self-contained styling, verified against a live WooCommerce theme.
 
 = 0.9.10 (4th August 2026) =
 * NEW: render breakdown. The "Template render + output" phase is no longer a single number: every wp_head/wp_footer/content-filter callback, every shortcode and every widget is individually timed and attributed to its plugin, with the remainder honestly labelled as the theme's own template code. Widgets are attributed to the plugin that provides them, not to WordPress core.

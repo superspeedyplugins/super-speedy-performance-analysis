@@ -142,6 +142,33 @@
 	margin: 12px 0 0;
 }
 
+/* Self-contained buttons under our OWN class name. Deliberately not .button: themes
+   restyle that class aggressively (this very site's theme does it with !important via
+   `.woocommerce .button`), and wp-admin's .button CSS does not exist on the front end
+   anyway. A class nothing else targets needs no specificity war at all. */
+#sspa-adhoc-pop .sspa-adhoc-btn {
+	display: inline-block;
+	padding: 5px 14px;
+	border: 1px solid #1d2327;
+	border-radius: 4px;
+	background: #fff;
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.6;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-btn-primary {
+	background: #1d2327;
+	color: #fff;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-btn:hover {
+	opacity: 0.85;
+}
+
 #sspa-adhoc-pop .sspa-adhoc-elapsed {
 	color: #50575e;
 	font-variant-numeric: tabular-nums;

@@ -48,7 +48,7 @@
 	}
 
 	function renderError(msg) {
-		body('<p class="sspa-adhoc-error">' + esc(msg) + '</p><p><button type="button" class="button sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button></p>');
+		body('<p class="sspa-adhoc-error">' + esc(msg) + '</p><p><button type="button" class="sspa-adhoc-btn sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button></p>');
 	}
 
 	function renderResult(d) {
@@ -112,8 +112,8 @@
 			full += '</table></div>';
 		}
 		full += '<p class="sspa-adhoc-actions sspa-adhoc-span">' +
-			'<button type="button" class="button button-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button> ' +
-			'<a class="button" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + '</a>' +
+			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button> ' +
+			'<a class="sspa-adhoc-btn" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + '</a>' +
 			(d.created ? ' <span class="sspa-adhoc-note">' + esc(d.created) + ' · ' + esc(d.variant) + '</span>' : '') +
 			'</p>';
 		body('<div class="sspa-adhoc-grid"><div>' + left + '</div><div>' + right + '</div>' + full + '</div>');
