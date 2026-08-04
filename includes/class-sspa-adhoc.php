@@ -51,7 +51,9 @@ class SSPA_Adhoc {
                 'running_detail' => __('Warm-up + 3 measured samples, then analysis. Usually under a minute.', 'super-speedy-performance-analysis'),
                 'failed' => __('The analysis failed - see the plugin page for details.', 'super-speedy-performance-analysis'),
                 'rerun' => __('Re-run', 'super-speedy-performance-analysis'),
-                'full' => __('Full detail', 'super-speedy-performance-analysis'),
+                'cached' => __('Cached result', 'super-speedy-performance-analysis'),
+                'fresh' => __('Fresh result', 'super-speedy-performance-analysis'),
+                'full' => __('Open in Performance Analysis', 'super-speedy-performance-analysis'),
                 'close' => __('Close', 'super-speedy-performance-analysis'),
             ),
         ));

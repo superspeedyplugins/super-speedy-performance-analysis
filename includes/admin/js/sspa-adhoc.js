@@ -51,10 +51,18 @@
 		body('<p class="sspa-adhoc-error">' + esc(msg) + '</p><p><button type="button" class="sspa-adhoc-btn sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button></p>');
 	}
 
-	function renderResult(d) {
+	function renderResult(d, cached) {
 		var left = '';
 		var right = '';
 		var full = '';
+		// Re-run and provenance live at the TOP: whether you are looking at a stored
+		// result must be unmissable, and re-running must not require scrolling.
+		var bar = '<div class="sspa-adhoc-topbar sspa-adhoc-span">' +
+			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button>' +
+			'<span class="sspa-adhoc-badge ' + (cached ? 'is-cached' : 'is-fresh') + '">' + esc(cached ? sspa_adhoc.i18n.cached : sspa_adhoc.i18n.fresh) + '</span>' +
+			(d.created ? '<span class="sspa-adhoc-note">' + esc(d.created) + ' · ' + esc(d.variant) + '</span>' : '') +
+			'<a class="sspa-adhoc-open" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + ' &rarr;</a>' +
+			'</div>';
 		if (d.blocked_by) {
 			full += '<p class="sspa-adhoc-error sspa-adhoc-span">Blocked by ' + esc(d.blocked_by) + '</p>';
 		}
@@ -111,12 +119,7 @@
 			});
 			full += '</table></div>';
 		}
-		full += '<p class="sspa-adhoc-actions sspa-adhoc-span">' +
-			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button> ' +
-			'<a class="sspa-adhoc-btn" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + '</a>' +
-			(d.created ? ' <span class="sspa-adhoc-note">' + esc(d.created) + ' · ' + esc(d.variant) + '</span>' : '') +
-			'</p>';
-		body('<div class="sspa-adhoc-grid"><div>' + left + '</div><div>' + right + '</div>' + full + '</div>');
+		body('<div class="sspa-adhoc-grid">' + bar + '<div>' + left + '</div><div>' + right + '</div>' + full + '</div>');
 	}
 
 	function stat(value, label) {
@@ -158,7 +161,7 @@
 				if (s && s.status === 'done') {
 					fetchResult(function (r) {
 						if (r.success && r.data.found) {
-							renderResult(r.data);
+							renderResult(r.data, false);
 						} else {
 							renderError(sspa_adhoc.i18n.failed);
 						}
@@ -190,7 +193,7 @@
 			if (resp.data.running) {
 				drive(resp.data.running);
 			} else if (resp.data.found) {
-				renderResult(resp.data);
+				renderResult(resp.data, true);
 			} else {
 				start();
 			}

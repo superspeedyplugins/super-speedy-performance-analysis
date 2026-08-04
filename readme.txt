@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 0.9.11
+Stable tag: 0.9.12
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,12 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.12 (4th August 2026) =
+* The "Analyse this page" popover is now a full-width panel under the toolbar - no scrolling, and room for everything.
+* FIXED: a long unbreakable callback name (namespaced class names have no spaces) could blow one column out sideways, squeezing the other column and pushing the millisecond values off the edge. Columns are now hard-capped at half the width and long names wrap.
+* Whether you are looking at a stored result is now unmissable: a "Cached result" / "Fresh result" badge with the timestamp sits in a bar at the TOP of the panel, next to the Re-run button - no more scrolling to re-run.
+* "Full detail" is renamed "Open in Performance Analysis" and moved to a quiet link on the right of that bar - it leads to the site-wide view (all pages side by side, per-plugin SQL aggregates, HTTP calls, duplicate queries, history), not to more detail about this one page.
 
 = 0.9.11 (4th August 2026) =
 * FIXED: the popover's Re-run and Full detail buttons no longer use the generic "button" class, which themes restyle unpredictably (some with !important) and which has no styling at all on the front end of most themes. They now carry the plugin's own class with self-contained styling, verified against a live WooCommerce theme.

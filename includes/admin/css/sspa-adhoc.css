@@ -5,8 +5,8 @@
 	position: fixed;
 	top: 40px;
 	right: 12px;
-	width: 720px;
-	max-width: calc(100vw - 24px);
+	left: 12px;
+	width: auto;
 	background: #fff;
 	border: 1px solid #c3c4c7;
 	border-radius: 6px;
@@ -53,12 +53,18 @@
 	overflow-y: auto;
 }
 
-/* Two-column results; queries and actions span both. Collapses on narrow screens. */
+/* Two-column results; top bar and queries span both. minmax(0,1fr) + min-width:0 stop
+   unbreakable content (namespaced class names have no spaces) from expanding a column
+   past its share and pushing the numbers off-screen. Collapses on narrow screens. */
 #sspa-adhoc-pop .sspa-adhoc-grid {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 0 20px;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 0 24px;
 	align-items: start;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-grid > div {
+	min-width: 0;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-span {
@@ -67,8 +73,50 @@
 
 @media screen and (max-width: 760px) {
 	#sspa-adhoc-pop .sspa-adhoc-grid {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 	}
+}
+
+/* Provenance + actions bar, pinned above the results. */
+#sspa-adhoc-pop .sspa-adhoc-topbar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 2px 0 10px;
+	border-bottom: 1px solid #dcdcde;
+	margin-bottom: 10px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-badge {
+	padding: 2px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-badge.is-cached {
+	background: #fcf0d2;
+	color: #8a6116;
+	border: 1px solid #f0c33c;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-badge.is-fresh {
+	background: #edfaef;
+	color: #1a7a2e;
+	border: 1px solid #68de7c;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-open {
+	margin-left: auto;
+	color: #2271b1;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-open:hover {
+	text-decoration: underline;
 }
 
 #sspa-adhoc-pop h4 {
@@ -110,10 +158,21 @@
 	border-collapse: collapse;
 }
 
+#sspa-adhoc-pop .sspa-adhoc-table {
+	table-layout: fixed;
+}
+
 #sspa-adhoc-pop .sspa-adhoc-table td {
 	padding: 3px 0;
 	border-bottom: 1px solid #f0f0f1;
 	vertical-align: top;
+	/* Callback and class names have no spaces; without this they refuse to wrap and
+	   blow the column out sideways. */
+	overflow-wrap: anywhere;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-table td:last-child {
+	width: 72px;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-table td:last-child {
@@ -136,10 +195,6 @@
 
 #sspa-adhoc-pop .sspa-adhoc-note {
 	color: #50575e;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-actions {
-	margin: 12px 0 0;
 }
 
 /* Self-contained buttons under our OWN class name. Deliberately not .button: themes
