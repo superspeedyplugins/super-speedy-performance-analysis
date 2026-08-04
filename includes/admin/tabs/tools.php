@@ -14,7 +14,7 @@ $sspa_status_label = array(
 ?>
 
 <p class="description">
-    <?php esc_html_e('Everything on this page is optional. The analysis works without any of it. These add depth: which function inside a plugin is slow, and how many rows MySQL really examined rather than an estimate.', 'super-speedy-performance-analysis'); ?>
+    <?php esc_html_e('Everything on this page is optional - the analysis works without any of it. These add depth, and one stands out: if you install one thing, install excimer. It turns every profile into a function-level view of where the time went, at negligible cost, and it is the instrument that sees inside theme templates where nothing else can.', 'super-speedy-performance-analysis'); ?>
 </p>
 <p class="description">
     <strong><?php esc_html_e('This plugin never installs anything itself.', 'super-speedy-performance-analysis'); ?></strong>

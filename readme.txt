@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.8
+Stable tag: 0.10.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.9 (4th August 2026) =
+* The Tools tab leads with excimer - it is the single biggest capability upgrade a site can make, and the page says so plainly: "if you install one thing, install excimer". Its card describes everything it unlocks (the function view, driven-by splits, per-phase drill-downs) and switches to Active with an in-use description once installed.
+* The tracing-profiler card (tideways_xhprof) states honestly that the plugin does not read it: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead.
 
 = 0.10.8 (4th August 2026) =
 * NEW: the panel discloses the measurement path. Profiling requests are loopbacks from your server to itself, and on many hosts those bypass your CDN - arriving WITHOUT the headers Cloudflare adds for real visitors (the country header, WAF marks). Behaviour keyed on those headers then differs between the measured path and the visitor path: WooCommerce's MaxMind lookup, for example, only runs when no country header is present. Every capture records whether it passed through Cloudflare and whether the country header was present, and the panel says so plainly - including a note when Cloudflare was traversed but IP Geolocation is switched off.

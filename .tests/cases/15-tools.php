@@ -56,11 +56,15 @@ $caps = SSPA_Tools::capabilities();
 sspa_t(isset($caps['explain']) && $caps['explain']['status'] === SSPA_Tools::STATUS_ACTIVE, 'EXPLAIN reported as active (it is built and in use)');
 sspa_t($caps['explain']['used'] === true, 'EXPLAIN marked as actually used by the plugin');
 
-// Honesty rule: an extension being present must NEVER be reported as in use, because
-// nothing reads it yet. Reporting otherwise would be documenting vapourware in the UI.
-foreach (array('excimer', 'tideways_xhprof', 'spx') as $key) {
+// Honesty rule both ways: extensions nothing reads must never claim to be in use, and
+// excimer (read since phase 5) must track the extension's actual presence in THIS
+// process - never a hardcoded yes.
+foreach (array('tideways_xhprof', 'spx') as $key) {
     sspa_t(isset($caps[$key]) && $caps[$key]['used'] === false, "$key correctly marked not-yet-used");
 }
+sspa_t(isset($caps['excimer']) && $caps['excimer']['used'] === extension_loaded('excimer'), 'excimer used-flag tracks the extension (' . (extension_loaded('excimer') ? 'loaded' : 'absent') . ' here)');
+// Ordering is messaging: excimer is the headline capability and leads the list.
+sspa_t(array_key_first($caps) === 'excimer', 'excimer tops the capability list');
 // performance_schema IS read as of phase 4, so it must no longer claim otherwise.
 sspa_t($caps['performance_schema']['used'] === true, 'performance_schema marked as used (phase 4 reads it)');
 

@@ -180,7 +180,20 @@ class SSPA_Tools {
     public static function capabilities() {
         $ps = self::performance_schema();
 
+        // Ordered by value-per-install: excimer leads because it is the single biggest
+        // capability upgrade a site can make, and everything below it is either built
+        // in or narrower.
         return array(
+            'excimer' => array(
+                'label' => __('excimer (function-level profiling)', 'super-speedy-performance-analysis'),
+                'adds' => __('The one to install. Which exact FUNCTION is burning the time - including inside theme template files, which no other instrument can see - with each function attributed to its plugin, split by which plugin was driving it, and broken down per request phase. A sampling profiler with negligible overhead, maintained by the Wikimedia Foundation and run on every Wikipedia page view, so it profiles during normal measurement without distorting the numbers.', 'super-speedy-performance-analysis'),
+                'status' => extension_loaded('excimer') ? self::STATUS_ACTIVE : self::STATUS_MISSING,
+                'used' => extension_loaded('excimer'),
+                'detail' => extension_loaded('excimer')
+                    ? __('In use: every profiled page carries the "By function" view, and the untimed parts of each request phase expand to the functions sampled inside them.', 'super-speedy-performance-analysis')
+                    : __('Needs a one-off install by you or your host - the steps below are generated for this exact server.', 'super-speedy-performance-analysis'),
+                'install' => 'excimer',
+            ),
             'explain' => array(
                 'label' => __('Query plans (EXPLAIN)', 'super-speedy-performance-analysis'),
                 'adds' => __('Shows WHY a query is slow: a missing index, a temporary table, a filesort. Also catches queries that are fast today but will not scale.', 'super-speedy-performance-analysis'),
@@ -198,22 +211,14 @@ class SSPA_Tools {
                 'detail' => $ps['detail'],
                 'install' => 'performance_schema',
             ),
-            'excimer' => array(
-                'label' => __('excimer (function-level profiling)', 'super-speedy-performance-analysis'),
-                'adds' => __('Which FUNCTION inside a plugin is burning the time - including inside theme template files, which no other instrument can see. A sampling profiler with negligible overhead, maintained by the Wikimedia Foundation and used in production on Wikipedia. When installed, every profiled page gains a "By function" breakdown automatically.', 'super-speedy-performance-analysis'),
-                'status' => extension_loaded('excimer') ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
-                'used' => extension_loaded('excimer'),
-                'detail' => '',
-                'install' => 'excimer',
-            ),
             'tideways_xhprof' => array(
                 'label' => __('tideways_xhprof (exact call counts)', 'super-speedy-performance-analysis'),
                 'adds' => __('Counts every function call exactly, which is what proves a plugin is running the same query in a loop. Higher overhead than excimer, so it is for one page at a time.', 'super-speedy-performance-analysis'),
                 'status' => (extension_loaded('tideways_xhprof') || extension_loaded('xhprof')) ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
                 'used' => false,
                 'detail' => extension_loaded('xhprof') && !extension_loaded('tideways_xhprof')
-                    ? __('The original xhprof is present. tideways_xhprof is the better-maintained successor.', 'super-speedy-performance-analysis')
-                    : '',
+                    ? __('The original xhprof is present. tideways_xhprof is the better-maintained successor. Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead.', 'super-speedy-performance-analysis')
+                    : __('Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead.', 'super-speedy-performance-analysis'),
                 'install' => 'tideways_xhprof',
             ),
             'spx' => array(
