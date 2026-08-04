@@ -5,7 +5,7 @@ WooCommerce works out each visitor's country for tax, for the default customer l
 The fix is to hand the lookup to infrastructure that has done the work anyway. A CDN or the web server itself can attach the visitor's country to the request as a header for effectively nothing, and WooCommerce prefers those headers over its own database lookup.
 
 :::callout{variant="result"}
-On a live store profiled function by function, switching country lookups from the MaxMind database file to the Cloudflare header removed about <strong>70ms from every uncached page view</strong> - with geolocation accuracy kept, not sacrificed.
+Profiled function by function on a live WooCommerce store, the MaxMind file scan costs about <strong>70ms on every request that arrives without a country header</strong>. With the header in place the lookup is skipped entirely - geolocation accuracy kept, cost removed.
 :::
 
 ## How WooCommerce decides a visitor's country
@@ -58,7 +58,13 @@ For stores that genuinely show different prices by country, the cache-friendly p
 
 ## Measure it on your own site
 
-Guessing is how 70ms hides in plain sight for years. [Super Speedy Performance Analysis](https://www.superspeedyplugins.com/) is free and shows exactly where each page's time goes: click "Analyse this page" in the admin toolbar on any page, and read the "By function" table in the results. A store paying the MaxMind cost shows rows like `MaxMind\Db\Reader::findMetadataStart` with tens of milliseconds of self time; after the header is in place those rows vanish from a re-run. The same panel breaks the page into request phases and per-plugin costs, so the geolocation saving can be seen in context rather than taken on faith.
+Guessing is how 70ms hides in plain sight for years. [Super Speedy Performance Analysis](https://www.superspeedyplugins.com/) is free and shows exactly where each page's time goes: click "Analyse this page" in the admin toolbar on any page, and read the "By function" table in the results. A store paying the MaxMind cost shows rows like `MaxMind\Db\Reader::findMetadataStart` with tens of milliseconds of self time. The same panel breaks the page into request phases and per-plugin costs, so the geolocation cost can be seen in context rather than taken on faith.
+
+One subtlety the panel handles for you: profiling requests are loopbacks from your server to itself, and on many hosts the server resolves its own domain locally - so those requests bypass your CDN and arrive without the country header even when real visitors carry it. On such a server the MaxMind rows keep appearing in profiles while your visitors never pay the cost. The panel states which path each measurement took ("went directly to the origin server, not through Cloudflare") precisely so a loopback-only cost is never mistaken for a visitor-facing one.
+
+:::callout{variant="did-you-know"}
+A quick way to check which path your server's own requests take: run <code>getent hosts your-domain.com</code> on the server. Cloudflare IPs mean loopbacks travel through the proxy like visitors do; your own IP or 127.0.0.1 means they bypass it.
+:::
 
 ## Further reading
 
