@@ -61,4 +61,15 @@ if (is_array($p)) {
     }
     sspa_t($sane, 'self <= inclusive and drivers <= self for every function');
     sspa_t($has_by, 'at least one function carries a driven-by split');
+    // Phase-scoped sampling: samples are bucketed into the boot timer's request
+    // phases, and their per-phase totals can never exceed the overall sample count.
+    sspa_t(!empty($p['phases']) && is_array($p['phases']), 'per-phase sample buckets present (' . implode(', ', array_keys((array) $p['phases'])) . ')');
+    if (!empty($p['phases'])) {
+        $phase_total = 0;
+        foreach ($p['phases'] as $ph) {
+            $phase_total += $ph['total_ms'];
+        }
+        sspa_t($phase_total <= $p['wall_ms'] + 1, "phase totals within overall sampled time ({$phase_total} vs {$p['wall_ms']}ms)");
+        sspa_t(!empty($p['phases']['render_and_output']['functions']) || !empty($p['phases']['plugin_includes']['functions']), 'phase function lists populated');
+    }
 }

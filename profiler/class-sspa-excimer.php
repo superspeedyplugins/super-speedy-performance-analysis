@@ -20,8 +20,10 @@ if (!class_exists('SSPA_Excimer')) {
         const PERIOD_MS = 1.0;   // 1ms: ~500 samples on a 500ms page - enough for
                                  // "where did the time go", useless below ~5ms cost.
         const MAX_FUNCTIONS = 40;
+        const MAX_PHASE_FUNCTIONS = 10;
 
         private $profiler = null;
+        private $started_at = null;
 
         public static function available() {
             return extension_loaded('excimer') && class_exists('ExcimerProfiler');
@@ -38,9 +40,53 @@ if (!class_exists('SSPA_Excimer')) {
                 $profiler->setEventType(EXCIMER_REAL);
                 $profiler->start();
                 $this->profiler = $profiler;
+                $this->started_at = microtime(true);
             } catch (Throwable $e) {
                 $this->profiler = null;
             }
+        }
+
+        /**
+         * The request phases as ordered [key, start_ms, end_ms] windows on the same
+         * clock the samples use (ms since WordPress's $timestart). Mirrors the boot
+         * timer's segment derivation; the final window always runs to request_end so
+         * render (or the admin screen render) is covered even when template_redirect
+         * never fired.
+         */
+        private static function phase_windows($milestones) {
+            $order = array(
+                'core_before_plugins' => array(null, 'plugins_start'),
+                'plugin_includes' => array('plugins_start', 'includes_done'),
+                'plugins_loaded_callbacks' => array('includes_done', 'plugins_loaded_done'),
+                'theme_load_and_setup' => array('plugins_loaded_done', 'init_start'),
+                'init_callbacks' => array('init_start', 'init_done'),
+                'post_init_boot' => array('init_done', 'wp_loaded'),
+                'routing_and_query' => array('wp_loaded', 'template_redirect'),
+            );
+            $windows = array();
+            $covered_to = 0.0;
+            foreach ($order as $key => $ends) {
+                list($from, $to) = $ends;
+                if (!isset($milestones[$to]) || (null !== $from && !isset($milestones[$from]))) {
+                    continue;
+                }
+                $start = (null === $from) ? 0.0 : (float) $milestones[$from];
+                $windows[] = array($key, $start, (float) $milestones[$to]);
+                $covered_to = max($covered_to, (float) $milestones[$to]);
+            }
+            if (isset($milestones['request_end']) && (float) $milestones['request_end'] > $covered_to) {
+                $windows[] = array('render_and_output', $covered_to, (float) $milestones['request_end']);
+            }
+            return $windows;
+        }
+
+        private static function phase_for($ms, $windows) {
+            foreach ($windows as $w) {
+                if ($ms >= $w[1] && $ms < $w[2]) {
+                    return $w[0];
+                }
+            }
+            return null;
         }
 
         /**
@@ -53,7 +99,7 @@ if (!class_exists('SSPA_Excimer')) {
          * @param SSPA_Component_Map $map
          * @return array|null Null when the extension is absent or anything failed.
          */
-        public function report($map) {
+        public function report($map, $milestones = array()) {
             if (!$this->profiler) {
                 return null;
             }
@@ -64,9 +110,18 @@ if (!class_exists('SSPA_Excimer')) {
                 return null;
             }
 
+            // Align the sample clock (seconds since profiler start) with the milestone
+            // clock (ms since WordPress's $timestart).
+            $offset_ms = 0.0;
+            if (isset($GLOBALS['timestart']) && null !== $this->started_at) {
+                $offset_ms = ($this->started_at - (float) $GLOBALS['timestart']) * 1000;
+            }
+            $windows = self::phase_windows($milestones);
+
             $functions = array();
             $components = array();
             $by_caller = array(); // leaf fn => [driving component => samples]
+            $phase_fns = array(); // phase => [leaf fn => [samples, component]]
             $total = 0;
 
             foreach ($log as $entry) {
@@ -76,6 +131,7 @@ if (!class_exists('SSPA_Excimer')) {
                 }
                 $count = max(1, (int) $entry->getEventCount());
                 $total += $count;
+                $phase = $windows ? self::phase_for($offset_ms + $entry->getTimestamp() * 1000, $windows) : null;
 
                 $frames = array();
                 foreach ($trace as $f) {
@@ -105,6 +161,17 @@ if (!class_exists('SSPA_Excimer')) {
                             $by_caller[$name] = array();
                         }
                         $by_caller[$name][$comp] = (isset($by_caller[$name][$comp]) ? $by_caller[$name][$comp] : 0) + $count;
+                        // Per-phase leaf accounting: which functions were actually
+                        // running DURING each request phase - the contextual answer to
+                        // "what is inside this phase's untimed remainder".
+                        if (null !== $phase) {
+                            if (!isset($phase_fns[$phase][$name])) {
+                                $file0 = isset($f['file']) ? (string) $f['file'] : '';
+                                $cls0 = $file0 ? $map->classify_file($file0) : array('component' => 'core');
+                                $phase_fns[$phase][$name] = array('samples' => 0, 'component' => $cls0['component']);
+                            }
+                            $phase_fns[$phase][$name]['samples'] += $count;
+                        }
                     }
                     if (!isset($functions[$name])) {
                         $file = isset($f['file']) ? (string) $f['file'] : '';
@@ -163,6 +230,29 @@ if (!class_exists('SSPA_Excimer')) {
                 $comp_ms[$c] = round($samples * self::PERIOD_MS, 1);
             }
 
+            $phases = array();
+            foreach ($phase_fns as $phase => $fns) {
+                uasort($fns, function ($a, $b) {
+                    return $b['samples'] <=> $a['samples'];
+                });
+                $list = array();
+                $phase_total = 0;
+                foreach ($fns as $name => $info) {
+                    $phase_total += $info['samples'];
+                    if (count($list) < self::MAX_PHASE_FUNCTIONS) {
+                        $list[] = array(
+                            'fn' => $name,
+                            'component' => $info['component'],
+                            'self_ms' => round($info['samples'] * self::PERIOD_MS, 1),
+                        );
+                    }
+                }
+                $phases[$phase] = array(
+                    'total_ms' => round($phase_total * self::PERIOD_MS, 1),
+                    'functions' => $list,
+                );
+            }
+
             return array(
                 'collector' => 'excimer',
                 'period_ms' => self::PERIOD_MS,
@@ -170,6 +260,7 @@ if (!class_exists('SSPA_Excimer')) {
                 'wall_ms' => round($total * self::PERIOD_MS, 1),
                 'functions' => $rows,
                 'components' => $comp_ms,
+                'phases' => $phases,
             );
         }
 

@@ -206,7 +206,9 @@ if (!class_exists('SSPA_Capture')) {
                 'conditionals' => $this->conditionals,
                 'components' => $this->aggregate_components($sql, $http, $mail),
                 'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
-                'profile' => $this->excimer ? $this->excimer->report($map) : null,
+                // Milestones let the sampler bucket its samples into request phases;
+                // 'boot' is built first, so request_end is already stamped.
+                'profile' => $this->excimer ? $this->excimer->report($map, $this->boot_timer ? $this->boot_timer->milestones_ms() : array()) : null,
             );
 
             $json = function_exists('wp_json_encode') ? wp_json_encode($payload) : json_encode($payload);

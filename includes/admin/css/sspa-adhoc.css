@@ -259,9 +259,24 @@
 	color: var(--sspa-muted);
 }
 
-/* Untimed-remainder rows link to the By-function table */
-#sspa-adhoc-pop .sspa-adhoc-tobyfn {
+/* Untimed-remainder rows: expand in place (phase-scoped profiler data) or link to
+   the By-function table (older captures). */
+#sspa-adhoc-pop .sspa-adhoc-tobyfn,
+#sspa-adhoc-pop .sspa-adhoc-untimed {
 	cursor: pointer;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-untimed:hover td {
+	background: var(--sspa-primary-soft);
+}
+
+#sspa-adhoc-pop .sspa-adhoc-fnsub td {
+	background: #fff;
+	border-bottom-color: #f0f0f1;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-fnsub td:first-child {
+	padding-left: 36px;
 }
 
 #sspa-adhoc-pop .sspa-adhoc-tobyfn:hover td {

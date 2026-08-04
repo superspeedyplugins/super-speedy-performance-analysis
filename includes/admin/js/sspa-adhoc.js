@@ -134,8 +134,12 @@
 				var gap = d.boot.segments[k] - shown;
 				if (gap > 1) {
 					var gapLabel = k === 'render_and_output' ? 'theme templates + direct output (untimed)' : 'untimed / core framework';
-					var gapLink = d.profile && d.profile.functions && d.profile.functions.length;
-					left += '<tr class="sspa-adhoc-sub' + (gapLink ? ' sspa-adhoc-tobyfn" title="See the By function table - the sampling profiler names this time' : '') + '" data-parent="' + escAttr(k) + '" style="display:none"><td><small>' + gapLabel + (gapLink ? ' &darr;' : '') + '</small></td><td><small>' + gap.toFixed(1) + 'ms</small></td></tr>';
+					var hasPhaseFns = d.profile && d.profile.phases && d.profile.phases[k] && d.profile.phases[k].functions.length;
+					var gapLink = !hasPhaseFns && d.profile && d.profile.functions && d.profile.functions.length;
+					var cls = 'sspa-adhoc-sub' + (hasPhaseFns ? ' sspa-adhoc-untimed' : '') + (gapLink ? ' sspa-adhoc-tobyfn' : '');
+					var hint = hasPhaseFns ? ' title="Click: the functions the profiler sampled during this phase"' : (gapLink ? ' title="See the By function table - the sampling profiler names this time"' : '');
+					left += '<tr class="' + cls + '" data-parent="' + escAttr(k) + '" data-fns="' + escAttr(k) + '"' + hint + ' style="display:none"><td><small>' + gapLabel + ((hasPhaseFns || gapLink) ? ' &darr;' : '') + '</small></td><td><small>' + gap.toFixed(1) + 'ms</small></td></tr>';
+					left += fnSubRows(d, k);
 				}
 			});
 			left += '</table>';
@@ -157,8 +161,13 @@
 					right += '<tr><td>' + esc(t.label) + ' <small>' + esc(t.hook) + ' · ' + esc(t.component) + '</small></td><td>' + t.ms.toFixed(1) + 'ms</td></tr>';
 				});
 				if (r.untimed_ms !== null && r.untimed_ms > 0) {
-					var linkable = d.profile && d.profile.functions && d.profile.functions.length;
-					right += '<tr' + (linkable ? ' class="sspa-adhoc-tobyfn" title="See the By function table - the sampling profiler names this time"' : '') + '><td>Theme templates + direct output <small>(untimed remainder' + (linkable ? ' - click for the function view' : '') + ')</small></td><td>' + r.untimed_ms.toFixed(1) + 'ms</td></tr>';
+					var renderFns = d.profile && d.profile.phases && d.profile.phases.render_and_output && d.profile.phases.render_and_output.functions.length;
+					var linkable = !renderFns && d.profile && d.profile.functions && d.profile.functions.length;
+					var rcls = renderFns ? ' class="sspa-adhoc-untimed" data-fns="render_and_output" title="Click: the functions the profiler sampled during render"' : (linkable ? ' class="sspa-adhoc-tobyfn" title="See the By function table - the sampling profiler names this time"' : '');
+					right += '<tr' + rcls + '><td>Theme templates + direct output <small>(untimed remainder' + ((renderFns || linkable) ? ' - click for the function view' : '') + ')</small></td><td>' + r.untimed_ms.toFixed(1) + 'ms</td></tr>';
+					if (renderFns) {
+						right += fnSubRows(d, 'render_and_output');
+					}
 				}
 				right += '</table>';
 			}
@@ -194,6 +203,20 @@
 
 	function stat(value, label) {
 		return '<div class="sspa-adhoc-stat"><span class="sspa-adhoc-stat-value">' + esc(value) + '</span><span class="sspa-adhoc-stat-label">' + esc(label) + '</span></div>';
+	}
+
+	// Hidden rows listing what the sampling profiler caught DURING a phase - the
+	// contextual expansion behind each untimed-remainder row.
+	function fnSubRows(d, phaseKey) {
+		var p = d.profile && d.profile.phases ? d.profile.phases[phaseKey] : null;
+		if (!p || !p.functions.length) {
+			return '';
+		}
+		var html = '';
+		p.functions.forEach(function (f) {
+			html += '<tr class="sspa-adhoc-fnsub" data-fnparent="' + escAttr(phaseKey) + '" style="display:none"><td><small><code>' + esc(f.fn) + '</code> · ' + esc(f.component) + '</small></td><td><small>' + f.self_ms.toFixed(1) + 'ms</small></td></tr>';
+		});
+		return html;
 	}
 
 	// What each request phase can expand into, from data the capture already stores.
@@ -342,10 +365,25 @@
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-phase', function () {
 		var row = $(this);
 		var key = row.attr('data-phase');
-		var subs = row.closest('table').find('.sspa-adhoc-sub[data-parent="' + key + '"]');
+		var table = row.closest('table');
+		var subs = table.find('.sspa-adhoc-sub[data-parent="' + key + '"]');
 		var opening = subs.first().is(':hidden');
 		subs.toggle(opening);
+		if (!opening) {
+			// Collapsing a phase also collapses any function view opened inside it.
+			table.find('.sspa-adhoc-fnsub[data-fnparent="' + key + '"]').hide();
+		}
 		row.toggleClass('is-open', opening);
+	});
+
+	// An untimed-remainder row with phase-scoped profiler data expands in place to the
+	// functions sampled during that phase.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-untimed', function (e) {
+		e.stopPropagation();
+		var row = $(this);
+		var key = row.attr('data-fns');
+		var subs = row.closest('table').find('.sspa-adhoc-fnsub[data-fnparent="' + key + '"]');
+		subs.toggle(subs.first().is(':hidden'));
 	});
 
 	// Click a query row: copy the FULL query (the cell only shows the start) and confirm

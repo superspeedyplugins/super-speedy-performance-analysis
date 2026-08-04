@@ -238,6 +238,15 @@ if (!class_exists('SSPA_Boot_Timer')) {
             }
         }
 
+        /** Raw milestones in ms since request start, for cross-referencing other collectors. */
+        public function milestones_ms() {
+            $out = array();
+            foreach ($this->milestones as $k => $v) {
+                $out[$k] = $v * 1000;
+            }
+            return $out;
+        }
+
         /**
          * @param SSPA_Component_Map $map
          * @return array Capture-ready summary.
