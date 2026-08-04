@@ -31,17 +31,35 @@ if (!class_exists('SSPA_Boot_Timer')) {
             // Render phase. the_content is a FILTER - the wrap-on-entry callback passes
             // the value through untouched.
             'wp_head', 'wp_footer', 'the_content',
+            // WooCommerce's template layout hooks: where a shop page's render work
+            // actually lives (breadcrumbs, loop items, summaries, sidebar). Harmless
+            // no-ops on sites without WooCommerce - the hooks simply never fire.
+            'woocommerce_before_main_content', 'woocommerce_archive_description',
+            'woocommerce_before_shop_loop', 'woocommerce_shop_loop',
+            'woocommerce_before_shop_loop_item', 'woocommerce_shop_loop_item_title',
+            'woocommerce_after_shop_loop_item', 'woocommerce_after_shop_loop',
+            'woocommerce_after_main_content', 'woocommerce_before_single_product',
+            'woocommerce_single_product_summary', 'woocommerce_after_single_product_summary',
+            'woocommerce_after_single_product', 'woocommerce_sidebar',
         );
 
         /**
          * Pseudo-hooks + real hooks whose callback time belongs to the RENDER phase, so
          * the "Template render + output" segment can be decomposed per component.
+         * Anything starting woocommerce_ in $hooks is render-phase too (checked by
+         * prefix in is_render_hook()).
          */
-        private static $render_hooks = array('wp_head', 'wp_footer', 'the_content', 'shortcode', 'widget');
+        private static $render_hooks = array('wp_head', 'wp_footer', 'the_content', 'shortcode', 'widget', 'block');
+
+        private static function is_render_hook($hook) {
+            return in_array($hook, self::$render_hooks, true) || 0 === strpos($hook, 'woocommerce_');
+        }
 
         private $milestones = array();   // name => seconds since $timestart
         private $plugin_ms = array();    // plugin file (dir/file.php) => include ms
-        private $callbacks = array();    // [hook, callable, ms]
+        private $callbacks = array();    // [hook, callable, ms, label?]
+        private $wrapped_hooks = array(); // hook => true once its queue is wrapped
+        private $block_stack = array();  // in-flight dynamic block renders
         private $last_mark;
 
         public function install() {
@@ -103,6 +121,45 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $this->wrap_shortcodes();
                 $this->wrap_widgets();
             }, PHP_INT_MAX);
+
+            // Dynamic blocks: pre_render_block/render_block bracket every block render,
+            // so pairing them times each one. Only blocks WITH a render_callback are
+            // tracked - static blocks are stored HTML with no PHP cost worth naming.
+            add_filter('pre_render_block', function ($pre, $parsed = null) {
+                $name = is_array($parsed) && !empty($parsed['blockName']) ? $parsed['blockName'] : null;
+                if ($name && $this->block_is_dynamic($name)) {
+                    $this->block_stack[] = array($name, microtime(true));
+                }
+                return $pre;
+            }, PHP_INT_MIN, 2);
+            add_filter('render_block', function ($content, $parsed = null) {
+                $name = is_array($parsed) && !empty($parsed['blockName']) ? $parsed['blockName'] : null;
+                $depth = count($this->block_stack);
+                if ($name && $depth && $this->block_stack[$depth - 1][0] === $name) {
+                    $entry = array_pop($this->block_stack);
+                    // Only OUTERMOST dynamic blocks are recorded: an inner block's time
+                    // is already inside its parent's, and double counting would push
+                    // the render ledger past the segment total.
+                    if (0 === count($this->block_stack)) {
+                        $this->callbacks[] = array('block', $this->block_callback($name), (microtime(true) - $entry[1]) * 1000, $name);
+                    }
+                }
+                return $content;
+            }, PHP_INT_MAX, 2);
+        }
+
+        private function block_is_dynamic($name) {
+            if (!class_exists('WP_Block_Type_Registry')) {
+                return false;
+            }
+            $type = WP_Block_Type_Registry::get_instance()->get_registered($name);
+            return $type && !empty($type->render_callback);
+        }
+
+        /** The block's render callback, so attribution resolves to the providing plugin. */
+        private function block_callback($name) {
+            $type = WP_Block_Type_Registry::get_instance()->get_registered($name);
+            return ($type && !empty($type->render_callback)) ? $type->render_callback : null;
         }
 
         private function wrap_shortcodes() {
@@ -154,6 +211,14 @@ if (!class_exists('SSPA_Boot_Timer')) {
          */
         private function wrap_pending($hook) {
             global $wp_filter;
+            // Once per hook: the_content and the WooCommerce loop hooks fire once PER
+            // POST/ITEM, and re-wrapping already-wrapped callbacks nests the timers and
+            // counts the same work twice. The wrappers persist, so every later firing
+            // is still timed - only the wrapping happens once.
+            if (isset($this->wrapped_hooks[$hook])) {
+                return;
+            }
+            $this->wrapped_hooks[$hook] = true;
             if (!isset($wp_filter[$hook]) || !($wp_filter[$hook] instanceof WP_Hook)) {
                 return;
             }
@@ -222,7 +287,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $entry = array('hook' => $hook, 'label' => $label, 'component' => $component, 'ms' => round($ms, 2));
                 $top[] = $entry;
 
-                if (in_array($hook, self::$render_hooks, true)) {
+                if (self::is_render_hook($hook)) {
                     $render['timed_ms'] += $ms;
                     $render['components'][$component] =
                         round((isset($render['components'][$component]) ? $render['components'][$component] : 0) + $ms, 2);

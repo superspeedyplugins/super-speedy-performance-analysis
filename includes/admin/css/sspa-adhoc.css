@@ -199,6 +199,39 @@
 	word-break: break-all;
 }
 
+/* Expandable phase rows */
+#sspa-adhoc-pop .sspa-adhoc-phase {
+	cursor: pointer;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-phase:hover td {
+	background: var(--sspa-primary-soft);
+}
+
+#sspa-adhoc-pop .sspa-adhoc-caret {
+	display: inline-block;
+	width: 14px;
+	color: var(--sspa-primary);
+	transition: transform 0.15s ease;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-phase.is-open .sspa-adhoc-caret {
+	transform: rotate(90deg);
+}
+
+#sspa-adhoc-pop .sspa-adhoc-phase-plain {
+	padding-left: 14px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-sub td {
+	background: var(--sspa-surface);
+	border-bottom-color: var(--sspa-outline);
+}
+
+#sspa-adhoc-pop .sspa-adhoc-sub td:first-child {
+	padding-left: 24px;
+}
+
 /* Copyable query rows */
 #sspa-adhoc-pop .sspa-adhoc-qrow {
 	cursor: copy;

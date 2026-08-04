@@ -95,9 +95,27 @@
 				routing_and_query: 'Routing + main query',
 				render_and_output: 'Template render + output'
 			};
-			left += '<h4>Where the PHP time went</h4><table class="sspa-adhoc-table">';
+			left += '<h4>Where the PHP time went <small>Click a phase to expand it</small></h4><table class="sspa-adhoc-table">';
 			Object.keys(d.boot.segments).forEach(function (k) {
-				left += '<tr><td>' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
+				var detail = phaseDetail(d.boot, k);
+				var names = detail ? Object.keys(detail).filter(function (c) { return detail[c] >= 0.5; }) : [];
+				if (!names.length) {
+					left += '<tr><td class="sspa-adhoc-phase-plain">' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
+					return;
+				}
+				names.sort(function (a, b) { return detail[b] - detail[a]; });
+				left += '<tr class="sspa-adhoc-phase" data-phase="' + escAttr(k) + '"><td><span class="sspa-adhoc-caret">&#9656;</span>' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
+				var shown = 0;
+				names.slice(0, 12).forEach(function (c) {
+					left += '<tr class="sspa-adhoc-sub" data-parent="' + escAttr(k) + '" style="display:none"><td><code>' + esc(c) + '</code></td><td>' + detail[c].toFixed(1) + 'ms</td></tr>';
+					shown += detail[c];
+				});
+				// Phases are wall-clock; the detail is only the work our wrappers saw.
+				var gap = d.boot.segments[k] - shown;
+				if (gap > 1) {
+					var gapLabel = k === 'render_and_output' ? 'theme templates + direct output (untimed)' : 'untimed / core framework';
+					left += '<tr class="sspa-adhoc-sub" data-parent="' + escAttr(k) + '" style="display:none"><td><small>' + gapLabel + '</small></td><td><small>' + gap.toFixed(1) + 'ms</small></td></tr>';
+				}
 			});
 			left += '</table>';
 
@@ -136,6 +154,37 @@
 
 	function stat(value, label) {
 		return '<div class="sspa-adhoc-stat"><span class="sspa-adhoc-stat-value">' + esc(value) + '</span><span class="sspa-adhoc-stat-label">' + esc(label) + '</span></div>';
+	}
+
+	// What each request phase can expand into, from data the capture already stores.
+	function phaseDetail(boot, key) {
+		function fromHooks(names) {
+			var out = {};
+			names.forEach(function (n) {
+				var h = boot.hooks && boot.hooks[n];
+				if (h && h.components) {
+					Object.keys(h.components).forEach(function (c) {
+						out[c] = (out[c] || 0) + h.components[c];
+					});
+				}
+			});
+			return out;
+		}
+		switch (key) {
+			case 'plugin_includes':
+				return boot.includes || null;
+			case 'plugins_loaded_callbacks':
+				return fromHooks(['plugins_loaded']);
+			case 'theme_load_and_setup':
+				return fromHooks(['after_setup_theme']);
+			case 'init_callbacks':
+				return fromHooks(['init', 'widgets_init']);
+			case 'post_init_boot':
+				return fromHooks(['wp_loaded', 'rest_api_init']);
+			case 'render_and_output':
+				return (boot.render && boot.render.components) ? boot.render.components : null;
+		}
+		return null;
 	}
 
 	function fetchResult(cb) {
@@ -228,6 +277,16 @@
 
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-rerun', function () {
 		start();
+	});
+
+	// Expand/collapse a request phase into its per-component contributions.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-phase', function () {
+		var row = $(this);
+		var key = row.attr('data-phase');
+		var subs = row.closest('table').find('.sspa-adhoc-sub[data-parent="' + key + '"]');
+		var opening = subs.first().is(':hidden');
+		subs.toggle(opening);
+		row.toggleClass('is-open', opening);
 	});
 
 	// Click a query row: copy the FULL query (the cell only shows the start) and confirm

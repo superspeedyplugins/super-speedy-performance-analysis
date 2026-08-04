@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.9.13
+Stable tag: 0.9.14
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.9.14 (4th August 2026) =
+* NEW: every phase in "Where the PHP time went" is now expandable - click a phase to see which plugins its time belongs to (plugin file loading per plugin, plugins_loaded/init/wp_loaded callbacks per plugin, the render phase per plugin), with anything our instruments could not see honestly labelled. Works on already-stored results too - the data was always captured, just not shown.
+* NEW: much more of the render phase is now timed. WooCommerce's template layout hooks (shop loop, product summaries, sidebar and friends) and every dynamic block render are individually timed and attributed to the plugin that provides them, so the "untimed remainder" shrinks to genuinely just the theme's own template code.
+* FIXED: on archive pages, hooks that fire once per post (the_content, the WooCommerce loop hooks) had their callbacks re-wrapped on every firing, nesting the timers and counting the same work more than once. Wrapping now happens exactly once per hook.
 
 = 0.9.13 (4th August 2026) =
 * The "Analyse this page" panel is now branded and styled to match the Super Speedy design language: purple accents, rounded corners, the Super Speedy Plugins wordmark in the header, and a "Powered by Super Speedy Performance Analysis - free from superspeedyplugins.com" footer, so screenshots of your results say where they came from.
