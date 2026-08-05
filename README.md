@@ -3,9 +3,10 @@
 Free performance analysis for WordPress and WooCommerce. Finds which plugins are costing you
 SQL time, RAM and page speed, with evidence.
 
-**[Download the plugin zip](https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip)**
-from [superspeedyplugins.com](https://www.superspeedyplugins.com/). Once installed it checks
-for its own updates, so new versions appear on your Plugins screen like any other update.
+**[Download the plugin zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip)**
+from the [Releases page](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases).
+Once installed it checks for its own updates, so new versions appear on your Plugins screen
+like any other update.
 
 ## What it does
 
@@ -60,7 +61,7 @@ The whole plugin is drivable without the GUI:
 
 ## Installation
 
-1. [Download the zip](https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip)
+1. [Download the zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip)
    and upload it via Plugins -> Add New -> Upload, or unzip into `wp-content/plugins/`.
 2. Activate it through the Plugins menu.
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
@@ -68,7 +69,7 @@ The whole plugin is drivable without the GUI:
 Or over SSH:
 
 ```
-wp plugin install https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip --activate
+wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --activate
 ```
 
 ## Documentation
