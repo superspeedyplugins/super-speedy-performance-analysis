@@ -9,7 +9,7 @@ Compiled 2026-07-28, refreshed 2026-08-02 against 0.9.2 (git c9d785a).
 | WordPress | **6.2 minimum** | Declared in both `readme.txt` and the plugin header |
 | Tested up to | **6.9** | Current at time of compile |
 | PHP | **7.4 minimum** | |
-| Licence | GPLv2 or later | The plugin is free and ungated |
+| Licence | GPLv3 (since 2026-08-06, was GPLv2 or later) | The plugin is free and ungated |
 
 **WordPress 6.9+ is required for the Abilities API surface only.** Everything else works from
 6.2. The bootstrap gates on `function_exists('wp_register_ability')`, so on older WordPress the

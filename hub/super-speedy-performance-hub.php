@@ -5,7 +5,7 @@
  * Description: Server side of the Super Speedy Performance Analysis community: receives anonymised submissions, serves the signed rules feed. MVP - lives inside the analysis repo for now, graduates to its own repo before superspeedy.org launch. Design: .docs/brainstorm-superspeedy-org-companion.md.
  * Version: 0.1.0
  * Author: Dave Hilditch
- * License: GPLv2 or later
+ * License: GPLv3
  * Text Domain: super-speedy-performance-hub
  */
 

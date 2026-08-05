@@ -88,4 +88,4 @@ your site is a random ID. The public community database this feeds is still bein
 
 ## Licence
 
-GPLv2 or later. The plugin is free and the download is ungated.
+[GPLv3](LICENSE). The plugin is free and the download is ungated.

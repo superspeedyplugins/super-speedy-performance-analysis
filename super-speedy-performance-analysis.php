@@ -6,8 +6,8 @@
  * Version: 0.10.9
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
- * License: GPLv2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * License: GPLv3
+ * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: super-speedy-performance-analysis
  * Requires at least: 6.2
  * Tested up to: 7.0
