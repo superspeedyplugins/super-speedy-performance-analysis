@@ -3,7 +3,7 @@
     "slug": "super-speedy-performance-analysis",
     "version": "0.1",
     "author": "Dave Hilditch (Super Speedy Plugins)",
-    "download_url": "https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip",
+    "download_url": "https://auth.superspeedyplugins.com/wp-json/secure-wpi/v1/download/super-speedy-performance-analysis",
     "authorProfile": "https://superspeedyplugins.com",
     "requires": "WordPress 6.2",
     "tested": "7.0",
