@@ -73,6 +73,11 @@ class SSPA_Probes {
                 'order_needs_payment' => $order_needs_payment,
                 'cart_needs_payment' => (bool) apply_filters('woocommerce_cart_needs_payment', true, null),
                 'pm' => isset($flags['pm']) ? $flags['pm'] : null,
+                // Wiring facts the tests pin down: the payment boundary must be stamped at
+                // ENTRY to payment_complete() (pre_payment_complete), and auto-created
+                // customer accounts must be marked the moment they exist.
+                'pre_mark_hooked' => false !== has_action('woocommerce_pre_payment_complete', array('SSPA_Checkout_Flow', 'mark_payment_complete')),
+                'user_mark_hooked' => false !== has_action('woocommerce_created_customer', array('SSPA_Checkout_Flow', 'mark_temp_user')),
             ));
             exit;
         }

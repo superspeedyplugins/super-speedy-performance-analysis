@@ -232,27 +232,50 @@ class SSPA_Analysis_Engine {
             if (!$capture || empty($capture['http']['calls'])) {
                 continue;
             }
+            // ONE finding per component per step. A purge plugin fires a dozen calls off
+            // one order transition, and a dozen near-identical criticals is noise the
+            // reader has to filter; what they need is the total, the count, and the worst
+            // single call with who made it.
+            $by_component = array();
             foreach ($capture['http']['calls'] as $call) {
-                if (empty($call['blocking']) || null === $call['ms'] || (float) $call['ms'] < $threshold) {
+                if (empty($call['blocking']) || null === $call['ms'] || $this->skip_component($call['component'])) {
                     continue;
                 }
-                if ($this->skip_component($call['component'])) {
-                    continue;
+                $component = $call['component'];
+                if (!isset($by_component[$component])) {
+                    $by_component[$component] = array('calls' => 0, 'ms' => 0.0, 'hosts' => array(), 'failed' => 0, 'worst' => null);
                 }
+                $by_component[$component]['calls']++;
+                $by_component[$component]['ms'] += (float) $call['ms'];
                 $host = (string) strtok((string) $call['url'], '/');
+                $by_component[$component]['hosts'][$host] = true;
+                if (isset($call['code']) && is_string($call['code']) && 0 === strpos($call['code'], 'error:')) {
+                    $by_component[$component]['failed']++;
+                }
+                if (!$by_component[$component]['worst'] || (float) $call['ms'] > (float) $by_component[$component]['worst']['ms']) {
+                    $by_component[$component]['worst'] = $call;
+                }
+            }
+            foreach ($by_component as $component => $agg) {
+                if ($agg['ms'] < $threshold) {
+                    continue;
+                }
+                $worst = $agg['worst'];
                 $this->add(
-                    (float) $call['ms'] >= $threshold * 4 ? 'critical' : 'warn',
+                    $agg['ms'] >= $threshold * 10 ? 'critical' : 'warn',
                     'checkout_blocking_http',
-                    $call['component'],
+                    $component,
                     $p['page_key'],
                     array(
                         'step' => $p['page_key'],
                         'label' => SSPA_Checkout_Flow::step_label($p['page_key']),
-                        'host' => $host,
-                        'url' => $call['url'],
-                        'method' => isset($call['method']) ? $call['method'] : 'GET',
-                        'ms' => round((float) $call['ms'], 1),
-                        'code' => isset($call['code']) ? $call['code'] : null,
+                        'calls' => $agg['calls'],
+                        'ms' => round($agg['ms'], 1),
+                        'failed' => $agg['failed'],
+                        'hosts' => array_slice(array_keys($agg['hosts']), 0, 5),
+                        'worst_ms' => round((float) $worst['ms'], 1),
+                        'worst_url' => $worst['url'] . (!empty($worst['q']) ? '?' . $worst['q'] . '=…' : ''),
+                        'worst_caller' => isset($worst['trace']) && $worst['trace'] ? $worst['trace'] : (isset($worst['caller']) ? $worst['caller'] : null),
                     ),
                     'checkout_blocking_http',
                     'measured'

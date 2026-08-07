@@ -118,6 +118,9 @@
 				esc(inv.order_hooks.map(function (c) { return c.component; }).join(', ')) +
 				(inv.order_hooks_more ? ' and ' + inv.order_hooks_more + ' more' : '') + '</li>';
 		}
+		if (inv.creates_account) {
+			html += '<li>Guest checkout is disabled on this store, so the purchase <strong>creates a customer account</strong>. It is deleted again with the order.</li>';
+		}
 		if (inv.needs_payment_filtered) {
 			html += '<li class="sspa-ck-warn">Another plugin already filters WooCommerce\'s "needs payment" checks. ' +
 				'This run uses those same filters to skip the gateway, so the two may interact.</li>';
@@ -230,14 +233,28 @@
 
 		if (d.mail && d.mail.count) {
 			var deferred = d.notes && d.notes.inventory && d.notes.inventory.emails_deferred;
-			html += '<p class="sspa-adhoc-note"><strong>Mail:</strong> ' + esc(d.mail.count) + ' message' +
-				(1 === d.mail.count ? '' : 's') + ' in ' + ms(d.mail.ms) + ', ' +
-				(deferred ? 'deferred to the background' : 'sent inside the customer\'s wait') + '.</p>';
+			var mailLine = '<strong>Mail:</strong> ' + esc(d.mail.count) + ' message' + (1 === d.mail.count ? '' : 's');
+			if (d.mail.untimed >= d.mail.count) {
+				// A mail plugin replaced WordPress delivery wholesale, so the send is not
+				// separately hook-timed - but its API calls ARE in the outbound list.
+				mailLine += ', sent through a mail plugin\'s own transport - its time appears under outbound calls below';
+			} else {
+				mailLine += ' in ' + ms(d.mail.ms);
+			}
+			mailLine += deferred ? '. Deferred to the background.' : '. Sent inside the customer\'s wait.';
+			html += '<p class="sspa-adhoc-note">' + mailLine + '</p>';
 		}
 		if ((d.http || []).length) {
 			html += '<h4 class="sspa-ck-h4">Outbound calls during the purchase</h4><table class="sspa-adhoc-table sspa-ck-table">';
 			d.http.forEach(function (c) {
-				html += '<tr><td><code>' + esc(c.url) + '</code><div class="sspa-adhoc-note">' + esc(c.step) + ' &middot; ' + esc(c.component) + '</div></td>' +
+				// The query keys matter: "GET /?p=…" is an order-permalink purge, and
+				// without them it displays as a fetch of the bare homepage.
+				var url = c.url + (c.q ? '?' + c.q + '=&hellip;' : '');
+				var failed = c.code && String(c.code).indexOf('error:') === 0;
+				html += '<tr><td><code>' + esc((c.method || 'GET') + ' ' + url) + '</code>' +
+					(failed ? ' <span class="sspa-ck-sev is-critical">failed</span>' : '') +
+					'<div class="sspa-adhoc-note">' + esc(c.step) + ' &middot; ' + esc(c.component) +
+					(c.trace ? ' &middot; ' + esc(c.trace) : (c.caller ? ' &middot; ' + esc(c.caller) : '')) + '</div></td>' +
 					'<td class="sspa-ck-num">' + ms(c.ms) + '</td></tr>';
 			});
 			html += '</table>';
@@ -263,6 +280,10 @@
 					? ', stock is not managed for this product'
 					: ', stock ' + esc(safety.stock_before) + ' &rarr; ' + esc(safety.stock_after) +
 					  (safety.stock_restored_manually ? ' (put back explicitly - cancelling the order did not restore it)' : '')) +
+				(safety.users_deleted
+					? ', ' + esc(safety.users_deleted) + ' auto-created customer account' + (1 === safety.users_deleted ? '' : 's') + ' deleted' +
+					  (safety.users_left ? ' (<strong class="sspa-ck-warn">' + esc(safety.users_left) + ' could not be removed</strong>)' : '')
+					: '') +
 				'.</p>';
 		}
 		(d.notes && d.notes.skipped ? d.notes.skipped : []).forEach(function (s) {

@@ -42,6 +42,7 @@ class SSPA_Checkout_Preflight {
             'order_hooks_more' => 0,
             'needs_payment_filtered' => false,
             'payment_modes' => array(),
+            'creates_account' => null,
             'product' => null,
             'address' => null,
             'email_to' => null,
@@ -62,6 +63,10 @@ class SSPA_Checkout_Preflight {
         $out['needs_payment_filtered'] = (bool) has_filter('woocommerce_cart_needs_payment')
             || (bool) has_filter('woocommerce_order_needs_payment');
         $out['payment_modes'] = SSPA_Checkout_Flow::payment_modes();
+        // Guest checkout disabled means the store creates a customer ACCOUNT for the
+        // purchase. The run marks it at creation and deletes it with the order, but it is
+        // one more thing the run sets off, so the admin is told beforehand.
+        $out['creates_account'] = 'yes' !== get_option('woocommerce_enable_guest_checkout');
 
         $product = SSPA_Checkout_Flow::default_product();
         if ($product) {

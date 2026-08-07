@@ -110,11 +110,11 @@
     },
     "checkout_component_cost": {
       "title": "One plugin owns a large share of your checkout",
-      "body": "This component accounted for a large share of the server time across the whole purchase. That is a hypothesis from attribution, not an experiment - confirm it by running deep analysis on the checkout flow, which re-measures the same purchase with the plugin virtually excluded."
+      "body": "This component accounted for a large share of the server time across the whole purchase. That is attribution from measured stack samples, not an isolation experiment - the decisive test is re-running the checkout flow with the plugin briefly deactivated on a staging copy. Per-plugin checkout isolation is planned for deep analysis."
     },
     "checkout_blocking_http": {
       "title": "Your checkout waits on an outside server",
-      "body": "A blocking outbound HTTP call ran while the customer waited. Tax services, fraud screening, address validation, CRM and accounting syncs are the usual culprits. Ask the plugin's author whether the call can be deferred to a background job or cached; if it cannot, a slow or unreachable third party will slow, and eventually break, your checkout."
+      "body": "Blocking outbound HTTP calls ran while the customer waited. Tax services, fraud screening, address validation, CRM and accounting syncs are the usual culprits - and so are cache-purge plugins that fetch your own site's pages inline: every order status change can set off another round of purges, each one a full page request your customer waits for. If the host shown is your own domain, look at your cache plugin's purge settings first. Otherwise ask the plugin's author whether the call can be deferred to a background job or cached."
     },
     "checkout_mail_inline": {
       "title": "Order emails are sent inside the checkout request",

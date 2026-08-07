@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.11.1
+Stable tag: 0.11.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,14 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.11.2 (7th August 2026) =
+* Fixed the checkout flow's own pre-flight and cleanup steps leaking into the component roll-up, the outbound-call list and the mail totals, which could overstate a cache-purge plugin's cost by a quarter.
+* The payment boundary is now stamped at entry to `payment_complete()`, so order emails, cache purges and integrations hanging off the status transition are reported as post-payment confirmation time rather than time that risks the sale.
+* On stores that disallow guest checkout, the customer account WooCommerce creates for the purchase is now deleted with the order, the pre-flight discloses it, and the hourly janitor sweeps any a crashed run left behind.
+* One `checkout_blocking_http` finding per plugin per step, with the call count, total time and the worst call, instead of one finding per call.
+* Outbound calls now show their method, query-string keys and calling function, so a purge of `/?p=123` no longer displays as a fetch of the bare homepage.
+* Emails sent through a mail plugin that replaces WordPress delivery (Mailgun's HTTP mode and similar) are now all counted and reported as untimed, with their real cost visible under outbound calls, instead of showing as one message in 0ms.
 
 = 0.11.1 (7th August 2026) =
 * The checkout flow now measures the classic shortcode checkout as well as the block checkout, so a store using `[woocommerce_checkout]` no longer gets "Only the block checkout is supported so far".
