@@ -331,35 +331,119 @@ class SSPA_Tools {
         }
         $pkg = $ext_packages[$key];
 
-        $build_deps = array(
-            'apt' => 'sudo apt-get install -y php-pear php' . $env['php_short'] . '-dev',
-            'dnf' => 'sudo dnf install -y php-pear php-devel',
-            'apk' => 'sudo apk add php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-pear php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-dev build-base',
-            'brew' => '# Homebrew PHP already ships pecl',
-            'unknown' => '# Install the PECL toolchain for your distribution (php-pear and the PHP dev headers)',
+        // Excimer has left PECL - upstream states new releases will no longer be published
+        // there (1.2.6 is the last) - and is packaged by every mainstream distro instead.
+        // Where a package exists it IS the whole install: nothing compiles, the package
+        // ships and enables its own ini, and it upgrades alongside PHP, where a hand-built
+        // copy silently stops loading on the next PHP upgrade.
+        if ($key === 'excimer') {
+            $nodot = PHP_MAJOR_VERSION . PHP_MINOR_VERSION;
+            // The versioned package name must come first on apt: a box can carry more than
+            // one PHP (deb.sury.org setups usually do), and the unversioned php-excimer is
+            // a metapackage that installs for the repo's NEWEST PHP - not necessarily the
+            // one this site runs. Stock Debian/Ubuntu only carry the unversioned name,
+            // hence the fallback.
+            $packaged = array(
+                'apt' => 'sudo apt-get install -y php' . $env['php_short'] . '-excimer'
+                    . "\n\n# If that package name is not found (stock Debian/Ubuntu name it without the version):\n"
+                    . 'sudo apt-get install -y php-excimer',
+                'dnf' => "# Needs the Remi repository (rpms.remirepo.net) - stock RHEL/Fedora repositories do not carry it\nsudo dnf install -y php-pecl-excimer",
+                'apk' => 'sudo apk add php' . $nodot . '-pecl-excimer',
+            );
+            // Verify with the versioned CLI binary where the platform has one: plain `php`
+            // can be a different PHP than the site runs, which reports the wrong answer in
+            // both directions.
+            $verify = array(
+                'apt' => 'php' . $env['php_short'] . ' -m | grep excimer',
+                'dnf' => 'php -m | grep excimer',
+                'apk' => 'php' . $nodot . ' -m | grep excimer',
+            );
+            if (isset($packaged[$env['pkg']])) {
+                return array(
+                    array(
+                        'title' => __('1. Install the package', 'super-speedy-performance-analysis'),
+                        'why' => sprintf(
+                            /* translators: 1: detected operating system, 2: detected PHP version */
+                            __('Excimer is packaged for this distribution: nothing to compile, no ini file to write (the package enables itself), and it updates with the rest of the system, where a hand-compiled copy silently stops loading when PHP is upgraded. The command targets PHP %2$s because that is what this site runs - on servers carrying several PHP versions, the unversioned package installs for the newest one instead, which leaves this site without the extension. Detected: %1$s.', 'super-speedy-performance-analysis'),
+                            $env['distro'],
+                            $env['php_short']
+                        ),
+                        'code' => $packaged[$env['pkg']],
+                    ),
+                    array(
+                        'title' => __('2. Restart PHP', 'super-speedy-performance-analysis'),
+                        'why' => sprintf(
+                            /* translators: %s: the detected PHP SAPI */
+                            __('A reload is not enough for a new extension. Detected SAPI: %s.', 'super-speedy-performance-analysis'),
+                            $env['sapi']
+                        ),
+                        'code' => $env['restart'],
+                    ),
+                    array(
+                        'title' => __('3. Check it worked', 'super-speedy-performance-analysis'),
+                        'why' => __('The versioned binary matters: plain `php` on the command line can be a different PHP than the site runs. Then press Re-check on this page - that is the authoritative test, because it asks the exact PHP process serving this site.', 'super-speedy-performance-analysis'),
+                        'code' => $verify[$env['pkg']],
+                    ),
+                );
+            }
+        }
+
+        // Everything below compiles on the server. tideways_xhprof and SPX have never been
+        // published to PECL, so they are always source builds. Excimer only reaches here on
+        // macOS or an unrecognised distro, where pecl - deprecated upstream, but still
+        // carrying excimer 1.2.6 - remains the shortest working path.
+        $source_builds = array(
+            'tideways_xhprof' => array(
+                'repo' => 'https://github.com/tideways/php-xhprof-extension.git',
+                'dir' => 'php-xhprof-extension',
+                'why' => __('tideways_xhprof has never been on PECL, so it is built from source. It is free and open source (Apache 2.0) and sends nothing anywhere.', 'super-speedy-performance-analysis'),
+            ),
+            'spx' => array(
+                'repo' => 'https://github.com/NoiseByNorthwest/php-spx.git',
+                'dir' => 'php-spx',
+                'why' => __('SPX is not on PECL, so it is built from source. Licence: GPL-3.', 'super-speedy-performance-analysis'),
+            ),
         );
+
+        if (isset($source_builds[$key])) {
+            $build_deps = array(
+                'apt' => 'sudo apt-get install -y git build-essential php' . $env['php_short'] . '-dev',
+                'dnf' => 'sudo dnf install -y git make gcc php-devel',
+                'apk' => 'sudo apk add git build-base php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-dev',
+                'brew' => '# Homebrew PHP already ships phpize; install git if missing: brew install git',
+                'unknown' => '# Install git, a C compiler and the PHP development headers for your distribution',
+            );
+        } else {
+            $build_deps = array(
+                'apt' => 'sudo apt-get install -y php-pear php' . $env['php_short'] . '-dev',
+                'dnf' => 'sudo dnf install -y php-pear php-devel',
+                'apk' => 'sudo apk add php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-pear php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-dev build-base',
+                'brew' => '# Homebrew PHP already ships pecl',
+                'unknown' => '# Install the PECL toolchain for your distribution (php-pear and the PHP dev headers)',
+            );
+        }
 
         $steps = array();
         $steps[] = array(
             'title' => __('1. Install the build tools', 'super-speedy-performance-analysis'),
             'why' => sprintf(
                 /* translators: %s: detected operating system */
-                __('PECL compiles the extension, so it needs the PHP development headers. Detected: %s.', 'super-speedy-performance-analysis'),
+                __('The extension is compiled on this server, so it needs the PHP development headers. Detected: %s.', 'super-speedy-performance-analysis'),
                 $env['distro']
             ),
             'code' => isset($build_deps[$env['pkg']]) ? $build_deps[$env['pkg']] : $build_deps['unknown'],
         );
 
-        if ($key === 'spx') {
+        if (isset($source_builds[$key])) {
             $steps[] = array(
-                'title' => __('2. Build and install SPX', 'super-speedy-performance-analysis'),
-                'why' => __('SPX is not on PECL, so it is built from source. Licence: GPL-3.', 'super-speedy-performance-analysis'),
-                'code' => "git clone https://github.com/NoiseByNorthwest/php-spx.git\ncd php-spx\nphpize\n./configure\nmake\nsudo make install",
+                'title' => __('2. Build and install', 'super-speedy-performance-analysis'),
+                'why' => $source_builds[$key]['why'],
+                'code' => 'git clone ' . $source_builds[$key]['repo'] . "\ncd " . $source_builds[$key]['dir'] . "\nphpize\n./configure\nmake\nsudo make install",
             );
         } else {
             $steps[] = array(
                 'title' => __('2. Install the extension', 'super-speedy-performance-analysis'),
-                'why' => __('Both are free and open source (Apache 2.0) and send nothing anywhere. They are local extensions, not a service. If this step fails with "shtool ... does not exist or is not executable", your server mounts /tmp with noexec (a common hardening default) - temporarily allow execution there for the build, then restore it.', 'super-speedy-performance-analysis'),
+                'why' => __('Excimer is free and open source (Apache 2.0) and sends nothing anywhere - a local extension, not a service. PECL itself is deprecated and excimer 1.2.6 is the last version published there, but on this system it is still the shortest working path (the maintained successor is PIE: pie install wikimedia/excimer). If this step fails with "shtool ... does not exist or is not executable", your server mounts /tmp with noexec (a common hardening default) - temporarily allow execution there for the build, then restore it.', 'super-speedy-performance-analysis'),
                 'code' => 'sudo pecl install ' . $pkg . "\n\n"
                     . "# If that fails with a 'shtool ... not executable' error (/tmp is mounted noexec):\n"
                     . "sudo mount -o remount,exec /tmp\n"
@@ -417,14 +501,32 @@ class SSPA_Tools {
             );
         }
 
+        $ini_dir = $env['ini_dir'] !== '' ? $env['ini_dir'] : '(unknown)';
+        if ($key === 'excimer') {
+            // The distro package is the ask: it self-enables and upgrades with PHP, and
+            // excimer's PECL channel is frozen (no new releases are published there).
+            $usual = "  Debian/Ubuntu: sudo apt-get install php" . $env['php_short'] . "-excimer   (or php-excimer where the versioned name does not exist - my site runs PHP " . $env['php_short'] . ", so please install for that version, not the newest on the server)\n"
+                . "  RHEL/Fedora (Remi repository): sudo dnf install php-pecl-excimer\n"
+                . "  Alpine: sudo apk add php" . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . "-pecl-excimer\n"
+                . "  then: " . $env['restart'];
+        } else {
+            $repo = $key === 'spx'
+                ? 'https://github.com/NoiseByNorthwest/php-spx.git'
+                : 'https://github.com/tideways/php-xhprof-extension.git';
+            $usual = "  git clone " . $repo . "\n"
+                . "  phpize && ./configure && make && make install   (in the clone)\n"
+                . "  echo \"extension=" . $key . ".so\" > " . $ini_dir . "/20-" . $key . ".ini\n"
+                . "  " . $env['restart'];
+        }
+
         return sprintf(
-            __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and would like the PHP extension \"%1\$s\" installed.\n\nIt is free and open source, it runs entirely on the server, and it sends no data anywhere. It is a diagnostic profiler.\n\nMy environment as far as I can see it:\n- PHP %2\$s (%3\$s)\n- %4\$s\n- PHP ini scan directory: %5\$s\n\nThe usual install is:\n  sudo pecl install %1\$s\n  echo \"extension=%1\$s.so\" > %5\$s/20-%1\$s.ini\n  %6\$s\n\nIf this is not something you can install on my plan, could you let me know? Thank you.", 'super-speedy-performance-analysis'),
+            __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and would like the PHP extension \"%1\$s\" installed.\n\nIt is free and open source, it runs entirely on the server, and it sends no data anywhere. It is a diagnostic profiler.\n\nMy environment as far as I can see it:\n- PHP %2\$s (%3\$s)\n- %4\$s\n- PHP ini scan directory: %5\$s\n\nThe usual install is:\n%6\$s\n\nIf this is not something you can install on my plan, could you let me know? Thank you.", 'super-speedy-performance-analysis'),
             $key,
             $env['php'],
             $env['sapi'],
             $env['distro'],
-            $env['ini_dir'] !== '' ? $env['ini_dir'] : '(unknown)',
-            $env['restart']
+            $ini_dir,
+            $usual
         );
     }
 }
