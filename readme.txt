@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.11.0
+Stable tag: 0.11.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.11.1 (7th August 2026) =
+* The checkout flow now measures the classic shortcode checkout as well as the block checkout, so a store using `[woocommerce_checkout]` no longer gets "Only the block checkout is supported so far".
+* Fixed the run notes reporting "0 orders deleted" on a checkout flow that failed part way through, when the order had in fact been deleted.
 
 = 0.11.0 (7th August 2026) =
 * New: "Analyse checkout flow" measures the server time your customer waits through at every step of one real purchase, with every plugin on your site active, split at the payment boundary so time that risks the sale is shown separately from time after the money is in.

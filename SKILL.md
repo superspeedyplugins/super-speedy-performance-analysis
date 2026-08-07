@@ -112,8 +112,10 @@ of a six-second checkout), `checkout_mail_inline` and `checkout_dupe_queries`. I
 `no_payment` mode the payment provider's own latency is NOT included - say so rather than
 implying the total is everything the customer waits for.
 
-Only the block checkout is supported; on a shortcode checkout the run reports
-`unsupported_checkout` rather than guessing.
+Both the block checkout and the classic `[woocommerce_checkout]` shortcode are supported; the
+step list differs slightly between them (the classic one has no separate cart-API or
+rate-selection call and no draft order). A checkout page that is neither - one rendered by a
+page builder - reports `unsupported_checkout` rather than guessing at the payload.
 
 ## 6. Cautions
 

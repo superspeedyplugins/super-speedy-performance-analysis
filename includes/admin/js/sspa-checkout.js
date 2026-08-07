@@ -72,14 +72,17 @@
 			body('<p class="sspa-adhoc-error">WooCommerce is not active, so there is no checkout to profile.</p>');
 			return;
 		}
-		if ('block' !== inv.checkout_type) {
-			html += '<p class="sspa-adhoc-error">This store uses the <strong>' + esc(inv.checkout_type) +
-				'</strong> checkout. Only the block checkout is supported so far.</p></div>';
+		if ('block' !== inv.checkout_type && 'classic' !== inv.checkout_type) {
+			html += '<p class="sspa-adhoc-error">This store\'s checkout page uses neither the checkout block ' +
+				'nor the <code>[woocommerce_checkout]</code> shortcode, so there is no purchase flow to drive. ' +
+				'If a page builder renders your checkout, this cannot measure it yet.</p></div>';
 			body(html);
 			return;
 		}
 
-		html += '<p class="sspa-adhoc-note">It buys something, for real, with every plugin on your site active. ' +
+		html += '<p class="sspa-adhoc-note">Measuring your <strong>' +
+			('block' === inv.checkout_type ? 'block' : 'shortcode') + '</strong> checkout. ' +
+			'It buys something, for real, with every plugin on your site active. ' +
 			'That is the point: a run that switches your integrations off measures a store nobody has. ' +
 			'The order is <strong>cancelled and deleted</strong> afterwards and stock is put back.</p>';
 

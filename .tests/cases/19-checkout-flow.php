@@ -409,10 +409,131 @@ $orders_post_fail = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 
 sspa_t($orders_post_fail === $orders_pre_fail, "failed runs created nothing ($orders_pre_fail -> $orders_post_fail)");
 sspa_t((int) wc_get_product($short_id)->get_stock_quantity() === 1, 'failed run left stock alone');
 
-// ---------------------------------------------------------------- teardown
-
+// Remove them before the classic section: they are cheaper than the real target product,
+// so leaving them published would have the next run buy one of THEM, and the stock
+// assertions below would then be checking a product the run never touched.
 wp_delete_post($oos_id, true);
 wp_delete_post($short_id, true);
+wc_delete_product_transients($target_id);
+
+// ---------------------------------------------------------------- 14. the classic checkout
+//
+// The shortcode checkout is a different flow with different failure modes, so it gets its
+// own run rather than being assumed to work because the block one does. The store is
+// pointed at throwaway shortcode pages and put back afterwards; the block pages are never
+// edited.
+
+$orig_cart_page = (int) get_option('woocommerce_cart_page_id');
+$orig_checkout_page = (int) get_option('woocommerce_checkout_page_id');
+$classic_cart = wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'SSPA classic cart', 'post_content' => '[woocommerce_cart]'));
+$classic_checkout = wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'SSPA classic checkout', 'post_content' => '[woocommerce_checkout]'));
+update_option('woocommerce_cart_page_id', $classic_cart);
+update_option('woocommerce_checkout_page_id', $classic_checkout);
+wp_cache_flush();
+
+sspa_t('classic' === SSPA_Checkout_Preflight::checkout_type(), 'shortcode checkout detected as classic');
+
+// The place-order nonce must be bound to the LOGGED-OUT loopback visitor's cart session,
+// not to this process. If a refactor drops either half of that binding these values
+// collapse together, and the run below stops completing.
+$bound = SSPA_Checkout_Flow::guest_nonce('woocommerce-process_checkout', 't_testcustomerid');
+$unbound = SSPA_Checkout_Flow::guest_nonce('woocommerce-process_checkout', '');
+$as_admin = wp_create_nonce('woocommerce-process_checkout');
+sspa_t($bound !== $unbound && $bound !== $as_admin, 'the place-order nonce binds to the cart session, not to this process');
+// update-order-review does NOT start with "woocommerce", so WooCommerce leaves its uid
+// alone and the session must NOT change it.
+sspa_t(SSPA_Checkout_Flow::guest_nonce('update-order-review', 't_testcustomerid')
+    === SSPA_Checkout_Flow::guest_nonce('update-order-review', ''), 'update-order-review stays bound to the logged-out uid');
+
+$orders_pre_classic = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
+$stock_pre_classic = (int) wc_get_product($target_id)->get_stock_quantity();
+delete_option('sspa_test_mail_log');
+
+$classic_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1, 'mail_mode' => 'deliver'));
+if (is_wp_error($classic_run)) {
+    sspa_t(false, 'classic checkout start: ' . $classic_run->get_error_message());
+} else {
+    $deadline = time() + 300;
+    do {
+        SSPA_Run_Controller::process_batch($classic_run);
+        $s = SSPA_Run_Controller::status($classic_run);
+    } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+
+    $classic_row = SSPA_Run_Controller::run_row($classic_run);
+    $classic_notes = json_decode((string) $classic_row['notes'], true);
+    sspa_t('done' === $classic_row['status'] && 'ok' === $classic_notes['outcome'],
+        'classic purchase completed (' . $classic_row['status'] . '/' . $classic_notes['outcome']
+        . (isset($classic_notes['flow']['error']) ? ' - ' . $classic_notes['flow']['error'] : '') . ')');
+    sspa_t('classic' === $classic_notes['flow']['checkout_type'], 'run recorded as a classic checkout');
+    sspa_t(!empty($classic_notes['flow']['session_customer_id']),
+        'the cart session id was read back from the add-to-cart cookie');
+
+    $classic_rows = array();
+    foreach ($wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $profiles_table WHERE run_id = %d ORDER BY id",
+        $classic_run
+    ), ARRAY_A) as $r) {
+        $classic_rows[$r['page_key']] = $r;
+    }
+    // C3's step list: no cart API, no separate rate selection, no draft order.
+    $classic_expected = array(
+        'flow-preflight' => 'GET',
+        'flow-view-product' => 'GET',
+        'flow-add-to-cart' => 'POST',
+        'flow-view-cart' => 'GET',
+        'flow-update-order-review' => 'POST',
+        'flow-view-checkout' => 'GET',
+        'flow-place-order' => 'POST',
+        'flow-order-received' => 'GET',
+        'flow-delete-order' => 'GET',
+    );
+    foreach ($classic_expected as $key => $method) {
+        if (!isset($classic_rows[$key])) {
+            sspa_t(false, "classic step $key was profiled");
+            continue;
+        }
+        $row = $classic_rows[$key];
+        sspa_t(
+            null !== $row['page_gen_ms'] && $row['method'] === $method && null === $row['blocked_by'] && (int) $row['response_code'] < 400,
+            sprintf('classic step %-26s %s %s, gen=%sms', $key, $row['method'], $row['response_code'], round((float) $row['page_gen_ms'], 1))
+        );
+    }
+
+    sspa_t(!empty($classic_notes['flow']['order_total']) && (float) $classic_notes['flow']['order_total'] > 0,
+        'classic order total stayed real (' . $classic_notes['flow']['order_total'] . ')');
+    sspa_t(in_array($classic_notes['flow']['order_status'], array('processing', 'completed', 'on-hold'), true),
+        'classic order reached a payment_complete status (' . $classic_notes['flow']['order_status'] . ')');
+    sspa_t(1 === (int) $classic_notes['safety']['orders_deleted'] && 0 === (int) $classic_notes['safety']['orders_left'],
+        'classic run deleted its order (' . (int) $classic_notes['safety']['orders_deleted'] . ' deleted, ' . (int) $classic_notes['safety']['orders_left'] . ' left)');
+
+    $classic_capture = !empty($classic_rows['flow-place-order']['profile_blob'])
+        ? json_decode((string) @gzuncompress($classic_rows['flow-place-order']['profile_blob']), true)
+        : null;
+    $classic_mark = (is_array($classic_capture) && isset($classic_capture['marks']['payment_complete']))
+        ? (float) $classic_capture['marks']['payment_complete']
+        : null;
+    sspa_t(null !== $classic_mark && $classic_mark > 0 && $classic_mark < (float) $classic_rows['flow-place-order']['page_gen_ms'],
+        'classic payment boundary marked at ' . round((float) $classic_mark, 1) . 'ms');
+
+    $classic_mail = get_option('sspa_test_mail_log', array());
+    sspa_t(count($classic_mail) >= 1, 'classic run sent order emails for real (' . count($classic_mail) . ')');
+
+    $orders_post_classic = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
+    sspa_t($orders_post_classic === $orders_pre_classic, "classic zero order residue ($orders_pre_classic -> $orders_post_classic)");
+    sspa_t((int) wc_get_product($target_id)->get_stock_quantity() === $stock_pre_classic,
+        "classic stock restored ($stock_pre_classic -> " . (int) wc_get_product($target_id)->get_stock_quantity() . ')');
+    sspa_t(false === get_option(SSPA_Checkout_Flow::TEMP_OPTION, false), 'classic run cleared sspa_flow_temp');
+}
+
+update_option('woocommerce_cart_page_id', $orig_cart_page);
+update_option('woocommerce_checkout_page_id', $orig_checkout_page);
+wp_delete_post($classic_cart, true);
+wp_delete_post($classic_checkout, true);
+wp_cache_flush();
+sspa_t('block' === SSPA_Checkout_Preflight::checkout_type(), 'store put back on the block checkout');
+
+// ---------------------------------------------------------------- teardown
+
 $target = wc_get_product($target_id);
 $target->set_manage_stock($restore_stock_settings['manage']);
 $target->set_stock_quantity($restore_stock_settings['qty']);
