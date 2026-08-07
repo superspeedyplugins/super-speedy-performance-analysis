@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.9
+Stable tag: 0.10.10
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.10 (7th August 2026) =
+* Fixed the spot-check offered after you activate or deactivate a plugin re-running itself every time the page reloaded, instead of stopping once its results were in.
+* The spot-check notice now clears once you take it up, not only when you dismiss it.
 
 = 0.10.9 (4th August 2026) =
 * The Tools tab leads with excimer - it is the single biggest capability upgrade a site can make, and the page says so plainly: "if you install one thing, install excimer". Its card describes everything it unlocks (the function view, driven-by splits, per-phase drill-downs) and switches to Active with an in-use description once installed.

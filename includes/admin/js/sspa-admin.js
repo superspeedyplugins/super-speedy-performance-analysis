@@ -2,15 +2,34 @@ jQuery(function () {
 	var hash = window.location.hash.replace('#', '');
 	sspa_click_tab(hash || 'overview');
 
+	// A finished run reloads the page, so sspa_autospot must be consumed exactly once -
+	// left in the URL it would re-arm on every reload and loop the analysis forever.
+	var autospot = window.location.search.indexOf('sspa_autospot=1') !== -1;
+	if (autospot) {
+		sspa_strip_autospot_param();
+	}
+
 	// Resume the floating monitor if a run is already active when the page loads.
 	var active = parseInt(jQuery('#sspa-runner').data('active-run'), 10);
 	if (active) {
 		sspa_drive_run(active);
-	} else if (window.location.search.indexOf('sspa_autospot=1') !== -1) {
+	} else if (autospot) {
 		// Arrived from the plugin-toggle notice: run a quick spot profile of key pages.
 		sspa_start_typed_run({ 'page_keys[]': ['home', 'shop', 'baseline'] }, jQuery('#sspa-run-analysis'));
 	}
 });
+
+function sspa_strip_autospot_param() {
+	if (!window.history || !window.history.replaceState) {
+		return;
+	}
+	var search = window.location.search
+		.replace(/([?&])sspa_autospot=1(&|$)/, function (m, before, after) {
+			return after ? before : '';
+		})
+		.replace(/[?&]$/, '');
+	window.history.replaceState(null, null, window.location.pathname + search + window.location.hash);
+}
 
 // Re-check the Tools tab in place - no page reload, so the active tab is kept.
 jQuery(document).on('click', '#sspa-tools-recheck', function () {
