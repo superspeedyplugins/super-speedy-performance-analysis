@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.11.2
+Stable tag: 0.11.3
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.11.3 (7th August 2026) =
+* New deterministic misbehaviour signatures in the checkout analysis, matched by behaviour so white-labelled and hosting-installed forks are caught identically: `checkout_purge_order_pages` (a cache plugin "purging" the order itself - with HPOS that is a request to `/?p=<order id>` that renders a slow 404, fired on every order note), `checkout_amp_purge_missing` (purging `/amp/` pages on a site with no AMP plugin, each one a full 404 render), and `checkout_self_fetch_failed` (the site calling its own URL and timing out while the customer waits). Each finding names the calling plugin and the specific fix.
+* Outbound calls keep the values of safe routing keys (`p`, `page_id` and similar), never anything else, so the target of a purge is identifiable.
 
 = 0.11.2 (7th August 2026) =
 * Fixed the checkout flow's own pre-flight and cleanup steps leaking into the component roll-up, the outbound-call list and the mail totals, which could overstate a cache-purge plugin's cost by a quarter.

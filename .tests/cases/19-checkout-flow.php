@@ -53,19 +53,25 @@ $plant('sspa-slow-integration', <<<'PHP'
 /** Plugin Name: SSPA Slow Integration (test fixture) */
 add_action('init', function () {
     if (isset($_GET['sspa_test_slow'])) {
-        usleep(150000);
+        usleep(isset($_GET['long']) ? 1400000 : 150000);
         header('Content-Type: text/plain');
         echo 'slow-endpoint-ok';
         exit;
     }
 });
-// TWO calls on payment_complete: the blocking-http finding must aggregate them into one
-// finding that says "2 calls", not two findings. One more on CANCELLATION: that fires
-// during the harness's own delete step, and must never surface in the customer-facing
-// outbound list or the roll-up.
+// The misbehaviours a real purge stack exhibited, all on payment_complete:
+// - two plain slow calls: the blocking-http finding must aggregate them into ONE finding
+// - a fetch of the ORDER's own permalink (/?p=<order id>) - the HPOS purge signature
+// - a fetch of /amp/ with no AMP plugin installed - the phantom-AMP purge signature
+// - a call that times out (1.4s endpoint, 1s timeout) - the failing self-fetch signature
+// Plus one on CANCELLATION: that fires during the harness's own delete step and must
+// never surface in the customer-facing outbound list or the roll-up.
 add_action('woocommerce_payment_complete', function ($order_id) {
     wp_remote_get(home_url('/?sspa_test_slow=1&n=1&order=' . (int) $order_id), array('timeout' => 10));
     wp_remote_get(home_url('/?sspa_test_slow=1&n=2&order=' . (int) $order_id), array('timeout' => 10));
+    wp_remote_get(home_url('/?p=' . (int) $order_id), array('timeout' => 10));
+    wp_remote_get(home_url('/amp/'), array('timeout' => 10));
+    wp_remote_get(home_url('/?sspa_test_slow=1&long=1'), array('timeout' => 1));
 }, 10, 1);
 add_action('woocommerce_order_status_cancelled', function ($order_id) {
     wp_remote_get(home_url('/?sspa_test_slow=1&cancel=1&order=' . (int) $order_id), array('timeout' => 10));
@@ -332,14 +338,30 @@ foreach ($blocking as $f) {
         $fixture_findings[] = json_decode($f['evidence'], true);
     }
 }
-// One aggregated finding for its two calls, never one finding per call.
-sspa_t(1 === count($fixture_findings), 'the planted blocking calls produced ONE finding (' . count($fixture_findings) . ')');
+// One aggregated finding for its five calls, never one finding per call.
+sspa_t(1 === count($fixture_findings), 'the planted blocking calls produced ONE blocking-http finding (' . count($fixture_findings) . ')');
 if ($fixture_findings) {
     $ev = $fixture_findings[0];
-    sspa_t(2 === (int) $ev['calls'] && (float) $ev['ms'] >= 250,
-        'the finding aggregates both calls (' . (int) $ev['calls'] . ' calls, ' . round((float) $ev['ms']) . 'ms)');
+    sspa_t(5 === (int) $ev['calls'] && (float) $ev['ms'] >= 1000,
+        'the finding aggregates all five calls (' . (int) $ev['calls'] . ' calls, ' . round((float) $ev['ms']) . 'ms)');
 }
 sspa_t(isset($findings['checkout_mail_inline']), 'order emails sent in-request were reported as such');
+
+// The three deterministic misbehaviour signatures, each matched by BEHAVIOUR against the
+// fixture's mimicry of a real purge stack, and each attributed to the fixture plugin.
+foreach (array(
+    'checkout_purge_order_pages' => 'the order-permalink purge (HPOS /?p=<order id>) is recognised',
+    'checkout_amp_purge_missing' => 'the phantom-AMP purge (no AMP plugin, /amp/ fetch) is recognised',
+    'checkout_self_fetch_failed' => 'the failing self-fetch (timeout) is recognised',
+) as $sig_type => $sig_label) {
+    $sig_hit = null;
+    foreach ((array) (isset($findings[$sig_type]) ? $findings[$sig_type] : array()) as $f) {
+        if ('sspa-slow-integration' === $f['component']) {
+            $sig_hit = json_decode($f['evidence'], true);
+        }
+    }
+    sspa_t(null !== $sig_hit, $sig_label . ($sig_hit ? ' (' . round((float) $sig_hit['ms']) . 'ms)' : ''));
+}
 
 // The waterfall's customer-facing panels must contain NOTHING from the harness steps.
 // The fixture makes a call during cancellation - i.e. during our delete step - and it
@@ -364,7 +386,7 @@ foreach ((array) $wf_check['http'] as $c) {
     }
 }
 sspa_t(0 === $harness_leak, "no harness calls leak into the outbound list ($harness_leak leaked)");
-sspa_t(2 === $fixture_calls, "both customer-facing fixture calls listed ($fixture_calls)");
+sspa_t(5 === $fixture_calls, "all customer-facing fixture calls listed ($fixture_calls)");
 sspa_t($has_q, 'outbound calls keep their query-string keys');
 sspa_t($has_trace, 'outbound calls carry the calling function');
 $rollup_steps = array();
