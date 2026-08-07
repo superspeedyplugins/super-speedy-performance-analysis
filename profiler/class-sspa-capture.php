@@ -110,13 +110,22 @@ if (!class_exists('SSPA_Capture')) {
             } elseif (is_array($response) && isset($response['response']['code'])) {
                 $code = $response['response']['code'];
             }
-            // Query-string KEYS only: values routinely carry secrets, but the keys are
-            // what distinguish "GET /" from "GET /?p=123" - without them a purge plugin
-            // fetching an order permalink displays as a fetch of the bare homepage.
+            // Query-string keys, with VALUES kept only for a whitelist of WordPress
+            // routing keys that cannot carry secrets. The keys distinguish "GET /" from
+            // "GET /?p=123"; the whitelisted values are what let the analysis engine
+            // resolve WHICH post a purge plugin fetched (an HPOS order placeholder's
+            // permalink is /?p=<order id>). Everything else is reduced to its bare key.
             $q = null;
             if (isset($parts['query']) && '' !== $parts['query']) {
                 parse_str($parts['query'], $q_args);
-                $q = implode('&', array_keys($q_args));
+                $safe_keys = array('p', 'page_id', 'post_type', 'attachment_id', 'paged');
+                $pairs = array();
+                foreach ($q_args as $q_key => $q_value) {
+                    $pairs[] = (in_array($q_key, $safe_keys, true) && is_scalar($q_value))
+                        ? $q_key . '=' . $q_value
+                        : $q_key;
+                }
+                $q = implode('&', $pairs);
             }
             $this->http_calls[] = array(
                 'url' => (isset($parts['host']) ? $parts['host'] : '') . (isset($parts['path']) ? $parts['path'] : ''),

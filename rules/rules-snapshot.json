@@ -15,7 +15,8 @@
     "rows_examined_min": 1000,
     "checkout_slow_step_ms": 800,
     "checkout_component_share_pct": 25,
-    "checkout_http_ms": 50
+    "checkout_http_ms": 50,
+    "checkout_self_fetch_ms": 1000
   },
   "recommendations": {
     "slow_query_postmeta": {
@@ -123,6 +124,18 @@
     "checkout_dupe_queries": {
       "title": "A checkout step repeats the same query",
       "body": "Byte-identical queries ran several times inside one step, so the same rows were fetched more than once. That is normally a missing cache or a lookup inside a loop in the component named. On checkout it is worth fixing even when each query is fast, because it happens at the moment the customer is most likely to leave."
+    },
+    "checkout_purge_order_pages": {
+      "title": "Your cache plugin purges the order itself on every checkout",
+      "body": "A cache-purge plugin treated the new order as a page and fetched its permalink to purge it. Orders are not public pages: with WooCommerce's High-Performance Order Storage that URL is a placeholder draft at /?p=<order id>, so each purge is a slow request to a page that does not exist, often running to the HTTP timeout - and it fires again on every order note and status change. The placeholder post cannot be removed; it is how HPOS stays compatible with older code. The fix is to stop the purge plugin reacting to order post types: with nginx-helper the trigger is its comment hook (order notes are comments), which can be unhooked for order notes, or every such request short-circuited via pre_http_request. Scalability Pro's checkout purge shield does this automatically."
+    },
+    "checkout_amp_purge_missing": {
+      "title": "Your cache plugin purges AMP pages this site does not have",
+      "body": "The purge plugin fetches the /amp/ variant of each purged URL as a plain request, and with no AMP plugin installed every one of those renders a full 404 page while your customer waits. In nginx-helper this is the Purge AMP URL setting - turn it off, or let Scalability Pro's checkout purge shield drop these requests. If you later add AMP, turn it back on."
+    },
+    "checkout_self_fetch_failed": {
+      "title": "Your site calls itself during checkout and the call fails",
+      "body": "A blocking request from this site to its own URL ran until it failed or timed out, while the customer waited, and the response was never usable. This is almost always a cache purge or preload gone wrong - the caller is shown on the outbound call. Fix the calling plugin's configuration or defer the call; a failing self-request is pure wasted checkout time."
     }
   },
   "categories": {

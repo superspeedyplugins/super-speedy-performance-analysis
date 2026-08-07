@@ -620,7 +620,7 @@ class SSPA_Run_Controller {
         $flow_notes = isset($result['notes']) ? $result['notes'] : array();
 
         $engine = new SSPA_Analysis_Engine();
-        $findings = $engine->analyse_checkout($run_id, $inventory);
+        $findings = $engine->analyse_checkout($run_id, $inventory, $flow_notes);
 
         $notes = array(
             'type' => 'checkout',

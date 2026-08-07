@@ -71,9 +71,10 @@ class SSPA_Analysis_Engine {
      * from every total here, exactly as they are in the panel (doc T9 rule 1).
      *
      * @param array|null $inventory The pre-flight inventory, when one was gathered.
+     * @param array      $flow_notes The flow's run notes (order ids, checkout type ...).
      * @return int findings written
      */
-    public function analyse_checkout($run_id, $inventory = null) {
+    public function analyse_checkout($run_id, $inventory = null, $flow_notes = array()) {
         global $wpdb;
         $this->run_id = (int) $run_id;
         $this->findings = 0;
@@ -99,10 +100,123 @@ class SSPA_Analysis_Engine {
         $this->checkout_slow_steps();
         $this->checkout_component_cost();
         $this->checkout_blocking_http();
+        $this->checkout_http_signatures(is_array($flow_notes) ? $flow_notes : array());
         $this->checkout_mail_inline($inventory);
         $this->checkout_dupe_queries();
 
         return $this->findings;
+    }
+
+    /**
+     * Deterministic misbehaviour signatures over the outbound-call data. No sampling, no
+     * guesswork, no LLM: each one is a predicate a call either matches or does not, and
+     * each carries a specific fix. The predicates are code; the thresholds and every word
+     * of the recommendations come from the rules feed, so the copy can improve - and new
+     * finding types can gain copy - without a plugin release.
+     *
+     * The three shipped signatures all came out of one real store's first run:
+     *
+     * - order_page_purge: a call to this site whose ?p= id is one of the run's own order
+     *   ids. A purge/cache plugin is "purging" the order itself - with HPOS that URL is a
+     *   placeholder draft that renders as a slow 404, and it fires on every order note.
+     * - amp_purge_missing: a call to this site's /amp/ variant of a page when no AMP
+     *   plugin is active. Each "purge" renders a full 404 page the customer waits for.
+     * - self_fetch_failed: a blocking call to this site's own URL that errored after at
+     *   least the threshold. Whatever it was for, the customer waited for a request whose
+     *   response was never used.
+     *
+     * Matching is by BEHAVIOUR, never by plugin name, so a renamed or white-labelled fork
+     * (hosting companies ship these) is caught identically; attribution names whichever
+     * component actually made the call.
+     */
+    private function checkout_http_signatures($flow_notes) {
+        $home_host = (string) wp_parse_url(home_url(), PHP_URL_HOST);
+        if ('' === $home_host) {
+            return;
+        }
+        $order_ids = array_map('intval', (array) (isset($flow_notes['order_ids']) ? $flow_notes['order_ids'] : array()));
+        $amp_active = defined('AMP__VERSION') || defined('AMPFORWP_VERSION') || function_exists('amp_is_enabled');
+        $fail_ms = (float) SSPA_Rules::threshold('checkout_self_fetch_ms');
+        if ($fail_ms <= 0) {
+            $fail_ms = 1000;
+        }
+
+        // sig => component => {calls, ms, worst, step}
+        $matches = array();
+        foreach ($this->profiles as $p) {
+            $capture = isset($this->captures[(int) $p['id']]) ? $this->captures[(int) $p['id']] : null;
+            if (!$capture || empty($capture['http']['calls'])) {
+                continue;
+            }
+            foreach ($capture['http']['calls'] as $call) {
+                if (empty($call['blocking']) || $this->skip_component($call['component'])) {
+                    continue;
+                }
+                $call_host = (string) strtok((string) $call['url'], '/');
+                if (0 !== strcasecmp($call_host, $home_host)) {
+                    continue; // every signature here is about the site calling itself
+                }
+                $path = substr((string) $call['url'], strlen($call_host));
+                $q = array();
+                if (!empty($call['q'])) {
+                    parse_str((string) $call['q'], $q);
+                }
+
+                $sig = null;
+                if (isset($q['p']) && in_array((int) $q['p'], $order_ids, true)) {
+                    $sig = 'order_page_purge';
+                } elseif (!$amp_active && '/amp/' === substr($path, -5)) {
+                    $sig = 'amp_purge_missing';
+                } elseif (null !== $call['ms'] && (float) $call['ms'] >= $fail_ms
+                    && isset($call['code']) && is_string($call['code']) && 0 === strpos($call['code'], 'error:')) {
+                    $sig = 'self_fetch_failed';
+                }
+                if (null === $sig) {
+                    continue;
+                }
+                $component = $call['component'];
+                if (!isset($matches[$sig][$component])) {
+                    $matches[$sig][$component] = array('calls' => 0, 'ms' => 0.0, 'worst' => null, 'step' => $p['page_key']);
+                }
+                $matches[$sig][$component]['calls']++;
+                $matches[$sig][$component]['ms'] += (float) $call['ms'];
+                if (!$matches[$sig][$component]['worst'] || (float) $call['ms'] > (float) $matches[$sig][$component]['worst']['ms']) {
+                    $matches[$sig][$component]['worst'] = $call;
+                    $matches[$sig][$component]['step'] = $p['page_key'];
+                }
+            }
+        }
+
+        $types = array(
+            'order_page_purge' => 'checkout_purge_order_pages',
+            'amp_purge_missing' => 'checkout_amp_purge_missing',
+            'self_fetch_failed' => 'checkout_self_fetch_failed',
+        );
+        foreach ($matches as $sig => $components) {
+            foreach ($components as $component => $agg) {
+                $worst = $agg['worst'];
+                $this->add(
+                    // Purging the order itself is always wrong; the others earn critical
+                    // by cost.
+                    ('order_page_purge' === $sig || $agg['ms'] >= 1000) ? 'critical' : 'warn',
+                    $types[$sig],
+                    $component,
+                    $agg['step'],
+                    array(
+                        'step' => $agg['step'],
+                        'label' => SSPA_Checkout_Flow::step_label($agg['step']),
+                        'calls' => $agg['calls'],
+                        'ms' => round($agg['ms'], 1),
+                        'worst_ms' => round((float) $worst['ms'], 1),
+                        'worst_url' => $worst['url'] . (!empty($worst['q']) ? '?' . $worst['q'] : ''),
+                        'worst_caller' => !empty($worst['trace']) ? $worst['trace'] : (isset($worst['caller']) ? $worst['caller'] : null),
+                        'code' => isset($worst['code']) ? $worst['code'] : null,
+                    ),
+                    $types[$sig],
+                    'measured'
+                );
+            }
+        }
     }
 
     /** @return float Total server time the customer waited across the measured steps. */

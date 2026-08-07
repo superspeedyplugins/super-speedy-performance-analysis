@@ -585,6 +585,11 @@ class SSPA_Checkout_Flow {
             self::verify_stock($product->get_id(), $result);
             self::delete_sessions(array_merge(array($customer_id), $jar['session_keys']), $result);
             self::delete_temp_users($result);
+            // The (now deleted) order ids go in the notes so the analysis engine can
+            // recognise a purge/cache plugin that fetched the ORDER's own permalink -
+            // with HPOS that URL is /?p=<order id>, and matching the id is what makes
+            // the detection deterministic.
+            $result['notes']['order_ids'] = $result['order_ids'];
         }
 
         return $result;
