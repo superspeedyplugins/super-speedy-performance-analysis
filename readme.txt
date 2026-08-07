@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.11
+Stable tag: 0.10.12
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -25,11 +25,14 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Installation ==
 
-1. Upload the plugin to /wp-content/plugins/ or install the zip from https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip
+1. Upload the plugin to /wp-content/plugins/ or install the zip from https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest
 2. Activate it through the Plugins menu.
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.10.12 (7th August 2026) =
+* The installation instructions now point at the GitHub Releases download, https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest
 
 = 0.10.11 (7th August 2026) =
 * Restored the plugin's own update check against superspeedyplugins.com, so new versions show up on your Plugins screen again. If you are on 0.9.3 to 0.10.10, install this one by hand once from https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest and updates arrive on their own from then on.
