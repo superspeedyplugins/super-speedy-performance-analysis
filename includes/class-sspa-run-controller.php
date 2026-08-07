@@ -635,6 +635,8 @@ class SSPA_Run_Controller {
                 'stock_before' => isset($flow_notes['stock_before']) ? $flow_notes['stock_before'] : null,
                 'stock_after' => isset($flow_notes['stock_after']) ? $flow_notes['stock_after'] : null,
                 'stock_restored_manually' => !empty($flow_notes['stock_restored_manually']),
+                'users_deleted' => isset($flow_notes['users_deleted']) ? (int) $flow_notes['users_deleted'] : 0,
+                'users_left' => isset($flow_notes['users_left']) ? (int) $flow_notes['users_left'] : 0,
             ),
             'inventory' => is_array($inventory) ? array(
                 'emails_deferred' => isset($inventory['emails_deferred']) ? (bool) $inventory['emails_deferred'] : null,
@@ -1264,7 +1266,11 @@ class SSPA_Run_Controller {
                 $keep[] = $entry; // still plausibly in flight
                 continue;
             }
-            self::delete_marked_order((int) $entry['id']);
+            if (isset($entry['type']) && 'user' === $entry['type']) {
+                self::delete_marked_user((int) $entry['id']);
+            } else {
+                self::delete_marked_order((int) $entry['id']);
+            }
         }
         if ($keep) {
             update_option(SSPA_Checkout_Flow::TEMP_OPTION, $keep, false);
@@ -1296,6 +1302,34 @@ class SSPA_Run_Controller {
             }
             self::delete_marked_order($id);
         }
+
+        // Marked customer accounts a crash orphaned (the store auto-creates one per
+        // purchase when guest checkout is disabled).
+        $stale_users = get_users(array(
+            'meta_key' => SSPA_Checkout_Flow::TEMP_META,
+            'meta_value' => '1',
+            'number' => 50,
+            'fields' => 'all',
+        ));
+        foreach ($stale_users as $user) {
+            if (strtotime($user->user_registered . ' UTC') < $cutoff) {
+                self::delete_marked_user((int) $user->ID);
+            }
+        }
+    }
+
+    /**
+     * A customer account a crashed run left behind - one the store auto-created for the
+     * purchase because guest checkout is disabled. Only ever one carrying our marker.
+     */
+    private static function delete_marked_user($user_id) {
+        if (!get_user_meta($user_id, SSPA_Checkout_Flow::TEMP_META, true)) {
+            return;
+        }
+        if (!function_exists('wp_delete_user')) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+        }
+        wp_delete_user($user_id);
     }
 
     private static function delete_marked_order($order_id) {

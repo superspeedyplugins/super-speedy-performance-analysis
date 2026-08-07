@@ -31,6 +31,30 @@ failure path returned a copy of `$result` taken before cleanup recorded anything
 really was deleted, but the notes and the panel's safety report both said "0 orders deleted".
 Both paths are now separate methods called from a single try/catch/finally.
 
+**0.11.2 corrections, from the first run against the real superspeedyplugins.com store**
+(full account in `.changelog-full.md`):
+
+- **A6.4 named the wrong hook.** The boundary belongs at `woocommerce_pre_payment_complete`
+  (entry to `payment_complete()`), not the trailing `woocommerce_payment_complete` action:
+  the status transition, the order emails and everything hooked on the transition run
+  BETWEEN the two, and were being filed as at-risk time when they are confirmation-wait.
+- **The scope rule was violated by the panels.** `waterfall()` collected the roll-up, the
+  outbound-call list and the mail totals before its harness-step exclusion, so the delete
+  step's purge cascade counted against the store. T9's rule now genuinely covers all four
+  outputs, and case 19 asserts it with a fixture that fires HTTP on cancellation.
+- **"Real order, real everything" includes a real ACCOUNT on stores that disallow guest
+  checkout** - the Store API auto-creates one, C1's cleanup list did not cover it, and one
+  was left on the live store. Accounts are now marked via `woocommerce_created_customer`,
+  deleted with the order, disclosed in the pre-flight and swept by the janitor.
+- **A7 fact 7 has a hole**: a mailer that REPLACES the pluggable `wp_mail()` (Mailgun HTTP
+  mode) applies the `wp_mail` filter but fires neither `wp_mail_succeeded` nor
+  `wp_mail_failed`, so consecutive sends overwrote the pending entry and three emails
+  counted as one. Deliver mode now flushes the previous pending send on each new start.
+- **The capture's host+path URL display hid the whole story**: with HPOS, purging an
+  order's "post" fetches `/?p=<placeholder id>` - path `/` - which displayed as the bare
+  homepage. Query-string KEYS (never values) and an in-component caller trace are now
+  captured and shown.
+
 Corrections and deviations found while building. This doc has NOT been rewritten to hide
 them - read each alongside the task it belongs to.
 

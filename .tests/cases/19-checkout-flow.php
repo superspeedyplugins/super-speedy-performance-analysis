@@ -59,8 +59,16 @@ add_action('init', function () {
         exit;
     }
 });
+// TWO calls on payment_complete: the blocking-http finding must aggregate them into one
+// finding that says "2 calls", not two findings. One more on CANCELLATION: that fires
+// during the harness's own delete step, and must never surface in the customer-facing
+// outbound list or the roll-up.
 add_action('woocommerce_payment_complete', function ($order_id) {
-    wp_remote_get(home_url('/?sspa_test_slow=1&order=' . (int) $order_id), array('timeout' => 10));
+    wp_remote_get(home_url('/?sspa_test_slow=1&n=1&order=' . (int) $order_id), array('timeout' => 10));
+    wp_remote_get(home_url('/?sspa_test_slow=1&n=2&order=' . (int) $order_id), array('timeout' => 10));
+}, 10, 1);
+add_action('woocommerce_order_status_cancelled', function ($order_id) {
+    wp_remote_get(home_url('/?sspa_test_slow=1&cancel=1&order=' . (int) $order_id), array('timeout' => 10));
 }, 10, 1);
 PHP
 );
@@ -318,14 +326,53 @@ foreach ($wpdb->get_results($wpdb->prepare(
     $findings[$f['finding_type']][] = $f;
 }
 $blocking = isset($findings['checkout_blocking_http']) ? $findings['checkout_blocking_http'] : array();
-$caught_fixture = false;
+$fixture_findings = array();
 foreach ($blocking as $f) {
     if ('sspa-slow-integration' === $f['component']) {
-        $caught_fixture = true;
+        $fixture_findings[] = json_decode($f['evidence'], true);
     }
 }
-sspa_t($caught_fixture, 'the planted blocking HTTP call was caught and attributed to its plugin');
+// One aggregated finding for its two calls, never one finding per call.
+sspa_t(1 === count($fixture_findings), 'the planted blocking calls produced ONE finding (' . count($fixture_findings) . ')');
+if ($fixture_findings) {
+    $ev = $fixture_findings[0];
+    sspa_t(2 === (int) $ev['calls'] && (float) $ev['ms'] >= 250,
+        'the finding aggregates both calls (' . (int) $ev['calls'] . ' calls, ' . round((float) $ev['ms']) . 'ms)');
+}
 sspa_t(isset($findings['checkout_mail_inline']), 'order emails sent in-request were reported as such');
+
+// The waterfall's customer-facing panels must contain NOTHING from the harness steps.
+// The fixture makes a call during cancellation - i.e. during our delete step - and it
+// must not appear; the two payment_complete calls must, with query keys and a trace.
+$wf_check = SSPA_Checkout_Flow::waterfall($run_id);
+$harness_leak = 0;
+$fixture_calls = 0;
+$has_q = false;
+$has_trace = false;
+foreach ((array) $wf_check['http'] as $c) {
+    if (in_array($c['step'], array('flow-delete-order', 'flow-preflight'), true)) {
+        $harness_leak++;
+    }
+    if ('sspa-slow-integration' === $c['component'] && 'flow-place-order' === $c['step']) {
+        $fixture_calls++;
+        if (!empty($c['q']) && false !== strpos($c['q'], 'sspa_test_slow')) {
+            $has_q = true;
+        }
+        if (!empty($c['trace']) || !empty($c['caller'])) {
+            $has_trace = true;
+        }
+    }
+}
+sspa_t(0 === $harness_leak, "no harness calls leak into the outbound list ($harness_leak leaked)");
+sspa_t(2 === $fixture_calls, "both customer-facing fixture calls listed ($fixture_calls)");
+sspa_t($has_q, 'outbound calls keep their query-string keys');
+sspa_t($has_trace, 'outbound calls carry the calling function');
+$rollup_steps = array();
+foreach ((array) (isset($wf_check['profile']['components'][0]['by_step']) ? $wf_check['profile']['components'][0]['by_step'] : array()) as $step_key => $unused_ms) {
+    $rollup_steps[] = $step_key;
+}
+sspa_t(!in_array('flow-delete-order', $rollup_steps, true) && !in_array('flow-preflight', $rollup_steps, true),
+    'the component roll-up excludes the harness steps');
 
 // ---------------------------------------------------------------- 12. payment-mode safety
 //
@@ -356,6 +403,89 @@ sspa_t(is_array($sandbox_pm) && empty(SSPA_Checkout_Flow::PAYMENT_MODES) && fals
     'pm=s does not enable payment while no gateway adapter exists');
 sspa_t(is_array($unarmed) && true === $unarmed['order_needs_payment'],
     'a request without ck=flow is untouched - the real answer is still true');
+
+// The payment boundary must be stamped at ENTRY to payment_complete()
+// (pre_payment_complete): everything after it - status transition, emails, purges,
+// integrations - is confirmation-wait, not at-risk time. Filing it on the wrong side
+// inverts the report's central split.
+sspa_t(is_array($no_pm) && true === $no_pm['pre_mark_hooked'],
+    'the boundary mark is hooked on woocommerce_pre_payment_complete in a flow request');
+sspa_t(is_array($no_pm) && true === $no_pm['user_mark_hooked'],
+    'auto-created customer accounts are marked at creation in a flow request');
+sspa_t(is_array($unarmed) && empty($unarmed['pre_mark_hooked']),
+    'no boundary hook outside a flow request');
+
+// ---------------------------------------------------------------- 12b. forced accounts + a
+// pluggable-wp_mail mailer, together (both are global store state, one extra purchase)
+//
+// Guest checkout disabled = the store creates a customer ACCOUNT for the purchase, which
+// the run must delete again - that account is residue a real store owner would find in
+// their user list. And a mailer that replaces the pluggable wp_mail() never fires
+// wp_mail_succeeded/failed, which used to collapse a three-email checkout to "1 message".
+
+$plant('sspa-mail-api-mimic', <<<'PHP'
+<?php
+/** Plugin Name: SSPA Mail API Mimic (test fixture) */
+// Mimics Mailgun's HTTP mode: replaces the pluggable wp_mail(), applies the wp_mail
+// filter like core does, then "sends" without PHPMailer and without firing
+// wp_mail_succeeded or wp_mail_failed. The guard is how real override plugins do it too:
+// in a web request plugins load before pluggable.php so this definition wins; in the
+// CLI process that activates the fixture, core's copy is already loaded.
+if ( ! function_exists( 'wp_mail' ) ) {
+    function wp_mail( $to, $subject, $message, $headers = '', $attachments = array() ) {
+        apply_filters( 'wp_mail', compact( 'to', 'subject', 'message', 'headers', 'attachments' ) );
+        $log = get_option( 'sspa_test_api_mail_log', array() );
+        $log[] = (array) $to;
+        update_option( 'sspa_test_api_mail_log', $log, false );
+        return true;
+    }
+}
+PHP
+);
+delete_option('sspa_test_api_mail_log');
+$guest_before = get_option('woocommerce_enable_guest_checkout');
+update_option('woocommerce_enable_guest_checkout', 'no');
+update_option('woocommerce_enable_signup_and_login_from_checkout', 'yes');
+wp_cache_flush();
+sleep(3); // opcache
+
+$users_before = count(get_users(array('fields' => 'ID')));
+$acct_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1, 'mail_mode' => 'deliver'));
+if (is_wp_error($acct_run)) {
+    sspa_t(false, 'forced-account run start: ' . $acct_run->get_error_message());
+} else {
+    $deadline = time() + 300;
+    do {
+        SSPA_Run_Controller::process_batch($acct_run);
+        $s = SSPA_Run_Controller::status($acct_run);
+    } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+    $acct_notes = json_decode((string) SSPA_Run_Controller::run_row($acct_run)['notes'], true);
+
+    sspa_t(is_array($acct_notes) && 'ok' === $acct_notes['outcome'],
+        'purchase completes on a store that disallows guest checkout ('
+        . (is_array($acct_notes) ? $acct_notes['outcome'] : '?')
+        . (isset($acct_notes['flow']['error']) ? ' - ' . $acct_notes['flow']['error'] : '') . ')');
+    sspa_t(is_array($acct_notes) && (int) $acct_notes['safety']['users_deleted'] >= 1 && 0 === (int) $acct_notes['safety']['users_left'],
+        'the auto-created customer account was deleted ('
+        . (is_array($acct_notes) ? (int) $acct_notes['safety']['users_deleted'] : 0) . ' deleted, '
+        . (is_array($acct_notes) ? (int) $acct_notes['safety']['users_left'] : '?') . ' left)');
+    $users_after = count(get_users(array('fields' => 'ID')));
+    sspa_t($users_after === $users_before, "zero account residue ($users_before -> $users_after users)");
+    sspa_t(0 === count(get_users(array('meta_key' => SSPA_Checkout_Flow::TEMP_META, 'fields' => 'ID'))),
+        'no _sspa_temp user markers left behind');
+
+    // Mail through the pluggable override: every send must be counted, none timed.
+    $sent = get_option('sspa_test_api_mail_log', array());
+    $acct_wf = SSPA_Checkout_Flow::waterfall($acct_run);
+    sspa_t(count($sent) >= 2, 'the mimic mailer really sent order emails (' . count($sent) . ')');
+    sspa_t((int) $acct_wf['mail']['count'] >= count($sent) - 1,
+        'every send through a pluggable wp_mail is counted (' . $acct_wf['mail']['count'] . ' of ' . count($sent) . ')');
+    sspa_t((int) $acct_wf['mail']['untimed'] >= 1, 'those sends are reported as untimed, not as 0ms');
+}
+update_option('woocommerce_enable_guest_checkout', $guest_before);
+$remove('sspa-mail-api-mimic');
+delete_option('sspa_test_api_mail_log');
+wp_cache_flush();
 
 // ---------------------------------------------------------------- 13. named failures, nothing created
 

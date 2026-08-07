@@ -110,8 +110,17 @@ if (!class_exists('SSPA_Capture')) {
             } elseif (is_array($response) && isset($response['response']['code'])) {
                 $code = $response['response']['code'];
             }
+            // Query-string KEYS only: values routinely carry secrets, but the keys are
+            // what distinguish "GET /" from "GET /?p=123" - without them a purge plugin
+            // fetching an order permalink displays as a fetch of the bare homepage.
+            $q = null;
+            if (isset($parts['query']) && '' !== $parts['query']) {
+                parse_str($parts['query'], $q_args);
+                $q = implode('&', array_keys($q_args));
+            }
             $this->http_calls[] = array(
                 'url' => (isset($parts['host']) ? $parts['host'] : '') . (isset($parts['path']) ? $parts['path'] : ''),
+                'q' => $q,
                 'method' => isset($args['method']) ? $args['method'] : 'GET',
                 'ms' => ($start !== null) ? (microtime(true) - $start) * 1000 : null,
                 'code' => $code,
@@ -156,6 +165,15 @@ if (!class_exists('SSPA_Capture')) {
         // ---------------- deliver mode (checkout flow only) ----------------
 
         public function mail_deliver_start($atts) {
+            // A plugin that REPLACES the pluggable wp_mail() (Mailgun's HTTP mode, and
+            // friends) applies this filter but never fires wp_mail_succeeded/failed, so
+            // without this flush every send would overwrite the previous pending entry
+            // and a three-email checkout would be recorded as one message. Sends cannot
+            // interleave in PHP, so a still-pending entry here means the previous send
+            // finished without touching any end hook - keep it, with an unknown duration.
+            if ($this->mail_pending) {
+                $this->mail_calls[] = array('frames' => $this->mail_pending['frames'], 'construct_ms' => null);
+            }
             $this->mail_pending = array('start' => microtime(true), 'frames' => $this->trigger_frames());
             return $atts; // unchanged - altering it would measure a message nobody sends
         }
@@ -426,7 +444,22 @@ if (!class_exists('SSPA_Capture')) {
             $total_ms = 0;
             foreach ($this->http_calls as $call) {
                 $attr = $map->attribute($call['frames']);
+                // The first few frames INSIDE the attributed component, deepest first.
+                // 'caller' alone names the line that invoked wp_remote_*; this names the
+                // functions above it - the difference between "nginx-helper made a call"
+                // and "nginx-helper's purge_post, from the order status transition".
+                $trace = array();
+                foreach ($call['frames'] as $frame) {
+                    if (count($trace) >= 3) {
+                        break;
+                    }
+                    $cls = $map->classify_file($frame[0]);
+                    if ($cls['component'] === $attr['component'] && !empty($frame[2])) {
+                        $trace[] = $frame[2];
+                    }
+                }
                 unset($call['frames']);
+                $call['trace'] = $trace ? implode(' < ', array_unique($trace)) : null;
                 $call['component'] = $attr['component'];
                 $call['ctype'] = $attr['type'];
                 $call['caller'] = $attr['caller'];

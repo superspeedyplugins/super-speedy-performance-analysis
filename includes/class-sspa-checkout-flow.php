@@ -192,9 +192,24 @@ class SSPA_Checkout_Flow {
 
         // The payment-boundary mark, used by the report to split time the customer can
         // still abandon during from time after the sale is secured (doc A6.4). Stamped in
-        // EVERY payment mode - in sandbox mode this is the moment the gateway came back
-        // successful, which is exactly the boundary wanted.
+        // EVERY payment mode.
+        //
+        // The boundary is ENTRY to WC_Order::payment_complete(), i.e.
+        // woocommerce_pre_payment_complete: in sandbox mode the gateway has already come
+        // back successful by then, so the money is in. Everything payment_complete() does
+        // AFTER that - the status transition, the order emails it sends, stock reduction,
+        // cache purges and integrations hanging off the transition - is confirmation-wait,
+        // not at-risk time. Hooking the trailing woocommerce_payment_complete action (as
+        // 0.11.0/0.11.1 did) filed all of that on the wrong side of the boundary.
+        add_action('woocommerce_pre_payment_complete', array(__CLASS__, 'mark_payment_complete'), PHP_INT_MIN);
+        // Fallback for anything that fires the trailing action without the leading one;
+        // the isset guard in the handler means the earlier hook always wins.
         add_action('woocommerce_payment_complete', array(__CLASS__, 'mark_payment_complete'), PHP_INT_MIN);
+
+        // A store with guest checkout disabled makes the Store API (and the classic
+        // checkout) create a customer account for the purchase. That account is ours to
+        // remove again - mark it the moment it is created, exactly like the order.
+        add_action('woocommerce_created_customer', array(__CLASS__, 'mark_temp_user'), PHP_INT_MIN);
 
         // Skip the gateway WITHOUT touching cart totals, so shipping and tax still
         // calculate in full and are measured, and every downstream integration still sees
@@ -220,6 +235,23 @@ class SSPA_Checkout_Flow {
         if (!isset($GLOBALS['sspa_marks']['payment_complete']) && isset($GLOBALS['timestart'])) {
             $GLOBALS['sspa_marks']['payment_complete'] = (microtime(true) - (float) $GLOBALS['timestart']) * 1000;
         }
+    }
+
+    /**
+     * Runs inside the flow's own place-order request when the store auto-creates a
+     * customer account (guest checkout disabled). Marked and recorded exactly like the
+     * order, so cleanup and the janitor can both prove it is safe to remove.
+     */
+    public static function mark_temp_user($user_id) {
+        $user_id = (int) $user_id;
+        if (!$user_id) {
+            return;
+        }
+        update_user_meta($user_id, self::TEMP_META, '1');
+        $temp = get_option(self::TEMP_OPTION, array());
+        $temp = is_array($temp) ? $temp : array();
+        $temp[] = array('type' => 'user', 'id' => $user_id, 'ts' => time());
+        update_option(self::TEMP_OPTION, $temp, false);
     }
 
     /** @param int|WC_Order $order_id */
@@ -552,6 +584,7 @@ class SSPA_Checkout_Flow {
             $result['steps'][] = self::cleanup_step($crawler, $result, $flags);
             self::verify_stock($product->get_id(), $result);
             self::delete_sessions(array_merge(array($customer_id), $jar['session_keys']), $result);
+            self::delete_temp_users($result);
         }
 
         return $result;
@@ -1215,19 +1248,63 @@ class SSPA_Checkout_Flow {
     }
 
     private static function forget_orders($ids) {
+        self::forget_temp_entries('order', $ids);
+    }
+
+    /** Type-aware: a user entry must never be dropped by an order id collision. */
+    private static function forget_temp_entries($type, $ids) {
         $temp = get_option(self::TEMP_OPTION, array());
         if (!is_array($temp)) {
             delete_option(self::TEMP_OPTION);
             return;
         }
-        $temp = array_values(array_filter($temp, function ($entry) use ($ids) {
-            return !isset($entry['id']) || !in_array((int) $entry['id'], array_map('intval', $ids), true);
+        $ids = array_map('intval', $ids);
+        $temp = array_values(array_filter($temp, function ($entry) use ($type, $ids) {
+            $entry_type = isset($entry['type']) ? $entry['type'] : 'order';
+            if ($entry_type !== $type) {
+                return true;
+            }
+            return !isset($entry['id']) || !in_array((int) $entry['id'], $ids, true);
         }));
         if ($temp) {
             update_option(self::TEMP_OPTION, $temp, false);
         } else {
             delete_option(self::TEMP_OPTION);
         }
+    }
+
+    /**
+     * Remove the customer account the store auto-created for this purchase (guest
+     * checkout disabled). Same discipline as orders: only ever an account carrying our
+     * own marker, recorded in the run notes, backed up by the janitor.
+     */
+    private static function delete_temp_users(&$result) {
+        // The entries were written by the loopback place-order request; make sure this
+        // process reads them fresh rather than from its own options cache.
+        wp_cache_delete(self::TEMP_OPTION, 'options');
+        $temp = get_option(self::TEMP_OPTION, array());
+        $user_ids = array();
+        foreach ((array) $temp as $entry) {
+            if (isset($entry['type'], $entry['id']) && 'user' === $entry['type']) {
+                $user_ids[] = (int) $entry['id'];
+            }
+        }
+        if (!$user_ids) {
+            return;
+        }
+        if (!function_exists('wp_delete_user')) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+        }
+        $deleted = 0;
+        foreach ($user_ids as $user_id) {
+            if (get_user_meta($user_id, self::TEMP_META, true)) {
+                wp_delete_user($user_id);
+                $deleted++;
+            }
+        }
+        self::forget_temp_entries('user', $user_ids);
+        $result['notes']['users_deleted'] = $deleted;
+        $result['notes']['users_left'] = count(array_filter($user_ids, 'get_userdata'));
     }
 
     /**
@@ -1379,11 +1456,19 @@ class SSPA_Checkout_Flow {
         $mail_calls = 0;
         $mail_ms = 0.0;
 
+        $mail_untimed = 0;
         foreach ($rows as $row) {
             $key = $row['page_key'];
+            // Harness steps: the pre-flight probe and the admin cleanup. Their timing rows
+            // stay visible below the waterfall, but NOTHING they did may reach the
+            // customer-facing panels - the component roll-up, the outbound-call list and
+            // the mail totals all answer "what did the customer wait through", and the
+            // delete step's purge/email cascade is OUR work, not the store's. Leaking it
+            // in here overstated a purge plugin's cost by a quarter on a real store.
+            $is_harness = in_array($key, array('flow-preflight', 'flow-delete-order'), true);
             $gen = (null !== $row['page_gen_ms']) ? (float) $row['page_gen_ms'] : null;
             $capture = !empty($row['profile_blob']) ? json_decode((string) @gzuncompress($row['profile_blob']), true) : null;
-            if (is_array($capture)) {
+            if (is_array($capture) && !$is_harness) {
                 if (!empty($capture['profile'])) {
                     $step_profiles[$key] = $capture['profile'];
                 }
@@ -1393,6 +1478,11 @@ class SSPA_Checkout_Flow {
                 }
                 $mail_calls += isset($capture['mail']['count']) ? (int) $capture['mail']['count'] : 0;
                 $mail_ms += isset($capture['mail']['total_construct_ms']) ? (float) $capture['mail']['total_construct_ms'] : 0.0;
+                foreach ((array) (isset($capture['mail']['calls']) ? $capture['mail']['calls'] : array()) as $mail_call) {
+                    if (!isset($mail_call['construct_ms']) || null === $mail_call['construct_ms']) {
+                        $mail_untimed++;
+                    }
+                }
             }
 
             $entry = array(
@@ -1410,7 +1500,7 @@ class SSPA_Checkout_Flow {
             // Nobody waits for the cleanup, so it sits below the total and is excluded
             // from it - measured because a slow delete cascade is worth knowing about,
             // never added to the customer-facing figure.
-            if ('flow-delete-order' === $key || 'flow-preflight' === $key) {
+            if ($is_harness) {
                 $excluded[] = $entry;
                 continue;
             }
@@ -1471,7 +1561,7 @@ class SSPA_Checkout_Flow {
             'slowest_step' => $slowest ? $slowest['page_key'] : null,
             'boundary_known' => $boundary_known,
             'http' => array_slice($http_calls, 0, 20),
-            'mail' => array('count' => $mail_calls, 'ms' => round($mail_ms, 1)),
+            'mail' => array('count' => $mail_calls, 'ms' => round($mail_ms, 1), 'untimed' => $mail_untimed),
             'profile' => self::rollup_profile($step_profiles),
             'notes' => $notes,
             // Single measured purchase, never a median of N: a full checkout is heavy
