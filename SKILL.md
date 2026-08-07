@@ -17,7 +17,7 @@ nothing is ever really deactivated).
 With wp-cli access:
 
 ```bash
-wp plugin install https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip --activate
+wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --activate
 ```
 
 Or download that zip and upload via Plugins -> Add New. Verify: `wp plugin is-active
