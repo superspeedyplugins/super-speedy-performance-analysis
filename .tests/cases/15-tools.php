@@ -31,8 +31,8 @@ if ($env['pkg'] === 'apk') {
 // Package names must match the distro's convention, not a guessed one.
 $deps = SSPA_Tools::install_steps('excimer');
 if ($env['pkg'] === 'apk') {
-    sspa_t(strpos($deps[0]['code'], 'php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-dev') !== false,
-        'Alpine package names carry the full version (php83-dev, not php8-dev): ' . $deps[0]['code']);
+    sspa_t(strpos($deps[0]['code'], 'php' . PHP_MAJOR_VERSION . PHP_MINOR_VERSION . '-pecl-excimer') !== false,
+        'Alpine package names carry the full version (php83-pecl-excimer, not php8-...): ' . $deps[0]['code']);
 }
 
 // --- performance_schema ladder ---
@@ -70,15 +70,46 @@ sspa_t($caps['performance_schema']['used'] === true, 'performance_schema marked 
 
 // --- Generated steps are specific to THIS server ---
 $steps = SSPA_Tools::install_steps('excimer');
-sspa_t(count($steps) >= 4, 'excimer steps generated (' . count($steps) . ' steps)');
 $all = '';
 foreach ($steps as $s) {
     sspa_t(!empty($s['title']) && !empty($s['why']) && !empty($s['code']), 'step has a title, a reason and a command: ' . $s['title']);
     $all .= $s['code'] . "\n";
 }
-sspa_t(strpos($all, 'pecl install excimer') !== false, 'steps include the pecl install line');
+if (in_array($env['pkg'], array('apt', 'dnf', 'apk'), true)) {
+    // Excimer left PECL (frozen at 1.2.6), so packaged distros must get the distro
+    // package: one install command, no compile, and NO hand-written ini - the package
+    // ships and enables its own, and a leftover manual ini would double-load it.
+    sspa_t(count($steps) === 3, 'packaged distro gets the short path (' . count($steps) . ' steps)');
+    sspa_t(strpos($all, '-excimer') !== false, 'steps install the distro package');
+    if ($env['pkg'] === 'apt') {
+        // Multi-PHP boxes (deb.sury.org): unversioned php-excimer installs for the NEWEST
+        // PHP on the box, not the one the site runs, so the versioned name must lead.
+        sspa_t(strpos($all, 'php' . $env['php_short'] . '-excimer') !== false,
+            'apt command targets the PHP version this site runs');
+    }
+    // Plain `php` on the CLI can be a different version than the site - the verify step
+    // must name the versioned binary on platforms that have one.
+    if (in_array($env['pkg'], array('apt', 'apk'), true)) {
+        sspa_t(!preg_match('/^php -m/m', $all), 'verify step uses the versioned php binary, not plain php');
+    }
+    sspa_t(strpos($all, 'pecl install') === false, 'no pecl on a distro that packages excimer');
+    sspa_t(strpos($all, 'extension=excimer.so') === false, 'no hand-written ini - the package enables itself');
+} else {
+    // macOS / unrecognised distro: pecl still carries excimer 1.2.6 and stays the fallback.
+    sspa_t(count($steps) >= 4, 'excimer fallback steps generated (' . count($steps) . ' steps)');
+    sspa_t(strpos($all, 'pecl install excimer') !== false, 'fallback steps include the pecl install line');
+    sspa_t(strpos($all, 'extension=excimer.so') !== false, 'fallback steps write a dedicated ini file');
+}
 sspa_t(strpos($all, $env['restart']) !== false, 'steps include the restart command for this SAPI');
-sspa_t(strpos($all, 'extension=excimer.so') !== false, 'steps write a dedicated ini file');
+
+// tideways_xhprof has NEVER been on PECL - "pecl install tideways_xhprof" fails on every
+// system - so its steps must be a source build on every platform.
+$tw = '';
+foreach (SSPA_Tools::install_steps('tideways_xhprof') as $s) {
+    $tw .= $s['code'] . "\n";
+}
+sspa_t(strpos($tw, 'pecl install') === false, 'tideways_xhprof never told to use pecl (it is not on PECL)');
+sspa_t(strpos($tw, 'github.com/tideways/php-xhprof-extension') !== false, 'tideways_xhprof built from its real source repo');
 
 $ps_steps = SSPA_Tools::install_steps('performance_schema');
 sspa_t(count($ps_steps) >= 1, 'performance_schema steps generated (' . count($ps_steps) . ')');
