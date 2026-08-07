@@ -7,6 +7,19 @@ $sspa_runs_table = SSPA_Schema::table('runs');
 // of the same pages, which read as duplicate/garbled rows here.
 $sspa_last_run_id = (int) $wpdb->get_var("SELECT id FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1");
 
+// Checkout flow: a permanent entry point, because the pages below are all GETs of an
+// EMPTY cart - the expensive parts of a real purchase are POSTs a crawler never sends.
+if (class_exists('WooCommerce')) : ?>
+    <p class="sspa-checkout-cta">
+        <button type="button" class="button button-secondary sspa-ck-open">
+            <?php esc_html_e('Analyse checkout flow', 'super-speedy-performance-analysis'); ?>
+        </button>
+        <span class="description">
+            <?php esc_html_e('Measures what a customer waits through while buying something: one real purchase, every plugin active, order deleted afterwards. Shows you the disclosure first.', 'super-speedy-performance-analysis'); ?>
+        </span>
+    </p>
+<?php endif;
+
 if (!$sspa_last_run_id) : ?>
     <div class="sspa-placeholder">
         <p><?php esc_html_e('Per-page profiles (TTFB, SQL time, PHP time, RAM, query counts) will appear here after your first analysis.', 'super-speedy-performance-analysis'); ?></p>

@@ -1,177 +1,200 @@
 {
-    "version": 1,
-    "updated": "2026-07-11",
-    "thresholds": {
-        "slow_query_ms": 50,
-        "big_result_rows": 200,
-        "query_hog_count": 50,
-        "dupe_query_count": 5,
-        "slow_http_ms": 100,
-        "slow_mail_ms": 100,
-        "autoload_bytes": 1048576,
-        "ram_hog_bytes": 67108864,
-        "unindexed_scan_rows": 500,
-        "rows_examined_ratio": 100,
-        "rows_examined_min": 1000
+  "version": 1,
+  "updated": "2026-07-11",
+  "thresholds": {
+    "slow_query_ms": 50,
+    "big_result_rows": 200,
+    "query_hog_count": 50,
+    "dupe_query_count": 5,
+    "slow_http_ms": 100,
+    "slow_mail_ms": 100,
+    "autoload_bytes": 1048576,
+    "ram_hog_bytes": 67108864,
+    "unindexed_scan_rows": 500,
+    "rows_examined_ratio": 100,
+    "rows_examined_min": 1000,
+    "checkout_slow_step_ms": 800,
+    "checkout_component_share_pct": 25,
+    "checkout_http_ms": 50
+  },
+  "recommendations": {
+    "slow_query_postmeta": {
+      "title": "Slow postmeta query",
+      "body": "This query scans or joins wp_postmeta, which grows with every product/post and has no useful index for this access pattern. This is the exact query shape Scalability Pro fixes with covering indexes and query rewrites.",
+      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
     },
-    "recommendations": {
-        "slow_query_postmeta": {
-            "title": "Slow postmeta query",
-            "body": "This query scans or joins wp_postmeta, which grows with every product/post and has no useful index for this access pattern. This is the exact query shape Scalability Pro fixes with covering indexes and query rewrites.",
-            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
-        },
-        "slow_query_found_rows": {
-            "title": "SQL_CALC_FOUND_ROWS",
-            "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. Scalability Pro removes it from key queries; on large tables this alone can halve query time.",
-            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
-        },
-        "slow_query_rand": {
-            "title": "ORDER BY rand()",
-            "body": "ORDER BY rand() forces a full table scan and sort on every page view and gets slower as your content grows. The component running it should pick random items a cheaper way (e.g. random offset)."
-        },
-        "slow_query_like": {
-            "title": "Leading-wildcard LIKE",
-            "body": "LIKE '%term%' cannot use an index and scans the whole table. If this powers your search, a dedicated search plugin such as Super Speedy Search replaces it with indexed lookups.",
-            "link": "https://www.superspeedyplugins.com/product/super-speedy-search/"
-        },
-        "slow_query_tax": {
-            "title": "Nested taxonomy query",
-            "body": "Deeply nested term_relationships joins slow down as your catalogue grows. Scalability Pro's taxonomy query optimisation and Super Speedy Filters both target this pattern.",
-            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
-        },
-        "slow_query_generic": {
-            "title": "Slow query",
-            "body": "This query exceeds the slow threshold. Check whether the component really needs it on every page load, and whether an index would help."
-        },
-        "big_result_set": {
-            "title": "Large result set",
-            "body": "Queries returning hundreds of rows are the usual cause of high RAM per page view: every row is hydrated into PHP memory. If this component regularly fetches this much data, it is a prime suspect for deep analysis."
-        },
-        "query_loop": {
-            "title": "Queries in a loop",
-            "body": "A high query count from one component usually means queries inside a loop (N+1). The count grows as your content grows, so this gets slower every month. The component should batch its lookups or cache the results."
-        },
-        "dupe_queries": {
-            "title": "Duplicate queries",
-            "body": "The same query ran repeatedly in one page load - the component is missing basic result caching. Cheap to fix for the developer; report it or replace the plugin."
-        },
-        "slow_http": {
-            "title": "Blocking HTTP call during page load",
-            "body": "This component makes a blocking HTTP request while your page renders - every visitor waits for a remote server (licence checks and geo lookups are common offenders). These calls belong in cron, not page loads."
-        },
-        "autoload_bloat": {
-            "title": "Autoloaded options bloat",
-            "body": "Your autoloaded options exceed 1MB and are loaded on every request into memory. Find the biggest autoloaded rows and set autoload=no or delete leftovers from removed plugins."
-        },
-        "no_object_cache": {
-            "title": "No persistent object cache",
-            "body": "This site has a large database but no persistent object cache (Redis/Memcached). Every request recomputes work that could be cached in memory. Ask your host to enable Redis and install a drop-in."
-        },
-        "old_php": {
-            "title": "Outdated PHP",
-            "body": "PHP 8+ is significantly faster than PHP 7.x for WordPress workloads. Upgrading PHP is usually the cheapest speed win available."
-        },
-        "duplicate_functionality": {
-            "title": "Overlapping plugins",
-            "body": "Multiple active plugins provide the same functionality; each adds queries and RAM to every page. Keep one, remove the rest."
-        },
-        "blocking_mail": {
-            "title": "Slow email construction",
-            "body": "Building this email blocked the request for a long time - heavyweight templates or an SMTP plugin doing expensive setup on every send. Order status changes and checkouts wait on this."
-        },
-        "cache_blind": {
-            "title": "Ignores the object cache",
-            "body": "This component ran essentially the same queries with the object cache on and off - it caches nothing, so your Redis/Memcached investment does nothing for it. Prime candidate for replacement or a caching layer."
-        },
-        "cache_friendly": {
-            "title": "Uses the object cache well",
-            "body": "This component's query count drops sharply when the object cache is available - it is written cache-aware. Keep it."
-        },
-        "security_block": {
-            "title": "Profiling requests blocked",
-            "body": "A security layer blocked this plugin's self-profiling requests, so some pages could not be measured. Whitelist your own server's IP in the named security plugin and re-run the analysis."
-        },
-        "unindexed_query": {
-            "title": "Query with no usable index",
-            "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape.",
-            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
-        },
-        "over_examining_query": {
-            "title": "Query reads far more rows than it returns",
-            "body": "MySQL read a very large number of rows to produce a small answer. That is wasted disk and CPU on every single request, and it is the shape that turns a fast site slow as your content grows. It usually means a missing or unusable index, a join in the wrong order, or a filter MySQL cannot push down into the index. This figure is what the database actually did, not an estimate.",
-            "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
-        }
+    "slow_query_found_rows": {
+      "title": "SQL_CALC_FOUND_ROWS",
+      "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. Scalability Pro removes it from key queries; on large tables this alone can halve query time.",
+      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
     },
-    "categories": {
-        "seo": [
-            "wordpress-seo",
-            "all-in-one-seo-pack",
-            "seopress",
-            "rank-math",
-            "slim-seo",
-            "the-seo-framework"
-        ],
-        "security": [
-            "wordfence",
-            "better-wp-security",
-            "all-in-one-wp-security-and-firewall",
-            "wp-simple-firewall",
-            "sucuri-scanner",
-            "wp-cerber",
-            "jetpack-protect"
-        ],
-        "page-cache": [
-            "wp-rocket",
-            "w3-total-cache",
-            "litespeed-cache",
-            "wp-super-cache",
-            "wp-fastest-cache",
-            "cache-enabler",
-            "hummingbird-performance"
-        ],
-        "backup": [
-            "updraftplus",
-            "backwpup",
-            "duplicator",
-            "all-in-one-wp-migration"
-        ],
-        "page-builder": [
-            "elementor",
-            "beaver-builder-lite-version",
-            "siteorigin-panels",
-            "divi-builder",
-            "brizy"
-        ],
-        "contact-form": [
-            "contact-form-7",
-            "wpforms-lite",
-            "ninja-forms",
-            "formidable",
-            "fluentform"
-        ],
-        "multilingual": [
-            "sitepress-multilingual-cms",
-            "polylang",
-            "translatepress-multilingual",
-            "weglot"
-        ]
+    "slow_query_rand": {
+      "title": "ORDER BY rand()",
+      "body": "ORDER BY rand() forces a full table scan and sort on every page view and gets slower as your content grows. The component running it should pick random items a cheaper way (e.g. random offset)."
     },
-    "fragile": [
-        "woocommerce-payments",
-        "wp-2fa",
-        "two-factor"
-    ],
-    "sector_signatures": {
-        "job_listing": "jobs board",
-        "download": "digital store",
-        "property": "real estate",
-        "listing": "directory",
-        "tribe_events": "events",
-        "event": "events",
-        "course": "e-learning",
-        "lesson": "e-learning",
-        "sfwd-courses": "e-learning",
-        "product": "e-commerce",
-        "portfolio": "portfolio/agency"
+    "slow_query_like": {
+      "title": "Leading-wildcard LIKE",
+      "body": "LIKE '%term%' cannot use an index and scans the whole table. If this powers your search, a dedicated search plugin such as Super Speedy Search replaces it with indexed lookups.",
+      "link": "https://www.superspeedyplugins.com/product/super-speedy-search/"
+    },
+    "slow_query_tax": {
+      "title": "Nested taxonomy query",
+      "body": "Deeply nested term_relationships joins slow down as your catalogue grows. Scalability Pro's taxonomy query optimisation and Super Speedy Filters both target this pattern.",
+      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+    },
+    "slow_query_generic": {
+      "title": "Slow query",
+      "body": "This query exceeds the slow threshold. Check whether the component really needs it on every page load, and whether an index would help."
+    },
+    "big_result_set": {
+      "title": "Large result set",
+      "body": "Queries returning hundreds of rows are the usual cause of high RAM per page view: every row is hydrated into PHP memory. If this component regularly fetches this much data, it is a prime suspect for deep analysis."
+    },
+    "query_loop": {
+      "title": "Queries in a loop",
+      "body": "A high query count from one component usually means queries inside a loop (N+1). The count grows as your content grows, so this gets slower every month. The component should batch its lookups or cache the results."
+    },
+    "dupe_queries": {
+      "title": "Duplicate queries",
+      "body": "The same query ran repeatedly in one page load - the component is missing basic result caching. Cheap to fix for the developer; report it or replace the plugin."
+    },
+    "slow_http": {
+      "title": "Blocking HTTP call during page load",
+      "body": "This component makes a blocking HTTP request while your page renders - every visitor waits for a remote server (licence checks and geo lookups are common offenders). These calls belong in cron, not page loads."
+    },
+    "autoload_bloat": {
+      "title": "Autoloaded options bloat",
+      "body": "Your autoloaded options exceed 1MB and are loaded on every request into memory. Find the biggest autoloaded rows and set autoload=no or delete leftovers from removed plugins."
+    },
+    "no_object_cache": {
+      "title": "No persistent object cache",
+      "body": "This site has a large database but no persistent object cache (Redis/Memcached). Every request recomputes work that could be cached in memory. Ask your host to enable Redis and install a drop-in."
+    },
+    "old_php": {
+      "title": "Outdated PHP",
+      "body": "PHP 8+ is significantly faster than PHP 7.x for WordPress workloads. Upgrading PHP is usually the cheapest speed win available."
+    },
+    "duplicate_functionality": {
+      "title": "Overlapping plugins",
+      "body": "Multiple active plugins provide the same functionality; each adds queries and RAM to every page. Keep one, remove the rest."
+    },
+    "blocking_mail": {
+      "title": "Slow email construction",
+      "body": "Building this email blocked the request for a long time - heavyweight templates or an SMTP plugin doing expensive setup on every send. Order status changes and checkouts wait on this."
+    },
+    "cache_blind": {
+      "title": "Ignores the object cache",
+      "body": "This component ran essentially the same queries with the object cache on and off - it caches nothing, so your Redis/Memcached investment does nothing for it. Prime candidate for replacement or a caching layer."
+    },
+    "cache_friendly": {
+      "title": "Uses the object cache well",
+      "body": "This component's query count drops sharply when the object cache is available - it is written cache-aware. Keep it."
+    },
+    "security_block": {
+      "title": "Profiling requests blocked",
+      "body": "A security layer blocked this plugin's self-profiling requests, so some pages could not be measured. Whitelist your own server's IP in the named security plugin and re-run the analysis."
+    },
+    "unindexed_query": {
+      "title": "Query with no usable index",
+      "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape.",
+      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+    },
+    "over_examining_query": {
+      "title": "Query reads far more rows than it returns",
+      "body": "MySQL read a very large number of rows to produce a small answer. That is wasted disk and CPU on every single request, and it is the shape that turns a fast site slow as your content grows. It usually means a missing or unusable index, a join in the wrong order, or a filter MySQL cannot push down into the index. This figure is what the database actually did, not an estimate.",
+      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+    },
+    "checkout_slow_step": {
+      "title": "A checkout step is making your customer wait",
+      "body": "This step of the purchase took longer than it should on the server alone, before any browser work. Open the step to see which plugin dominated it, then decide whether that work has to happen while the customer is waiting or can be deferred to a background job. Time spent before the payment is taken is the expensive kind: the customer can still abandon during it."
+    },
+    "checkout_component_cost": {
+      "title": "One plugin owns a large share of your checkout",
+      "body": "This component accounted for a large share of the server time across the whole purchase. That is a hypothesis from attribution, not an experiment - confirm it by running deep analysis on the checkout flow, which re-measures the same purchase with the plugin virtually excluded."
+    },
+    "checkout_blocking_http": {
+      "title": "Your checkout waits on an outside server",
+      "body": "A blocking outbound HTTP call ran while the customer waited. Tax services, fraud screening, address validation, CRM and accounting syncs are the usual culprits. Ask the plugin's author whether the call can be deferred to a background job or cached; if it cannot, a slow or unreachable third party will slow, and eventually break, your checkout."
+    },
+    "checkout_mail_inline": {
+      "title": "Order emails are sent inside the checkout request",
+      "body": "Your customer is waiting for your mail server. WooCommerce can hand transactional emails to a background queue instead: enable the deferred transactional emails feature (WooCommerce > Settings > Advanced > Features), or use an SMTP plugin that queues rather than sends inline. This is usually one of the easiest seconds to remove from a checkout."
+    },
+    "checkout_dupe_queries": {
+      "title": "A checkout step repeats the same query",
+      "body": "Byte-identical queries ran several times inside one step, so the same rows were fetched more than once. That is normally a missing cache or a lookup inside a loop in the component named. On checkout it is worth fixing even when each query is fast, because it happens at the moment the customer is most likely to leave."
     }
+  },
+  "categories": {
+    "seo": [
+      "wordpress-seo",
+      "all-in-one-seo-pack",
+      "seopress",
+      "rank-math",
+      "slim-seo",
+      "the-seo-framework"
+    ],
+    "security": [
+      "wordfence",
+      "better-wp-security",
+      "all-in-one-wp-security-and-firewall",
+      "wp-simple-firewall",
+      "sucuri-scanner",
+      "wp-cerber",
+      "jetpack-protect"
+    ],
+    "page-cache": [
+      "wp-rocket",
+      "w3-total-cache",
+      "litespeed-cache",
+      "wp-super-cache",
+      "wp-fastest-cache",
+      "cache-enabler",
+      "hummingbird-performance"
+    ],
+    "backup": [
+      "updraftplus",
+      "backwpup",
+      "duplicator",
+      "all-in-one-wp-migration"
+    ],
+    "page-builder": [
+      "elementor",
+      "beaver-builder-lite-version",
+      "siteorigin-panels",
+      "divi-builder",
+      "brizy"
+    ],
+    "contact-form": [
+      "contact-form-7",
+      "wpforms-lite",
+      "ninja-forms",
+      "formidable",
+      "fluentform"
+    ],
+    "multilingual": [
+      "sitepress-multilingual-cms",
+      "polylang",
+      "translatepress-multilingual",
+      "weglot"
+    ]
+  },
+  "fragile": [
+    "woocommerce-payments",
+    "wp-2fa",
+    "two-factor"
+  ],
+  "sector_signatures": {
+    "job_listing": "jobs board",
+    "download": "digital store",
+    "property": "real estate",
+    "listing": "directory",
+    "tribe_events": "events",
+    "event": "events",
+    "course": "e-learning",
+    "lesson": "e-learning",
+    "sfwd-courses": "e-learning",
+    "product": "e-commerce",
+    "portfolio": "portfolio/agency"
+  }
 }

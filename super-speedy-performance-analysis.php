@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.10.12
+ * Version: 0.11.0
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -79,6 +79,8 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-anonymiser.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-submitter.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules-feed.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-preflight.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-flow.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-adhoc.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-admin-page.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-insights.php';
@@ -103,6 +105,10 @@ SSPA_Probes::register();
 // Admin-bar "Analyse this page" runner: front end AND wp-admin, so registered outside
 // the is_admin() block below.
 SSPA_Adhoc::register();
+// Registered unconditionally, but inert unless the request carries a valid checkout-flow
+// token: this is what skips the payment gateway and stamps the payment boundary INSIDE
+// the flow's own loopback requests. Real traffic never reaches any of it.
+SSPA_Checkout_Flow::register();
 
 if (is_admin()) {
     add_action('admin_menu', array('SSPA_Admin_Page', 'addmenu'), 20);

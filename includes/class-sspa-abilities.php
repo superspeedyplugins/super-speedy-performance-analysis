@@ -29,6 +29,8 @@ class SSPA_Abilities {
             self::CATEGORY . '/get-site-metrics',
             self::CATEGORY . '/run-analysis',
             self::CATEGORY . '/run-deep-analysis',
+            self::CATEGORY . '/run-checkout-flow',
+            self::CATEGORY . '/get-checkout-flow',
             self::CATEGORY . '/submit-results',
         );
     }
@@ -200,6 +202,51 @@ class SSPA_Abilities {
             'meta' => $active,
         ));
 
+        wp_register_ability(self::CATEGORY . '/run-checkout-flow', array(
+            'label' => __('Measure the checkout flow (buys something for real)', 'super-speedy-performance-analysis'),
+            'description' => __('Measure what a customer waits through while buying something: each step of the purchase funnel, with the full plugin set active and nothing switched off. THIS CREATES A REAL ORDER. Real order emails are sent and real integrations fire; the order is cancelled and deleted afterwards and stock is restored. Call with dry_run first to get the pre-flight inventory - exactly which emails, webhooks and plugins the run would set off - and show it to the site owner before running for real. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'dry_run' => array('type' => 'boolean', 'description' => __('Return the pre-flight inventory and create nothing.', 'super-speedy-performance-analysis')),
+                    'product_id' => array('type' => 'integer', 'description' => __('Product to buy; defaults to the cheapest purchasable, in-stock, shippable one.', 'super-speedy-performance-analysis')),
+                    'allow_integrations' => array('type' => 'boolean', 'description' => __('Default true. Turning this off makes the result no longer a real-store number.', 'super-speedy-performance-analysis')),
+                    'allow_webhooks' => array('type' => 'boolean', 'description' => __('Default true.', 'super-speedy-performance-analysis')),
+                    'mail_mode' => array('type' => 'string', 'enum' => array('deliver', 'construct', 'suppress'), 'description' => __('deliver (default) sends the order emails for real so the mail server is measured too.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_run_checkout_flow'),
+            // Destructive: it creates an order, sends mail and fires integrations. An
+            // agent must not run it without the owner having seen the pre-flight.
+            'meta' => array(
+                'annotations' => array('readonly' => false, 'destructive' => true, 'idempotent' => false),
+                'show_in_rest' => true,
+            ),
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-checkout-flow', array(
+            'label' => __('Get checkout flow result', 'super-speedy-performance-analysis'),
+            'description' => __('The measured purchase as a waterfall, split at the payment boundary: time the customer could still abandon during, and time after the sale was secured. Includes the slowest step, per-component PHP time across the whole purchase, outbound calls, mail behaviour, findings and the cleanup report.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'run_id' => array('type' => 'integer', 'description' => __('Specific checkout run id; defaults to the most recent one.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_checkout_flow'),
+            'meta' => $readonly,
+        ));
+
         wp_register_ability(self::CATEGORY . '/submit-results', array(
             'label' => __('Submit anonymised results to superspeedy.org', 'super-speedy-performance-analysis'),
             'description' => __('Contribute anonymised results to the community database. Only works when the site owner has opted in on the Share tab - agents cannot enable sharing.', 'super-speedy-performance-analysis'),
@@ -285,6 +332,55 @@ class SSPA_Abilities {
         }
         $status = SSPA_Run_Controller::status($run_id);
         return array('run_id' => (int) $run_id, 'status' => (string) $status['status']);
+    }
+
+    public static function exec_run_checkout_flow($input) {
+        if (!class_exists('WooCommerce')) {
+            return new WP_Error('sspa_no_store', __('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
+        }
+        if (!empty($input['dry_run'])) {
+            $crawler = new SSPA_Crawler();
+            $sample = $crawler->send_profiled(home_url('/?sspa_flow_probe=1'), array(
+                'method' => 'GET',
+                'flags' => array('v' => 'guest', 'ck' => 'pre'),
+            ));
+            if (!is_array($sample['json'])) {
+                return new WP_Error('sspa_preflight_failed', __('The pre-flight request could not be measured.', 'super-speedy-performance-analysis'));
+            }
+            return array('dry_run' => true, 'inventory' => $sample['json']);
+        }
+
+        $args = array('type' => 'checkout', 'trigger' => 'mcp');
+        foreach (array('product_id', 'mail_mode') as $key) {
+            if (isset($input[$key])) {
+                $args[$key] = $input[$key];
+            }
+        }
+        foreach (array('allow_integrations', 'allow_webhooks') as $key) {
+            $args[$key] = !isset($input[$key]) || (bool) $input[$key];
+        }
+        $run_id = SSPA_Run_Controller::start($args);
+        if (is_wp_error($run_id)) {
+            return $run_id;
+        }
+        $status = SSPA_Run_Controller::status($run_id);
+        return array('run_id' => (int) $run_id, 'status' => (string) $status['status'], 'dry_run' => false);
+    }
+
+    public static function exec_get_checkout_flow($input) {
+        global $wpdb;
+        $run_id = !empty($input['run_id']) ? (int) $input['run_id'] : (int) $wpdb->get_var(
+            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE run_type = 'checkout' AND status IN ('done','failed') ORDER BY id DESC LIMIT 1"
+        );
+        if (!$run_id) {
+            return new WP_Error('sspa_no_checkout_run', __('No checkout flow has been measured yet.', 'super-speedy-performance-analysis'));
+        }
+        $waterfall = SSPA_Checkout_Flow::waterfall($run_id);
+        if (!$waterfall) {
+            return new WP_Error('sspa_no_checkout_run', __('That run has no measured steps.', 'super-speedy-performance-analysis'));
+        }
+        $waterfall['findings'] = SSPA_Report::findings($run_id);
+        return $waterfall;
     }
 
     public static function exec_submit($input) {

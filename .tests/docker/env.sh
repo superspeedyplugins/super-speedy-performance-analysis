@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Shared config for the SSPA docker test environment. No docker-compose needed.
 
-SSPA_NET=sspa-net
-SSPA_DB=sspa-db
-SSPA_WP=sspa-wp
-SSPA_REDIS=sspa-redis
-SSPA_PORT=8090
+# Container names and the host port are overridable so a second checkout (a parallel
+# session on a feature branch) can run its own environment alongside the default one:
+#   SSPA_ENV_PREFIX=sspack SSPA_PORT=8092 .tests/run-tests.sh
+SSPA_ENV_PREFIX="${SSPA_ENV_PREFIX:-sspa}"
+SSPA_NET="${SSPA_ENV_PREFIX}-net"
+SSPA_DB="${SSPA_ENV_PREFIX}-db"
+SSPA_WP="${SSPA_ENV_PREFIX}-wp"
+SSPA_REDIS="${SSPA_ENV_PREFIX}-redis"
+SSPA_PORT="${SSPA_PORT:-8090}"
 REDIS_IMAGE=redis:7-alpine
 
 DB_IMAGE=mariadb:10.11

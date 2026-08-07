@@ -87,6 +87,120 @@ class SSPA_CLI {
     }
 
     /**
+     * Measure one complete purchase: what a customer waits through at each step of the
+     * checkout funnel, with the full plugin set active and nothing switched off.
+     *
+     * This BUYS SOMETHING FOR REAL. A real order is created, real emails are sent and real
+     * integrations fire; the order is cancelled and deleted afterwards and stock is put
+     * back. Use --dry-run first to see exactly what it would set off.
+     *
+     * ## OPTIONS
+     *
+     * [--product=<id>]
+     * : Product to buy. Defaults to the cheapest purchasable in-stock shippable one.
+     *
+     * [--repeats=<n>]
+     * : Run the flow n times (default 1). Every repeat is another real order.
+     *
+     * [--payment=<mode>]
+     * : no_payment (default) or sandbox. Sandbox needs a supported gateway in test mode.
+     *
+     * [--mail=<mode>]
+     * : deliver (default - real emails, really sent, really timed), construct or suppress.
+     *
+     * [--no-integrations]
+     * : Unhook third-party order callbacks. The number is then not a real-store number.
+     *
+     * [--no-webhooks]
+     * : Do not fire webhooks.
+     *
+     * [--dry-run]
+     * : Print the pre-flight inventory and create nothing.
+     *
+     * [--porcelain]
+     * : Output only the run id.
+     *
+     * ## EXAMPLES
+     *
+     *     wp sspa checkout-flow --dry-run
+     *     wp sspa checkout-flow
+     *     wp sspa checkout-flow --product=47 --repeats=3
+     *
+     * @subcommand checkout-flow
+     */
+    public function checkout_flow($args, $assoc_args) {
+        if (!class_exists('WooCommerce')) {
+            WP_CLI::error('WooCommerce is not active, so there is no checkout to profile.');
+        }
+
+        if (!empty($assoc_args['dry-run'])) {
+            $crawler = new SSPA_Crawler();
+            $sample = $crawler->send_profiled(home_url('/?sspa_flow_probe=1'), array(
+                'method' => 'GET',
+                'flags' => array('v' => 'guest', 'ck' => 'pre'),
+            ));
+            if (!is_array($sample['json'])) {
+                WP_CLI::error('The pre-flight request could not be measured: ' . ($sample['error'] ? $sample['error'] : 'http ' . $sample['code']));
+            }
+            WP_CLI::line(wp_json_encode($sample['json']));
+            return;
+        }
+
+        $start_args = array('type' => 'checkout', 'trigger' => 'cli');
+        if (!empty($assoc_args['product'])) {
+            $start_args['product_id'] = (int) $assoc_args['product'];
+        }
+        if (!empty($assoc_args['payment'])) {
+            $start_args['payment_mode'] = $assoc_args['payment'];
+        }
+        if (!empty($assoc_args['mail'])) {
+            $start_args['mail_mode'] = $assoc_args['mail'];
+        }
+        $start_args['allow_integrations'] = empty($assoc_args['no-integrations']);
+        $start_args['allow_webhooks'] = empty($assoc_args['no-webhooks']);
+
+        $repeats = max(1, (int) (isset($assoc_args['repeats']) ? $assoc_args['repeats'] : 1));
+        $run_ids = array();
+        for ($i = 0; $i < $repeats; $i++) {
+            $run_id = SSPA_Run_Controller::start($start_args);
+            if (is_wp_error($run_id)) {
+                WP_CLI::error($run_id->get_error_message());
+            }
+            $deadline = time() + 15 * MINUTE_IN_SECONDS;
+            do {
+                SSPA_Run_Controller::process_batch($run_id);
+                $status = SSPA_Run_Controller::status($run_id);
+            } while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
+
+            $run = SSPA_Run_Controller::run_row($run_id);
+            $notes = json_decode((string) $run['notes'], true);
+            $outcome = is_array($notes) && isset($notes['outcome']) ? $notes['outcome'] : 'unknown';
+            if ('ok' !== $outcome) {
+                WP_CLI::error(sprintf('Purchase %d did not complete: %s', $i + 1, $outcome));
+            }
+            $run_ids[] = $run_id;
+
+            if (empty($assoc_args['porcelain'])) {
+                $waterfall = SSPA_Checkout_Flow::waterfall($run_id);
+                WP_CLI::log(sprintf(
+                    'Run %d: customer waited %s ms (at risk %s ms, post-capture %s ms), slowest step %s',
+                    $run_id,
+                    $waterfall['total_ms'],
+                    $waterfall['at_risk_ms'],
+                    $waterfall['secured_ms'],
+                    $waterfall['slowest']
+                ));
+            }
+        }
+
+        if (!empty($assoc_args['porcelain'])) {
+            WP_CLI::line(implode(',', $run_ids));
+            return;
+        }
+        WP_CLI::success(sprintf('%d measured purchase(s). Run `wp sspa findings --run=%d` for detail.', count($run_ids), end($run_ids)));
+    }
+
+    /**
      * Show the current/latest run status.
      *
      * [--format=<format>]
