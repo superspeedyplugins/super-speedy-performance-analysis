@@ -25,6 +25,11 @@ if (!class_exists('SSPA_Capture')) {
             $this->flags = $flags;
             if (isset($flags['mail']) && 'c' === $flags['mail']) {
                 $this->mail_mode = 'construct';
+            } elseif (isset($flags['mail']) && 'd' === $flags['mail']) {
+                // Deliver: the ONE mode that lets a profiled request send real mail. Only
+                // reachable from the checkout flow, whose tokens are minted after an
+                // administrator accepted the disclosure. Never the default anywhere else.
+                $this->mail_mode = 'deliver';
             }
         }
 
@@ -53,7 +58,19 @@ if (!class_exists('SSPA_Capture')) {
             // - construct: let the mail stack BUILD the message (measuring template/SMTP
             //   plugin setup cost), then strip every recipient at phpmailer_init so
             //   PHPMailer::preSend() aborts before any transport I/O.
-            if ('construct' === $this->mail_mode) {
+            if ('deliver' === $this->mail_mode) {
+                // Timing only, nothing intercepted and nothing altered: the measurement is
+                // of the real thing, transport included. The wp_mail filter runs BEFORE
+                // pre_wp_mail (pluggable.php:209 vs :233), so this also times API mailers
+                // (SendGrid, Mailgun, Postmark) that short-circuit and never touch PHPMailer.
+                add_filter('wp_mail', array($this, 'mail_deliver_start'), 1);
+                // A short-circuiting mailer returns from wp_mail() without firing either
+                // wp_mail_succeeded or wp_mail_failed, so without this the API-mailer case -
+                // the very case the wp_mail hook was chosen to cover - would record nothing.
+                add_filter('pre_wp_mail', array($this, 'mail_deliver_short_circuit'), PHP_INT_MAX, 2);
+                add_action('wp_mail_succeeded', array($this, 'mail_deliver_end'));
+                add_action('wp_mail_failed', array($this, 'mail_deliver_end'));
+            } elseif ('construct' === $this->mail_mode) {
                 add_filter('wp_mail', array($this, 'mail_construct_start'), 1);
                 add_action('phpmailer_init', array($this, 'mail_construct_end'), PHP_INT_MAX);
                 // Construction can abort before phpmailer_init (e.g. an invalid From
@@ -136,6 +153,35 @@ if (!class_exists('SSPA_Capture')) {
             }
         }
 
+        // ---------------- deliver mode (checkout flow only) ----------------
+
+        public function mail_deliver_start($atts) {
+            $this->mail_pending = array('start' => microtime(true), 'frames' => $this->trigger_frames());
+            return $atts; // unchanged - altering it would measure a message nobody sends
+        }
+
+        /**
+         * Runs after every other pre_wp_mail callback. A non-null value means a mailer
+         * plugin already handled (and timed) the send, so close the pending entry here -
+         * wp_mail() is about to return without firing succeeded/failed.
+         */
+        public function mail_deliver_short_circuit($return, $atts) {
+            if (null !== $return) {
+                $this->mail_deliver_end();
+            }
+            return $return;
+        }
+
+        public function mail_deliver_end($error = null) {
+            if ($this->mail_pending) {
+                $this->mail_calls[] = array(
+                    'frames' => $this->mail_pending['frames'],
+                    'construct_ms' => (microtime(true) - $this->mail_pending['start']) * 1000,
+                );
+                $this->mail_pending = null;
+            }
+        }
+
         private function trigger_frames() {
             $frames = array();
             foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 16) as $f) {
@@ -170,6 +216,14 @@ if (!class_exists('SSPA_Capture')) {
             require_once __DIR__ . '/class-sspa-component-map.php';
             require_once __DIR__ . '/fingerprint.php';
             $map = new SSPA_Component_Map();
+
+            // A send still in flight at shutdown (fatal inside a mailer, or a mailer that
+            // returns through none of the three exits we hook) is recorded with an unknown
+            // duration rather than dropped - a missing call reads as "no mail was sent".
+            if ($this->mail_pending) {
+                $this->mail_calls[] = array('frames' => $this->mail_pending['frames'], 'construct_ms' => null);
+                $this->mail_pending = null;
+            }
 
             $sql = $this->collect_sql($wpdb, $map);
             $http = $this->collect_http($map);
@@ -213,6 +267,15 @@ if (!class_exists('SSPA_Capture')) {
                 'conditionals' => $this->conditionals,
                 'components' => $this->aggregate_components($sql, $http, $mail),
                 'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
+                // Point-in-time marks in ms since $timestart, set by whatever is driving
+                // the request. Generic on purpose: the capture does not know or care what
+                // a mark means. The checkout flow writes 'payment_complete' here so the
+                // report can split the wait at the moment the sale was secured.
+                'marks' => (isset($GLOBALS['sspa_marks']) && is_array($GLOBALS['sspa_marks']) && $GLOBALS['sspa_marks'])
+                    ? array_map(function ($ms) {
+                        return round((float) $ms, 1);
+                    }, $GLOBALS['sspa_marks'])
+                    : null,
                 // Milestones let the sampler bucket its samples into request phases;
                 // 'boot' is built first, so request_end is already stamped.
                 'profile' => $this->excimer ? $this->excimer->report($map, $this->boot_timer ? $this->boot_timer->milestones_ms() : array()) : null,

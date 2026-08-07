@@ -75,7 +75,9 @@ class SSPA_Profile_Store {
             'run_id' => $run_id,
             'page_key' => $result['page_key'],
             'url' => $result['url'],
-            'method' => 'GET',
+            // POST steps (the checkout flow) must not be recorded as GETs - the method is
+            // what tells a reader that a row measured an action, not a page view.
+            'method' => isset($result['method']) ? $result['method'] : 'GET',
             'variant' => $result['variant'],
             'plugin_set_hash' => isset($result['plugin_set_hash']) ? $result['plugin_set_hash'] : '',
             'object_cache_mode' => isset($result['object_cache_mode']) ? $result['object_cache_mode'] : 'normal',

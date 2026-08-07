@@ -75,9 +75,25 @@ if (!class_exists('SSPA_Excimer')) {
                 $covered_to = max($covered_to, (float) $milestones[$to]);
             }
             if (isset($milestones['request_end']) && (float) $milestones['request_end'] > $covered_to) {
-                $windows[] = array('render_and_output', $covered_to, (float) $milestones['request_end']);
+                // On a REST or ?wc-ajax= request there is no template to render and this
+                // window holds nearly everything the endpoint did, so "render_and_output"
+                // would be actively misleading - which matters most on exactly the
+                // requests the checkout flow measures.
+                $windows[] = array(self::is_endpoint_request() ? 'endpoint_work' : 'render_and_output', $covered_to, (float) $milestones['request_end']);
             }
             return $windows;
+        }
+
+        private static function is_endpoint_request() {
+            if (defined('REST_REQUEST') && REST_REQUEST) {
+                return true;
+            }
+            if (isset($_GET['wc-ajax']) || isset($_GET['rest_route'])) { // phpcs:ignore WordPress.Security.NonceVerification
+                return true;
+            }
+            $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+            $prefix = function_exists('rest_get_url_prefix') ? rest_get_url_prefix() : 'wp-json';
+            return false !== strpos($uri, '/' . $prefix . '/');
         }
 
         private static function phase_for($ms, $windows) {

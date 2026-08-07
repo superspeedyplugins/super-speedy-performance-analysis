@@ -1,7 +1,55 @@
 # Checkout flow profiling - implementation spec
 
 Written 2026-08-07 against plugin 0.10.12, WooCommerce 10.9.1, WordPress 6.2+.
-Status: designed, nothing built.
+
+**Status: phase 1 built in 0.11.0** (T1-T11 and T14), on branch `checkout-flow-profiling`,
+verified against WooCommerce 11.0.0 and WordPress 7.0.2 in the docker harness. Not built:
+T12 (shortcode checkout), T13 (per-plugin checkout isolation), T15 (sandbox gateway adapters).
+`SSPA_Checkout_Flow::PAYMENT_MODES` is deliberately empty until T15 writes an adapter, so
+`sandbox` is never offered and `pm=s` cannot enable a payment.
+
+Corrections and deviations found while building. This doc has NOT been rewritten to hide
+them - read each alongside the task it belongs to.
+
+- **A8 item 1 (does cancel-then-delete restore stock?)** - yes on WooCommerce 11.0.0.
+  `verify_stock()` checks anyway and restores explicitly if it ever does not.
+- **A8 item 2 (required address fields)** - the base-country address is accepted.
+  `default_address()` supplies a known-good postcode per country where the store has not set
+  one, because an invalid postcode silently changes which shipping zone matches.
+- **A8 item 3 (block-vs-classic detection)** - a core helper does exist:
+  `\Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils::is_checkout_block_default()`.
+- **A8 item 5 (does this install 301 pretty `/wp-json/` paths?)** - not on the docker harness.
+  The `?rest_route=` fallback in C2 is implemented and untriggered there.
+- **C1 is wrong on one point.** The cart and checkout PAGE steps as specified render an EMPTY
+  cart, because the Store API keys its session to the `Cart-Token` header and never sets a
+  front-end session cookie: the checkout page answers 302 and bounces to the cart. The flow
+  therefore passes the cart token as `?session=` on the first page view after add-to-cart
+  (`WC_Session_Handler::init_session_from_request`, guest sessions only) and reuses the cookie
+  that comes back for every later page view. Without this the feature reproduces the exact
+  flaw A3 describes. The session rows it creates are deleted again by key at the end.
+- **T2's deliver mode needed a fourth hook.** `wp_mail` + `wp_mail_succeeded` +
+  `wp_mail_failed` misses API mailers entirely: one that short-circuits `pre_wp_mail` fires
+  neither action, so the very case the `wp_mail` hook was chosen to cover recorded nothing.
+  Deliver mode also hooks `pre_wp_mail` at `PHP_INT_MAX`.
+- **T5's email list needed filtering.** `WC()->mailer()->get_emails()` also returns the account
+  emails (password reset, new account, email confirmation), so the disclosure claimed a run
+  would send thirteen messages when it sends three. The pre-flight now lists only emails hooked
+  to an order-related action, which still catches third-party order emails.
+- **The default product must need shipping.** The cheapest simple product in the WooCommerce
+  sample data is downloadable, so shipping never calculated and the shipping step was skipped
+  entirely. `default_product()` now prefers the cheapest product that `needs_shipping()`.
+- **An explicitly requested product that cannot be bought is `no_product`**, not a silent
+  fallback to a different product: a silent substitution is a wrong answer that looks right.
+- **T14's out-of-stock case is split in two**: an explicitly requested out-of-stock product
+  gives `no_product` (refused before anything is created), and ordering more units than exist
+  gives the `add_to_cart_failed` the task asked for.
+- **A new `npc` probe flag** reports `needs_payment()` on an in-memory order, so the payment
+  gate can be asserted through the real armed-request path rather than in-process. It is a
+  flag of its own rather than a `ck` value so the request can carry `ck=flow` and be armed
+  while it reports.
+- **T10's `checkout_dupe_queries` emits one finding per component per step**, not one per
+  duplicated query shape: a stock place-order step repeats six different queries, and six
+  near-identical warnings naming the same component in the same step is noise.
 
 This doc is written to be built from directly. Part A is the rules and the verified facts. Part B is
 the build, as numbered tasks with signatures, code and acceptance criteria. Part C is reference

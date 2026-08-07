@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.10.12
+Stable tag: 0.11.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,16 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.11.0 (7th August 2026) =
+* New: "Analyse checkout flow" measures the server time your customer waits through at every step of one real purchase, with every plugin on your site active, split at the payment boundary so time that risks the sale is shown separately from time after the money is in.
+* A pre-flight panel lists exactly which emails, webhooks and plugins a run will set off before anything is created, and the order is cancelled and deleted afterwards with stock restored.
+* New checkout findings: `checkout_slow_step`, `checkout_component_cost`, `checkout_blocking_http`, `checkout_mail_inline` and `checkout_dupe_queries`.
+* New `wp sspa checkout-flow` command plus the `run-checkout-flow` and `get-checkout-flow` abilities, with `--dry-run` to print the pre-flight without buying anything.
+* Order emails are sent for real during a checkout flow run so your mail server's own time is measured; every other kind of run still sends nothing.
+* The checkout flow covers the block checkout, and says so rather than guessing when a store uses the shortcode checkout.
+* Profiles now record the request method, so the POST steps of a checkout are no longer listed as GETs.
+* The sampling profiler labels the last phase of a REST or `wc-ajax` request `endpoint_work` rather than `render_and_output`.
 
 = 0.10.12 (7th August 2026) =
 * The installation instructions now point at the GitHub Releases download, https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest

@@ -43,6 +43,54 @@ class SSPA_Probes {
             self::done('mail-probe');
         }
 
+        $ck = isset($flags['ck']) ? $flags['ck'] : '';
+
+        // Checkout-flow pre-flight: what a flow run would set off, gathered on the FRONT
+        // END because that is where checkout hooks are actually registered. An inventory
+        // taken from a wp-admin screen misses every front-end-only registration.
+        if ('pre' === $ck) {
+            require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-preflight.php';
+            header('Content-Type: application/json');
+            echo wp_json_encode(SSPA_Checkout_Preflight::inventory()); // phpcs:ignore WordPress.Security.EscapeOutput
+            exit; // profiler capture still writes - it runs on PHP shutdown
+        }
+
+        // Payment-gate self-check: proves the no-payment gate is armed for exactly the
+        // flag values that should arm it, through the real armed-request path rather than
+        // an in-process assertion. Reports on an in-memory order, so nothing is created.
+        // Deliberately a flag of its own rather than a `ck` value, so the request can carry
+        // ck=flow and therefore actually be armed while it reports.
+        if (!empty($flags['npc'])) {
+            $order_needs_payment = null;
+            if (class_exists('WC_Order')) {
+                $probe_order = new WC_Order();
+                $probe_order->set_total(47);
+                $probe_order->set_status('pending');
+                $order_needs_payment = (bool) $probe_order->needs_payment();
+            }
+            header('Content-Type: application/json');
+            echo wp_json_encode(array( // phpcs:ignore WordPress.Security.EscapeOutput
+                'order_needs_payment' => $order_needs_payment,
+                'cart_needs_payment' => (bool) apply_filters('woocommerce_cart_needs_payment', true, null),
+                'pm' => isset($flags['pm']) ? $flags['pm'] : null,
+            ));
+            exit;
+        }
+
+        if ('del' === $ck && !empty($flags['oid'])) {
+            $order = function_exists('wc_get_order') ? wc_get_order((int) $flags['oid']) : null;
+            // The one check that must never be relaxed: no order without our own marker is
+            // ever deleted, whatever the flags say.
+            if ($order && $order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
+                if (!$order->has_status(array('cancelled', 'refunded'))) {
+                    $order->update_status('cancelled'); // so wc_maybe_increase_stock_levels runs
+                }
+                $order->delete(true); // HPOS-safe
+                self::done('flow-delete-order');
+            }
+            self::done('flow-delete-order-skipped');
+        }
+
         if (!empty($flags['wp']) && !empty($flags['tid'])) {
             $target = (int) $flags['tid'];
             switch ($flags['wp']) {

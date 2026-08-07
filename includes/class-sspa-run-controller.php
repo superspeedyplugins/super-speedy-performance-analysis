@@ -77,6 +77,17 @@ class SSPA_Run_Controller {
             if (is_wp_error($jobs)) {
                 return $jobs;
             }
+        } elseif ('checkout' === $type) {
+            // One purchase per run (doc A4): a pre-flight inventory, then the flow. Two
+            // jobs rather than one so the existing status polling, cancel button, lock and
+            // stale-run janitor all keep working unchanged.
+            if (!class_exists('WooCommerce')) {
+                return new WP_Error('sspa_no_store', __('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
+            }
+            $jobs = array(
+                array('page_key' => 'flow-preflight', 'checkout' => 'preflight', 'variant' => 'guest', 'url' => home_url('/?sspa_flow_probe=1')),
+                array('page_key' => 'flow', 'checkout' => 'flow', 'variant' => 'guest', 'url' => wc_get_checkout_url()),
+            );
         } elseif ('adhoc' === $type) {
             // Admin-bar "Analyse this page": one URL, stored under a URL-derived page
             // key. Runs of this type are excluded from the Overview/Pages "latest
@@ -127,6 +138,13 @@ class SSPA_Run_Controller {
         }
         if ('deep' === $type) {
             $queue['sweep'] = $sweep;
+        }
+        if ('checkout' === $type) {
+            $queue['checkout'] = array(
+                'opts' => self::checkout_opts($args, $run_id),
+                'inventory' => null,
+                'result' => null,
+            );
         }
         update_option('sspa_queue_' . $run_id, $queue, false);
         wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
@@ -501,6 +519,141 @@ class SSPA_Run_Controller {
         return $jobs ? $jobs : new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
     }
 
+    // ---------------- checkout flow (doc .docs/2026-08-07-checkout-flow-profiling.md) ----------------
+
+    /**
+     * Everything the flow needs, resolved once at start so a run can be replayed from its
+     * own notes. Any switch the admin turned off is recorded, because a partial run must
+     * never later be mistaken for a full one.
+     */
+    private static function checkout_opts($args, $run_id) {
+        $mail_mode = !empty($args['mail_mode']) ? $args['mail_mode'] : sspa_get_option('checkout_mail_mode');
+        $payment_mode = !empty($args['payment_mode']) ? $args['payment_mode'] : sspa_get_option('checkout_payment_mode');
+        return array(
+            'run_id' => (int) $run_id,
+            'product_id' => !empty($args['product_id']) ? (int) $args['product_id'] : (int) sspa_get_option('checkout_product_id'),
+            'quantity' => !empty($args['quantity']) ? (int) $args['quantity'] : max(1, (int) sspa_get_option('checkout_quantity')),
+            'mail_mode' => in_array($mail_mode, array('deliver', 'construct', 'suppress'), true) ? $mail_mode : 'deliver',
+            // Whitelist: an unknown mode falls through to no payment, never to a payment.
+            'payment_mode' => ('sandbox' === $payment_mode) ? 'sandbox' : 'no_payment',
+            'allow_integrations' => isset($args['allow_integrations'])
+                ? (bool) $args['allow_integrations']
+                : (bool) sspa_get_option('checkout_allow_integrations'),
+            'allow_webhooks' => isset($args['allow_webhooks'])
+                ? (bool) $args['allow_webhooks']
+                : (bool) sspa_get_option('checkout_allow_webhooks'),
+            'plugin_set_hash' => !empty($args['plugin_set_hash']) ? $args['plugin_set_hash'] : '',
+        );
+    }
+
+    /**
+     * One checkout job. The pre-flight is a profiled probe request; the flow is one
+     * routine driving every step, because the cart item key, the shipping rate id, the
+     * order id and the confirmation URL are all only knowable at run time.
+     */
+    private static function process_checkout_job($run_id, $job, &$queue) {
+        require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-flow.php';
+        require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-preflight.php';
+        $opts = $queue['checkout']['opts'];
+
+        if ('preflight' === $job['checkout']) {
+            $crawler = new SSPA_Crawler();
+            $flags = array('v' => 'guest', 'ck' => 'pre');
+            if (!empty($opts['plugin_set_hash'])) {
+                $flags['ps'] = $opts['plugin_set_hash'];
+            }
+            $sample = $crawler->send_profiled($job['url'], array('method' => 'GET', 'flags' => $flags));
+            $queue['checkout']['inventory'] = is_array($sample['json']) ? $sample['json'] : null;
+            self::save_checkout_step($run_id, array(
+                'page_key' => 'flow-preflight',
+                'method' => 'GET',
+                'url' => $job['url'],
+                'sample' => $sample,
+            ), $opts);
+            return;
+        }
+
+        $result = SSPA_Checkout_Flow::run($opts);
+        foreach ($result['steps'] as $step) {
+            if (empty($step['sample'])) {
+                continue; // a skipped step measured nothing; the reason goes in the notes
+            }
+            self::save_checkout_step($run_id, $step, $opts);
+        }
+        $queue['checkout']['result'] = array(
+            'outcome' => $result['outcome'],
+            'notes' => $result['notes'],
+            'skipped' => array_values(array_filter(array_map(function ($step) {
+                return $step['skipped'] ? array('step' => $step['page_key'], 'why' => $step['skipped']) : null;
+            }, $result['steps']))),
+        );
+    }
+
+    private static function save_checkout_step($run_id, $step, $opts) {
+        SSPA_Profile_Store::save($run_id, array(
+            'page_key' => $step['page_key'],
+            'url' => $step['url'],
+            'method' => $step['method'],
+            'variant' => 'guest',
+            'samples' => array($step['sample']),
+            'blocked_by' => $step['sample']['blocked_by'],
+            'plugin_set_hash' => !empty($opts['plugin_set_hash']) ? $opts['plugin_set_hash'] : '',
+            'object_cache_mode' => 'normal',
+        ));
+    }
+
+    /**
+     * Checkout completion: findings pass, run notes, done. The flow itself already deleted
+     * its orders and verified stock in its own `finally`; this records what happened.
+     */
+    private static function finish_checkout($run_id) {
+        global $wpdb;
+        SSPA_Helper_Files::restore_held_dropin();
+
+        $queue = get_option('sspa_queue_' . $run_id);
+        $checkout = (is_array($queue) && isset($queue['checkout'])) ? $queue['checkout'] : array();
+        delete_option('sspa_queue_' . $run_id);
+        self::set_status($run_id, 'analysing');
+
+        $result = isset($checkout['result']) ? $checkout['result'] : array();
+        $inventory = isset($checkout['inventory']) ? $checkout['inventory'] : null;
+        $flow_notes = isset($result['notes']) ? $result['notes'] : array();
+
+        $engine = new SSPA_Analysis_Engine();
+        $findings = $engine->analyse_checkout($run_id, $inventory);
+
+        $notes = array(
+            'type' => 'checkout',
+            'outcome' => isset($result['outcome']) ? $result['outcome'] : 'unknown',
+            'flow' => $flow_notes,
+            'skipped' => isset($result['skipped']) ? $result['skipped'] : array(),
+            'findings' => $findings,
+            // The safety report, stated rather than assumed: the panel prints these.
+            'safety' => array(
+                'orders_deleted' => isset($flow_notes['orders_deleted']) ? (int) $flow_notes['orders_deleted'] : 0,
+                'orders_left' => isset($flow_notes['orders_left']) ? (int) $flow_notes['orders_left'] : 0,
+                'stock_before' => isset($flow_notes['stock_before']) ? $flow_notes['stock_before'] : null,
+                'stock_after' => isset($flow_notes['stock_after']) ? $flow_notes['stock_after'] : null,
+                'stock_restored_manually' => !empty($flow_notes['stock_restored_manually']),
+            ),
+            'inventory' => is_array($inventory) ? array(
+                'emails_deferred' => isset($inventory['emails_deferred']) ? (bool) $inventory['emails_deferred'] : null,
+                'webhooks_inline' => isset($inventory['webhooks_inline']) ? (bool) $inventory['webhooks_inline'] : null,
+                'webhooks' => isset($inventory['webhooks']) ? $inventory['webhooks'] : array(),
+                'order_hooks' => isset($inventory['order_hooks']) ? $inventory['order_hooks'] : array(),
+                'checkout_type' => isset($inventory['checkout_type']) ? $inventory['checkout_type'] : null,
+            ) : null,
+        );
+
+        $wpdb->update(SSPA_Schema::table('runs'), array(
+            // A flow that never completed the purchase is a failed run, not a quiet one
+            // with missing rows.
+            'status' => ('ok' === $notes['outcome']) ? 'done' : 'failed',
+            'finished' => gmdate('Y-m-d H:i:s'),
+            'notes' => wp_json_encode($notes),
+        ), array('id' => $run_id));
+    }
+
     /**
      * Opt-in write profiles: the save/transition cascades measured against temporary
      * duplicates the batch loop creates and deletes around each job. Never in run 1
@@ -593,6 +746,20 @@ class SSPA_Run_Controller {
                     SSPA_Helper_Files::hold_object_cache();
                 }
 
+                // A checkout flow is one long job that can exceed BATCH_SECONDS. Already
+                // tolerated: the deadline is checked BEFORE starting a job, never during.
+                if (!empty($job['checkout'])) {
+                    self::process_checkout_job($run_id, $job, $queue);
+                    $queue['idx']++;
+                    $queue['last_progress'] = time();
+                    update_option('sspa_queue_' . $run_id, $queue, false);
+                    $run = self::run_row($run_id);
+                    if (!$run || 'crawling' !== $run['status']) {
+                        return; // cancelled mid-batch
+                    }
+                    continue;
+                }
+
                 // Write profiles run against a temp duplicate created just for this job.
                 $temp_id = 0;
                 $temp_is_order = false;
@@ -630,6 +797,8 @@ class SSPA_Run_Controller {
             if ($queue['idx'] >= count($queue['jobs'])) {
                 if ('cache_impact' === $run['run_type']) {
                     self::finish_cache($run_id);
+                } elseif ('checkout' === $run['run_type']) {
+                    self::finish_checkout($run_id);
                 } elseif ('deep' === $run['run_type']) {
                     // Phase boundary: impacted plugins graduate to the full treatment.
                     if (self::sweep_extend_phase2($run_id)) {
@@ -1035,6 +1204,8 @@ class SSPA_Run_Controller {
             time() - HOUR_IN_SECONDS
         ));
 
+        self::sweep_flow_orders();
+
         // Staleness is judged by PROGRESS, not age: a full sweep legitimately runs for
         // hours. A run with no progress for 30 minutes gets its batch event re-kicked
         // (the driver tab may have closed with no event pending); only a run that still
@@ -1064,6 +1235,78 @@ class SSPA_Run_Controller {
             SSPA_Rules_Feed::refresh();
             SSPA_Rules::flush();
         }
+    }
+
+    /**
+     * Crash-safety net for the checkout flow: an order a crashed run left behind is
+     * cancelled (restoring stock) and deleted, provided it carries this plugin's own
+     * marker. Nothing without that marker is ever touched, whatever the option says.
+     *
+     * Two nets, because an orphan order in a customer's store is the one outcome this
+     * feature must never produce: the ids the run recorded, and a sweep for marked orders
+     * older than an hour that no run ever got round to recording.
+     */
+    private static function sweep_flow_orders() {
+        global $wpdb;
+        if (!function_exists('wc_get_order')) {
+            return;
+        }
+        require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-flow.php';
+        $cutoff = time() - HOUR_IN_SECONDS;
+
+        $temp = get_option(SSPA_Checkout_Flow::TEMP_OPTION, array());
+        $keep = array();
+        foreach ((array) $temp as $entry) {
+            if (empty($entry['id']) || empty($entry['ts'])) {
+                continue;
+            }
+            if ((int) $entry['ts'] > $cutoff) {
+                $keep[] = $entry; // still plausibly in flight
+                continue;
+            }
+            self::delete_marked_order((int) $entry['id']);
+        }
+        if ($keep) {
+            update_option(SSPA_Checkout_Flow::TEMP_OPTION, $keep, false);
+        } else {
+            delete_option(SSPA_Checkout_Flow::TEMP_OPTION);
+        }
+
+        // HPOS keeps order meta in its own table; check both rather than assume a layout.
+        $ids = array();
+        $meta_tables = array($wpdb->postmeta => 'post_id');
+        $hpos_meta = $wpdb->prefix . 'wc_orders_meta';
+        if ($hpos_meta === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $hpos_meta))) {
+            $meta_tables[$hpos_meta] = 'order_id';
+        }
+        foreach ($meta_tables as $table => $id_col) {
+            $ids = array_merge($ids, (array) $wpdb->get_col($wpdb->prepare(
+                "SELECT $id_col FROM $table WHERE meta_key = %s LIMIT 50",
+                SSPA_Checkout_Flow::TEMP_META
+            )));
+        }
+        foreach (array_unique(array_map('intval', $ids)) as $id) {
+            $order = wc_get_order($id);
+            if (!$order) {
+                continue;
+            }
+            $created = $order->get_date_created();
+            if ($created && $created->getTimestamp() > $cutoff) {
+                continue;
+            }
+            self::delete_marked_order($id);
+        }
+    }
+
+    private static function delete_marked_order($order_id) {
+        $order = wc_get_order($order_id);
+        if (!$order || !$order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
+            return;
+        }
+        if (!$order->has_status(array('cancelled', 'refunded'))) {
+            $order->update_status('cancelled'); // restores stock before the row goes
+        }
+        $order->delete(true);
     }
 
     // ---------------- AJAX ----------------

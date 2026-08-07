@@ -63,6 +63,286 @@ class SSPA_Analysis_Engine {
     }
 
     /**
+     * Checkout-flow findings. A separate entry point from analyse(): a flow run has no
+     * pages, one sample per step and no baseline, so the page heuristics either do not
+     * apply or would compare against nothing.
+     *
+     * Steps nobody waits for - the pre-flight probe and the admin cleanup - are excluded
+     * from every total here, exactly as they are in the panel (doc T9 rule 1).
+     *
+     * @param array|null $inventory The pre-flight inventory, when one was gathered.
+     * @return int findings written
+     */
+    public function analyse_checkout($run_id, $inventory = null) {
+        global $wpdb;
+        $this->run_id = (int) $run_id;
+        $this->findings = 0;
+
+        $this->profiles = $wpdb->get_results($wpdb->prepare(
+            'SELECT * FROM ' . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND page_key NOT IN ('flow-preflight','flow-delete-order')",
+            $this->run_id
+        ), ARRAY_A);
+        $this->captures = array();
+        foreach ($this->profiles as $p) {
+            if (!empty($p['profile_blob'])) {
+                $json = @gzuncompress($p['profile_blob']);
+                $capture = $json ? json_decode($json, true) : null;
+                if (is_array($capture)) {
+                    $this->captures[$p['id']] = $capture;
+                }
+            }
+        }
+        if (!$this->profiles) {
+            return 0;
+        }
+
+        $this->checkout_slow_steps();
+        $this->checkout_component_cost();
+        $this->checkout_blocking_http();
+        $this->checkout_mail_inline($inventory);
+        $this->checkout_dupe_queries();
+
+        return $this->findings;
+    }
+
+    /** @return float Total server time the customer waited across the measured steps. */
+    private function checkout_total_ms() {
+        $total = 0.0;
+        foreach ($this->profiles as $p) {
+            $total += (float) $p['page_gen_ms'];
+        }
+        return $total;
+    }
+
+    /** The component that spent most SQL+HTTP time in one step, so a finding can name it. */
+    private function checkout_dominant_component($profile_id) {
+        $capture = isset($this->captures[$profile_id]) ? $this->captures[$profile_id] : null;
+        if (!$capture || empty($capture['components'])) {
+            return null;
+        }
+        $best = null;
+        foreach ($capture['components'] as $component => $stats) {
+            if ($this->skip_component($component)) {
+                continue;
+            }
+            $cost = (float) $stats['sql_ms'] + (float) $stats['http_ms'];
+            if (!$best || $cost > $best['ms']) {
+                $best = array('component' => $component, 'ms' => round($cost, 1));
+            }
+        }
+        return $best;
+    }
+
+    private function checkout_slow_steps() {
+        $threshold = (float) SSPA_Rules::threshold('checkout_slow_step_ms');
+        if ($threshold <= 0) {
+            $threshold = 800;
+        }
+        foreach ($this->profiles as $p) {
+            if (null === $p['page_gen_ms'] || (float) $p['page_gen_ms'] < $threshold) {
+                continue;
+            }
+            $dominant = $this->checkout_dominant_component((int) $p['id']);
+            $this->add(
+                (float) $p['page_gen_ms'] >= $threshold * 2 ? 'critical' : 'warn',
+                'checkout_slow_step',
+                $dominant ? $dominant['component'] : null,
+                $p['page_key'],
+                array(
+                    'step' => $p['page_key'],
+                    'label' => SSPA_Checkout_Flow::step_label($p['page_key']),
+                    'gen_ms' => round((float) $p['page_gen_ms'], 1),
+                    'sql_ms' => (null !== $p['sql_ms']) ? round((float) $p['sql_ms'], 1) : null,
+                    'http_ms' => (null !== $p['http_ms']) ? round((float) $p['http_ms'], 1) : null,
+                    'dominant_ms' => $dominant ? $dominant['ms'] : null,
+                ),
+                'checkout_slow_step',
+                'measured'
+            );
+        }
+    }
+
+    private function checkout_component_cost() {
+        $share = (float) SSPA_Rules::threshold('checkout_component_share_pct');
+        if ($share <= 0) {
+            $share = 25;
+        }
+        $total = $this->checkout_total_ms();
+        if ($total <= 0) {
+            return;
+        }
+
+        $by_component = array();
+        foreach ($this->profiles as $p) {
+            $capture = isset($this->captures[(int) $p['id']]) ? $this->captures[(int) $p['id']] : null;
+            if (!$capture || empty($capture['components'])) {
+                continue;
+            }
+            foreach ($capture['components'] as $component => $stats) {
+                if ($this->skip_component($component)) {
+                    continue;
+                }
+                $cost = (float) $stats['sql_ms'] + (float) $stats['http_ms'];
+                if (!isset($by_component[$component])) {
+                    $by_component[$component] = array('ms' => 0.0, 'steps' => array());
+                }
+                $by_component[$component]['ms'] += $cost;
+                $by_component[$component]['steps'][$p['page_key']] = round($cost, 1);
+            }
+        }
+
+        foreach ($by_component as $component => $data) {
+            $pct = 100 * $data['ms'] / $total;
+            if ($pct < $share) {
+                continue;
+            }
+            arsort($data['steps']);
+            $this->add(
+                $pct >= $share * 2 ? 'critical' : 'warn',
+                'checkout_component_cost',
+                $component,
+                null,
+                array(
+                    'ms' => round($data['ms'], 1),
+                    'flow_ms' => round($total, 1),
+                    'share_pct' => round($pct),
+                    'steps' => array_slice($data['steps'], 0, 5, true),
+                ),
+                'checkout_component_cost',
+                'measured'
+            );
+        }
+    }
+
+    /**
+     * A blocking outbound call inside place-order or the address step is the classic cause
+     * of a six-second checkout: the customer sits waiting on somebody else's server.
+     */
+    private function checkout_blocking_http() {
+        $threshold = (float) SSPA_Rules::threshold('checkout_http_ms');
+        if ($threshold <= 0) {
+            $threshold = 50;
+        }
+        $watched = array('flow-place-order', 'flow-update-customer');
+        foreach ($this->profiles as $p) {
+            if (!in_array($p['page_key'], $watched, true)) {
+                continue;
+            }
+            $capture = isset($this->captures[(int) $p['id']]) ? $this->captures[(int) $p['id']] : null;
+            if (!$capture || empty($capture['http']['calls'])) {
+                continue;
+            }
+            foreach ($capture['http']['calls'] as $call) {
+                if (empty($call['blocking']) || null === $call['ms'] || (float) $call['ms'] < $threshold) {
+                    continue;
+                }
+                if ($this->skip_component($call['component'])) {
+                    continue;
+                }
+                $host = (string) strtok((string) $call['url'], '/');
+                $this->add(
+                    (float) $call['ms'] >= $threshold * 4 ? 'critical' : 'warn',
+                    'checkout_blocking_http',
+                    $call['component'],
+                    $p['page_key'],
+                    array(
+                        'step' => $p['page_key'],
+                        'label' => SSPA_Checkout_Flow::step_label($p['page_key']),
+                        'host' => $host,
+                        'url' => $call['url'],
+                        'method' => isset($call['method']) ? $call['method'] : 'GET',
+                        'ms' => round((float) $call['ms'], 1),
+                        'code' => isset($call['code']) ? $call['code'] : null,
+                    ),
+                    'checkout_blocking_http',
+                    'measured'
+                );
+            }
+        }
+    }
+
+    /**
+     * Order emails sent inside the request versus handed to a deferred queue: the same
+     * store with two very different checkouts (doc A2).
+     */
+    private function checkout_mail_inline($inventory) {
+        $deferred = is_array($inventory) && !empty($inventory['emails_deferred']);
+        $count = 0;
+        $ms = 0.0;
+        $steps = array();
+        foreach ($this->profiles as $p) {
+            if (!$p['mail_count']) {
+                continue;
+            }
+            $count += (int) $p['mail_count'];
+            $ms += (float) $p['mail_ms'];
+            $steps[$p['page_key']] = (int) $p['mail_count'];
+        }
+        if ($deferred || $count < 1) {
+            return; // deferred, or no mail was sent inside the customer's wait at all
+        }
+        $threshold = (float) SSPA_Rules::threshold('slow_mail_ms');
+        $this->add(
+            $ms >= max(1, $threshold) * 5 ? 'critical' : 'warn',
+            'checkout_mail_inline',
+            'woocommerce',
+            null,
+            array('count' => $count, 'ms' => round($ms, 1), 'steps' => $steps),
+            'checkout_mail_inline',
+            'measured'
+        );
+    }
+
+    private function checkout_dupe_queries() {
+        $threshold = (int) SSPA_Rules::threshold('dupe_query_count');
+        foreach ($this->profiles as $p) {
+            $capture = isset($this->captures[(int) $p['id']]) ? $this->captures[(int) $p['id']] : null;
+            if (!$capture || empty($capture['sql']['dupe_details'])) {
+                continue;
+            }
+            // One finding per component per step, not one per duplicated query shape: a
+            // place-order step routinely repeats half a dozen different queries, and six
+            // near-identical warnings naming the same component in the same step is noise
+            // the reader has to filter rather than a list they can act on.
+            $by_component = array();
+            foreach ($capture['sql']['dupe_details'] as $d) {
+                if ((int) $d['count'] < $threshold || $this->skip_component($d['component'])) {
+                    continue;
+                }
+                $key = $d['component'];
+                if (!isset($by_component[$key])) {
+                    $by_component[$key] = array('shapes' => 0, 'wasted' => 0, 'ms' => 0.0, 'worst' => null);
+                }
+                $by_component[$key]['shapes']++;
+                $by_component[$key]['wasted'] += (int) $d['count'] - 1;
+                $by_component[$key]['ms'] += (float) $d['ms'];
+                if (!$by_component[$key]['worst'] || (int) $d['count'] > (int) $by_component[$key]['worst']['count']) {
+                    $by_component[$key]['worst'] = $d;
+                }
+            }
+            foreach ($by_component as $component => $agg) {
+                $this->add(
+                    'warn',
+                    'checkout_dupe_queries',
+                    $component,
+                    $p['page_key'],
+                    array(
+                        'step' => $p['page_key'],
+                        'label' => SSPA_Checkout_Flow::step_label($p['page_key']),
+                        'query_shapes' => $agg['shapes'],
+                        'wasted_queries' => $agg['wasted'],
+                        'ms' => round($agg['ms'], 1),
+                        'count' => (int) $agg['worst']['count'],
+                        'sql' => $agg['worst']['sql'],
+                    ),
+                    'checkout_dupe_queries',
+                    'measured'
+                );
+            }
+        }
+    }
+
+    /**
      * EXPLAIN every distinct query whose full SQL we kept, once per run. Keyed by
      * fingerprint so the same query shape on ten pages costs one EXPLAIN, not ten.
      *

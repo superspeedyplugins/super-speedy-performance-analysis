@@ -34,6 +34,33 @@ class SSPA_Adhoc {
             'href' => '#',
             'meta' => array('title' => __('Profile this URL with Super Speedy Performance Analysis', 'super-speedy-performance-analysis')),
         ));
+
+        // Second node, only where a purchase is the thing in front of you. Clicking it
+        // shows the disclosure; it never starts a purchase on its own.
+        if (self::checkout_flow_available()) {
+            $bar->add_node(array(
+                'id' => 'sspa-checkout',
+                'title' => '<span class="ab-icon dashicons dashicons-cart" style="top:2px"></span>' . esc_html__('Analyse checkout flow', 'super-speedy-performance-analysis'),
+                'href' => '#',
+                'meta' => array('title' => __('Measure what your customer waits through while buying something', 'super-speedy-performance-analysis')),
+            ));
+        }
+    }
+
+    /**
+     * Shown on the shop-facing pages a purchase starts from - the same conditional family
+     * the capture already snapshots. Cheap: these are WooCommerce's own conditionals.
+     */
+    private static function checkout_flow_available() {
+        if (!class_exists('WooCommerce') || is_admin()) {
+            return false;
+        }
+        foreach (array('is_cart', 'is_checkout', 'is_product') as $fn) {
+            if (function_exists($fn) && call_user_func($fn)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function enqueue() {
@@ -70,6 +97,19 @@ class SSPA_Adhoc {
                 'ago' => __('%s ago', 'super-speedy-performance-analysis'),
             ),
         ));
+
+        // The checkout-flow panel reuses this popover's CSS wholesale; it only needs its
+        // own script because the disclosure step has no equivalent here.
+        if (self::checkout_flow_available() || (is_admin() && isset($_GET['page']) && 'sspa' === $_GET['page'])) { // phpcs:ignore WordPress.Security.NonceVerification
+            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery'), SSPA_VERSION, true);
+            wp_localize_script('sspa-checkout', 'sspa_checkout', array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('sspa_admin'),
+                'results_url' => admin_url('admin.php?page=sspa#pages'),
+                'logo_url' => $logo,
+                'version' => SSPA_VERSION,
+            ));
+        }
     }
 
     /**

@@ -80,7 +80,42 @@ hit the site while it runs.
 If the site has Redis/Memcached, `wp sspa run --type=cache_impact` additionally reveals
 which plugins ignore the object cache.
 
-## 5. Cautions
+## 5. WooCommerce: measure the checkout the customer actually experiences
+
+Everything above profiles pages as GETs, which for the cart and checkout means an EMPTY
+cart. On a block checkout the real cost is in POSTs a crawler never sends. The checkout flow
+measures one complete purchase instead, step by step, and splits the result at the payment
+boundary: time the customer can still abandon during, versus time after the sale is secured.
+
+**This buys something for real.** A real order is created, real order emails are sent and
+real integrations fire. The order is cancelled and deleted afterwards and stock is restored,
+but you must show the owner what it will set off and get their agreement first:
+
+```bash
+wp sspa checkout-flow --dry-run   # the pre-flight inventory - creates nothing
+wp sspa checkout-flow             # one measured purchase
+```
+
+Via MCP/Abilities: call `run-checkout-flow` with `dry_run: true`, relay the inventory to the
+owner **and wait for them to agree**, then call it again without `dry_run`, poll `get-status`,
+and read `get-checkout-flow`. That ability is marked destructive; treat it as one.
+
+The pre-flight names the order emails and their recipients, whether emails are deferred or
+sent inside the request, active webhooks by host, and every plugin that will run code when
+the order is created. Relay all of it - a plugin that emails a supplier or a dropshipper on a
+new order really will email them.
+
+Reading the result: `at_risk_ms` is the half that costs sales, `secured_ms` is the half that
+only costs goodwill. `slowest` names the worst step. New finding types are
+`checkout_slow_step`, `checkout_component_cost`, `checkout_blocking_http` (the classic cause
+of a six-second checkout), `checkout_mail_inline` and `checkout_dupe_queries`. In the default
+`no_payment` mode the payment provider's own latency is NOT included - say so rather than
+implying the total is everything the customer waits for.
+
+Only the block checkout is supported; on a shortcode checkout the run reports
+`unsupported_checkout` rather than guessing.
+
+## 6. Cautions
 
 - Do not enable community sharing yourself - only the site owner may opt in (Share tab).
 - If pages report `blocked_by`, a security plugin blocked the loopbacks: relay the

@@ -478,3 +478,159 @@
 		transform: translateY(-14px);
 	}
 }
+
+/* ---- checkout flow panel (sspa-checkout.js renders into the same popover) ---- */
+
+#sspa-adhoc-pop .sspa-ck-h {
+	margin: 14px 0 6px;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+
+#sspa-adhoc-pop .sspa-ck-atrisk {
+	color: #a4262c;
+}
+
+#sspa-adhoc-pop .sspa-ck-secured {
+	color: #0a6b3d;
+}
+
+#sspa-adhoc-pop .sspa-ck-h4 {
+	margin: 14px 0 4px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--sspa-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+#sspa-adhoc-pop .sspa-ck-list {
+	margin: 8px 0;
+	padding-left: 18px;
+	list-style: disc;
+}
+
+#sspa-adhoc-pop .sspa-ck-list li {
+	margin-bottom: 4px;
+}
+
+#sspa-adhoc-pop .sspa-ck-warn {
+	color: #a4262c;
+}
+
+#sspa-adhoc-pop .sspa-ck-opt {
+	display: block;
+	margin: 4px 0;
+	padding: 6px 8px;
+	background: var(--sspa-surface);
+	border: 1px solid var(--sspa-outline);
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+#sspa-adhoc-pop .sspa-ck-unavailable {
+	padding: 6px 8px;
+	opacity: 0.75;
+}
+
+#sspa-adhoc-pop .sspa-ck-actions {
+	margin-top: 14px;
+}
+
+#sspa-adhoc-pop .sspa-ck-table td {
+	vertical-align: middle;
+}
+
+/* The bar column takes whatever is left, so the numbers stay aligned. */
+#sspa-adhoc-pop .sspa-ck-barcell {
+	width: 45%;
+}
+
+#sspa-adhoc-pop .sspa-ck-num {
+	white-space: nowrap;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+#sspa-adhoc-pop .sspa-ck-bar {
+	display: block;
+	height: 10px;
+	border-radius: 5px;
+	background: var(--sspa-primary);
+	opacity: 0.55;
+}
+
+#sspa-adhoc-pop .sspa-ck-table tr.is-slowest .sspa-ck-bar {
+	opacity: 1;
+}
+
+#sspa-adhoc-pop .sspa-ck-tag {
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: var(--sspa-primary-soft);
+	color: var(--sspa-primary-dark);
+	font-size: 11px;
+}
+
+#sspa-adhoc-pop .sspa-ck-total td,
+#sspa-adhoc-pop .sspa-ck-grand td {
+	border-top: 1px solid var(--sspa-outline);
+	font-weight: 600;
+}
+
+#sspa-adhoc-pop .sspa-ck-grand td {
+	font-size: 14px;
+}
+
+#sspa-adhoc-pop .sspa-ck-sev {
+	display: inline-block;
+	margin-right: 6px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	font-size: 11px;
+	text-transform: uppercase;
+}
+
+#sspa-adhoc-pop .sspa-ck-sev.is-critical {
+	background: #fde7e9;
+	color: #a4262c;
+}
+
+#sspa-adhoc-pop .sspa-ck-sev.is-warn {
+	background: #fff4ce;
+	color: #7a5c00;
+}
+
+#sspa-adhoc-pop .sspa-ck-sev.is-info {
+	background: var(--sspa-primary-soft);
+	color: var(--sspa-primary-dark);
+}
+
+/* The base table right-aligns and monospaces its last cell for numbers; a note cell
+   spanning the tail of a total row must opt back out of all three. */
+#sspa-adhoc-pop .sspa-ck-table td.sspa-ck-wide:last-child {
+	width: auto;
+	text-align: left;
+	white-space: normal;
+	font-family: var(--sspa-font);
+	font-size: 12px;
+	color: var(--sspa-muted);
+}
+
+#sspa-adhoc-pop .sspa-ck-grand td {
+	font-size: 15px;
+	border-bottom: none;
+}
+
+#sspa-adhoc-pop .sspa-ck-finding {
+	padding: 8px 10px;
+	margin: 6px 0;
+	background: var(--sspa-surface);
+	border: 1px solid var(--sspa-outline);
+	border-radius: 8px;
+}
+
+#sspa-adhoc-pop .sspa-ck-table td.sspa-ck-wide:last-child {
+	padding-left: 14px;
+}

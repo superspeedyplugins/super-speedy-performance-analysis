@@ -182,6 +182,109 @@ class SSPA_Crawler {
         return $sample;
     }
 
+    /**
+     * Send ONE profiled request of any method and return the sample plus the parsed body.
+     *
+     * Deliberately not built on profiled_request(): that follows redirects, and a followed
+     * 3xx becomes a GET which would silently measure the wrong thing. Here a 3xx is a
+     * failure the caller must handle (see the rest_route fallback in SSPA_Checkout_Flow).
+     * No warm-up and no repeat samples either - the checkout flow buys something, and every
+     * repeat is another real order.
+     *
+     * @param string $url  Absolute URL on this site.
+     * @param array  $args {
+     *     @type string       $method  GET|POST. Default GET.
+     *     @type array|string $body    Array for form encoding, array for JSON when json=true.
+     *     @type bool         $json    Send the body as application/json. Default false.
+     *     @type array        $headers Extra request headers, e.g. ['Cart-Token' => '...'].
+     *     @type array        $cookies Cookie jar to send (name => value or WP_Http_Cookie[]).
+     *     @type array        $flags   Token flags, e.g. ['v' => 'guest', 'ck' => 'flow'].
+     * }
+     * @return array The sample shape SSPA_Profile_Store::save() expects (wall_ms, code,
+     *               cached, blocked_by, error, capture) plus body, json and cookies.
+     */
+    public function send_profiled($url, $args = array()) {
+        $method = isset($args['method']) ? strtoupper($args['method']) : 'GET';
+        $flags = isset($args['flags']) ? $args['flags'] : array();
+        // Guarantees a cache MISS; the token signature binds path+query so it cannot be
+        // stripped in transit.
+        $hop_url = $this->bust_url($url);
+        $token = SSPA_Token::mint($hop_url, $flags);
+
+        $headers = array('Cache-Control' => 'no-cache', SSPA_Token::HEADER => $token['header']);
+        if (!empty($args['headers'])) {
+            $headers = array_merge($headers, $args['headers']);
+        }
+        $body = isset($args['body']) ? $args['body'] : null;
+        if (!empty($args['json'])) {
+            $headers['Content-Type'] = 'application/json';
+            $body = wp_json_encode($body);
+        }
+
+        $start = microtime(true);
+        $response = wp_remote_request($hop_url, array(
+            'method' => $method,
+            'timeout' => 60,
+            'redirection' => 0,
+            'sslverify' => false,
+            'headers' => $headers,
+            'body' => $body,
+            'cookies' => isset($args['cookies']) ? $args['cookies'] : array(),
+        ));
+        $wall_ms = (microtime(true) - $start) * 1000;
+
+        $sample = array(
+            'wall_ms' => round($wall_ms, 1),
+            'code' => 0,
+            'cached' => false,
+            'blocked_by' => null,
+            'error' => null,
+            'capture' => null,
+            'body' => '',
+            'json' => null,
+            'cookies' => array(),
+        );
+
+        if (is_wp_error($response)) {
+            $sample['error'] = $response->get_error_code();
+            $this->discard_capture($token['id']);
+            return $sample;
+        }
+
+        $sample['code'] = (int) wp_remote_retrieve_response_code($response);
+        $sample['body'] = (string) wp_remote_retrieve_body($response);
+        $decoded = json_decode($sample['body'], true);
+        $sample['json'] = is_array($decoded) ? $decoded : null;
+        $sample['cookies'] = wp_remote_retrieve_cookies($response);
+        $headers_lc = $this->lower_headers($response);
+
+        $sample['blocked_by'] = SSPA_Security_Detect::classify(
+            $sample['code'],
+            $headers_lc,
+            substr($sample['body'], 0, 20000),
+            !empty($args['cookies'])
+        );
+        if ($sample['blocked_by']) {
+            $this->discard_capture($token['id']);
+            return $sample;
+        }
+
+        // Canary: the mu-loader echoes our token id. Missing means a cache answered, the
+        // mu-loader is not installed, or (on a POST) a redirect swallowed the request.
+        $canary = isset($headers_lc['x-sspa-profiled']) ? $headers_lc['x-sspa-profiled'] : null;
+        if ($canary !== $token['id']) {
+            $sample['error'] = 'no_canary';
+            $this->discard_capture($token['id']);
+            return $sample;
+        }
+
+        $sample['capture'] = $this->fetch_capture($token['id']);
+        if (!$sample['capture']) {
+            $sample['error'] = 'capture_missing';
+        }
+        return $sample;
+    }
+
     private function send($url, $cookies, $token_header) {
         $headers = array('Cache-Control' => 'no-cache');
         if ($token_header) {
