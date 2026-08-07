@@ -2,11 +2,34 @@
 
 Written 2026-08-07 against plugin 0.10.12, WooCommerce 10.9.1, WordPress 6.2+.
 
-**Status: phase 1 built in 0.11.0** (T1-T11 and T14), on branch `checkout-flow-profiling`,
-verified against WooCommerce 11.0.0 and WordPress 7.0.2 in the docker harness. Not built:
-T12 (shortcode checkout), T13 (per-plugin checkout isolation), T15 (sandbox gateway adapters).
+**Status: phase 1 built in 0.11.0** (T1-T11 and T14), **phase 2 built in 0.11.1** (T12, the
+shortcode checkout). Verified against WooCommerce 11.0.0 and WordPress 7.0.3 in the docker
+harness. Not built: T13 (per-plugin checkout isolation), T15 (sandbox gateway adapters).
 `SSPA_Checkout_Flow::PAYMENT_MODES` is deliberately empty until T15 writes an adapter, so
 `sandbox` is never offered and `pm=s` cannot enable a payment.
+
+**T12 correction, and it matters.** A7 fact 8 is incomplete. It records that
+`wp_create_nonce()` binds to the current request's user and session token - true - but not
+that WooCommerce ALSO filters `nonce_user_logged_out` to return the cart session's customer id
+for any action whose name starts with `woocommerce`
+(`WC_Session_Handler::maybe_update_nonce_user_logged_out`). So the C3 recipe of "mint them as
+a logged-out visitor" is necessary but not sufficient:
+
+- `woocommerce-process_checkout` must additionally be bound to the LOOPBACK visitor's cart
+  session id, which does not exist until add-to-cart has run and comes back in the
+  `wp_woocommerce_session_*` cookie,
+- `update-order-review` does not start with `woocommerce`, so it must NOT be rebound.
+
+`SSPA_Checkout_Flow::guest_nonce()` does both, filtering at priority 100 so it beats
+WooCommerce's own at 10 (which would otherwise bind the nonce to the minting process's cart
+session). Remove either half and every classic checkout POST returns "we were unable to
+process your order, please try again" - exactly the misleading symptom T12 warned about.
+
+**Also fixed in 0.11.1, and it was a phase 1 bug.** `run()` had `return $result;` statements
+inside its try block. PHP evaluates a return expression BEFORE running `finally`, so every
+failure path returned a copy of `$result` taken before cleanup recorded anything: the order
+really was deleted, but the notes and the panel's safety report both said "0 orders deleted".
+Both paths are now separate methods called from a single try/catch/finally.
 
 Corrections and deviations found while building. This doc has NOT been rewritten to hide
 them - read each alongside the task it belongs to.

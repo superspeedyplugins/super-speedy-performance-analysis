@@ -108,6 +108,11 @@ slashes, which kills POSTs.
   failure paths. Plus the payment-mode safety assertions: a flow token with no `pm` flag,
   a junk one, or `pm=s` with no gateway adapter must all take the no-payment path.
   Two fixture plugins are planted and removed by the case itself.
+  The whole purchase then runs again against the CLASSIC shortcode checkout: the store is
+  pointed at throwaway `[woocommerce_cart]`/`[woocommerce_checkout]` pages and put back
+  afterwards, so the block pages are never edited. Two assertions pin the nonce binding
+  that path depends on - the place-order nonce must differ from both an unbound one and one
+  minted as the current admin, while the `update-order-review` nonce must not.
 
 ## Not yet covered (planned)
 

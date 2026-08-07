@@ -465,20 +465,20 @@ class SSPA_Checkout_Flow {
             $result['outcome'] = 'no_store';
             return $result;
         }
-        if (!class_exists('\Automattic\WooCommerce\StoreApi\Utilities\CartTokenUtils')) {
-            // Older WooCommerce: the block path needs a cart token to skip the nonce, and
-            // the cookie-jar classic path is phase 2.
-            $result['outcome'] = 'unsupported_store';
-            return $result;
-        }
         $product = self::default_product(isset($opts['product_id']) ? $opts['product_id'] : 0);
         if (!$product) {
             $result['outcome'] = 'no_product';
             return $result;
         }
-        if ('block' !== SSPA_Checkout_Preflight::checkout_type()) {
-            // Phase 1 drives the block checkout only. The classic path (doc T12/C3) needs
-            // a cookie jar and logged-out nonces, and guessing at it would produce a
+        $checkout_type = SSPA_Checkout_Preflight::checkout_type();
+        if ('block' === $checkout_type && !class_exists('\Automattic\WooCommerce\StoreApi\Utilities\CartTokenUtils')) {
+            // The block path needs a cart token to skip the Store API's nonce.
+            $result['outcome'] = 'unsupported_store';
+            return $result;
+        }
+        if (!in_array($checkout_type, array('block', 'classic'), true)) {
+            // Neither the block nor the shortcode: a page builder's own checkout, or a
+            // checkout page that has been emptied. Guessing at the payload would produce a
             // "we were unable to process your order" that reads like a broken store.
             $result['outcome'] = 'unsupported_checkout';
             return $result;
@@ -502,7 +502,7 @@ class SSPA_Checkout_Flow {
             'mail_mode' => isset($opts['mail_mode']) ? $opts['mail_mode'] : 'deliver',
             'allow_integrations' => !isset($opts['allow_integrations']) || !empty($opts['allow_integrations']),
             'allow_webhooks' => !isset($opts['allow_webhooks']) || !empty($opts['allow_webhooks']),
-            'checkout_type' => 'block',
+            'checkout_type' => $checkout_type,
             'email' => $email,
             'stock_before' => $product->managing_stock() ? $product->get_stock_quantity() : null,
             'stock_after' => null,
@@ -510,115 +510,38 @@ class SSPA_Checkout_Flow {
         );
 
         $crawler = new SSPA_Crawler();
-        // A cart token removes the Store API's nonce requirement entirely (doc A7 fact 2),
-        // so the flow needs no nonce and no cookie jar on the block path.
-        $customer_id = 't_' . bin2hex(random_bytes(8));
-        $cart_token = \Automattic\WooCommerce\StoreApi\Utilities\CartTokenUtils::get_cart_token($customer_id);
-        $headers = array('Cart-Token' => $cart_token);
+        $customer_id = '';
+        $cart_token = '';
+        if ('block' === $checkout_type) {
+            // A cart token removes the Store API's nonce requirement entirely (doc A7
+            // fact 2), so the block path needs no nonce of its own.
+            $customer_id = 't_' . bin2hex(random_bytes(8));
+            $cart_token = \Automattic\WooCommerce\StoreApi\Utilities\CartTokenUtils::get_cart_token($customer_id);
+        }
+        $headers = $cart_token ? array('Cart-Token' => $cart_token) : array();
 
         $billing = array_merge($address, array('email' => $email));
         $shipping = $address;
         unset($shipping['phone']);
 
         // Front-end page views need a real cart or they measure an EMPTY cart page, which
-        // is the exact flaw this feature exists to fix (doc A3). WooCommerce restores a
-        // guest session from a cart token passed as ?session= (WC_Session_Handler::
-        // init_session_from_request), so the first page view after add-to-cart carries it
-        // and every later one reuses the cookie that came back - one session, as a real
-        // customer would have, instead of a fresh clone per page.
+        // is the exact flaw this feature exists to fix (doc A3). On the block path
+        // WooCommerce restores a guest session from a cart token passed as ?session=
+        // (WC_Session_Handler::init_session_from_request); on the classic path the session
+        // cookie comes back from add-to-cart. Either way one session serves the whole
+        // visit, as a real customer would have, instead of a fresh clone per page.
         $jar = array('cookies' => array(), 'session_keys' => array());
 
+        // Neither branch returns from inside the try: PHP evaluates a return value BEFORE
+        // running finally, so an early `return $result` in there would hand back a copy
+        // taken before cleanup recorded anything - every failure path reporting "0 orders
+        // deleted" while having deleted one.
+        $ctx = compact('product', 'quantity', 'billing', 'shipping', 'email', 'payment_mode', 'cart_token', 'headers');
         try {
-            // --- 2. the product page ---
-            $step = self::request($crawler, 'flow-view-product', 'GET', $product->get_permalink(), $flags);
-            $result['steps'][] = $step;
-            if (!self::step_ok($step)) {
-                $result['outcome'] = 'view_product_failed';
-                return $result;
-            }
-
-            // --- 3. add to cart ---
-            $step = self::api_request($crawler, 'flow-add-to-cart', 'POST', 'wc/store/v1/cart/add-item', $flags, $headers, array(
-                'id' => $product->get_id(),
-                'quantity' => $quantity,
-            ));
-            $result['steps'][] = $step;
-            if (!self::step_ok($step) || empty($step['sample']['json']['items'])) {
-                $result['outcome'] = 'add_to_cart_failed';
-                $result['notes']['error'] = self::api_error($step);
-                return $result;
-            }
-
-            // --- 4/5. the cart, as a page and as the API the block calls ---
-            $result['steps'][] = self::page_request($crawler, 'flow-view-cart', wc_get_cart_url(), $flags, $cart_token, $jar);
-            $result['steps'][] = self::api_request($crawler, 'flow-cart-api', 'GET', 'wc/store/v1/cart', $flags, $headers);
-
-            // --- 6. the customer's address: tax and shipping are calculated here ---
-            $step = self::api_request($crawler, 'flow-update-customer', 'POST', 'wc/store/v1/cart/update-customer', $flags, $headers, array(
-                'billing_address' => $billing,
-                'shipping_address' => $shipping,
-            ));
-            $result['steps'][] = $step;
-            if (!self::step_ok($step)) {
-                $result['outcome'] = 'update_customer_failed';
-                $result['notes']['error'] = self::api_error($step);
-                return $result;
-            }
-
-            // --- 7. pick a shipping rate, when the store offers any ---
-            $rate = self::first_rate($step['sample']['json']);
-            if ($rate) {
-                $result['steps'][] = self::api_request($crawler, 'flow-select-shipping', 'POST', 'wc/store/v1/cart/select-shipping-rate', $flags, $headers, $rate);
+            if ('classic' === $checkout_type) {
+                self::run_classic($crawler, $flags, $result, $ctx, $jar);
             } else {
-                $result['steps'][] = self::skipped_step('flow-select-shipping', __('no shipping rates offered for this address', 'super-speedy-performance-analysis'));
-            }
-
-            // --- 8. the checkout page ---
-            $result['steps'][] = self::page_request($crawler, 'flow-view-checkout', wc_get_checkout_url(), $flags, $cart_token, $jar);
-
-            // --- 9. the draft order the block checkout creates while you type ---
-            $step = self::api_request($crawler, 'flow-checkout-draft', 'GET', 'wc/store/v1/checkout', $flags, $headers);
-            $result['steps'][] = $step;
-            if (!empty($step['sample']['json']['order_id'])) {
-                self::remember_order((int) $step['sample']['json']['order_id'], $result);
-            }
-
-            // --- 10. place the order ---
-            $body = array('billing_address' => $billing, 'shipping_address' => $shipping);
-            if ('sandbox' === $payment_mode) {
-                $adapter = self::sandbox_adapter();
-                if ($adapter) {
-                    $body['payment_method'] = $adapter->gateway_id();
-                    $body['payment_data'] = $adapter->payment_data();
-                }
-            }
-            $step = self::api_request($crawler, 'flow-place-order', 'POST', 'wc/store/v1/checkout', $flags, $headers, $body);
-            $result['steps'][] = $step;
-            $json = isset($step['sample']['json']) ? $step['sample']['json'] : null;
-            if (!empty($json['order_id'])) {
-                self::remember_order((int) $json['order_id'], $result);
-            }
-            if (!self::step_ok($step) || empty($json['order_id'])) {
-                $result['outcome'] = (429 === (int) $step['sample']['code']) ? 'rate_limited' : 'place_order_failed';
-                $result['notes']['error'] = self::api_error($step);
-                return $result;
-            }
-            $result['notes']['order_status'] = isset($json['status']) ? $json['status'] : null;
-            // Read the total off the order itself: the checkout response schema carries the
-            // addresses and the payment result, not the totals. Read now, because the
-            // order is deleted in the finally below.
-            $placed = wc_get_order((int) $json['order_id']);
-            $result['notes']['order_total'] = $placed ? $placed->get_total() : null;
-            $result['notes']['order_needed_shipping'] = $placed ? $placed->needs_shipping_address() : null;
-
-            // --- 11. the confirmation the customer lands on ---
-            $received = !empty($json['payment_result']['redirect_url'])
-                ? $json['payment_result']['redirect_url']
-                : self::order_received_url((int) $json['order_id']);
-            if ($received) {
-                $result['steps'][] = self::page_request($crawler, 'flow-order-received', $received, $flags, $cart_token, $jar);
-            } else {
-                $result['steps'][] = self::skipped_step('flow-order-received', __('no confirmation URL returned', 'super-speedy-performance-analysis'));
+                self::run_block($crawler, $flags, $result, $ctx, $jar);
             }
         } catch (Throwable $e) {
             $result['outcome'] = 'exception';
@@ -632,6 +555,392 @@ class SSPA_Checkout_Flow {
         }
 
         return $result;
+    }
+
+    /**
+     * The block checkout: the Store API POSTs a crawler never sends, with the cart token
+     * standing in for the nonce.
+     *
+     * @param array $ctx {product, quantity, billing, shipping, email, payment_mode,
+     *                    cart_token, headers}
+     */
+    private static function run_block($crawler, $flags, &$result, $ctx, &$jar) {
+        $product = $ctx['product'];
+        $quantity = $ctx['quantity'];
+        $billing = $ctx['billing'];
+        $shipping = $ctx['shipping'];
+        $payment_mode = $ctx['payment_mode'];
+        $cart_token = $ctx['cart_token'];
+        $headers = $ctx['headers'];
+
+        // --- 2. the product page ---
+        $step = self::request($crawler, 'flow-view-product', 'GET', $product->get_permalink(), $flags);
+        $result['steps'][] = $step;
+        if (!self::step_ok($step)) {
+            $result['outcome'] = 'view_product_failed';
+            return;
+        }
+
+        // --- 3. add to cart ---
+        $step = self::api_request($crawler, 'flow-add-to-cart', 'POST', 'wc/store/v1/cart/add-item', $flags, $headers, array(
+            'id' => $product->get_id(),
+            'quantity' => $quantity,
+        ));
+        $result['steps'][] = $step;
+        if (!self::step_ok($step) || empty($step['sample']['json']['items'])) {
+            $result['outcome'] = 'add_to_cart_failed';
+            $result['notes']['error'] = self::api_error($step);
+            return;
+        }
+
+        // --- 4/5. the cart, as a page and as the API the block calls ---
+        $result['steps'][] = self::page_request($crawler, 'flow-view-cart', wc_get_cart_url(), $flags, $cart_token, $jar);
+        $result['steps'][] = self::api_request($crawler, 'flow-cart-api', 'GET', 'wc/store/v1/cart', $flags, $headers);
+
+        // --- 6. the customer's address: tax and shipping are calculated here ---
+        $step = self::api_request($crawler, 'flow-update-customer', 'POST', 'wc/store/v1/cart/update-customer', $flags, $headers, array(
+            'billing_address' => $billing,
+            'shipping_address' => $shipping,
+        ));
+        $result['steps'][] = $step;
+        if (!self::step_ok($step)) {
+            $result['outcome'] = 'update_customer_failed';
+            $result['notes']['error'] = self::api_error($step);
+            return;
+        }
+
+        // --- 7. pick a shipping rate, when the store offers any ---
+        $rate = self::first_rate($step['sample']['json']);
+        if ($rate) {
+            $result['steps'][] = self::api_request($crawler, 'flow-select-shipping', 'POST', 'wc/store/v1/cart/select-shipping-rate', $flags, $headers, $rate);
+        } else {
+            $result['steps'][] = self::skipped_step('flow-select-shipping', __('no shipping rates offered for this address', 'super-speedy-performance-analysis'));
+        }
+
+        // --- 8. the checkout page ---
+        $result['steps'][] = self::page_request($crawler, 'flow-view-checkout', wc_get_checkout_url(), $flags, $cart_token, $jar);
+
+        // --- 9. the draft order the block checkout creates while you type ---
+        $step = self::api_request($crawler, 'flow-checkout-draft', 'GET', 'wc/store/v1/checkout', $flags, $headers);
+        $result['steps'][] = $step;
+        if (!empty($step['sample']['json']['order_id'])) {
+            self::remember_order((int) $step['sample']['json']['order_id'], $result);
+        }
+
+        // --- 10. place the order ---
+        $body = array('billing_address' => $billing, 'shipping_address' => $shipping);
+        if ('sandbox' === $payment_mode) {
+            $adapter = self::sandbox_adapter();
+            if ($adapter) {
+                $body['payment_method'] = $adapter->gateway_id();
+                $body['payment_data'] = $adapter->payment_data();
+            }
+        }
+        $step = self::api_request($crawler, 'flow-place-order', 'POST', 'wc/store/v1/checkout', $flags, $headers, $body);
+        $result['steps'][] = $step;
+        $json = isset($step['sample']['json']) ? $step['sample']['json'] : null;
+        if (!empty($json['order_id'])) {
+            self::remember_order((int) $json['order_id'], $result);
+        }
+        if (!self::step_ok($step) || empty($json['order_id'])) {
+            $result['outcome'] = (429 === (int) $step['sample']['code']) ? 'rate_limited' : 'place_order_failed';
+            $result['notes']['error'] = self::api_error($step);
+            return;
+        }
+        $result['notes']['order_status'] = isset($json['status']) ? $json['status'] : null;
+        // Read the total off the order itself: the checkout response schema carries the
+        // addresses and the payment result, not the totals. Read now, because the
+        // order is deleted in the finally below.
+        $placed = wc_get_order((int) $json['order_id']);
+        $result['notes']['order_total'] = $placed ? $placed->get_total() : null;
+        $result['notes']['order_needed_shipping'] = $placed ? $placed->needs_shipping_address() : null;
+
+        // --- 11. the confirmation the customer lands on ---
+        $received = !empty($json['payment_result']['redirect_url'])
+            ? $json['payment_result']['redirect_url']
+            : self::order_received_url((int) $json['order_id']);
+        if ($received) {
+            $result['steps'][] = self::page_request($crawler, 'flow-order-received', $received, $flags, $cart_token, $jar);
+        } else {
+            $result['steps'][] = self::skipped_step('flow-order-received', __('no confirmation URL returned', 'super-speedy-performance-analysis'));
+        }
+    }
+
+
+    /**
+     * The shortcode checkout (doc T12/C3). Two things make it harder than the block path,
+     * and both are places where a wrong guess produces "we were unable to process your
+     * order", which reads like a broken store rather than a broken profiler:
+     *
+     * 1. There is no cart token, so the cart lives in the `wp_woocommerce_session_*`
+     *    cookie and every step has to carry the jar forward.
+     * 2. The POSTs need nonces minted as the LOGGED-OUT visitor who will send them. Worse
+     *    than doc A7 fact 8 describes: WooCommerce filters `nonce_user_logged_out` to
+     *    return the CART SESSION's customer id for any action starting with `woocommerce`
+     *    (WC_Session_Handler::maybe_update_nonce_user_logged_out), so the place-order
+     *    nonce is bound to a session id that only exists once add-to-cart has run.
+     *
+     * @param array $ctx {product, quantity, billing, shipping, email}
+     */
+    private static function run_classic($crawler, $flags, &$result, $ctx, &$jar) {
+        $product = $ctx['product'];
+        $billing = $ctx['billing'];
+        $shipping = $ctx['shipping'];
+
+        // --- 1. the product page ---
+        $step = self::page_request($crawler, 'flow-view-product', $product->get_permalink(), $flags, '', $jar);
+        $result['steps'][] = $step;
+        if (!self::step_ok($step)) {
+            $result['outcome'] = 'view_product_failed';
+            return;
+        }
+
+        // --- 2. add to cart. No nonce: WC_AJAX::add_to_cart() checks none. The response
+        //        is what establishes the cart session this whole run then uses.
+        $step = self::jar_request($crawler, 'flow-add-to-cart', 'POST', home_url('/?wc-ajax=add_to_cart'), $flags, $jar, array(
+            'body' => array('product_id' => $product->get_id(), 'quantity' => $ctx['quantity']),
+        ));
+        $result['steps'][] = $step;
+        $added = self::step_ok($step) && empty($step['sample']['json']['error']);
+        if (!$added) {
+            $result['outcome'] = 'add_to_cart_failed';
+            $result['notes']['error'] = self::classic_error($step);
+            return;
+        }
+
+        $customer_id = self::session_customer_id($jar);
+        if (!$customer_id) {
+            // Without the session id the place-order nonce cannot be bound correctly, and
+            // an unbound nonce fails as "your session has expired" - a misleading result
+            // rather than an honest one. Stop and name it.
+            $result['outcome'] = 'no_session';
+            $result['notes']['error'] = 'add-to-cart returned no WooCommerce session cookie';
+            return;
+        }
+        $result['notes']['session_customer_id'] = $customer_id;
+
+        // --- 3. the cart page ---
+        $result['steps'][] = self::page_request($crawler, 'flow-view-cart', wc_get_cart_url(), $flags, '', $jar);
+
+        // --- 4. the address: this is where tax and shipping are calculated, and on a
+        //        classic checkout it is fired on every keystroke-ish change.
+        $review_body = array(
+            'security' => self::guest_nonce('update-order-review', $customer_id),
+            'payment_method' => '',
+            'country' => $billing['country'],
+            'state' => $billing['state'],
+            'postcode' => $billing['postcode'],
+            'city' => $billing['city'],
+            'address' => $billing['address_1'],
+            'address_2' => $billing['address_2'],
+            's_country' => $shipping['country'],
+            's_state' => $shipping['state'],
+            's_postcode' => $shipping['postcode'],
+            's_city' => $shipping['city'],
+            's_address' => $shipping['address_1'],
+            's_address_2' => $shipping['address_2'],
+            'has_full_address' => 'true',
+            'post_data' => http_build_query(self::classic_checkout_fields($billing, $shipping, '')),
+        );
+        $step = self::jar_request($crawler, 'flow-update-order-review', 'POST', home_url('/?wc-ajax=update_order_review'), $flags, $jar, array('body' => $review_body));
+        $result['steps'][] = $step;
+        if (!self::step_ok($step)) {
+            $result['outcome'] = 'update_customer_failed';
+            $result['notes']['error'] = self::classic_error($step);
+            return;
+        }
+
+        // The rate the browser would have had selected. WooCommerce also defaults one into
+        // the session while rendering the review (wc_get_chosen_shipping_method_for_package),
+        // so an unparsed fragment is not fatal - it just means we post nothing and let that
+        // default stand, exactly as an untouched radio group would.
+        $rate_id = self::classic_chosen_rate($step);
+        if ($rate_id) {
+            $result['notes']['shipping_rate'] = $rate_id;
+        }
+
+        // --- 5. the checkout page ---
+        $result['steps'][] = self::page_request($crawler, 'flow-view-checkout', wc_get_checkout_url(), $flags, '', $jar);
+
+        // --- 6. place the order ---
+        $nonce = self::guest_nonce('woocommerce-process_checkout', $customer_id);
+        $order_body = self::classic_checkout_fields($billing, $shipping, $nonce);
+        if ($rate_id) {
+            $order_body['shipping_method'] = array($rate_id);
+        }
+        $step = self::jar_request($crawler, 'flow-place-order', 'POST', home_url('/?wc-ajax=checkout'), $flags, $jar, array('body' => $order_body));
+        $result['steps'][] = $step;
+
+        $json = isset($step['sample']['json']) ? $step['sample']['json'] : null;
+        $redirect = (is_array($json) && !empty($json['redirect'])) ? (string) $json['redirect'] : '';
+        $order_id = $redirect ? self::order_id_from_url($redirect) : 0;
+        if ($order_id) {
+            self::remember_order($order_id, $result);
+        }
+        if (!self::step_ok($step) || !is_array($json) || 'success' !== (isset($json['result']) ? $json['result'] : '') || !$order_id) {
+            $result['outcome'] = 'place_order_failed';
+            $result['notes']['error'] = self::classic_error($step);
+            return;
+        }
+
+        $placed = wc_get_order($order_id);
+        $result['notes']['order_status'] = $placed ? $placed->get_status() : null;
+        $result['notes']['order_total'] = $placed ? $placed->get_total() : null;
+        $result['notes']['order_needed_shipping'] = $placed ? $placed->needs_shipping_address() : null;
+
+        // --- 7. the confirmation the customer lands on ---
+        $result['steps'][] = self::page_request($crawler, 'flow-order-received', $redirect, $flags, '', $jar);
+    }
+
+    /**
+     * The full billing field set a classic checkout form posts. Shipping fields are only
+     * sent when the store is not shipping to the billing address, matching what the form
+     * itself submits when "ship to a different address" is unticked.
+     */
+    private static function classic_checkout_fields($billing, $shipping, $nonce) {
+        $fields = array(
+            'billing_first_name' => $billing['first_name'],
+            'billing_last_name' => $billing['last_name'],
+            'billing_company' => $billing['company'],
+            'billing_country' => $billing['country'],
+            'billing_address_1' => $billing['address_1'],
+            'billing_address_2' => $billing['address_2'],
+            'billing_city' => $billing['city'],
+            'billing_state' => $billing['state'],
+            'billing_postcode' => $billing['postcode'],
+            'billing_phone' => $billing['phone'],
+            'billing_email' => $billing['email'],
+            'shipping_first_name' => $shipping['first_name'],
+            'shipping_last_name' => $shipping['last_name'],
+            'shipping_company' => $shipping['company'],
+            'shipping_country' => $shipping['country'],
+            'shipping_address_1' => $shipping['address_1'],
+            'shipping_address_2' => $shipping['address_2'],
+            'shipping_city' => $shipping['city'],
+            'shipping_state' => $shipping['state'],
+            'shipping_postcode' => $shipping['postcode'],
+            'ship_to_different_address' => '0',
+            'order_comments' => '',
+            // Empty is correct: the flow's no-payment filters make WC_Cart::needs_payment()
+            // false, so validate_checkout() never asks for a gateway and the order takes
+            // the process_order_without_payment() branch.
+            'payment_method' => '',
+            '_wp_http_referer' => '/?wc-ajax=update_order_review',
+        );
+        // Only sent when the store actually shows the checkbox; posting terms-field without
+        // terms would fail validation for a reason the store never imposes.
+        if (function_exists('wc_terms_and_conditions_page_id') && wc_terms_and_conditions_page_id()) {
+            $fields['terms'] = '1';
+            $fields['terms-field'] = '1';
+        }
+        if ($nonce) {
+            $fields['woocommerce-process-checkout-nonce'] = $nonce;
+            $fields['_wpnonce'] = $nonce;
+        }
+        return $fields;
+    }
+
+    /**
+     * Mint a nonce as the logged-out visitor who will actually send it.
+     *
+     * wp_create_nonce() binds to the CURRENT request's user and session token, so a nonce
+     * minted inside the admin's AJAX request is bound to the admin (doc A7 fact 8). On top
+     * of that, WooCommerce rewrites the logged-out uid to the cart session's customer id
+     * for any action whose name starts with `woocommerce`, and the session we care about
+     * is the loopback visitor's, not this process's. Both are handled here.
+     */
+    public static function guest_nonce($action, $customer_id) {
+        $saved_cookies = $_COOKIE;
+        $current_user = get_current_user_id();
+        $bind = function ($uid, $nonce_action) use ($customer_id) {
+            if ($customer_id && is_string($nonce_action) && 0 === strpos($nonce_action, 'woocommerce')) {
+                return $customer_id;
+            }
+            return $uid;
+        };
+        // After WooCommerce's own filter at priority 10, which would otherwise bind the
+        // nonce to THIS process's cart session.
+        add_filter('nonce_user_logged_out', $bind, 100, 2);
+        try {
+            foreach (array('LOGGED_IN_COOKIE', 'AUTH_COOKIE', 'SECURE_AUTH_COOKIE') as $const) {
+                if (defined($const)) {
+                    unset($_COOKIE[constant($const)]);
+                }
+            }
+            wp_set_current_user(0);
+            $nonce = wp_create_nonce($action);
+        } finally {
+            remove_filter('nonce_user_logged_out', $bind, 100);
+            wp_set_current_user($current_user);
+            $_COOKIE = $saved_cookies;
+        }
+        return $nonce;
+    }
+
+    /** The cart session's customer id, read from the cookie WooCommerce set on our jar. */
+    private static function session_customer_id($jar) {
+        foreach ($jar['cookies'] as $name => $cookie) {
+            if (0 === strpos((string) $name, 'wp_woocommerce_session_')) {
+                $id = strtok((string) $cookie->value, '|');
+                return $id ? $id : '';
+            }
+        }
+        return '';
+    }
+
+    /**
+     * The shipping rate the order-review fragment came back with selected - what the
+     * browser would then post. Returns '' when the store offers no shipping choice.
+     */
+    private static function classic_chosen_rate($step) {
+        $body = isset($step['sample']['json']['fragments']) ? implode(' ', (array) $step['sample']['json']['fragments']) : '';
+        if ('' === $body) {
+            return '';
+        }
+        if (preg_match('/name=[\'"]shipping_method\[0\][\'"][^>]*value=[\'"]([^\'"]+)[\'"][^>]*checked/i', $body, $m)
+            || preg_match('/name=[\'"]shipping_method\[0\][\'"][^>]*value=[\'"]([^\'"]+)[\'"]/i', $body, $m)) {
+            return html_entity_decode($m[1]);
+        }
+        return '';
+    }
+
+    /** wc_get_order_id_by_order_key() rather than parsing the permalink, which varies. */
+    private static function order_id_from_url($url) {
+        $query = (string) wp_parse_url($url, PHP_URL_QUERY);
+        parse_str($query, $args);
+        if (!empty($args['key']) && function_exists('wc_get_order_id_by_order_key')) {
+            $id = (int) wc_get_order_id_by_order_key($args['key']);
+            if ($id) {
+                return $id;
+            }
+        }
+        return preg_match('#order-received/(\d+)#', (string) $url, $m) ? (int) $m[1] : 0;
+    }
+
+    /**
+     * Classic AJAX reports failure as HTML notices rather than a JSON error code, so pull
+     * the message out of the markup instead of reporting a bare HTTP status.
+     */
+    private static function classic_error($step) {
+        $sample = isset($step['sample']) ? $step['sample'] : null;
+        if (!$sample) {
+            return null;
+        }
+        if ($sample['error']) {
+            return $sample['error'];
+        }
+        if ($sample['blocked_by']) {
+            return 'blocked_' . $sample['blocked_by'];
+        }
+        $messages = isset($sample['json']['messages']) ? $sample['json']['messages'] : '';
+        if (!$messages && isset($sample['json']['error'])) {
+            $messages = is_string($sample['json']['error']) ? $sample['json']['error'] : wp_json_encode($sample['json']['error']);
+        }
+        if (!$messages) {
+            $messages = $sample['body'];
+        }
+        $text = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) $messages)));
+        return $text !== '' ? mb_substr(wp_specialchars_decode($text, ENT_QUOTES), 0, 300) : 'http_' . $sample['code'];
     }
 
     /**
@@ -721,13 +1030,24 @@ class SSPA_Checkout_Flow {
      * @param array $jar {cookies: WP_Http_Cookie[], session_keys: string[]} by reference.
      */
     private static function page_request($crawler, $page_key, $url, $flags, $cart_token, &$jar) {
-        $args = array();
-        if ($jar['cookies']) {
-            $args['cookies'] = $jar['cookies'];
-        } else {
+        // A cart token is the block path's way in; the classic path has no token and gets
+        // its session from the cookie add-to-cart returned, so it passes '' here.
+        if ($cart_token && !$jar['cookies']) {
             $url .= ((false === strpos($url, '?')) ? '?' : '&') . 'session=' . rawurlencode($cart_token);
         }
-        $step = self::request($crawler, $page_key, 'GET', $url, $flags, $args);
+        return self::jar_request($crawler, $page_key, 'GET', $url, $flags, $jar);
+    }
+
+    /**
+     * A request that sends the jar and folds whatever comes back into it, so one session
+     * serves the whole visit. Also records the WooCommerce session keys the run creates,
+     * so they can be deleted again afterwards.
+     */
+    private static function jar_request($crawler, $page_key, $method, $url, $flags, &$jar, $args = array()) {
+        if ($jar['cookies']) {
+            $args['cookies'] = $jar['cookies'];
+        }
+        $step = self::request($crawler, $page_key, $method, $url, $flags, $args);
 
         foreach ((array) $step['sample']['cookies'] as $cookie) {
             if (!is_object($cookie) || !isset($cookie->name)) {
@@ -1172,6 +1492,7 @@ class SSPA_Checkout_Flow {
             'flow-view-cart' => __('view cart', 'super-speedy-performance-analysis'),
             'flow-cart-api' => __('load cart data', 'super-speedy-performance-analysis'),
             'flow-update-customer' => __('enter address (tax + shipping)', 'super-speedy-performance-analysis'),
+            'flow-update-order-review' => __('enter address (tax + shipping)', 'super-speedy-performance-analysis'),
             'flow-select-shipping' => __('select shipping', 'super-speedy-performance-analysis'),
             'flow-view-checkout' => __('view checkout', 'super-speedy-performance-analysis'),
             'flow-checkout-draft' => __('create draft order', 'super-speedy-performance-analysis'),
