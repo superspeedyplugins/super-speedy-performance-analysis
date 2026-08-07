@@ -32,7 +32,8 @@ class SSPA_Admin_Page {
         if (!current_user_can('manage_options')) {
             return;
         }
-        if (isset($_GET['sspa_dismiss_toggle'])) {
+        // Dismissed, or the offer has been taken up - either way the prompt is spent.
+        if (isset($_GET['sspa_dismiss_toggle']) || isset($_GET['sspa_autospot'])) {
             delete_transient('sspa_plugin_toggled');
             return;
         }
