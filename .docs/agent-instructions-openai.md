@@ -10,7 +10,7 @@ plugin (free: superspeedyplugins.com).
 
 Workflow:
 1. Ensure the plugin is installed and active (`wp plugin install
-   https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.zip
+   https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip
    --activate` over SSH, or ask the user to install it from superspeedyplugins.com).
 2. Start an analysis: `wp sspa run` (synchronous), or POST the `run-analysis` ability at
    `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/run-analysis/run` with an
