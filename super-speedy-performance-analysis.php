@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.10.10
+ * Version: 0.10.11
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -39,13 +39,23 @@ if (file_exists($sspa_settings)) {
 // Updates come from superspeedyplugins.com, same metadata convention as the paid plugins
 // (/assets/plugins/<slug>.json) but with an ungated download_url because this plugin is free.
 // Not GitHub: the repo is private for now.
-if (class_exists('SuperSpeedy\\PluginUpdateChecker\\v5\\PucFactory')) {
-    $sspa_update_checker = \SuperSpeedy\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+//
+// Deferred to plugins_loaded on purpose. Since settings 1.5.0 the submodule entrypoint is
+// only a facade: it queues itself as a candidate and the winning copy's core - which is what
+// actually requires the PUC library - loads at plugins_loaded -9999. Building here at include
+// time therefore always found PucFactory absent and built nothing at all, so run just after
+// the core at -9998. The class_exists guard stays: a zip without the submodule must still
+// activate, simply without update checks.
+add_action('plugins_loaded', function () {
+    if (!class_exists('SuperSpeedy\\PluginUpdateChecker\\v5\\PucFactory')) {
+        return;
+    }
+    $GLOBALS['sspa_update_checker'] = \SuperSpeedy\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
         'https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.json',
-        __FILE__,
+        SSPA_PLUGIN_DIR . 'super-speedy-performance-analysis.php',
         'super-speedy-performance-analysis'
     );
-}
+}, -9998);
 
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-schema.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-install.php';
