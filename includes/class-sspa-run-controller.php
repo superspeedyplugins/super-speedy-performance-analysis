@@ -28,6 +28,8 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
         add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
         add_action('wp_ajax_sspa_submit_now', array(__CLASS__, 'ajax_submit_now'));
+        add_action('wp_ajax_sspa_community_backfill', array(__CLASS__, 'ajax_community_backfill'));
+        add_action('wp_ajax_sspa_outbox_action', array(__CLASS__, 'ajax_outbox_action'));
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }
@@ -1545,13 +1547,22 @@ class SSPA_Run_Controller {
 
     public static function ajax_share_optin() {
         self::ajax_guard();
-        update_option('sspa_share_optin', !empty($_POST['optin']) ? 1 : 0, false);
+        $optin = !empty($_POST['optin']);
+        update_option('sspa_share_optin', $optin ? 1 : 0, false);
+        if ($optin) {
+            update_option('sspa_share_consent_version', SSPA_Community_Schema::CONSENT_VERSION, false);
+            update_option('sspa_share_consented_at', gmdate('Y-m-d H:i:s'), false);
+            SSPA_Community_Outbox::nudge();
+        } else {
+            update_option('sspa_share_disabled_at', gmdate('Y-m-d H:i:s'), false);
+        }
         wp_send_json_success(array('optin' => SSPA_Submitter::opted_in()));
     }
 
     public static function ajax_payload_preview() {
         self::ajax_guard();
-        $json = SSPA_Submitter::preview();
+        $outbox_id = isset($_POST['outbox_id']) ? (int) $_POST['outbox_id'] : 0;
+        $json = SSPA_Submitter::preview($outbox_id);
         if (is_wp_error($json)) {
             wp_send_json_error($json->get_error_message());
         }
@@ -1561,6 +1572,35 @@ class SSPA_Run_Controller {
     public static function ajax_submit_now() {
         self::ajax_guard();
         $result = SSPA_Submitter::submit();
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success();
+    }
+
+    public static function ajax_community_backfill() {
+        self::ajax_guard();
+        $result = SSPA_Community_Backfill::queue_batch(!empty($_POST['restart']));
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success($result);
+    }
+
+    public static function ajax_outbox_action() {
+        self::ajax_guard();
+        $id = isset($_POST['outbox_id']) ? (int) $_POST['outbox_id'] : 0;
+        $operation = isset($_POST['operation']) ? sanitize_key(wp_unslash($_POST['operation'])) : '';
+        if (!$id || !in_array($operation, array('retry', 'pause', 'resume'), true)) {
+            wp_send_json_error(__('Invalid submission action.', 'super-speedy-performance-analysis'));
+        }
+        if ('retry' === $operation) {
+            $result = SSPA_Community_Outbox::retry_now($id);
+        } elseif ('pause' === $operation) {
+            $result = SSPA_Community_Outbox::pause($id);
+        } else {
+            $result = SSPA_Community_Outbox::resume($id);
+        }
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
         }

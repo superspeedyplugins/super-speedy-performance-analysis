@@ -266,19 +266,25 @@ jQuery(document).on('click', '#sspa-prune-blobs', function () {
 
 jQuery(document).on('change', '#sspa-share-optin', function () {
 	var optin = jQuery(this).is(':checked') ? 1 : 0;
-	jQuery.post(ajaxurl, { action: 'sspa_share_optin', nonce: sspa_admin.nonce, optin: optin }, function () {
-		jQuery('#sspa-submit-now').prop('disabled', !optin);
+	jQuery.post(ajaxurl, { action: 'sspa_share_optin', nonce: sspa_admin.nonce, optin: optin }, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || 'Could not update sharing consent.');
+			window.location.reload();
+			return;
+		}
+		jQuery('.sspa-sharing-action').prop('disabled', !optin);
 	});
 });
 
-jQuery(document).on('click', '#sspa-preview-payload', function () {
+jQuery(document).on('click', '.sspa-preview-outbox', function () {
 	var pre = jQuery('#sspa-payload-preview');
-	if (pre.is(':visible')) {
+	var outboxId = jQuery(this).data('outbox-id');
+	if (pre.is(':visible') && pre.data('outbox-id') === outboxId) {
 		pre.hide();
 		return;
 	}
-	pre.text('Loading exact queued payload…').show();
-	jQuery.post(ajaxurl, { action: 'sspa_payload_preview', nonce: sspa_admin.nonce }, function (resp) {
+	pre.data('outbox-id', outboxId).text('Loading exact queued payload…').show();
+	jQuery.post(ajaxurl, { action: 'sspa_payload_preview', nonce: sspa_admin.nonce, outbox_id: outboxId }, function (resp) {
 		pre.text(resp.success ? resp.data.payload : (resp.data || 'Could not build the payload.'));
 	});
 });
@@ -290,6 +296,68 @@ jQuery(document).on('click', '#sspa-submit-now', function () {
 		window.location.reload();
 	}).fail(function () {
 		alert('Could not queue the submission.');
+		btn.prop('disabled', false);
+	});
+});
+
+jQuery(document).on('click', '#sspa-backfill', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var status = jQuery('#sspa-backfill-status');
+	var restart = parseInt(btn.data('restart'), 10) ? 1 : 0;
+	var totalQueued = 0;
+	var totalFailed = 0;
+
+	function nextBatch(first) {
+		status.text('Building a bounded batch of historical payloads…');
+		jQuery.post(ajaxurl, {
+			action: 'sspa_community_backfill',
+			nonce: sspa_admin.nonce,
+			restart: first ? restart : 0
+		}, function (resp) {
+			if (!resp.success) {
+				status.text(resp.data || 'Historical queueing failed.');
+				btn.prop('disabled', false);
+				return;
+			}
+			totalQueued += parseInt(resp.data.queued, 10) || 0;
+			totalFailed += (resp.data.failed || []).length;
+			status.text('Queued ' + totalQueued + '; ' + resp.data.inventory.remaining + ' historical run(s) remain.');
+			if (!resp.data.complete) {
+				window.setTimeout(function () { nextBatch(false); }, 250);
+				return;
+			}
+			alert('Historical queueing finished: ' + totalQueued + ' queued, ' + totalFailed + ' requiring review.');
+			window.location.reload();
+		}).fail(function () {
+			status.text('Historical queueing request failed. Progress has been saved; press the button to resume.');
+			btn.prop('disabled', false);
+		});
+	}
+
+	nextBatch(true);
+});
+
+jQuery(document).on('click', '.sspa-outbox-action', function () {
+	var btn = jQuery(this);
+	var operation = btn.data('operation');
+	if (operation === 'pause' && !confirm('Pause this submission? Its exact local payload will be retained and can be resumed later.')) {
+		return;
+	}
+	btn.prop('disabled', true);
+	jQuery.post(ajaxurl, {
+		action: 'sspa_outbox_action',
+		nonce: sspa_admin.nonce,
+		outbox_id: btn.data('outbox-id'),
+		operation: operation
+	}, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || 'Could not update the submission.');
+			btn.prop('disabled', false);
+			return;
+		}
+		window.location.reload();
+	}).fail(function () {
+		alert('Could not update the submission.');
 		btn.prop('disabled', false);
 	});
 });

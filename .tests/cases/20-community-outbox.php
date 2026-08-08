@@ -101,12 +101,20 @@ if (!is_wp_error($queued)) {
     $json = SSPA_Community_Outbox::preview($queued);
     $payload = is_wp_error($json) ? null : json_decode($json, true);
     $types = array();
+    $versions = array();
     foreach ((array) ($payload['evidence'] ?? array()) as $item) {
         $types[] = $item['type'];
+        $versions[$item['type']] = $item['version'];
     }
     sspa_outbox_t(!is_wp_error($json) && strlen($json) === (int) $queued['uncompressed_bytes'], 'exact uncompressed payload retained');
     sspa_outbox_t(hash_equals($queued['payload_sha256'], hash('sha256', $queued['payload_gzip'])), 'compressed payload hash matches immutable bytes');
-    sspa_outbox_t(($payload['payload_schema']['major'] ?? 0) === 1 && ($payload['run']['run_uuid'] ?? '') === $run_uuid, 'payload and run identities are versioned');
+    sspa_outbox_t(
+        ($payload['payload_schema']['major'] ?? 0) === 1
+        && ($payload['payload_schema']['minor'] ?? 0) === 1
+        && ($versions['sspa/page-profile'] ?? 0) === 2
+        && ($payload['run']['run_uuid'] ?? '') === $run_uuid,
+        'payload, page evidence and run identities are independently versioned'
+    );
     sspa_outbox_t(in_array('sspa/page-profile', $types, true) && in_array('sspa/excimer-profile', $types, true), 'page and Excimer evidence included');
     sspa_outbox_t(in_array('sspa/plugin-toggle-spot', $types, true) && in_array('sspa/finding', $types, true), 'toggle and finding evidence included');
     sspa_outbox_t(false === strpos($json, 'private-product-name') && false === strpos($json, 'private@example.com'), 'private URL fragments and SQL literals excluded');
@@ -123,11 +131,59 @@ if (!is_wp_error($queued)) {
         && hash_equals($queued['payload_sha256'], hash('sha256', $retry['payload_gzip'])),
         'receiver outage schedules a retry without changing payload bytes'
     );
+    $paused = SSPA_Community_Outbox::pause($queued['id']);
+    $paused_row = SSPA_Community_Outbox::get($queued['id']);
+    sspa_outbox_t(true === $paused && 'cancelled' === $paused_row['state'] && !empty($paused_row['payload_gzip']), 'pause retains the exact local payload');
+    $resumed = SSPA_Community_Outbox::resume($queued['id']);
+    sspa_outbox_t(true === $resumed && 'pending' === SSPA_Community_Outbox::get($queued['id'])['state'], 'paused payload resumes without rebuilding');
+    SSPA_Community_Outbox::begin_attempt(SSPA_Community_Outbox::get($queued['id']));
+    SSPA_Community_Outbox::failed($queued['id'], new WP_Error('test_permanent', 'inspect'), true);
+    $manual_retry = SSPA_Community_Outbox::retry_now($queued['id']);
+    sspa_outbox_t(true === $manual_retry && 'pending' === SSPA_Community_Outbox::get($queued['id'])['state'], 'explicit retry requeues a permanent failure');
 
     $privacy = SSPA_Community_Privacy::validate(array('request_body' => 'secret'));
     sspa_outbox_t(is_wp_error($privacy) && 'sspa_privacy_forbidden_key' === $privacy->get_error_code(), 'privacy gate rejects forbidden fields');
     $bare_host_collision = SSPA_Community_Privacy::validate(array('component_inventory' => array(array('slug' => 'sspa-wp'))));
     sspa_outbox_t(true === $bare_host_collision, 'bare development hostname does not falsely reject a matching public slug');
+}
+
+// Shared fixed fixture from receiver/internal/auth/hmac_test.go.
+$old_install_uuid = get_option('sspa_install_uuid', null);
+$secret_key = 'sspa_collector_secret_' . md5(SSPA_Community_Identity::collector_url());
+$old_secret = get_option($secret_key, null);
+update_option('sspa_install_uuid', '11111111-1111-4111-8111-111111111111', false);
+update_option($secret_key, bin2hex('01234567890123456789012345678901'), false);
+$fixture_manifest = array(
+    'transport_version' => 1,
+    'submission_uuid' => '22222222-2222-4222-8222-222222222222',
+    'payload_sha256' => str_repeat('a', 64),
+    'compressed_bytes' => 59546,
+    'uncompressed_bytes' => 608553,
+    'payload_schema_major' => 1,
+    'payload_schema_minor' => 0,
+    'client_version' => '0.12.0',
+    'anonymisation_version' => 1,
+    'run_uuid' => '33333333-3333-4333-8333-333333333333',
+    'run_type' => 'checkout',
+    'payload_created_at' => '2026-08-08T12:34:56Z',
+);
+$fixture_canonical = SSPA_Community_Client::reservation_canonical($fixture_manifest);
+$sign = new ReflectionMethod('SSPA_Community_Client', 'sign');
+$sign->setAccessible(true);
+$fixture_signature = $sign->invoke(null, $fixture_canonical);
+sspa_outbox_t(
+    '6d22a358db2bffa62f0d0f1a65018d9c47f0b2b42374893a5dd87b5cea1f51c7' === $fixture_signature,
+    'PHP reservation HMAC matches the fixed Go receiver fixture'
+);
+if (null === $old_install_uuid) {
+    delete_option('sspa_install_uuid');
+} else {
+    update_option('sspa_install_uuid', $old_install_uuid, false);
+}
+if (null === $old_secret) {
+    delete_option($secret_key);
+} else {
+    update_option($secret_key, $old_secret, false);
 }
 
 if (!is_wp_error($queued)) {

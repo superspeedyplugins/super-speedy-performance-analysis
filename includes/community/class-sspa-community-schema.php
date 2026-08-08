@@ -8,22 +8,23 @@ class SSPA_Community_Schema {
 
     const TRANSPORT_VERSION = 1;
     const PAYLOAD_SCHEMA_MAJOR = 1;
-    const PAYLOAD_SCHEMA_MINOR = 0;
+    const PAYLOAD_SCHEMA_MINOR = 1;
     const ANONYMISATION_VERSION = 1;
     const MEASUREMENT_VERSION = 1;
+    const CONSENT_VERSION = 1;
     const MAX_COMPRESSED_BYTES = 33554432;
     const MAX_UNCOMPRESSED_BYTES = 268435456;
 
     public static function evidence_versions() {
         return array(
             'sspa/site-snapshot' => 1,
-            'sspa/page-profile' => 1,
+            'sspa/page-profile' => 2,
             'sspa/component-observation' => 1,
             'sspa/excimer-profile' => 1,
             'sspa/finding' => 1,
             'sspa/plugin-impact' => 1,
             'sspa/cache-impact' => 1,
-            'sspa/checkout-flow' => 1,
+            'sspa/checkout-flow' => 2,
             'sspa/plugin-toggle-spot' => 1,
             'sspa/adhoc-page-profile' => 1,
         );

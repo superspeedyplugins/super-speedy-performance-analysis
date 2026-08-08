@@ -221,11 +221,75 @@ class SSPA_Community_Outbox {
     public static function counts() {
         global $wpdb;
         $rows = $wpdb->get_results('SELECT state, COUNT(*) c FROM ' . self::table() . ' GROUP BY state', ARRAY_A);
-        $counts = array('pending' => 0, 'retry' => 0, 'sent' => 0, 'permanent_failure' => 0);
+        $counts = array('pending' => 0, 'retry' => 0, 'sent' => 0, 'permanent_failure' => 0, 'cancelled' => 0);
         foreach ($rows as $row) {
             $counts[$row['state']] = (int) $row['c'];
         }
         return $counts;
+    }
+
+    public static function queue_status() {
+        global $wpdb;
+        $row = $wpdb->get_row(
+            'SELECT MIN(created) AS oldest_pending, MIN(next_attempt) AS next_attempt
+             FROM ' . self::table() . " WHERE state IN ('pending','retry')",
+            ARRAY_A
+        );
+        return array(
+            'oldest_pending' => !empty($row['oldest_pending']) ? $row['oldest_pending'] : null,
+            'next_attempt' => !empty($row['next_attempt']) ? $row['next_attempt'] : null,
+        );
+    }
+
+    public static function retry_now($id) {
+        global $wpdb;
+        $row = self::get($id);
+        if (!$row || !in_array($row['state'], array('retry', 'permanent_failure'), true)) {
+            return new WP_Error('sspa_outbox_not_retryable', __('That submission is not waiting for a retry.', 'super-speedy-performance-analysis'));
+        }
+        $wpdb->update(self::table(), array(
+            'state' => 'pending',
+            'phase' => 'pending',
+            'next_attempt' => gmdate('Y-m-d H:i:s'),
+            'last_error_code' => null,
+            'last_error_detail' => null,
+        ), array('id' => (int) $id));
+        self::event($id, 'pending', 'pending', (int) $row['attempts'], 'manual_retry');
+        self::nudge();
+        return true;
+    }
+
+    public static function pause($id) {
+        global $wpdb;
+        $row = self::get($id);
+        if (!$row || !in_array($row['state'], array('pending', 'retry', 'permanent_failure'), true)) {
+            return new WP_Error('sspa_outbox_not_pausable', __('That submission cannot be paused.', 'super-speedy-performance-analysis'));
+        }
+        $wpdb->update(self::table(), array(
+            'state' => 'cancelled',
+            'phase' => 'cancelled',
+            'next_attempt' => null,
+        ), array('id' => (int) $id));
+        self::event($id, 'cancelled', 'cancelled', (int) $row['attempts'], 'manual_pause');
+        return true;
+    }
+
+    public static function resume($id) {
+        global $wpdb;
+        $row = self::get($id);
+        if (!$row || 'cancelled' !== $row['state']) {
+            return new WP_Error('sspa_outbox_not_resumable', __('That submission is not paused.', 'super-speedy-performance-analysis'));
+        }
+        $wpdb->update(self::table(), array(
+            'state' => 'pending',
+            'phase' => 'pending',
+            'next_attempt' => gmdate('Y-m-d H:i:s'),
+            'last_error_code' => null,
+            'last_error_detail' => null,
+        ), array('id' => (int) $id));
+        self::event($id, 'pending', 'pending', (int) $row['attempts'], 'manual_resume');
+        self::nudge();
+        return true;
     }
 
     public static function nudge($delay = 5) {

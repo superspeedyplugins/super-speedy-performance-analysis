@@ -140,6 +140,7 @@ class SSPA_Community_Exporter {
             'client' => array(
                 'name' => 'super-speedy-performance-analysis',
                 'version' => SSPA_VERSION,
+                'consent_version' => max(0, (int) get_option('sspa_share_consent_version', 0)),
             ),
             'anonymisation_version' => SSPA_Community_Schema::ANONYMISATION_VERSION,
             'payload_created_at' => $payload_created_at,
@@ -258,6 +259,7 @@ class SSPA_Community_Exporter {
                 'cache_hits', 'cache_misses', 'mail_count', 'mail_ms', 'response_code',
             )),
             'samples' => $sample_summaries,
+            'detailed_capture_available' => !empty($row['profile_blob']),
             'blocked' => !empty($row['blocked_by']),
             'incomplete' => (null === $row['page_gen_ms']),
         );
