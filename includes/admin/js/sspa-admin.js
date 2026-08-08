@@ -251,7 +251,7 @@ function sspa_impact_cell(r) {
 
 jQuery(document).on('click', '#sspa-prune-blobs', function () {
 	var keep = jQuery(this).data('keep');
-	if (!confirm('Delete detailed per-query data for all but the last ' + keep + ' runs?\n\nSummary metrics, findings and history are always kept. Soon you will be able to contribute this data anonymously to the community database at superspeedy.org before deleting - watch the Share tab.')) {
+	if (!confirm('Delete detailed per-query data for all but the last ' + keep + ' runs?\n\nSummary metrics, findings and history are always kept. If sharing is enabled, every affected run is first saved to the durable local submission queue.')) {
 		return;
 	}
 	jQuery.post(ajaxurl, { action: 'sspa_prune_blobs', nonce: sspa_admin.nonce }, function (resp) {
@@ -277,7 +277,7 @@ jQuery(document).on('click', '#sspa-preview-payload', function () {
 		pre.hide();
 		return;
 	}
-	pre.text('Building payload…').show();
+	pre.text('Loading exact queued payload…').show();
 	jQuery.post(ajaxurl, { action: 'sspa_payload_preview', nonce: sspa_admin.nonce }, function (resp) {
 		pre.text(resp.success ? resp.data.payload : (resp.data || 'Could not build the payload.'));
 	});
@@ -286,10 +286,10 @@ jQuery(document).on('click', '#sspa-preview-payload', function () {
 jQuery(document).on('click', '#sspa-submit-now', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {
-		alert(resp.success ? 'Submitted - thank you for contributing!' : (resp.data || 'Submission failed.'));
+		alert(resp.success ? 'Queued locally. Delivery runs in the background and retries automatically.' : (resp.data || 'Could not queue the submission.'));
 		window.location.reload();
 	}).fail(function () {
-		alert('Submission failed.');
+		alert('Could not queue the submission.');
 		btn.prop('disabled', false);
 	});
 });

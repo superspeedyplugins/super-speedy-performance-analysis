@@ -248,13 +248,13 @@ class SSPA_Abilities {
         ));
 
         wp_register_ability(self::CATEGORY . '/submit-results', array(
-            'label' => __('Submit anonymised results to superspeedy.org', 'super-speedy-performance-analysis'),
-            'description' => __('Contribute anonymised results to the community database. Only works when the site owner has opted in on the Share tab - agents cannot enable sharing.', 'super-speedy-performance-analysis'),
+            'label' => __('Queue anonymised results for superspeedy.org', 'super-speedy-performance-analysis'),
+            'description' => __('Save the latest run to the durable local submission queue. Background delivery retries automatically. Only works when the site owner has opted in on the Share tab - agents cannot enable sharing.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => $no_input,
             'output_schema' => array(
                 'type' => 'object',
-                'properties' => array('submitted' => array('type' => 'boolean')),
+                'properties' => array('queued' => array('type' => 'boolean')),
             ),
             'permission_callback' => array(__CLASS__, 'can_manage'),
             'execute_callback' => array(__CLASS__, 'exec_submit'),
@@ -388,7 +388,7 @@ class SSPA_Abilities {
         if (is_wp_error($result)) {
             return $result;
         }
-        return array('submitted' => true);
+        return array('queued' => true);
     }
 
     public static function register_server($adapter = null) {

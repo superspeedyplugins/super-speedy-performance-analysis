@@ -41,7 +41,6 @@ class SSPA_Rules_Feed {
     public static function refresh() {
         $response = wp_remote_get(SSPA_Submitter::endpoint('rules'), array(
             'timeout' => 30,
-            'sslverify' => false,
         ));
         if (is_wp_error($response)) {
             return $response;

@@ -76,6 +76,13 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-analysis-engine.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-dependency-map.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-probes.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-anonymiser.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-identity.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-schema.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-privacy.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-exporter.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-outbox.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-client.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-worker.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-submitter.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules-feed.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
@@ -101,6 +108,7 @@ register_deactivation_hook(__FILE__, array('SSPA_Install', 'deactivate'));
 add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));
 
 SSPA_Run_Controller::register();
+SSPA_Community_Worker::register();
 SSPA_Probes::register();
 // Admin-bar "Analyse this page" runner: front end AND wp-admin, so registered outside
 // the is_admin() block below.

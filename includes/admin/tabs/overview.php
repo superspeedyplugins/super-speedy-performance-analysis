@@ -164,7 +164,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <button type="button" class="button" id="sspa-prune-blobs" data-keep="<?php echo esc_attr($sspa_retention); ?>">
                 <?php printf(esc_html__('Delete detailed data older than the last %d runs', 'super-speedy-performance-analysis'), $sspa_retention); ?>
             </button>
-            <span class="description"><?php esc_html_e('Coming soon: contribute your anonymised results to the community database at superspeedy.org before deleting.', 'super-speedy-performance-analysis'); ?></span>
+            <span class="description"><?php esc_html_e('When sharing is enabled, affected runs are saved to the durable local submission queue before their detailed source data is deleted.', 'super-speedy-performance-analysis'); ?></span>
         </p>
     </div>
 <?php endif; ?>

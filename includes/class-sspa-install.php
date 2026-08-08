@@ -16,6 +16,7 @@ class SSPA_Install {
         // Remove everything we placed outside the plugin folder and restore any hold.
         SSPA_Helper_Files::remove_all();
         wp_clear_scheduled_hook('sspa_cleanup_event');
+        wp_clear_scheduled_hook('sspa_submission_worker_event');
         $run_id = SSPA_Run_Controller::active_run_id();
         if ($run_id) {
             SSPA_Run_Controller::cancel($run_id);

@@ -32,9 +32,12 @@ class SSPA_Admin_Page {
         if (!current_user_can('manage_options')) {
             return;
         }
-        // Dismissed, or the offer has been taken up - either way the prompt is spent.
-        if (isset($_GET['sspa_dismiss_toggle']) || isset($_GET['sspa_autospot'])) {
+        if (isset($_GET['sspa_dismiss_toggle'])) {
             delete_transient('sspa_plugin_toggled');
+            return;
+        }
+        // Keep the context until the AJAX request has created the spot-check run.
+        if (isset($_GET['sspa_autospot'])) {
             return;
         }
         $toggled = get_transient('sspa_plugin_toggled');
