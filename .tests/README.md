@@ -62,17 +62,6 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   empty postmeta), no save-product write profile. `run-tests.sh` now pre-flight checks
   the product count and reseeds automatically.
 
-## Dev: submitting to the local hub (localhost:8081)
-
-The hub companion plugin (repo `hub/` folder) is symlinked into the LOCAL superspeedy
-install and activated there, standing in for superspeedy.org during development.
-`.tests/dev-local-hub.sh` points the docker analysis site at it
-(`http://host.docker.internal:8081`), fires a submission + rules-feed fetch, and prints
-the hub-side row counts. After a `wp reset` on the local install, re-activate the hub
-plugin (recreates tables + keypair) and re-run the script. The client uses
-`?rest_route=` URLs because the local install 301s pretty `/wp-json/` paths to trailing
-slashes, which kills POSTs.
-
 ## Cases
 
 - `01-health.php` - tables, secret, helper-file install (mu-loader + db.php shim),
@@ -97,7 +86,6 @@ slashes, which kills POSTs.
   the 0.8.0 exhaustive sweep supersedes it.)
 - `10-cache-mail-write.php` - cache-impact run, mail construction profiling, write
   profiles against temporary objects.
-- `11-community.php` - anonymised submission, hub round trip, signed rules feed.
 - `12-agents.php` - Abilities API + WP-CLI surfaces and the report schema.
 - `19-checkout-flow.php` - one complete purchase through
   `SSPA_Run_Controller::start(['type' => 'checkout'])`: every step profiled with the right
@@ -113,6 +101,34 @@ slashes, which kills POSTs.
   afterwards, so the block pages are never edited. Two assertions pin the nonce binding
   that path depends on - the place-order nonce must differ from both an unbound one and one
   minted as the current admin, while the `update-order-review` nonce must not.
+- `20-community-outbox.php` - privacy gate, immutable gzip outbox artefacts, fixed PHP-to-Go
+  HMAC fixture, retry scheduling, and pause/resume queue controls.
+- `21-community-evidence.php` - payload generation for every supported run type, including
+  page profiles, checkout flows, spot checks, deep scans and Excimer data.
+- `22-community-backfill.php` - bounded historical backfill, consent metadata and exact
+  per-outbox preview data.
+
+## Live receiver and R2 compatibility
+
+The normal suite does not require Cloudflare credentials. The manual live check exercises the
+real Go receiver, Postgres and R2 using the same background worker that production uses.
+
+Start the receiver integration stack from `/opt/homebrew/var/www/superspeedy.org`:
+
+```bash
+make integration-r2
+```
+
+Then, from this plugin repository in bash:
+
+```bash
+source .tests/docker/env.sh
+sync_plugin
+cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-r2.php" http://host.docker.internal:8788
+```
+
+This is deliberately manual because it writes a real object to R2 and requires the receiver's
+ignored `.env.r2` credentials file.
 
 ## Not yet covered (planned)
 
