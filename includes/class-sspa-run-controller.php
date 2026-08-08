@@ -107,19 +107,36 @@ class SSPA_Run_Controller {
             }
         }
 
+        $share_context = array();
+        if (!empty($args['share_context']['plugin_toggle']) && is_array($args['share_context']['plugin_toggle'])) {
+            $toggle = $args['share_context']['plugin_toggle'];
+            $slug = isset($toggle['slug']) ? sanitize_key($toggle['slug']) : '';
+            $action = isset($toggle['action']) ? sanitize_key($toggle['action']) : '';
+            if ($slug && in_array($action, array('activated', 'deactivated'), true)) {
+                $share_context['plugin_toggle'] = array('slug' => $slug, 'action' => $action);
+            }
+        }
+        $component_inventory = SSPA_Community_Exporter::component_inventory_snapshot();
         $wpdb->insert(SSPA_Schema::table('runs'), array(
+            'run_uuid' => wp_generate_uuid4(),
             'blog_id' => get_current_blog_id(),
             'run_type' => $type,
+            'measurement_version' => SSPA_Community_Schema::MEASUREMENT_VERSION,
             'trigger_source' => !empty($args['trigger']) ? $args['trigger'] : 'manual',
             'status' => 'crawling',
             'plugin_set' => wp_json_encode(array(
-                'plugins' => (array) get_option('active_plugins', array()),
+                'components' => $component_inventory,
                 'user_id' => $user_id,
             )),
             'plugin_set_hash' => md5(wp_json_encode(get_option('active_plugins', array()))),
+            'share_context' => $share_context ? wp_json_encode($share_context) : null,
             'started' => gmdate('Y-m-d H:i:s'),
         ));
         $run_id = (int) $wpdb->insert_id;
+
+        // Every run type needs a measurement-time site snapshot. Normal baseline/spot
+        // completion refreshes it after the crawl; other run types retain this start snapshot.
+        SSPA_Demographics::snapshot($run_id);
 
         // Baseline MySQL's digest counters before any profiling traffic. They are cumulative
         // and server-wide, so only the delta across this run means anything. A silent no-op
@@ -654,6 +671,7 @@ class SSPA_Run_Controller {
             'finished' => gmdate('Y-m-d H:i:s'),
             'notes' => wp_json_encode($notes),
         ), array('id' => $run_id));
+        SSPA_Community_Outbox::on_terminal_run($run_id);
     }
 
     /**
@@ -893,6 +911,7 @@ class SSPA_Run_Controller {
                 'fatal_cells' => array_values($fatal_cells),
             )),
         ), array('id' => $run_id));
+        SSPA_Community_Outbox::on_terminal_run($run_id);
     }
 
     /**
@@ -1072,6 +1091,9 @@ class SSPA_Run_Controller {
             'finished' => $now,
             'notes' => wp_json_encode(array('type' => 'cache_impact', 'verified' => $verified, 'components' => $components)),
         ), array('id' => $run_id));
+        if ($verified) {
+            SSPA_Community_Outbox::on_terminal_run($run_id);
+        }
     }
 
     private static function finish($run_id) {
@@ -1106,6 +1128,7 @@ class SSPA_Run_Controller {
             'finished' => gmdate('Y-m-d H:i:s'),
             'notes' => wp_json_encode($notes),
         ), array('id' => $run_id));
+        SSPA_Community_Outbox::on_terminal_run($run_id);
     }
 
     private static function cleanup_run_state($run_id) {
@@ -1121,6 +1144,7 @@ class SSPA_Run_Controller {
 
     private static function fail($run_id, $note) {
         global $wpdb;
+        $run = self::run_row($run_id);
         SSPA_Helper_Files::restore_held_dropin();
         SSPA_Helper_Files::restore_object_cache();
         self::cleanup_run_state($run_id);
@@ -1129,6 +1153,9 @@ class SSPA_Run_Controller {
             'finished' => gmdate('Y-m-d H:i:s'),
             'notes' => $note,
         ), array('id' => $run_id));
+        if ($run && 'checkout' === $run['run_type']) {
+            SSPA_Community_Outbox::on_terminal_run($run_id);
+        }
     }
 
     public static function cancel($run_id) {
@@ -1375,9 +1402,21 @@ class SSPA_Run_Controller {
                 $args['type'] = 'spot';
             }
         }
+        $toggled = get_transient('sspa_plugin_toggled');
+        if ('spot' === $args['type'] && is_array($toggled) && !empty($toggled['slug']) && !empty($toggled['action'])) {
+            $args['share_context'] = array(
+                'plugin_toggle' => array(
+                    'slug' => sanitize_key($toggled['slug']),
+                    'action' => in_array($toggled['action'], array('activated', 'deactivated'), true) ? $toggled['action'] : 'unknown',
+                ),
+            );
+        }
         $run_id = self::start($args);
         if (is_wp_error($run_id)) {
             wp_send_json_error($run_id->get_error_message());
+        }
+        if (isset($args['share_context']['plugin_toggle'])) {
+            delete_transient('sspa_plugin_toggled');
         }
         wp_send_json_success(self::status($run_id));
     }
@@ -1512,11 +1551,11 @@ class SSPA_Run_Controller {
 
     public static function ajax_payload_preview() {
         self::ajax_guard();
-        $payload = SSPA_Anonymiser::build();
-        if (is_wp_error($payload)) {
-            wp_send_json_error($payload->get_error_message());
+        $json = SSPA_Submitter::preview();
+        if (is_wp_error($json)) {
+            wp_send_json_error($json->get_error_message());
         }
-        wp_send_json_success(array('payload' => wp_json_encode($payload, JSON_PRETTY_PRINT)));
+        wp_send_json_success(array('payload' => $json));
     }
 
     public static function ajax_submit_now() {
@@ -1532,15 +1571,34 @@ class SSPA_Run_Controller {
         global $wpdb;
         self::ajax_guard();
 
-        // Share-before-delete: an opted-in site contributes its data before pruning it.
-        if (SSPA_Submitter::opted_in()) {
-            SSPA_Submitter::submit();
-        }
-
         $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
         $runs_table = SSPA_Schema::table('runs');
         $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $runs_table ORDER BY id DESC LIMIT %d", $keep));
         $keep_ids = array_map('intval', $keep_ids);
+
+        // Preserve every opted-in run as immutable outbox bytes before deleting source blobs.
+        // Delivery can then happen later even if the collector is offline during this request.
+        if (SSPA_Submitter::opted_in()) {
+            $where = $keep_ids ? 'AND id NOT IN (' . implode(',', $keep_ids) . ')' : '';
+            $share_ids = $wpdb->get_col(
+                "SELECT id FROM $runs_table
+                 WHERE (status = 'done' OR (run_type = 'checkout' AND status = 'failed')) $where
+                 ORDER BY id ASC"
+            );
+            foreach ($share_ids as $share_id) {
+                $queued = SSPA_Community_Outbox::queue_run((int) $share_id);
+                if (is_wp_error($queued)) {
+                    wp_send_json_error(sprintf(
+                        /* translators: 1: run ID, 2: error message */
+                        __('Detailed data was not deleted because run %1$d could not be preserved for sharing: %2$s', 'super-speedy-performance-analysis'),
+                        (int) $share_id,
+                        $queued->get_error_message()
+                    ));
+                }
+            }
+            SSPA_Community_Outbox::nudge();
+        }
+
         $profiles = SSPA_Schema::table('profiles');
         if ($keep_ids) {
             $in = implode(',', $keep_ids);

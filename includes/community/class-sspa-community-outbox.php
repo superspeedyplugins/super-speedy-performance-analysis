@@ -1,0 +1,274 @@
+<?php
+defined('ABSPATH') || exit;
+
+/**
+ * Durable immutable payload outbox. Network failures never alter or remove payload bytes.
+ */
+class SSPA_Community_Outbox {
+
+    public static function queue_run($run_id) {
+        global $wpdb;
+        if (!get_option('sspa_share_optin')) {
+            return new WP_Error('sspa_not_opted_in', __('Sharing is not enabled.', 'super-speedy-performance-analysis'));
+        }
+        $run = $wpdb->get_row($wpdb->prepare(
+            'SELECT id, run_uuid FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+            (int) $run_id
+        ), ARRAY_A);
+        if (!$run || !wp_is_uuid($run['run_uuid'], 4)) {
+            return new WP_Error('sspa_invalid_run', __('The analysis run cannot be queued for sharing.', 'super-speedy-performance-analysis'));
+        }
+        $existing = self::for_run_uuid($run['run_uuid']);
+        if ($existing) {
+            return $existing;
+        }
+
+        $submission_uuid = wp_generate_uuid4();
+        $created_at = SSPA_Community_Schema::canonical_time();
+        $payload = SSPA_Community_Exporter::build((int) $run_id, $submission_uuid, $created_at);
+        if (is_wp_error($payload)) {
+            self::remember_local_error($run_id, $payload);
+            return $payload;
+        }
+        $json = SSPA_Community_Schema::encode($payload);
+        if (is_wp_error($json)) {
+            return $json;
+        }
+        $uncompressed_bytes = strlen($json);
+        if ($uncompressed_bytes > SSPA_Community_Schema::MAX_UNCOMPRESSED_BYTES) {
+            return new WP_Error('sspa_payload_uncompressed_too_large', __('The community payload exceeds the 256 MiB uncompressed limit.', 'super-speedy-performance-analysis'));
+        }
+        $gzip = SSPA_Community_Schema::compress($json);
+        if (is_wp_error($gzip)) {
+            return $gzip;
+        }
+        $compressed_bytes = strlen($gzip);
+        if ($compressed_bytes > SSPA_Community_Schema::MAX_COMPRESSED_BYTES) {
+            return new WP_Error('sspa_payload_compressed_too_large', __('The community payload exceeds the 32 MiB compressed limit.', 'super-speedy-performance-analysis'));
+        }
+        $now = gmdate('Y-m-d H:i:s');
+        $inserted = $wpdb->insert(self::table(), array(
+            'submission_uuid' => $submission_uuid,
+            'run_id' => (int) $run_id,
+            'run_uuid' => $run['run_uuid'],
+            'transport_version' => SSPA_Community_Schema::TRANSPORT_VERSION,
+            'payload_schema_major' => SSPA_Community_Schema::PAYLOAD_SCHEMA_MAJOR,
+            'payload_schema_minor' => SSPA_Community_Schema::PAYLOAD_SCHEMA_MINOR,
+            'anonymisation_version' => SSPA_Community_Schema::ANONYMISATION_VERSION,
+            'client_version' => SSPA_VERSION,
+            'payload_created_at' => $created_at,
+            'payload_gzip' => $gzip,
+            'payload_sha256' => hash('sha256', $gzip),
+            'compressed_bytes' => $compressed_bytes,
+            'uncompressed_bytes' => $uncompressed_bytes,
+            'state' => 'pending',
+            'phase' => 'pending',
+            'attempts' => 0,
+            'next_attempt' => $now,
+            'created' => $now,
+        ));
+        if (!$inserted) {
+            $existing = self::for_run_uuid($run['run_uuid']);
+            return $existing ?: new WP_Error('sspa_outbox_insert_failed', __('The community payload could not be stored in the local outbox.', 'super-speedy-performance-analysis'));
+        }
+        $row = self::get((int) $wpdb->insert_id);
+        self::event($row['id'], 'pending', 'pending', 0, 'payload_created');
+        self::nudge();
+        return $row;
+    }
+
+    public static function queue_latest() {
+        global $wpdb;
+        $run_id = (int) $wpdb->get_var(
+            'SELECT id FROM ' . SSPA_Schema::table('runs') . "
+             WHERE status = 'done' OR (run_type = 'checkout' AND status = 'failed')
+             ORDER BY id DESC LIMIT 1"
+        );
+        return $run_id ? self::queue_run($run_id) : new WP_Error('sspa_no_run', __('Run an analysis first - there is nothing to share yet.', 'super-speedy-performance-analysis'));
+    }
+
+    public static function on_terminal_run($run_id) {
+        if (!get_option('sspa_share_optin')) {
+            return;
+        }
+        self::queue_run((int) $run_id);
+    }
+
+    public static function due() {
+        global $wpdb;
+        $now = gmdate('Y-m-d H:i:s');
+        return $wpdb->get_row($wpdb->prepare(
+            'SELECT * FROM ' . self::table() . "
+             WHERE state IN ('pending','retry') AND (next_attempt IS NULL OR next_attempt <= %s)
+             ORDER BY created ASC, id ASC LIMIT 1",
+            $now
+        ), ARRAY_A);
+    }
+
+    public static function get($id) {
+        global $wpdb;
+        return $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . self::table() . ' WHERE id = %d', (int) $id), ARRAY_A);
+    }
+
+    public static function for_run_uuid($run_uuid) {
+        global $wpdb;
+        return $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . self::table() . ' WHERE run_uuid = %s', $run_uuid), ARRAY_A);
+    }
+
+    public static function latest() {
+        global $wpdb;
+        return $wpdb->get_row('SELECT * FROM ' . self::table() . ' ORDER BY id DESC LIMIT 1', ARRAY_A);
+    }
+
+    public static function preview($row) {
+        if (!$row || empty($row['payload_gzip'])) {
+            return new WP_Error('sspa_payload_not_retained', __('The exact local payload is no longer retained.', 'super-speedy-performance-analysis'));
+        }
+        $json = gzdecode($row['payload_gzip']);
+        if (false === $json || strlen($json) !== (int) $row['uncompressed_bytes']) {
+            return new WP_Error('sspa_payload_corrupt', __('The stored community payload failed its local integrity check.', 'super-speedy-performance-analysis'));
+        }
+        if (!hash_equals($row['payload_sha256'], hash('sha256', $row['payload_gzip']))) {
+            return new WP_Error('sspa_payload_hash_mismatch', __('The stored community payload hash does not match.', 'super-speedy-performance-analysis'));
+        }
+        return $json;
+    }
+
+    public static function begin_attempt($row) {
+        global $wpdb;
+        $attempt = (int) $row['attempts'] + 1;
+        $wpdb->update(self::table(), array(
+            'state' => 'retry',
+            'phase' => 'reserving',
+            'attempts' => $attempt,
+            'last_attempt' => gmdate('Y-m-d H:i:s'),
+            'last_http_status' => null,
+            'last_error_code' => null,
+            'last_error_detail' => null,
+        ), array('id' => (int) $row['id']));
+        self::event($row['id'], 'retry', 'reserving', $attempt, 'attempt_started');
+        return self::get($row['id']);
+    }
+
+    public static function phase($id, $phase, $fields = array()) {
+        global $wpdb;
+        $allowed = array('reserving', 'uploading', 'completing');
+        if (!in_array($phase, $allowed, true)) {
+            return;
+        }
+        $data = array('phase' => $phase);
+        foreach (array('reservation_uuid', 'upload_expires_at') as $key) {
+            if (array_key_exists($key, $fields)) {
+                $data[$key] = $fields[$key];
+            }
+        }
+        $wpdb->update(self::table(), $data, array('id' => (int) $id));
+        $row = self::get($id);
+        self::event($id, $row['state'], $phase, $row['attempts'], 'phase_changed');
+    }
+
+    public static function sent($id, $receipt_uuid, $http_status) {
+        global $wpdb;
+        $now = gmdate('Y-m-d H:i:s');
+        $wpdb->update(self::table(), array(
+            'state' => 'sent',
+            'phase' => 'sent',
+            'receipt_uuid' => $receipt_uuid,
+            'next_attempt' => null,
+            'last_http_status' => (int) $http_status,
+            'last_error_code' => null,
+            'last_error_detail' => null,
+            'sent_at' => $now,
+        ), array('id' => (int) $id));
+        $row = self::get($id);
+        self::event($id, 'sent', 'sent', $row['attempts'], 'receipt_verified');
+    }
+
+    public static function failed($id, $error, $permanent = false, $http_status = null, $retry_after = null) {
+        global $wpdb;
+        $row = self::get($id);
+        $attempt = $row ? (int) $row['attempts'] : 1;
+        $code = is_wp_error($error) ? sanitize_key($error->get_error_code()) : 'unknown_error';
+        $detail = is_wp_error($error) ? $error->get_error_message() : __('Submission attempt failed.', 'super-speedy-performance-analysis');
+        $delay = $retry_after ? max(60, (int) $retry_after) : self::retry_delay($attempt);
+        $state = $permanent ? 'permanent_failure' : 'retry';
+        $wpdb->update(self::table(), array(
+            'state' => $state,
+            'phase' => $state,
+            'next_attempt' => $permanent ? null : gmdate('Y-m-d H:i:s', time() + $delay),
+            'last_http_status' => $http_status ? (int) $http_status : null,
+            'last_error_code' => substr($code, 0, 64),
+            'last_error_detail' => substr(wp_strip_all_tags($detail), 0, 255),
+        ), array('id' => (int) $id));
+        self::event($id, $state, $state, $attempt, $code);
+        if (!$permanent) {
+            self::nudge($delay);
+        }
+    }
+
+    public static function history($limit = 20) {
+        global $wpdb;
+        $limit = max(1, min(100, (int) $limit));
+        return $wpdb->get_results($wpdb->prepare(
+            'SELECT o.*, r.run_type, r.started AS run_started
+             FROM ' . self::table() . ' o
+             JOIN ' . SSPA_Schema::table('runs') . ' r ON r.id = o.run_id
+             ORDER BY o.id DESC LIMIT %d',
+            $limit
+        ), ARRAY_A);
+    }
+
+    public static function counts() {
+        global $wpdb;
+        $rows = $wpdb->get_results('SELECT state, COUNT(*) c FROM ' . self::table() . ' GROUP BY state', ARRAY_A);
+        $counts = array('pending' => 0, 'retry' => 0, 'sent' => 0, 'permanent_failure' => 0);
+        foreach ($rows as $row) {
+            $counts[$row['state']] = (int) $row['c'];
+        }
+        return $counts;
+    }
+
+    public static function nudge($delay = 5) {
+        $timestamp = time() + max(1, (int) $delay);
+        $next = wp_next_scheduled('sspa_submission_worker_event');
+        if (!$next || $next > $timestamp + 60) {
+            wp_schedule_single_event($timestamp, 'sspa_submission_worker_event');
+        }
+    }
+
+    private static function retry_delay($attempt) {
+        $schedule = array(900, 3600, 21600, 86400);
+        $base = isset($schedule[$attempt - 1]) ? $schedule[$attempt - 1] : DAY_IN_SECONDS;
+        return $base + wp_rand(0, max(60, (int) floor($base * 0.1)));
+    }
+
+    private static function event($outbox_id, $state, $phase, $attempt, $reason) {
+        global $wpdb;
+        $wpdb->insert(self::events_table(), array(
+            'outbox_id' => (int) $outbox_id,
+            'state' => sanitize_key($state),
+            'phase' => sanitize_key($phase),
+            'attempt' => (int) $attempt,
+            'reason_code' => substr(sanitize_key($reason), 0, 64),
+            'created' => gmdate('Y-m-d H:i:s'),
+        ));
+    }
+
+    private static function remember_local_error($run_id, $error) {
+        $errors = get_option('sspa_submission_build_errors', array());
+        $errors[(int) $run_id] = array(
+            'time' => gmdate('Y-m-d H:i:s'),
+            'code' => sanitize_key($error->get_error_code()),
+            'detail' => substr(wp_strip_all_tags($error->get_error_message()), 0, 255),
+        );
+        update_option('sspa_submission_build_errors', array_slice($errors, -20, null, true), false);
+    }
+
+    private static function table() {
+        return SSPA_Schema::table('submission_outbox');
+    }
+
+    private static function events_table() {
+        return SSPA_Schema::table('submission_events');
+    }
+}
