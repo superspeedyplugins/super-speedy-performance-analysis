@@ -53,8 +53,8 @@ class SSPA_Submitter {
         return true;
     }
 
-    public static function preview() {
-        $row = SSPA_Community_Outbox::latest();
+    public static function preview($outbox_id = 0) {
+        $row = $outbox_id ? SSPA_Community_Outbox::get((int) $outbox_id) : SSPA_Community_Outbox::latest();
         if (!$row && self::opted_in()) {
             $row = SSPA_Community_Outbox::queue_latest();
         }
@@ -65,15 +65,21 @@ class SSPA_Submitter {
         $history = array();
         foreach (SSPA_Community_Outbox::history(20) as $row) {
             $history[] = array(
+                'id' => (int) $row['id'],
                 'time' => $row['sent_at'] ?: ($row['last_attempt'] ?: $row['created']),
                 'ok' => ('sent' === $row['state']),
                 'state' => $row['state'],
                 'phase' => $row['phase'],
                 'run_type' => $row['run_type'],
+                'run_started' => $row['run_started'],
                 'message' => self::history_message($row),
                 'compressed_bytes' => (int) $row['compressed_bytes'],
+                'payload_schema' => (int) $row['payload_schema_major'] . '.' . (int) $row['payload_schema_minor'],
                 'payload_sha256' => $row['payload_sha256'],
                 'receipt_uuid' => $row['receipt_uuid'],
+                'next_attempt' => $row['next_attempt'],
+                'last_error_code' => $row['last_error_code'],
+                'last_error_detail' => $row['last_error_detail'],
             );
         }
         return $history;
@@ -88,6 +94,9 @@ class SSPA_Submitter {
         }
         if ('retry' === $row['state']) {
             return sprintf(__('%1$s queued for retry: %2$s', 'super-speedy-performance-analysis'), $row['run_type'], $row['last_error_code']);
+        }
+        if ('cancelled' === $row['state']) {
+            return sprintf(__('%s paused locally', 'super-speedy-performance-analysis'), $row['run_type']);
         }
         return sprintf(__('%s queued locally', 'super-speedy-performance-analysis'), $row['run_type']);
     }

@@ -130,6 +130,29 @@
 	color: #50575e;
 }
 
+#sspa_main .sspa-outbox-table {
+	margin: 1em 0;
+}
+
+#sspa_main .sspa-outbox-table td {
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+#sspa_main .sspa-outbox-table .button {
+	margin: 0 3px 3px 0;
+}
+
+#sspa_main #sspa-payload-preview {
+	max-height: 480px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	padding: 12px;
+}
+
 /* Floating run monitor */
 #sspa-runner {
 	position: fixed;

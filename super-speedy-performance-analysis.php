@@ -81,6 +81,7 @@ require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-schema.p
 require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-privacy.php';
 require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-exporter.php';
 require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-outbox.php';
+require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-backfill.php';
 require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-client.php';
 require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-worker.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-submitter.php';

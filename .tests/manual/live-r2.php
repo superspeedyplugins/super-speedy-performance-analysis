@@ -85,15 +85,14 @@ try {
     $outbox_id = (int) $queued['id'];
     sspa_live_t(true, 'payload queued (' . (int) $queued['compressed_bytes'] . ' compressed bytes)');
 
-    $attempt = SSPA_Community_Outbox::begin_attempt($queued);
-    $result = SSPA_Community_Client::submit($attempt);
-    if (is_wp_error($result)) {
-        sspa_live_t(false, 'receiver round trip: ' . $result->get_error_code() . ' - ' . $result->get_error_message());
+    delete_option(SSPA_Community_Worker::LOCK_OPTION);
+    SSPA_Community_Worker::run();
+    $sent = SSPA_Community_Outbox::get($outbox_id);
+    if ('sent' !== $sent['state']) {
+        sspa_live_t(false, 'background worker round trip: ' . $sent['last_error_code'] . ' - ' . $sent['last_error_detail']);
         return;
     }
-    SSPA_Community_Outbox::sent($outbox_id, $result['receipt_uuid'], $result['http_status']);
-    $sent = SSPA_Community_Outbox::get($outbox_id);
-    sspa_live_t('sent' === $sent['state'], 'receiver receipt verified and outbox marked sent');
+    sspa_live_t(true, 'background worker verified the receiver receipt and marked the outbox sent');
     sspa_live_t(wp_is_uuid($sent['receipt_uuid'], 4), 'receipt UUID stored locally');
     echo 'submission_uuid=' . $sent['submission_uuid'] . "\n";
     echo 'receipt_uuid=' . $sent['receipt_uuid'] . "\n";
