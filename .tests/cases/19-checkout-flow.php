@@ -29,13 +29,22 @@ $sessions_table = $wpdb->prefix . 'woocommerce_sessions';
 
 // ---------------------------------------------------------------- fixtures
 
-$plant = function ($slug, $code) {
+$plant = function ($slug, $code, $load_first = false) {
     $dir = WP_PLUGIN_DIR . '/' . $slug;
     if (!is_dir($dir)) {
         mkdir($dir);
     }
     file_put_contents($dir . '/' . $slug . '.php', $code);
     activate_plugin($slug . '/' . $slug . '.php');
+    if ($load_first) {
+        // A plugin that replaces a pluggable function has to load before anything else can
+        // require core's pluggable.php. Activation appends by default, which makes this test
+        // depend on the unrelated active-plugin order in a long-lived Docker volume.
+        $basename = $slug . '/' . $slug . '.php';
+        $active = array_values(array_diff((array) get_option('active_plugins'), array($basename)));
+        array_unshift($active, $basename);
+        update_option('active_plugins', $active);
+    }
     wp_cache_flush(); // activating from CLI with Redis on can leave apache reading a stale alloptions
 };
 $remove = function ($slug) {
@@ -123,6 +132,13 @@ $target->set_stock_quantity(25);
 $target->save();
 wc_delete_product_transients($target_id);
 sspa_t(true, 'target product: ' . $target->get_name() . " (#$target_id), stock managed at 25");
+
+// WooCommerce's sample import does not configure shipping. Add one real rest-of-world rate
+// so the block flow exercises select-shipping-rate instead of correctly recording that the
+// step was skipped. Remove this exact method during teardown.
+$shipping_zone = new WC_Shipping_Zone(0);
+$shipping_method_id = $shipping_zone->add_shipping_method('flat_rate');
+sspa_t(false !== $shipping_method_id, 'temporary flat-rate shipping method added');
 
 // ---------------------------------------------------------------- 1. snapshots
 
@@ -463,7 +479,7 @@ if ( ! function_exists( 'wp_mail' ) ) {
     }
 }
 PHP
-);
+, true);
 delete_option('sspa_test_api_mail_log');
 $guest_before = get_option('woocommerce_enable_guest_checkout');
 update_option('woocommerce_enable_guest_checkout', 'no');
@@ -690,6 +706,9 @@ $target = wc_get_product($target_id);
 $target->set_manage_stock($restore_stock_settings['manage']);
 $target->set_stock_quantity($restore_stock_settings['qty']);
 $target->save();
+if (false !== $shipping_method_id) {
+    $shipping_zone->delete_shipping_method($shipping_method_id);
+}
 delete_option('sspa_test_mail_log');
 $remove('sspa-slow-integration');
 $remove('sspa-mail-observer');

@@ -10,6 +10,13 @@ fi
 
 sync_plugin
 
+# Retire the bundled schema-1 receiver from long-lived test volumes. Its source is no longer
+# synced, but WordPress can keep the old top-level plugin active until explicitly deactivated.
+if cli plugin is-active super-speedy-performance-hub >/dev/null 2>&1; then
+    echo "deactivating retired schema-1 hub plugin..."
+    cli plugin deactivate super-speedy-performance-hub --quiet
+fi
+
 # Excimer for the phase-5 sampling collector - idempotent, self-heals a recreated env.
 "$PLUGIN_DIR/.tests/docker/install-excimer.sh" || true
 
