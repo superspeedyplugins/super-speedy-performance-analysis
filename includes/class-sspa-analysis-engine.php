@@ -966,14 +966,19 @@ class SSPA_Analysis_Engine {
             $autoload_bytes += (int) $row['bytes'];
         }
 
+        // Two different populations, kept as two numbers rather than one misleading one:
+        // every unread option contributes to the wasted bytes, but only rows above the floor
+        // are worth naming - a recommendation to edit 150 rows to save 5 KB is noise.
         $floor = (int) SSPA_Rules::threshold('autoload_option_floor_bytes');
         $unread = array();
         $unread_bytes = 0;
+        $unread_count = 0;
         foreach ($autoloaded as $name => $bytes) {
             if (isset($pages_read[$name]) || self::transient_option($name)) {
                 continue;
             }
             $unread_bytes += $bytes;
+            $unread_count++;
             if ($bytes >= $floor) {
                 $unread[] = array('name' => $name, 'bytes' => $bytes);
             }
@@ -1013,7 +1018,9 @@ class SSPA_Analysis_Engine {
         $this->add('warn', 'autoload_coverage', null, null, array(
             'autoload_bytes' => $autoload_bytes,
             'unread_bytes' => $unread_bytes,
-            'unread_count' => count($unread),
+            'unread_count' => $unread_count,
+            'named_count' => count($unread),
+            'named_bytes' => array_sum(array_column($unread, 'bytes')),
             'missing_count' => count($missing),
             'pages_covered' => $pages_total,
             // Names stay local: the submission privacy gate allow-lists numeric keys only,

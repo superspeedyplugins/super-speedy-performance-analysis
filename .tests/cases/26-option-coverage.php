@@ -110,6 +110,14 @@ if ($finding) {
     sspa_opt_t(false !== strpos($sql, $wpdb->options), 'SQL names the real prefixed options table');
     sspa_opt_t(false === strpos($sql, 'read-every-request'), 'SQL never contains an option value');
 
+    // It must NOT compete for a top-5 slot. It is a 'warn', and any real site has several
+    // critical per-page query findings above it - on a live store this finding named 374 KB of
+    // options loaded on every request and never appeared on screen at all.
+    $top_types = array_column(SSPA_Insights::top($run_id, 5), 'finding_type');
+    sspa_opt_t(!in_array('autoload_coverage', $top_types, true), 'the autoload finding is kept out of the top-5 list');
+    sspa_opt_t((bool) SSPA_Insights::standalone($run_id, 'autoload_coverage'), 'the autoload finding is fetchable for its own block');
+    sspa_opt_t(!empty(SSPA_Insights::render(SSPA_Insights::standalone($run_id, 'autoload_coverage'))['sql']), 'its own block carries the SQL');
+
     // The submission gate allow-lists numeric keys, so names must not escape to the collector.
     $safe = SSPA_Community_Privacy::finding_evidence($e);
     sspa_opt_t(!isset($safe['unread']) && !isset($safe['missing']), 'option names are stripped from shared evidence');

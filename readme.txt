@@ -42,7 +42,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * A submission interrupted by a PHP timeout now waits for its scheduled retry instead of becoming due again immediately.
 * Admin styles and scripts refresh as soon as they change, so the analysis screens cannot render with a stale stylesheet.
 * Every analysis now records which options each page actually read, so the Overview can name the autoloaded options no page used and the size they cost on every request.
-* Top insights include copy-and-paste SQL to switch autoload off for options nothing read, and on for options read on nearly every page.
+* New Autoloaded options panel on the Overview, with copy-and-paste SQL to switch autoload off for options nothing read and on for options read on nearly every page.
 * The Attribution Code owner and Caller buttons on the Plugins tab now swap the table in place instead of reloading the page.
 * Measured impact now says when it was measured, and warns when that Deep Analysis ran before the analysis shown beside it or against a version you no longer run.
 * A running analysis now opens in the middle of the screen and lists every measurement as it is taken, e.g. "home with super-speedy-search disabled, object cache off", instead of only a progress bar.

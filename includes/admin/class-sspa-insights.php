@@ -7,10 +7,34 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Insights {
 
+    /**
+     * Findings that get their own place on the screen rather than competing for a top-N slot.
+     *
+     * A site-wide configuration finding loses that competition every time: it is a 'warn', and
+     * any real site has several critical per-page query findings above it. On a live store the
+     * autoload finding named 374 KB of options loaded on every request and was still invisible,
+     * ranked below a slow query on one page.
+     */
+    const STANDALONE = array('autoload_coverage');
+
+    /**
+     * The single finding of one type for a run, or null. Feeds the dedicated Overview blocks.
+     */
+    public static function standalone($run_id, $finding_type) {
+        global $wpdb;
+        return $wpdb->get_row($wpdb->prepare(
+            'SELECT * FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d AND finding_type = %s ORDER BY id DESC LIMIT 1',
+            (int) $run_id,
+            $finding_type
+        ), ARRAY_A);
+    }
+
     public static function top($run_id, $limit = 5) {
         global $wpdb;
+        $excluded = "'" . implode("','", array_map('esc_sql', self::STANDALONE)) . "'";
         $rows = $wpdb->get_results($wpdb->prepare(
             'SELECT * FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d
+             AND finding_type NOT IN ($excluded)
              ORDER BY FIELD(severity, 'critical', 'warn', 'info'), id ASC",
             $run_id
         ), ARRAY_A);

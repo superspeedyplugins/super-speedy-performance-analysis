@@ -56,6 +56,26 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         </div>
     </div>
 
+    <?php
+    // Autoload sits in its own block, not the top-5 list. It is one site-wide setting rather
+    // than a per-page problem, it competes badly against critical query findings, and its
+    // copy-and-paste SQL needs more room than a list item.
+    $sspa_autoload = SSPA_Insights::standalone($sspa_last_run['id'], 'autoload_coverage');
+    if ($sspa_autoload) :
+        $sspa_a = SSPA_Insights::render($sspa_autoload);
+        ?>
+        <div class="sspa-placeholder">
+            <h2><?php esc_html_e('Autoloaded options', 'super-speedy-performance-analysis'); ?></h2>
+            <p><strong><?php echo esc_html($sspa_a['headline']); ?></strong></p>
+            <?php if ($sspa_a['rec_body']) : ?>
+                <p class="description"><?php echo esc_html($sspa_a['rec_body']); ?></p>
+            <?php endif; ?>
+            <?php if (!empty($sspa_a['sql'])) : ?>
+                <pre class="sspa-insight-sql"><?php echo esc_html($sspa_a['sql']); ?></pre>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
     <?php if (!empty($sspa_run_notes['unmeasured_pages'])) : ?>
     <div class="notice notice-error inline">
         <p>

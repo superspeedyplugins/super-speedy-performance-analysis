@@ -74,7 +74,7 @@ class SSPA_Community_Privacy {
 
     public static function finding_evidence($evidence) {
         $safe = array();
-        foreach (array('ms', 'rows', 'query_count', 'sql_ms', 'count', 'saved_pct', 'queries_on', 'queries_off', 'construct_ms', 'autoload_bytes', 'unread_bytes', 'unread_count', 'missing_count', 'pages_covered') as $key) {
+        foreach (array('ms', 'rows', 'query_count', 'sql_ms', 'count', 'saved_pct', 'queries_on', 'queries_off', 'construct_ms', 'autoload_bytes', 'unread_bytes', 'unread_count', 'named_count', 'named_bytes', 'missing_count', 'pages_covered') as $key) {
             if (isset($evidence[$key]) && is_numeric($evidence[$key])) {
                 $safe[$key] = $evidence[$key] + 0;
             }
