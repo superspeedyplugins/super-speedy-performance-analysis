@@ -81,6 +81,44 @@ function sspa_click_tab(slug) {
 	jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').css('display', 'block');
 }
 
+// ---- Attribution mode: swap the table, never reload the page ----
+
+jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
+	var btn = jQuery(this);
+	var mode = btn.data('mode');
+	if (btn.hasClass('button-primary') || btn.prop('disabled')) {
+		return;
+	}
+	var buttons = jQuery('#sspa_main .sspa-attrib-mode').prop('disabled', true);
+	jQuery('#sspa-attrib-wrap').css('opacity', 0.5);
+
+	jQuery.post(ajaxurl, { action: 'sspa_attribution', nonce: sspa_admin.nonce, mode: mode }, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || 'Could not switch attribution mode.');
+			return;
+		}
+		jQuery('#sspa-attrib-wrap').html(resp.data.html);
+		jQuery('#sspa-attrib-describe').text(resp.data.describe);
+		buttons.each(function () {
+			var b = jQuery(this);
+			var on = b.data('mode') === resp.data.mode;
+			b.toggleClass('button-primary', on).attr('aria-pressed', on ? 'true' : 'false');
+		});
+		// Keep the mode deep-linkable without navigating away from the tab.
+		if (window.history.replaceState) {
+			var url = new URL(window.location.href);
+			url.searchParams.set('attrib', resp.data.mode);
+			// url already carries the current hash, so the tab stays selected on reload.
+			window.history.replaceState(null, '', url.toString());
+		}
+	}).fail(function () {
+		alert('Could not switch attribution mode.');
+	}).always(function () {
+		buttons.prop('disabled', false);
+		jQuery('#sspa-attrib-wrap').css('opacity', '');
+	});
+});
+
 // ---- Pages drill-down ----
 
 jQuery(document).on('click', '.sspa-page-row', function () {
@@ -448,12 +486,13 @@ jQuery(document).on('click', '#sspa-cancel-run, #sspa-runner-cancel', function (
 
 // ---- Floating run monitor ----
 
-jQuery(document).on('click', '#sspa-runner .sspa-runner-toggle, #sspa-runner .sspa-runner-head', function (e) {
+jQuery(document).on('click', '#sspa-runner .sspa-runner-head', function (e) {
 	if (jQuery(e.target).is('#sspa-runner-cancel')) {
 		return;
 	}
 	var runner = jQuery('#sspa-runner');
 	runner.toggleClass('sspa-runner-min');
+	sspa_runner_backdrop(runner);
 	try {
 		window.localStorage.setItem('sspa_runner_min', runner.hasClass('sspa-runner-min') ? '1' : '0');
 	} catch (err) { /* private mode */ }
@@ -468,6 +507,18 @@ function sspa_runner_show() {
 		}
 	} catch (err) { /* private mode */ }
 	runner.show();
+	sspa_runner_backdrop(runner);
+}
+
+// The dimmer belongs to the centred panel only. Minimised, the screen has to stay usable.
+function sspa_runner_backdrop(runner) {
+	var wanted = runner.is(':visible') && !runner.hasClass('sspa-runner-min');
+	var backdrop = jQuery('#sspa-runner-backdrop');
+	if (wanted && !backdrop.length) {
+		jQuery('<div id="sspa-runner-backdrop">').insertBefore(runner);
+	} else if (!wanted) {
+		backdrop.remove();
+	}
 }
 
 function sspa_fmt_duration(seconds) {
@@ -486,12 +537,42 @@ function sspa_fmt_duration(seconds) {
 	return seconds + 's';
 }
 
+// Highest job index already in the feed, so a poll only appends what is new.
+var sspa_feed_seen = -1;
+
+function sspa_runner_feed(s) {
+	var feed = jQuery('#sspa-runner .sspa-runner-feed');
+	if (!feed.length) {
+		return;
+	}
+	var el = feed.get(0);
+	// Was the user reading the tail before this batch arrived? Decided first: after appending,
+	// a batch of new lines is indistinguishable from the user having scrolled up.
+	var following = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+	feed.find('.sspa-feed-now').remove();
+
+	(s.recent || []).forEach(function (item) {
+		if (item.i > sspa_feed_seen) {
+			sspa_feed_seen = item.i;
+			feed.append(jQuery('<li>').text(item.label));
+		}
+	});
+	// The in-flight measurement sits at the bottom until it completes and arrives in recent.
+	if (s.current) {
+		feed.append(jQuery('<li class="sspa-feed-now">').text(s.current + ' …'));
+	}
+	if (following) {
+		el.scrollTop = el.scrollHeight;
+	}
+}
+
 function sspa_runner_update(s) {
 	var runner = jQuery('#sspa-runner');
 	var pct = s.total ? Math.min(100, Math.round((s.done / s.total) * 100)) : 0;
 	runner.find('.sspa-progress-fill').css('width', pct + '%');
 	runner.find('.sspa-runner-counts').text(s.done + ' / ' + s.total + ' measurements (' + pct + '%)');
 	runner.find('.sspa-runner-current').text(s.current ? 'Now testing: ' + s.current : (s.status === 'analysing' ? 'Analysing results…' : ''));
+	sspa_runner_feed(s);
 	var eta = sspa_fmt_duration(s.eta_seconds);
 	var elapsed = sspa_fmt_duration(s.elapsed_seconds);
 	var bits = [];
@@ -518,6 +599,7 @@ function sspa_runner_finish(status) {
 	runner.find('.sspa-runner-mini-summary').text('');
 	runner.find('.sspa-progress-fill').css('width', '100%');
 	runner.find('.sspa-runner-current, .sspa-runner-eta, .sspa-runner-actions').hide();
+	sspa_runner_backdrop(runner);
 	setTimeout(function () {
 		window.location.reload();
 	}, 1500);

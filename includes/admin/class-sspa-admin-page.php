@@ -151,6 +151,10 @@ class SSPA_Admin_Page {
                     <p class="sspa-runner-counts"></p>
                     <p class="sspa-runner-current"></p>
                     <p class="sspa-runner-eta"></p>
+                    <?php // Every measurement as it is taken. A bar alone does not show what a
+                          // deep run is doing, and "216 measurements" reads as excessive until
+                          // you can see it is one plugin across every page and cache mode. ?>
+                    <ol class="sspa-runner-feed" aria-live="polite" aria-label="<?php esc_attr_e('Measurements taken', 'super-speedy-performance-analysis'); ?>"></ol>
                     <p class="sspa-runner-actions">
                         <button type="button" class="button" id="sspa-runner-cancel"><?php esc_html_e('Cancel run', 'super-speedy-performance-analysis'); ?></button>
                     </p>

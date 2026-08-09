@@ -43,6 +43,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Admin styles and scripts refresh as soon as they change, so the analysis screens cannot render with a stale stylesheet.
 * Every analysis now records which options each page actually read, so the Overview can name the autoloaded options no page used and the size they cost on every request.
 * Top insights include copy-and-paste SQL to switch autoload off for options nothing read, and on for options read on nearly every page.
+* The Attribution Code owner and Caller buttons on the Plugins tab now swap the table in place instead of reloading the page.
+* Measured impact now says when it was measured, and warns when that Deep Analysis ran before the analysis shown beside it or against a version you no longer run.
+* A running analysis now opens in the middle of the screen and lists every measurement as it is taken, e.g. "home with super-speedy-search disabled, object cache off", instead of only a progress bar.
+* Fixed the minimise button on the running-analysis panel doing nothing.
+* Deep Analysis now accepts a page list, so `wp sspa run --type=deep --suspects=my-plugin --pages=admin-orders-search` re-measures one plugin on one page instead of sweeping every page.
 * Sharing your results with the community is now a durable background queue: each completed run becomes its own versioned anonymised payload, which survives reloads and outages and retries until the community archive confirms it is stored.
 * Deep analyses, cache analyses, checkout flows, ad-hoc page profiles, plugin-toggle spot checks and Excimer function, component and phase data are all shared now, each as one coherent run rather than a mixture of the latest profiles and unrelated history.
 * Ad-hoc page profiles are shared as a page classification and an opaque identifier, so no URL or URL-derived key leaves your site.

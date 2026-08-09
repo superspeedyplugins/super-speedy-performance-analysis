@@ -215,17 +215,61 @@
 }
 
 /* Floating run monitor */
+/* Centred while running: a run is the thing you are doing, not a background notification.
+   Minimising drops it back to the old bottom-right corner so the screen stays usable. */
 #sspa-runner {
 	position: fixed;
-	right: 24px;
-	bottom: 24px;
-	width: 340px;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: min(620px, calc(100vw - 48px));
 	background: #fff;
 	border: 1px solid #c3c4c7;
 	border-radius: 6px;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+	box-shadow: 0 8px 40px rgba(0, 0, 0, 0.28);
 	z-index: 99990;
 	font-size: 13px;
+}
+
+#sspa-runner-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.35);
+	z-index: 99989;
+}
+
+#sspa-runner .sspa-runner-feed {
+	list-style: none;
+	margin: 10px 0 0;
+	padding: 8px 10px;
+	max-height: 260px;
+	overflow-y: auto;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	line-height: 1.7;
+	counter-reset: sspa-measurement;
+}
+
+#sspa-runner .sspa-runner-feed li {
+	margin: 0;
+	color: #50575e;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#sspa-runner .sspa-runner-feed li.sspa-feed-now {
+	color: #1d2327;
+	font-weight: 600;
+}
+
+#sspa-runner .sspa-runner-feed li::before {
+	content: counter(sspa-measurement) '. ';
+	counter-increment: sspa-measurement;
+	color: #8c8f94;
 }
 
 #sspa-runner .sspa-runner-head {
@@ -279,6 +323,11 @@
 }
 
 #sspa-runner.sspa-runner-min {
+	left: auto;
+	top: auto;
+	right: 24px;
+	bottom: 24px;
+	transform: none;
 	width: 260px;
 }
 

@@ -22,6 +22,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_cancel_run', array(__CLASS__, 'ajax_cancel_run'));
         add_action('wp_ajax_sspa_page_detail', array(__CLASS__, 'ajax_page_detail'));
         add_action('wp_ajax_sspa_plugin_detail', array(__CLASS__, 'ajax_plugin_detail'));
+        add_action('wp_ajax_sspa_attribution', array(__CLASS__, 'ajax_attribution'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
@@ -229,6 +230,19 @@ class SSPA_Run_Controller {
              AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'",
             $source_run_id
         ));
+        // A sweep can be narrowed to specific pages. Without this a targeted run still covers
+        // every page the source run profiled, which is the difference between re-measuring one
+        // fixed plugin on one page in a couple of minutes and re-running for hours.
+        if (!empty($args['page_keys'])) {
+            $requested = array_values(array_intersect($page_keys, (array) $args['page_keys']));
+            if (!$requested) {
+                return new WP_Error(
+                    'sspa_pages_not_profiled',
+                    __('None of those pages were profiled by the last analysis, so there is no baseline to compare against.', 'super-speedy-performance-analysis')
+                );
+            }
+            $page_keys = $requested;
+        }
         $page_jobs_list = $page_keys ? SSPA_Catalogue::build($page_keys) : array();
         if (!$page_jobs_list) {
             return new WP_Error('sspa_no_jobs', __('No profiled pages from the last analysis could be resolved - run a fresh analysis first.', 'super-speedy-performance-analysis'));
@@ -716,6 +730,44 @@ class SSPA_Run_Controller {
         global $wpdb;
         $table = SSPA_Schema::table('runs');
         return (int) $wpdb->get_var("SELECT id FROM $table WHERE status IN ('queued','crawling','analysing') ORDER BY id DESC LIMIT 1");
+    }
+
+    /** How many completed measurements status() reports back, newest last. */
+    const STATUS_RECENT = 40;
+
+    /**
+     * One measurement in plain English: what was requested, with which plugin set, in which
+     * cache mode. This is the line the running-analysis feed shows, so it has to read as an
+     * action ("home with super-speedy-search disabled") rather than as a job record.
+     */
+    private static function job_label($job) {
+        $page = isset($job['page_key']) ? $job['page_key'] : '?';
+        if (empty($job['plugin'])) {
+            $label = sprintf(
+                /* translators: %s: page key */
+                __('%s with every plugin active', 'super-speedy-performance-analysis'),
+                $page
+            );
+        } else {
+            $plugin = ('theme' === $job['plugin']) ? get_stylesheet() . ' (theme)' : $job['plugin'];
+            $label = sprintf(
+                /* translators: 1: page key, 2: plugin slug */
+                __('%1$s with %2$s disabled', 'super-speedy-performance-analysis'),
+                $page,
+                $plugin
+            );
+        }
+        if (!empty($job['oc_label']) && 'normal' !== $job['oc_label']) {
+            $oc_labels = array(
+                'disabled' => __('object cache off', 'super-speedy-performance-analysis'),
+                'prime' => __('priming cache', 'super-speedy-performance-analysis'),
+                'warm' => __('warm cache', 'super-speedy-performance-analysis'),
+            );
+            if (isset($oc_labels[$job['oc_label']])) {
+                $label .= ', ' . $oc_labels[$job['oc_label']];
+            }
+        }
+        return $label;
     }
 
     public static function run_row($run_id) {
@@ -1254,18 +1306,22 @@ class SSPA_Run_Controller {
         $current_plugin = null;
         if (is_array($queue) && isset($queue['jobs'][$idx])) {
             $job = $queue['jobs'][$idx];
-            $current = $job['page_key'];
+            $current = self::job_label($job);
             if (!empty($job['plugin'])) {
                 $current_plugin = ('theme' === $job['plugin']) ? get_stylesheet() . ' (theme)' : $job['plugin'];
-                $current = $current_plugin . ' on ' . $job['page_key'];
             }
-            if (!empty($job['oc_label']) && 'normal' !== $job['oc_label']) {
-                $oc_labels = array(
-                    'disabled' => __('object cache off', 'super-speedy-performance-analysis'),
-                    'prime' => __('priming cache', 'super-speedy-performance-analysis'),
-                    'warm' => __('warm cache', 'super-speedy-performance-analysis'),
-                );
-                $current .= ' (' . $oc_labels[$job['oc_label']] . ')';
+        }
+
+        // The measurements already taken, newest last. A progress bar alone says nothing about
+        // what a deep run is actually doing; polling only 'current' would also drop every job
+        // that starts and finishes between two polls.
+        $recent = array();
+        if (is_array($queue) && !empty($queue['jobs'])) {
+            $from = max(0, $idx - self::STATUS_RECENT);
+            for ($i = $from; $i < $idx; $i++) {
+                if (isset($queue['jobs'][$i])) {
+                    $recent[] = array('i' => $i, 'label' => self::job_label($queue['jobs'][$i]));
+                }
             }
         }
 
@@ -1280,6 +1336,7 @@ class SSPA_Run_Controller {
             'done' => $idx,
             'current' => $current,
             'current_plugin' => $current_plugin,
+            'recent' => $recent,
             'phase' => (is_array($queue) && isset($queue['sweep']['phase'])) ? (int) $queue['sweep']['phase'] : null,
             'elapsed_seconds' => $elapsed,
             'eta_seconds' => $eta,
@@ -1579,6 +1636,29 @@ class SSPA_Run_Controller {
             'dupes' => isset($capture['sql']['dupe_details']) ? $capture['sql']['dupe_details'] : array(),
             'boot' => isset($capture['boot']) ? $capture['boot'] : null,
             'profile' => isset($capture['profile']) ? $capture['profile'] : null,
+        ));
+    }
+
+    /**
+     * Re-render the Plugins tab table under the other attribution mode.
+     *
+     * A read-only view switch, so it stays a table swap rather than a page load - every other
+     * control on this screen updates in place. Caller mode is recomputed from the stored
+     * capture blobs, which is why this is a server round trip and not a client-side sort.
+     */
+    public static function ajax_attribution() {
+        self::ajax_guard();
+        $mode = SSPA_Attribution::sanitise_mode(
+            isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : ''
+        );
+        $run_id = SSPA_Plugins_Table::latest_run_id();
+        if (!$run_id) {
+            wp_send_json_error(__('There is no completed analysis to attribute yet.', 'super-speedy-performance-analysis'));
+        }
+        wp_send_json_success(array(
+            'mode' => $mode,
+            'html' => SSPA_Plugins_Table::render($run_id, $mode),
+            'describe' => SSPA_Attribution::describe($mode),
         ));
     }
 

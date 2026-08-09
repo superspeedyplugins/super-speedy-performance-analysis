@@ -116,6 +116,31 @@ $sspa_stored = $wpdb->get_var($wpdb->prepare(
 ));
 sspa_t('2.4.1' === $sspa_stored, 'recorded impact still names the version it measured (' . var_export($sspa_stored, true) . ')');
 
+// --- The Plugins tab must say WHEN a measured verdict was taken ---
+// A verdict from an old sweep reads as current unless the cell dates it, which is how a
+// plugin that has since been fixed keeps showing its old cost.
+$sspa_table_run = SSPA_Plugins_Table::latest_run_id();
+$sspa_table = SSPA_Plugins_Table::render($sspa_table_run, 'code_owner');
+sspa_t(false !== strpos($sspa_table, 'sspa-bad-plugin'), 'plugins table lists the measured plugin');
+sspa_t(false !== strpos($sspa_table, 'measured '), 'plugins table dates the measured impact');
+sspa_t(false !== strpos($sspa_table, '2.4.1'), 'plugins table names the measured version');
+sspa_t(
+    substr_count($sspa_table, '<th>') === substr_count(explode('</thead>', $sspa_table)[0], '<th>'),
+    'plugins table renders one header row'
+);
+
+// The attribution switch is a table swap, so both modes render from this one method. Caller
+// mode is recomputed from the capture blobs rather than read from component_stats, so the
+// thing worth asserting is that the recompute produced rows at all - the two modes agree on
+// a fixture that runs its own queries, and only diverge when one component calls another.
+$sspa_caller = SSPA_Plugins_Table::render($sspa_table_run, 'caller');
+sspa_t(false !== strpos($sspa_caller, '<table'), 'caller mode renders a table');
+sspa_t(false !== strpos($sspa_caller, 'sspa-bad-plugin'), 'caller-mode recompute produced component rows');
+sspa_t(
+    substr_count($sspa_caller, '<tr>') === substr_count($sspa_table, '<tr>'),
+    'both modes render the same component count on a fixture that calls nothing else'
+);
+
 // --- Deep run stored its measurement profiles with plugin-set hashes ---
 $hashed = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND plugin_set_hash != ''",

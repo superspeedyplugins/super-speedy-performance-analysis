@@ -16,7 +16,9 @@ class SSPA_CLI {
      * : baseline (default, all key pages), spot, deep (culprit isolation) or cache_impact.
      *
      * [--pages=<keys>]
-     * : Comma-separated page keys to limit the run to (e.g. home,shop).
+     * : Comma-separated page keys to limit the run to (e.g. home,shop). Works for deep runs
+     * too, which is how you re-measure one fixed plugin on one page in minutes instead of
+     * sweeping every page.
      *
      * [--suspects=<slugs>]
      * : deep only - comma-separated plugin slugs to isolate.
@@ -32,6 +34,7 @@ class SSPA_CLI {
      *     wp sspa run
      *     wp sspa run --type=spot --pages=home,shop
      *     wp sspa run --type=deep --suspects=some-plugin
+     *     wp sspa run --type=deep --suspects=some-plugin --pages=admin-orders-search
      */
     public function run($args, $assoc_args) {
         $type = isset($assoc_args['type']) ? $assoc_args['type'] : 'baseline';
