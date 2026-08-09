@@ -122,7 +122,34 @@ if (!is_wp_error($queued)) {
     $again = SSPA_Community_Outbox::queue_run($run_id);
     sspa_outbox_t(!is_wp_error($again) && (int) $again['id'] === (int) $queued['id'], 'queueing the same run is idempotent');
 
-    SSPA_Community_Outbox::begin_attempt($queued);
+    // Claiming a row is compare-and-set, because due() is a plain read and two overlapping
+    // WP-Cron spawns would otherwise both upload the same payload.
+    $claim = SSPA_Community_Outbox::begin_attempt($queued);
+    sspa_outbox_t(is_array($claim) && 1 === (int) $claim['attempts'], 'the first worker claims the row');
+    $double_claim = SSPA_Community_Outbox::begin_attempt($queued);
+    sspa_outbox_t(null === $double_claim, 'a second worker cannot claim a row already in flight');
+    sspa_outbox_t(1 === (int) SSPA_Community_Outbox::get($queued['id'])['attempts'], 'the lost claim did not consume an attempt');
+
+    // The claim also has to respect terminal state, not just the attempt number. A worker
+    // holding a snapshot taken before the owner paused or delivered the row must not be able
+    // to drag it back into the send cycle.
+    SSPA_Community_Outbox::pause($queued['id']);
+    $stale_snapshot = SSPA_Community_Outbox::get($queued['id']);
+    $stale_snapshot['state'] = 'pending';
+    $resurrect = SSPA_Community_Outbox::begin_attempt($stale_snapshot);
+    $after_resurrect = SSPA_Community_Outbox::get($queued['id']);
+    sspa_outbox_t(null === $resurrect, 'a paused row cannot be claimed from a stale snapshot');
+    sspa_outbox_t('cancelled' === $after_resurrect['state'], 'the refused claim left the row paused (' . $after_resurrect['state'] . ')');
+    SSPA_Community_Outbox::resume($queued['id']);
+    SSPA_Community_Outbox::begin_attempt(SSPA_Community_Outbox::get($queued['id']));
+
+    // A process that dies mid-attempt runs neither sent() nor failed(), so the claim itself has
+    // to hold the row back - otherwise it retries instantly and burns the whole backoff ladder.
+    sspa_outbox_t(
+        !empty($claim['next_attempt']) && strtotime($claim['next_attempt'] . ' UTC') > time() + 60,
+        'an in-flight row is not due again immediately (' . $claim['next_attempt'] . ')'
+    );
+
     SSPA_Community_Outbox::failed($queued['id'], new WP_Error('test_receiver_offline', 'offline'), false);
     $retry = SSPA_Community_Outbox::get($queued['id']);
     sspa_outbox_t(

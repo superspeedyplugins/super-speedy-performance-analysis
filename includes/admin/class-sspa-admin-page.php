@@ -85,7 +85,7 @@ class SSPA_Admin_Page {
     }
 
     public static function enqueue_assets() {
-        wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery'), SSPA_VERSION, true);
+        wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
         wp_localize_script('sspa-admin', 'sspa_admin', array(
             'nonce' => wp_create_nonce('sspa_admin'),
         ));
@@ -94,7 +94,7 @@ class SSPA_Admin_Page {
             'hide' => __('Hide installation steps', 'super-speedy-performance-analysis'),
             'copied' => __('Copied', 'super-speedy-performance-analysis'),
         ));
-        wp_enqueue_style('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-admin.css', array(), SSPA_VERSION);
+        wp_enqueue_style('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-admin.css', array(), sspa_asset_version('includes/admin/css/sspa-admin.css'));
     }
 
     private static function tabs() {

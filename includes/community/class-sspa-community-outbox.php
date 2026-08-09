@@ -7,6 +7,17 @@ defined('ABSPATH') || exit;
 class SSPA_Community_Outbox {
 
     /**
+     * How long a claimed row stays undue while its attempt is in flight.
+     *
+     * One attempt can spend 30s reserving, 120s uploading and 120s completing, and the worker
+     * holds its lease for 300s. If the process dies mid-attempt nothing runs sent() or failed(),
+     * so without a horizon here the row would still carry a next_attempt in the past and the
+     * next worker invocation would retry it instantly - walking the whole 15min/1h/6h/24h
+     * backoff ladder in minutes of wall clock. A dead attempt must look like a scheduled retry.
+     */
+    const ATTEMPT_LEASE_SECONDS = 600;
+
+    /**
      * @param string $consent_scope 'automatic' (the site-wide setting) or 'manual' (the owner
      *                              explicitly chose to share this one analysis). A manual share
      *                              is its own act of consent, so it does not require - and never
@@ -172,18 +183,32 @@ class SSPA_Community_Outbox {
         return $json;
     }
 
+    /**
+     * Claim one row for delivery. Compare-and-set on (id, attempts, state): due() is a plain
+     * read and two WP-Cron spawns can overlap, so the claim itself has to be what decides who
+     * sends. A worker that loses the race gets null and must not submit.
+     *
+     * @return array|null The claimed row, or null when another worker already has it.
+     */
     public static function begin_attempt($row) {
         global $wpdb;
         $attempt = (int) $row['attempts'] + 1;
-        $wpdb->update(self::table(), array(
-            'state' => 'retry',
-            'phase' => 'reserving',
-            'attempts' => $attempt,
-            'last_attempt' => gmdate('Y-m-d H:i:s'),
-            'last_http_status' => null,
-            'last_error_code' => null,
-            'last_error_detail' => null,
-        ), array('id' => (int) $row['id']));
+        $table = self::table();
+        $claimed = $wpdb->query($wpdb->prepare(
+            "UPDATE $table
+                SET state = 'retry', phase = 'reserving', attempts = %d,
+                    last_attempt = %s, next_attempt = %s,
+                    last_http_status = NULL, last_error_code = NULL, last_error_detail = NULL
+              WHERE id = %d AND attempts = %d AND state IN ('pending','retry')",
+            $attempt,
+            gmdate('Y-m-d H:i:s'),
+            gmdate('Y-m-d H:i:s', time() + self::ATTEMPT_LEASE_SECONDS),
+            (int) $row['id'],
+            (int) $row['attempts']
+        ));
+        if (1 !== (int) $claimed) {
+            return null;
+        }
         self::event($row['id'], 'retry', 'reserving', $attempt, 'attempt_started');
         return self::get($row['id']);
     }

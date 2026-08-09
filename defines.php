@@ -25,6 +25,20 @@ function sspa_default_options() {
     );
 }
 
+/**
+ * Cache key for a bundled CSS/JS file, relative to the plugin directory.
+ *
+ * SSPA_VERSION alone is not enough. Editing a stylesheet or script without bumping the plugin
+ * version leaves every browser that already loaded the page serving the previous file from
+ * cache under the same URL, which presents as broken styling or dead JavaScript rather than as
+ * a caching problem. The file's own mtime moves whenever its contents do.
+ */
+function sspa_asset_version($relative_path) {
+    $file = SSPA_PLUGIN_DIR . ltrim($relative_path, '/');
+    $mtime = file_exists($file) ? filemtime($file) : 0;
+    return $mtime ? SSPA_VERSION . '.' . $mtime : SSPA_VERSION;
+}
+
 function sspa_get_option($key) {
     $options = get_option('sspa_options', array());
     $defaults = sspa_default_options();

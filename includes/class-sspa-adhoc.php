@@ -67,8 +67,8 @@ class SSPA_Adhoc {
         if (!self::available()) {
             return;
         }
-        wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), SSPA_VERSION);
-        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery'), SSPA_VERSION, true);
+        wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
+        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
         // The CURRENT white wordmark (text only, per Dave - no icon), bundled with the
         // plugin - the settings submodule's copy is an older mark and submodules are
         // absent from some zips anyway. Source of truth:
@@ -101,7 +101,7 @@ class SSPA_Adhoc {
         // The checkout-flow panel reuses this popover's CSS wholesale; it only needs its
         // own script because the disclosure step has no equivalent here.
         if (self::checkout_flow_available() || (is_admin() && isset($_GET['page']) && 'sspa' === $_GET['page'])) { // phpcs:ignore WordPress.Security.NonceVerification
-            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery'), SSPA_VERSION, true);
+            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-checkout.js'), true);
             wp_localize_script('sspa-checkout', 'sspa_checkout', array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('sspa_admin'),

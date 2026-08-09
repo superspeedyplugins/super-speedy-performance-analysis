@@ -38,6 +38,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * The History tab lists the components and versions each analysis measured.
 * The page title now sits at the start of the tab row, with the running plugin version beside it.
 * The community rules feed backs off for 12 hours after a failed fetch instead of retrying every hour.
+* Queued submissions are claimed atomically, so two background workers can never deliver the same payload twice.
+* A submission interrupted by a PHP timeout now waits for its scheduled retry instead of becoming due again immediately.
+* Admin styles and scripts refresh as soon as they change, so the analysis screens cannot render with a stale stylesheet.
 * Sharing your results with the community is now a durable background queue: each completed run becomes its own versioned anonymised payload, which survives reloads and outages and retries until the community archive confirms it is stored.
 * Deep analyses, cache analyses, checkout flows, ad-hoc page profiles, plugin-toggle spot checks and Excimer function, component and phase data are all shared now, each as one coherent run rather than a mixture of the latest profiles and unrelated history.
 * Ad-hoc page profiles are shared as a page classification and an opaque identifier, so no URL or URL-derived key leaves your site.

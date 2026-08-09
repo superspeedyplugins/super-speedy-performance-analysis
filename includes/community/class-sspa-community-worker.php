@@ -34,6 +34,11 @@ class SSPA_Community_Worker {
                 return;
             }
             $row = SSPA_Community_Outbox::begin_attempt($row);
+            if (!$row) {
+                // Another worker claimed it between the read and the claim. Its attempt is the
+                // one that counts; sending as well would duplicate the payload upload.
+                return;
+            }
             $result = SSPA_Community_Client::submit($row);
             if (is_wp_error($result)) {
                 $data = $result->get_error_data();

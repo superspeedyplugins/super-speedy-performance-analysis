@@ -58,11 +58,25 @@ surviving consumer of `SSPA_Submitter::endpoint()`, so 0.12.0 shipped an hourly 
 12-hour failure backoff transient; see `.changelog-full.md` under 0.12.0. Containment only - the
 feed still has no live source.
 
-## 3. Verified findings NOT fixed in this pass
+**Claiming a row is now compare-and-set, and a claim holds the row back** - findings 3.1 and 3.2
+below, both fixed the same day. `begin_attempt()` CASs on `(id, attempts, state)`, returns null
+when it loses the race, and sets `next_attempt` to now + `ATTEMPT_LEASE_SECONDS` (600) so a
+process that dies mid-attempt does not leave the row instantly due. `SSPA_Community_Worker::run()`
+returns without submitting when the claim is lost. Covered by
+`.tests/cases/20-community-outbox.php`.
+
+**Admin assets were cache-keyed on `SSPA_VERSION` alone**, so editing a bundled stylesheet or
+script within one release served every already-loaded browser the previous file. Now keyed on
+`SSPA_VERSION` plus the file's mtime via `sspa_asset_version()`. Not a submission defect, but it
+is what made the tab-bar work in this release look broken.
+
+## 3. Verified findings
+
+3.1 and 3.2 were fixed on the same day and are marked so; the rest stand.
 
 Each was read in the code, not inferred from a description. Ranked by what would actually bite.
 
-### 3.1 A crash mid-attempt burns the whole backoff ladder
+### 3.1 A crash mid-attempt burns the whole backoff ladder - FIXED 2026-08-09
 
 `SSPA_Community_Outbox::begin_attempt()` sets `state='retry'`, `phase='reserving'` and increments
 `attempts`, but does **not** move `next_attempt` forward. If the process dies between
@@ -76,7 +90,7 @@ waited.
 Fix shape: set `next_attempt` to now + a lease horizon inside `begin_attempt()`, so a dead
 attempt is indistinguishable from a scheduled retry.
 
-### 3.2 Nothing atomically claims a row
+### 3.2 Nothing atomically claims a row - FIXED 2026-08-09
 
 `due()` is a plain `SELECT ... LIMIT 1` and `begin_attempt()` is an unconditional
 `UPDATE ... WHERE id = %d`. There is no compare-and-set, no `FOR UPDATE`, no owner column. The
