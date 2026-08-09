@@ -168,6 +168,25 @@ if (!is_wp_error($queued)) {
     $manual_retry = SSPA_Community_Outbox::retry_now($queued['id']);
     sspa_outbox_t(true === $manual_retry && 'pending' === SSPA_Community_Outbox::get($queued['id'])['state'], 'explicit retry requeues a permanent failure');
 
+    // A four-part version number is character-for-character an IPv4 address. Rejecting it as
+    // "potential private data" blocked every submission from a site carrying one: on
+    // superspeedyplugins.com, syntax-highlighter 3.0.83.3 failed six consecutive runs.
+    $four_part = SSPA_Community_Privacy::validate(array(
+        'component_inventory' => array(array('slug' => 'syntax-highlighter', 'type' => 'plugin', 'version' => '3.0.83.3')),
+    ));
+    sspa_outbox_t(true === $four_part, 'a four-part version number is not mistaken for an IP address');
+    $component_version = SSPA_Community_Privacy::validate(array('component_version' => '3.0.83.3'));
+    sspa_outbox_t(true === $component_version, 'the same holds for component_version on evidence');
+
+    // The exemption must be exactly that narrow: a real IP elsewhere is still private data,
+    // and a version key must not become a smuggling channel.
+    $real_ip = SSPA_Community_Privacy::validate(array('note' => 'origin 192.168.1.50 responded'));
+    sspa_outbox_t(is_wp_error($real_ip) && 'sspa_privacy_forbidden_value' === $real_ip->get_error_code(), 'an IP address in an ordinary field is still rejected');
+    $smuggled = SSPA_Community_Privacy::validate(array('version' => 'https://example.com/leak'));
+    sspa_outbox_t(is_wp_error($smuggled), 'a version field cannot smuggle a URL');
+    $smuggled_path = SSPA_Community_Privacy::validate(array('version' => '/home/dave/site'));
+    sspa_outbox_t(is_wp_error($smuggled_path), 'a version field cannot smuggle a filesystem path');
+
     $privacy = SSPA_Community_Privacy::validate(array('request_body' => 'secret'));
     sspa_outbox_t(is_wp_error($privacy) && 'sspa_privacy_forbidden_key' === $privacy->get_error_code(), 'privacy gate rejects forbidden fields');
     $bare_host_collision = SSPA_Community_Privacy::validate(array('component_inventory' => array(array('slug' => 'sspa-wp'))));

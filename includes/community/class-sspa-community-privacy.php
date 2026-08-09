@@ -127,14 +127,14 @@ class SSPA_Community_Privacy {
             defined('DB_NAME') ? self::distinctive_db_name(DB_NAME) : '',
         ));
 
-        $scan = function ($value, $path = '$') use (&$scan, $blocked_keys, $needles) {
+        $scan = function ($value, $path = '$', $key_name = '') use (&$scan, $blocked_keys, $needles) {
             if (is_array($value)) {
                 foreach ($value as $key => $child) {
                     $child_path = $path . '.' . $key;
                     if (is_string($key) && preg_match($blocked_keys, $key)) {
                         return new WP_Error('sspa_privacy_forbidden_key', sprintf(__('Forbidden community field at %s.', 'super-speedy-performance-analysis'), $child_path));
                     }
-                    $error = $scan($child, $child_path);
+                    $error = $scan($child, $child_path, is_string($key) ? $key : '');
                     if (is_wp_error($error)) {
                         return $error;
                     }
@@ -145,10 +145,21 @@ class SSPA_Community_Privacy {
                 return true;
             }
             $normal = strtolower(str_replace('\\', '/', $value));
-            if (preg_match('#https?://#i', $value)
-                || preg_match('/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i', $value)
-                || preg_match('/\b(?:\d{1,3}\.){3}\d{1,3}\b/', $value)
-                || preg_match('#(?:^|[\s\'\"])/(?:users|home|var|srv|opt|etc|tmp)/#i', $normal)) {
+
+            // A four-part version number is character-for-character an IPv4 address, so the
+            // dotted-quad needle rejected every payload from a site running one - the real
+            // case was syntax-highlighter 3.0.83.3, which blocked six consecutive runs.
+            // Versions are written through safe_version(), whose character class admits no
+            // scheme, '@' or '/', so a version-shaped value under a version key cannot be a
+            // URL, an email or a path either. Exempt only that exact combination.
+            $is_version = ('version' === $key_name || '_version' === substr($key_name, -8))
+                && preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $value);
+
+            if (!$is_version
+                && (preg_match('#https?://#i', $value)
+                    || preg_match('/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i', $value)
+                    || preg_match('/\b(?:\d{1,3}\.){3}\d{1,3}\b/', $value)
+                    || preg_match('#(?:^|[\s\'\"])/(?:users|home|var|srv|opt|etc|tmp)/#i', $normal))) {
                 return new WP_Error('sspa_privacy_forbidden_value', sprintf(__('Potential private data at %s.', 'super-speedy-performance-analysis'), $path));
             }
             foreach ($needles as $needle) {
