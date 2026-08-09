@@ -16,7 +16,12 @@
     "checkout_slow_step_ms": 800,
     "checkout_component_share_pct": 25,
     "checkout_http_ms": 50,
-    "checkout_self_fetch_ms": 1000
+    "checkout_self_fetch_ms": 1000,
+    "autoload_unread_bytes": 102400,
+    "autoload_option_floor_bytes": 1024,
+    "autoload_missing_page_ratio": 0.8,
+    "autoload_missing_max_bytes": 20480,
+    "autoload_min_pages": 5
   },
   "recommendations": {
     "slow_query_postmeta": {
@@ -136,6 +141,10 @@
     "checkout_self_fetch_failed": {
       "title": "Your site calls itself during checkout and the call fails",
       "body": "A blocking request from this site to its own URL ran until it failed or timed out, while the customer waited, and the response was never usable. This is almost always a cache purge or preload gone wrong - the caller is shown on the outbound call. Fix the calling plugin's configuration or defer the call; a failing self-request is pure wasted checkout time."
+    },
+    "autoload_coverage": {
+      "title": "Autoload settings do not match what your pages actually read",
+      "body": "This analysis recorded every option each profiled page read. The rows below were never read on any page in this run, or are read on nearly every page but are not autoloaded. Autoload is only a caching decision, so changing it cannot break your site - a wrong choice costs speed, not correctness. Review the SQL before running it, and remember this scan cannot see cron jobs, webhooks or admin-ajax."
     }
   },
   "categories": {

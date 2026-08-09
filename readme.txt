@@ -41,6 +41,8 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Queued submissions are claimed atomically, so two background workers can never deliver the same payload twice.
 * A submission interrupted by a PHP timeout now waits for its scheduled retry instead of becoming due again immediately.
 * Admin styles and scripts refresh as soon as they change, so the analysis screens cannot render with a stale stylesheet.
+* Every analysis now records which options each page actually read, so the Overview can name the autoloaded options no page used and the size they cost on every request.
+* Top insights include copy-and-paste SQL to switch autoload off for options nothing read, and on for options read on nearly every page.
 * Sharing your results with the community is now a durable background queue: each completed run becomes its own versioned anonymised payload, which survives reloads and outages and retries until the community archive confirms it is stored.
 * Deep analyses, cache analyses, checkout flows, ad-hoc page profiles, plugin-toggle spot checks and Excimer function, component and phase data are all shared now, each as one coherent run rather than a mixture of the latest profiles and unrelated history.
 * Ad-hoc page profiles are shared as a page classification and an opaque identifier, so no URL or URL-derived key leaves your site.

@@ -291,6 +291,10 @@ if (!class_exists('SSPA_Capture')) {
                 'http' => $http,
                 'mail' => $mail,
                 'cache' => $cache,
+                // Which options this request actually read. Names and call counts only -
+                // never values, which hold licence keys, API tokens and customer data.
+                // Armed in the db.php drop-in; see the coverage note there.
+                'options' => $this->collect_options(),
                 'conditionals' => $this->conditionals,
                 'components' => $this->aggregate_components($sql, $http, $mail),
                 'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
@@ -445,6 +449,29 @@ if (!class_exists('SSPA_Capture')) {
                 // their stack cut at MAX_FRAMES, potentially hiding the calling component.
                 'frames_truncated' => isset($wpdb->sspa_frames_truncated) ? (int) $wpdb->sspa_frames_truncated : 0,
                 'queries' => $queries,
+            );
+        }
+
+        /**
+         * Option reads recorded by the pre_option observer armed in the db.php drop-in.
+         *
+         * 'coverage' is the honest part: 'full' means the observer was armed before core's
+         * first wp_load_alloptions(), so an option absent from 'reads' really was not read.
+         * 'partial' means it was armed at mu-plugin time and the bootstrap set is missing,
+         * which is not safe to turn into a de-autoload recommendation.
+         */
+        private function collect_options() {
+            if (!isset($GLOBALS['sspa_option_reads']) || !is_array($GLOBALS['sspa_option_reads'])) {
+                return null;
+            }
+            $reads = $GLOBALS['sspa_option_reads'];
+            arsort($reads);
+            return array(
+                'coverage' => isset($GLOBALS['sspa_option_coverage']) ? $GLOBALS['sspa_option_coverage'] : 'partial',
+                'distinct' => count($reads),
+                'calls' => isset($GLOBALS['sspa_option_calls']) ? (int) $GLOBALS['sspa_option_calls'] : 0,
+                'truncated' => !empty($GLOBALS['sspa_option_truncated']),
+                'reads' => $reads,
             );
         }
 

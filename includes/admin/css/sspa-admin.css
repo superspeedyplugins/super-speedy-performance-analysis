@@ -160,6 +160,21 @@
 	color: #50575e;
 }
 
+/* Copy-and-paste SQL under an insight. Never truncated, so it scrolls instead. */
+#sspa_main .sspa-insight-sql {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	padding: 10px 12px;
+	margin: 8px 0;
+	max-height: 260px;
+	overflow: auto;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: pre;
+	user-select: all;
+}
+
 /* A measured verdict taken against a version the site no longer runs. */
 #sspa_main .sspa-impact-stale {
 	color: #bd8600;

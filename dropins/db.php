@@ -76,6 +76,38 @@ if (!defined('SAVEQUERIES')) {
     define('SAVEQUERIES', true);
 }
 
+/*
+ * Option reads. db.php is the only code that runs early enough to see them all: the first
+ * wp_load_alloptions() happens in is_blog_installed() from wp_not_installed(), roughly 300
+ * lines before mu-plugins load. Registering this any later misses siteurl, home, blog_charset
+ * and active_plugins, and would report the options every single request needs as never read.
+ *
+ * The generic pre_option filter (WP 6.1+) fires for every get_option() call, before the
+ * alloptions/cache/DB lookup, and still fires when a per-option filter already short-circuited.
+ * Returning $pre untouched keeps it a pure observer.
+ */
+if (!function_exists('sspa_record_option_read')) {
+    function sspa_record_option_read($pre, $option) {
+        $GLOBALS['sspa_option_calls']++;
+        if (isset($GLOBALS['sspa_option_reads'][$option])) {
+            $GLOBALS['sspa_option_reads'][$option]++;
+        } elseif (count($GLOBALS['sspa_option_reads']) < 3000) {
+            // Our own bookkeeping rows would otherwise show up as hot options on every profile.
+            if (0 !== strpos($option, 'sspa_')) {
+                $GLOBALS['sspa_option_reads'][$option] = 1;
+            }
+        } else {
+            $GLOBALS['sspa_option_truncated'] = true;
+        }
+        return $pre;
+    }
+}
+$GLOBALS['sspa_option_reads'] = array();
+$GLOBALS['sspa_option_calls'] = 0;
+$GLOBALS['sspa_option_truncated'] = false;
+$GLOBALS['sspa_option_coverage'] = 'full';
+add_filter('pre_option', 'sspa_record_option_read', 0, 2);
+
 $sspa_shim_class = '%%SSPA_PLUGIN_DIR%%profiler/class-sspa-profiling-wpdb.php';
 if (file_exists($sspa_shim_class)) {
     require_once $sspa_shim_class;

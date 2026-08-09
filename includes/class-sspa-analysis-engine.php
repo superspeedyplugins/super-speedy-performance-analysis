@@ -55,6 +55,7 @@ class SSPA_Analysis_Engine {
         $this->slow_http();
         $this->blocking_mail();
         $this->autoload_bloat();
+        $this->autoload_coverage();
         $this->environment();
         $this->duplicate_functionality();
         $this->security_blocks();
@@ -907,6 +908,128 @@ class SSPA_Analysis_Engine {
         if ($bytes > $threshold) {
             $this->add('warn', 'autoload_bloat', null, null, array('autoload_bytes' => $bytes), 'autoload_bloat');
         }
+    }
+
+    /**
+     * Which autoloaded options this run never actually read, and which frequently-read options
+     * are paying for a separate lookup because they are not autoloaded.
+     *
+     * Ranked by BYTES, never by count. Measured on a clean site, 155 of 327 autoloaded options
+     * went unread across five page types and were worth 5 KB of 71 KB between them - telling
+     * someone to edit 155 rows to save 5 KB is noise. The win is one abandoned fat option.
+     *
+     * Autoload is only a caching decision, so a wrong call here costs speed, never correctness.
+     */
+    private function autoload_coverage() {
+        global $wpdb;
+
+        // 'partial' coverage means the observer armed after core's bootstrap reads, so options
+        // core reads before mu-plugins would look unread. Never recommend from that.
+        $pages_total = 0;
+        $pages_read = array();
+        foreach ($this->captures as $capture) {
+            if (empty($capture['options']['reads']) || !is_array($capture['options']['reads'])) {
+                continue;
+            }
+            if ('full' !== (isset($capture['options']['coverage']) ? $capture['options']['coverage'] : 'partial')) {
+                return;
+            }
+            if (!empty($capture['options']['truncated'])) {
+                return;
+            }
+            $pages_total++;
+            foreach (array_keys($capture['options']['reads']) as $name) {
+                $pages_read[$name] = isset($pages_read[$name]) ? $pages_read[$name] + 1 : 1;
+            }
+        }
+        // Coverage floor. "Read on 80% of pages" means nothing across two pages, and a
+        // single-page adhoc run would happily recommend autoloading everything it saw. A full
+        // scan covers roughly 30 page types, so this only ever excludes the thin runs.
+        $min_pages = (int) SSPA_Rules::threshold('autoload_min_pages');
+        if ($pages_total < max(2, $min_pages)) {
+            return;
+        }
+
+        $autoload_values = function_exists('wp_autoload_values_to_autoload')
+            ? wp_autoload_values_to_autoload()
+            : array('yes');
+        $placeholders = implode(',', array_fill(0, count($autoload_values), '%s'));
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT option_name, LENGTH(option_value) AS bytes FROM $wpdb->options WHERE autoload IN ($placeholders)",
+            $autoload_values
+        ), ARRAY_A);
+
+        $autoloaded = array();
+        $autoload_bytes = 0;
+        foreach ($rows as $row) {
+            $autoloaded[$row['option_name']] = (int) $row['bytes'];
+            $autoload_bytes += (int) $row['bytes'];
+        }
+
+        $floor = (int) SSPA_Rules::threshold('autoload_option_floor_bytes');
+        $unread = array();
+        $unread_bytes = 0;
+        foreach ($autoloaded as $name => $bytes) {
+            if (isset($pages_read[$name]) || self::transient_option($name)) {
+                continue;
+            }
+            $unread_bytes += $bytes;
+            if ($bytes >= $floor) {
+                $unread[] = array('name' => $name, 'bytes' => $bytes);
+            }
+        }
+        usort($unread, function ($a, $b) {
+            return $b['bytes'] <=> $a['bytes'];
+        });
+
+        // The reverse case: read on nearly every page, but paying for its own lookup each time.
+        $ratio = (float) SSPA_Rules::threshold('autoload_missing_page_ratio') ?: 0.8;
+        $max_bytes = (int) SSPA_Rules::threshold('autoload_missing_max_bytes');
+        $missing = array();
+        foreach ($pages_read as $name => $seen) {
+            if (isset($autoloaded[$name]) || self::transient_option($name) || 0 === strpos($name, 'sspa_')) {
+                continue;
+            }
+            if (($seen / $pages_total) < $ratio) {
+                continue;
+            }
+            $bytes = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT LENGTH(option_value) FROM $wpdb->options WHERE option_name = %s",
+                $name
+            ));
+            if ($bytes > 0 && $bytes <= $max_bytes) {
+                $missing[] = array('name' => $name, 'bytes' => $bytes, 'pages_read' => $seen);
+            }
+        }
+        usort($missing, function ($a, $b) {
+            return $b['pages_read'] <=> $a['pages_read'];
+        });
+
+        $unread_threshold = (int) SSPA_Rules::threshold('autoload_unread_bytes');
+        if ($unread_bytes < $unread_threshold && !$missing) {
+            return;
+        }
+
+        $this->add('warn', 'autoload_coverage', null, null, array(
+            'autoload_bytes' => $autoload_bytes,
+            'unread_bytes' => $unread_bytes,
+            'unread_count' => count($unread),
+            'missing_count' => count($missing),
+            'pages_covered' => $pages_total,
+            // Names stay local: the submission privacy gate allow-lists numeric keys only,
+            // so these are dropped from anything shared rather than needing a rule of their own.
+            'unread' => array_slice($unread, 0, 40),
+            'missing' => array_slice($missing, 0, 40),
+        ), 'autoload_coverage');
+    }
+
+    /**
+     * Transients are managed by WordPress and vanish from the options table entirely when an
+     * external object cache is present, so their read pattern says nothing about autoload.
+     */
+    private static function transient_option($name) {
+        return 0 === strpos($name, '_transient_')
+            || 0 === strpos($name, '_site_transient_');
     }
 
     private function environment() {

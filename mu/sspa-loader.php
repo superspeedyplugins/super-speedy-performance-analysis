@@ -126,6 +126,33 @@ if (!empty($sspa_tok['flags']['ps'])) {
     unset($sspa_iso, $sspa_ps_hash);
 }
 
+// Option reads: normally armed by the db.php drop-in, which is the only code early enough to
+// see core's bootstrap reads and the first wp_load_alloptions(). This fallback covers a site
+// whose db.php is absent or owned by another plugin. It marks the coverage as partial so the
+// analysis never recommends de-autoloading an option purely because it was read too early.
+if (!isset($GLOBALS['sspa_option_reads'])) {
+    if (!function_exists('sspa_record_option_read')) {
+        function sspa_record_option_read($pre, $option) {
+            $GLOBALS['sspa_option_calls']++;
+            if (isset($GLOBALS['sspa_option_reads'][$option])) {
+                $GLOBALS['sspa_option_reads'][$option]++;
+            } elseif (count($GLOBALS['sspa_option_reads']) < 3000) {
+                if (0 !== strpos($option, 'sspa_')) {
+                    $GLOBALS['sspa_option_reads'][$option] = 1;
+                }
+            } else {
+                $GLOBALS['sspa_option_truncated'] = true;
+            }
+            return $pre;
+        }
+    }
+    $GLOBALS['sspa_option_reads'] = array();
+    $GLOBALS['sspa_option_calls'] = 0;
+    $GLOBALS['sspa_option_truncated'] = false;
+    $GLOBALS['sspa_option_coverage'] = 'partial';
+    add_filter('pre_option', 'sspa_record_option_read', 0, 2);
+}
+
 $sspa_bootstrap = '%%SSPA_PLUGIN_DIR%%profiler/bootstrap.php';
 if (file_exists($sspa_bootstrap)) {
     require_once $sspa_bootstrap;

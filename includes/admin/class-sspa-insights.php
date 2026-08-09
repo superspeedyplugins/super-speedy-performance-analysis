@@ -45,6 +45,7 @@ class SSPA_Insights {
         $page = $finding['page_key'];
         $headline = '';
         $detail = '';
+        $sql = '';
 
         // Where the work happened inside a library bundled in ANOTHER component, say so.
         // The cost is charged here because this component asked for it, but the code being
@@ -139,6 +140,16 @@ class SSPA_Insights {
             case 'autoload_bloat':
                 $headline = sprintf(__('Autoloaded options are %s - loaded on every request', 'super-speedy-performance-analysis'), size_format((int) $e['autoload_bytes']));
                 break;
+            case 'autoload_coverage':
+                $headline = sprintf(
+                    /* translators: 1: bytes never read, 2: total autoload bytes, 3: pages profiled */
+                    __('%1$s of your %2$s of autoloaded options were never read on any of the %3$d pages analysed', 'super-speedy-performance-analysis'),
+                    size_format((int) $e['unread_bytes']),
+                    size_format((int) $e['autoload_bytes']),
+                    (int) $e['pages_covered']
+                );
+                $sql = self::autoload_sql($e);
+                break;
             case 'environment':
                 if ('old_php' === $finding['recommendation_key']) {
                     $headline = sprintf(__('PHP %s is holding this site back', 'super-speedy-performance-analysis'), $e['php']);
@@ -161,9 +172,77 @@ class SSPA_Insights {
         return array(
             'headline' => $headline,
             'detail' => $detail,
+            'sql' => $sql,
             'rec_title' => isset($rec['title']) ? $rec['title'] : '',
             'rec_body' => isset($rec['body']) ? $rec['body'] : '',
             'rec_link' => isset($rec['link']) ? $rec['link'] : '',
         );
+    }
+
+    /**
+     * Copy-and-paste SQL for the autoload_coverage finding.
+     *
+     * WordPress 6.6 replaced the 'yes'/'no' autoload values with 'on'/'off', so the statement
+     * has to match the site it will be run on. The alloptions cache has to be dropped
+     * afterwards or the change does not take effect until it expires on its own.
+     */
+    private static function autoload_sql($e) {
+        global $wpdb;
+
+        $modern = function_exists('wp_autoload_values_to_autoload');
+        $off = $modern ? 'off' : 'no';
+        $on = $modern ? 'on' : 'yes';
+        $lines = array();
+
+        $unread = isset($e['unread']) && is_array($e['unread']) ? $e['unread'] : array();
+        if ($unread) {
+            $names = array();
+            foreach ($unread as $row) {
+                $names[] = "'" . esc_sql($row['name']) . "'";
+            }
+            $lines[] = sprintf(
+                /* translators: 1: number of options, 2: human-readable size */
+                '-- ' . _n(
+                    'Stop autoloading %1$d option never read during this analysis (%2$s)',
+                    'Stop autoloading %1$d options never read during this analysis (%2$s)',
+                    count($unread),
+                    'super-speedy-performance-analysis'
+                ),
+                count($unread),
+                size_format(array_sum(array_column($unread, 'bytes')))
+            );
+            $lines[] = "UPDATE {$wpdb->options} SET autoload = '{$off}'";
+            $lines[] = '  WHERE option_name IN (' . implode(', ', $names) . ');';
+            $lines[] = '';
+        }
+
+        $missing = isset($e['missing']) && is_array($e['missing']) ? $e['missing'] : array();
+        if ($missing) {
+            $names = array();
+            foreach ($missing as $row) {
+                $names[] = "'" . esc_sql($row['name']) . "'";
+            }
+            $lines[] = sprintf(
+                /* translators: 1: number of options, 2: pages profiled */
+                '-- ' . _n(
+                    'Start autoloading %1$d option read on nearly all of the %2$d pages analysed',
+                    'Start autoloading %1$d options read on nearly all of the %2$d pages analysed',
+                    count($missing),
+                    'super-speedy-performance-analysis'
+                ),
+                count($missing),
+                (int) $e['pages_covered']
+            );
+            $lines[] = "UPDATE {$wpdb->options} SET autoload = '{$on}'";
+            $lines[] = '  WHERE option_name IN (' . implode(', ', $names) . ');';
+            $lines[] = '';
+        }
+
+        if (!$lines) {
+            return '';
+        }
+        $lines[] = '-- ' . __('Then clear the cached option set:', 'super-speedy-performance-analysis');
+        $lines[] = '--   wp cache delete alloptions options';
+        return implode("\n", $lines);
     }
 }

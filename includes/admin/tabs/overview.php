@@ -39,6 +39,10 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                     <?php if ($r['detail']) : ?>
                         <div class="sspa-insight-detail"><code><?php echo esc_html(mb_substr($r['detail'], 0, 400)); ?></code></div>
                     <?php endif; ?>
+                    <?php if (!empty($r['sql'])) : ?>
+                        <?php // Not truncated: a statement cut off part way through is worse than useless. ?>
+                        <pre class="sspa-insight-sql"><?php echo esc_html($r['sql']); ?></pre>
+                    <?php endif; ?>
                     <?php if ($r['rec_body']) : ?>
                         <p class="sspa-insight-rec"><?php echo esc_html($r['rec_body']); ?>
                         <?php if ($r['rec_link']) : ?>
