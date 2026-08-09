@@ -31,7 +31,13 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Changelog ==
 
-= 0.12.0 (8th August 2026) =
+= 0.12.0 (9th August 2026) =
+* New Version column on the Plugins tab, showing the version each component was at when the analysis measured it.
+* Deep Analysis records the plugin version it measured, and the Plugins tab now says when a measured verdict was taken against a version you no longer run.
+* The per-page breakdown names the version its measurements came from.
+* The History tab lists the components and versions each analysis measured.
+* The page title now sits at the start of the tab row, with the running plugin version beside it.
+* The community rules feed backs off for 12 hours after a failed fetch instead of retrying every hour.
 * Sharing your results with the community is now a durable background queue: each completed run becomes its own versioned anonymised payload, which survives reloads and outages and retries until the community archive confirms it is stored.
 * Deep analyses, cache analyses, checkout flows, ad-hoc page profiles, plugin-toggle spot checks and Excimer function, component and phase data are all shared now, each as one coherent run rather than a mixture of the latest profiles and unrelated history.
 * Ad-hoc page profiles are shared as a page classification and an opaque identifier, so no URL or URL-derived key leaves your site.

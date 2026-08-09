@@ -18,6 +18,7 @@ $bad_code = <<<'PHP'
 <?php
 /**
  * Plugin Name: SSPA Bad Plugin (test fixture)
+ * Version: 2.4.1
  */
 add_action('wp_footer', function () {
     global $wpdb;
@@ -88,7 +89,32 @@ foreach ($impacts as $impact) {
     sspa_t((int) $impact['delta_queries'] > 50, "[$mode] query-count delta credible (+" . $impact['delta_queries'] . ')');
     sspa_t((float) $impact['noise_floor_ms'] >= 30, "[$mode] noise floor recorded (" . $impact['noise_floor_ms'] . 'ms)');
     sspa_t((int) $impact['baseline_run_id'] === (int) $run_id, "[$mode] baseline run linked");
+    // A verdict belongs to the version it was measured against, so the sweep must stamp
+    // the version the deep run itself recorded - not whatever is installed when read.
+    sspa_t('2.4.1' === $impact['plugin_version'], "[$mode] measured plugin version recorded (" . var_export($impact['plugin_version'], true) . ')');
 }
+
+sspa_t(
+    '2.4.1' === SSPA_Run_Controller::component_version($deep_id, 'sspa-bad-plugin'),
+    'deep run snapshot resolves the measured version'
+);
+
+// Update the plugin underneath us. The live inventory must move on while the recorded
+// measurement does not - that contrast is the whole point of stamping the version.
+file_put_contents($bad_dir . '/sspa-bad-plugin.php', str_replace('Version: 2.4.1', 'Version: 9.9.9', $bad_code));
+wp_cache_flush();
+$sspa_live = null;
+foreach (SSPA_Community_Exporter::component_inventory_snapshot() as $sspa_component) {
+    if ('sspa-bad-plugin' === $sspa_component['slug']) {
+        $sspa_live = $sspa_component['version'];
+    }
+}
+sspa_t('9.9.9' === $sspa_live, 'live inventory sees the updated version (' . var_export($sspa_live, true) . ')');
+$sspa_stored = $wpdb->get_var($wpdb->prepare(
+    'SELECT plugin_version FROM ' . SSPA_Schema::table('plugin_impacts') . " WHERE test_run_id = %d AND plugin = 'sspa-bad-plugin' LIMIT 1",
+    $deep_id
+));
+sspa_t('2.4.1' === $sspa_stored, 'recorded impact still names the version it measured (' . var_export($sspa_stored, true) . ')');
 
 // --- Deep run stored its measurement profiles with plugin-set hashes ---
 $hashed = (int) $wpdb->get_var($wpdb->prepare(

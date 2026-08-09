@@ -214,7 +214,10 @@ jQuery(document).on('click', '.sspa-impact-details', function (e) {
 		rows.forEach(function (r) {
 			(byPage[r.page_key] = byPage[r.page_key] || {})[r.object_cache_mode] = r;
 		});
-		var html = '<div class="sspa-detail"><h4>Measured impact of <code>' + sspa_esc(link.data('plugin')) + '</code> per page</h4>';
+		var version = resp.data.measured_version;
+		var html = '<div class="sspa-detail"><h4>Measured impact of <code>' + sspa_esc(link.data('plugin')) + '</code>'
+			+ (version ? ' version <code>' + sspa_esc(version) + '</code>' : '')
+			+ ' per page</h4>';
 		html += '<table class="widefat"><thead><tr><th>Page</th>';
 		modes.forEach(function (m) {
 			html += '<th>' + modeLabels[m] + '</th>';

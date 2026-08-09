@@ -12,6 +12,15 @@ class SSPA_Rules_Feed {
     const CACHE_KEY = 'sspa_rules_feed';
 
     /**
+     * Failure backoff. Only a SUCCESSFUL fetch writes CACHE_KEY, so without this the
+     * hourly cleanup cron re-requests the feed every hour forever whenever the hub is
+     * not serving it - which is the case until superspeedy.org publishes the route.
+     * One dead endpoint must not cost every install 24 outbound requests a day.
+     */
+    const BACKOFF_KEY = 'sspa_rules_feed_backoff';
+    const BACKOFF_SECONDS = 12 * HOUR_IN_SECONDS;
+
+    /**
      * Public key for feed verification. Ships with the plugin once superspeedy.org is
      * live; the option override exists for development and key rotation.
      */
@@ -39,21 +48,34 @@ class SSPA_Rules_Feed {
      * @return true|WP_Error
      */
     public static function refresh() {
+        if (get_transient(self::BACKOFF_KEY)) {
+            return new WP_Error('sspa_feed_backoff', __('The rules feed is inside its failure backoff window.', 'super-speedy-performance-analysis'));
+        }
         $response = wp_remote_get(SSPA_Submitter::endpoint('rules'), array(
             'timeout' => 30,
         ));
         if (is_wp_error($response)) {
-            return $response;
+            return self::back_off($response);
         }
         $body = json_decode(wp_remote_retrieve_body($response), true);
         if (!is_array($body) || empty($body['rules']) || empty($body['signature'])) {
-            return new WP_Error('sspa_feed_invalid', __('The rules feed response was malformed.', 'super-speedy-performance-analysis'));
+            return self::back_off(new WP_Error('sspa_feed_invalid', __('The rules feed response was malformed.', 'super-speedy-performance-analysis')));
         }
         if (!self::verify($body)) {
-            return new WP_Error('sspa_feed_unverified', __('The rules feed signature did not verify - feed ignored.', 'super-speedy-performance-analysis'));
+            return self::back_off(new WP_Error('sspa_feed_unverified', __('The rules feed signature did not verify - feed ignored.', 'super-speedy-performance-analysis')));
         }
+        delete_transient(self::BACKOFF_KEY);
         set_transient(self::CACHE_KEY, $body, DAY_IN_SECONDS);
         return true;
+    }
+
+    /**
+     * Record a failed fetch so the next cleanup pass does not immediately repeat it, and
+     * return the error unchanged for the caller to act on.
+     */
+    private static function back_off($error) {
+        set_transient(self::BACKOFF_KEY, 1, self::BACKOFF_SECONDS);
+        return $error;
     }
 
     /**

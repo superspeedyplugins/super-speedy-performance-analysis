@@ -724,6 +724,64 @@ class SSPA_Run_Controller {
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $run_id), ARRAY_A);
     }
 
+    /**
+     * Measurement-time component versions for one run, keyed "type:lowercased-slug".
+     *
+     * Read from the run's own plugin_set snapshot, never from the site's current plugin
+     * headers: a plugin updated since the run must not relabel what was actually measured.
+     * Runs recorded before 0.12 stored a bare file list with no versions, so their
+     * components are legitimately unknown and stay null rather than being guessed at.
+     *
+     * @return array<string,string|null>
+     */
+    public static function component_versions($run_id) {
+        global $wpdb;
+        static $cache = array();
+
+        $run_id = (int) $run_id;
+        if (isset($cache[$run_id])) {
+            return $cache[$run_id];
+        }
+        $plugin_set = $wpdb->get_var($wpdb->prepare(
+            'SELECT plugin_set FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+            $run_id
+        ));
+        $cache[$run_id] = self::decode_component_versions($plugin_set);
+        return $cache[$run_id];
+    }
+
+    /**
+     * The same map from an already-loaded runs.plugin_set value, so callers that selected
+     * the run row do not pay for a second query per run.
+     *
+     * @return array<string,string|null>
+     */
+    public static function decode_component_versions($plugin_set) {
+        $stored = json_decode((string) $plugin_set, true);
+        $versions = array();
+        if (is_array($stored) && !empty($stored['components'])) {
+            foreach ((array) $stored['components'] as $component) {
+                if (!is_array($component) || empty($component['slug'])) {
+                    continue;
+                }
+                $type = !empty($component['type']) ? $component['type'] : 'plugin';
+                $version = isset($component['version']) ? trim((string) $component['version']) : '';
+                $versions[$type . ':' . strtolower($component['slug'])] = ('' !== $version) ? $version : null;
+            }
+        }
+        return $versions;
+    }
+
+    /**
+     * The version of one component as it was at the time of $run_id, or null when that run
+     * did not record one (a mu-plugin, WordPress core, or a pre-0.12 run).
+     */
+    public static function component_version($run_id, $component, $component_type = 'plugin') {
+        $versions = self::component_versions($run_id);
+        $key = $component_type . ':' . strtolower((string) $component);
+        return isset($versions[$key]) ? $versions[$key] : null;
+    }
+
     private static function set_status($run_id, $status, $finished = false) {
         global $wpdb;
         $data = array('status' => $status);
@@ -874,9 +932,14 @@ class SSPA_Run_Controller {
             if (!empty($d['measured'])) {
                 $measured++;
             }
+            // Record the version that was actually measured, not whatever is installed when
+            // someone later reads the row - a deep-analysis verdict belongs to one version.
+            $is_theme = ('theme' === $d['slug']);
+            $component = $is_theme ? get_stylesheet() : $d['slug'];
             $wpdb->insert(SSPA_Schema::table('plugin_impacts'), array(
                 'blog_id' => get_current_blog_id(),
-                'plugin' => ('theme' === $d['slug']) ? get_stylesheet() : $d['slug'],
+                'plugin' => $component,
+                'plugin_version' => self::component_version($run_id, $component, $is_theme ? 'theme' : 'plugin'),
                 'page_key' => $d['page_key'],
                 'method' => 'single_out',
                 'object_cache_mode' => $d['mode'],
@@ -1262,9 +1325,11 @@ class SSPA_Run_Controller {
             }
         }
 
-        // Refresh the community rules feed daily-ish (transient-gated inside).
-        if (false === get_transient(SSPA_Rules_Feed::CACHE_KEY)) {
-            SSPA_Rules_Feed::refresh();
+        // Refresh the community rules feed daily-ish (transient- and backoff-gated inside).
+        // Only a successful refresh changes what SSPA_Rules would return, so a failed one
+        // must not throw away the merged rules we already have.
+        if (false === get_transient(SSPA_Rules_Feed::CACHE_KEY)
+            && true === SSPA_Rules_Feed::refresh()) {
             SSPA_Rules::flush();
         }
     }
@@ -1534,15 +1599,23 @@ class SSPA_Run_Controller {
             wp_send_json_error(__('No measured impacts for this plugin yet - run Deep Analysis.', 'super-speedy-performance-analysis'));
         }
         $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT page_key, object_cache_mode, delta_ttfb_ms, delta_sql_ms, delta_http_ms,
+            "SELECT page_key, object_cache_mode, plugin_version, delta_ttfb_ms, delta_sql_ms, delta_http_ms,
                     delta_mem_bytes, delta_queries, noise_floor_ms, confidence, created
              FROM $table WHERE plugin = %s AND test_run_id = %d ORDER BY page_key, id",
             $plugin,
             $test_run_id
         ), ARRAY_A);
+        $measured_version = null;
+        foreach ($rows as $row) {
+            if (!empty($row['plugin_version'])) {
+                $measured_version = $row['plugin_version'];
+                break;
+            }
+        }
         wp_send_json_success(array(
             'rows' => $rows,
             'measured_at' => $rows ? $rows[0]['created'] : null,
+            'measured_version' => $measured_version,
         ));
     }
 

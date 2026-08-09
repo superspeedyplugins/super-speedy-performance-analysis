@@ -48,6 +48,7 @@ if (!$sspa_runs) : ?>
                 <th><?php esc_html_e('Median generation (ms)', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Findings', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Score', 'super-speedy-performance-analysis'); ?></th>
+                <th><?php esc_html_e('Components measured', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Share with community', 'super-speedy-performance-analysis'); ?></th>
             </tr>
         </thead>
@@ -60,6 +61,9 @@ if (!$sspa_runs) : ?>
                 $run['id']
             ));
             $sspa_label = isset($sspa_type_labels[$run['run_type']]) ? $sspa_type_labels[$run['run_type']] : $run['run_type'];
+            // Versions as they were when this run measured, decoded from the run row already
+            // in memory. Runs recorded before 0.12 kept no versions, so they stay unknown.
+            $sspa_run_versions = SSPA_Run_Controller::decode_component_versions($run['plugin_set']);
             $sspa_outbox = SSPA_Community_Outbox::for_run_uuid($run['run_uuid']);
             $sspa_shareable = 'done' === $run['status'] || ('failed' === $run['status'] && 'checkout' === $run['run_type']);
             ?>
@@ -72,6 +76,23 @@ if (!$sspa_runs) : ?>
                 <td><?php echo $median_gen !== null ? esc_html(number_format((float) $median_gen, 1)) : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['findings']) ? (int) $notes['findings'] : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['score']) ? (int) $notes['score'] : '-'; ?></td>
+                <td>
+                    <?php if ($sspa_run_versions) : ?>
+                        <details class="sspa-run-components">
+                            <summary><?php printf(esc_html(_n('%d component', '%d components', count($sspa_run_versions), 'super-speedy-performance-analysis')), count($sspa_run_versions)); ?></summary>
+                            <ul>
+                                <?php foreach ($sspa_run_versions as $sspa_component_key => $sspa_component_version) : ?>
+                                    <li>
+                                        <code><?php echo esc_html(substr($sspa_component_key, strpos($sspa_component_key, ':') + 1)); ?></code>
+                                        <?php echo $sspa_component_version ? esc_html($sspa_component_version) : esc_html__('version unknown', 'super-speedy-performance-analysis'); ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </details>
+                    <?php else : ?>
+                        <span class="description"><?php esc_html_e('not recorded', 'super-speedy-performance-analysis'); ?></span>
+                    <?php endif; ?>
+                </td>
                 <td class="sspa-share-run-cell" data-run-id="<?php echo (int) $run['id']; ?>">
                     <?php if ($sspa_outbox) : ?>
                         <span class="sspa-share-state">

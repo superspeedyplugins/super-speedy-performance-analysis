@@ -111,8 +111,14 @@ class SSPA_Admin_Page {
     public static function show() {
         ?>
         <div class="wrap" id="sspa_main">
-            <h1>Super Speedy Performance Analysis</h1>
-            <h2 class="nav-tab-wrapper">
+            <?php // The visible title lives in the tab bar; this keeps the h1 admin notices
+                  // and screen readers both expect. ?>
+            <h1 class="screen-reader-text">Super Speedy Performance Analysis</h1>
+            <h2 class="nav-tab-wrapper sspa-tab-bar">
+                <span class="sspa-brand">
+                    Super Speedy Performance Analysis
+                    <span class="sspa-ver-chip">v<?php echo esc_html(SSPA_VERSION); ?></span>
+                </span>
                 <?php
                 $class = ' nav-tab-active';
                 foreach (self::tabs() as $tab_id => $tab_name) {

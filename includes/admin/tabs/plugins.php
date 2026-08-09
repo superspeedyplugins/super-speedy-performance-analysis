@@ -98,6 +98,7 @@ if (!$sspa_last_run_id) : ?>
             <tr>
                 <th><?php esc_html_e('Component', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Type', 'super-speedy-performance-analysis'); ?></th>
+                <th><?php esc_html_e('Version', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('SQL total (ms)', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Queries', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Rows fetched', 'super-speedy-performance-analysis'); ?></th>
@@ -110,10 +111,14 @@ if (!$sspa_last_run_id) : ?>
         </thead>
         <tbody>
         <?php foreach ($sspa_components as $c) :
-            $impact_rows = isset($sspa_impacts[$c['component']]) ? $sspa_impacts[$c['component']] : null; ?>
+            $impact_rows = isset($sspa_impacts[$c['component']]) ? $sspa_impacts[$c['component']] : null;
+            // The version as measured by the run these attribution totals came from, not the
+            // version installed right now - the two differ as soon as the plugin updates.
+            $sspa_version = SSPA_Run_Controller::component_version($sspa_last_run_id, $c['component'], $c['component_type']); ?>
             <tr>
                 <td><code><?php echo esc_html($c['component']); ?></code></td>
                 <td><?php echo esc_html($c['component_type']); ?></td>
+                <td><?php echo $sspa_version ? esc_html($sspa_version) : '-'; ?></td>
                 <td><?php echo esc_html(number_format((float) $c['total_sql_ms'], 1)); ?></td>
                 <td><?php echo esc_html(number_format((int) $c['total_queries'])); ?></td>
                 <td><?php echo esc_html(number_format((int) $c['total_rows'])); ?></td>
@@ -176,6 +181,30 @@ if (!$sspa_last_run_id) : ?>
                                 count($sspa_mode_rows),
                                 number_format($sspa_floors ? max($sspa_floors) : 30)
                             )) . '</span>';
+                        }
+                        // Measured impact comes from the plugin's own most recent sweep, which
+                        // can be an older deep analysis than the run above. Say which version
+                        // the verdict was measured against, and flag it when it is now stale.
+                        $sspa_measured_version = null;
+                        foreach ($sspa_mode_rows as $sspa_impact_row) {
+                            if (!empty($sspa_impact_row['plugin_version'])) {
+                                $sspa_measured_version = $sspa_impact_row['plugin_version'];
+                                break;
+                            }
+                        }
+                        if ($sspa_measured_version && $sspa_version && $sspa_measured_version !== $sspa_version) {
+                            echo '<br><small class="sspa-impact-stale">' . esc_html(sprintf(
+                                /* translators: 1: version the deep analysis measured, 2: version measured by the latest run */
+                                __('measured on version %1$s - you now run %2$s, so re-measure to trust this', 'super-speedy-performance-analysis'),
+                                $sspa_measured_version,
+                                $sspa_version
+                            )) . '</small>';
+                        } elseif ($sspa_measured_version) {
+                            echo '<br><small class="sspa-impact-detail">' . esc_html(sprintf(
+                                /* translators: %s: version the deep analysis measured */
+                                __('measured on version %s', 'super-speedy-performance-analysis'),
+                                $sspa_measured_version
+                            )) . '</small>';
                         }
                         echo '<br><a href="#" class="sspa-impact-details" data-plugin="' . esc_attr($c['component']) . '">' . esc_html__('per-page breakdown', 'super-speedy-performance-analysis') . '</a>';
                     } else {
