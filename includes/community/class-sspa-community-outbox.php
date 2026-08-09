@@ -6,9 +6,16 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Community_Outbox {
 
-    public static function queue_run($run_id) {
+    /**
+     * @param string $consent_scope 'automatic' (the site-wide setting) or 'manual' (the owner
+     *                              explicitly chose to share this one analysis). A manual share
+     *                              is its own act of consent, so it does not require - and never
+     *                              enables - the site-wide setting.
+     */
+    public static function queue_run($run_id, $consent_scope = 'automatic') {
         global $wpdb;
-        if (!get_option('sspa_share_optin')) {
+        $consent_scope = ('manual' === $consent_scope) ? 'manual' : 'automatic';
+        if ('manual' !== $consent_scope && !get_option('sspa_share_optin')) {
             return new WP_Error('sspa_not_opted_in', __('Sharing is not enabled.', 'super-speedy-performance-analysis'));
         }
         $run = $wpdb->get_row($wpdb->prepare(
@@ -25,7 +32,7 @@ class SSPA_Community_Outbox {
 
         $submission_uuid = wp_generate_uuid4();
         $created_at = SSPA_Community_Schema::canonical_time();
-        $payload = SSPA_Community_Exporter::build((int) $run_id, $submission_uuid, $created_at);
+        $payload = SSPA_Community_Exporter::build((int) $run_id, $submission_uuid, $created_at, $consent_scope);
         if (is_wp_error($payload)) {
             self::remember_local_error($run_id, $payload);
             return $payload;
@@ -63,6 +70,7 @@ class SSPA_Community_Outbox {
             'uncompressed_bytes' => $uncompressed_bytes,
             'state' => 'pending',
             'phase' => 'pending',
+            'consent_scope' => $consent_scope,
             'attempts' => 0,
             'next_attempt' => $now,
             'created' => $now,
@@ -73,8 +81,32 @@ class SSPA_Community_Outbox {
         }
         $row = self::get((int) $wpdb->insert_id);
         self::event($row['id'], 'pending', 'pending', 0, 'payload_created');
+        if ('manual' === $consent_scope) {
+            // Autoloaded flag so the per-request nudge can spot manually shared work without
+            // querying the outbox on every page load.
+            update_option('sspa_share_manual_pending', 1);
+        }
         self::nudge();
         return $row;
+    }
+
+    /**
+     * Explicit one-off sharing of a single analysis, independent of the site-wide setting.
+     */
+    public static function share_run($run_id) {
+        $run = SSPA_Run_Controller::run_row((int) $run_id);
+        if (!$run || !in_array($run['status'], array('done', 'failed'), true)) {
+            return new WP_Error('sspa_run_not_shareable', __('Only a completed analysis can be shared.', 'super-speedy-performance-analysis'));
+        }
+        if ('failed' === $run['status'] && 'checkout' !== $run['run_type']) {
+            return new WP_Error('sspa_run_not_shareable', __('That analysis did not complete, so there is nothing coherent to share.', 'super-speedy-performance-analysis'));
+        }
+        $queued = self::queue_run((int) $run_id, 'manual');
+        if (is_wp_error($queued)) {
+            return $queued;
+        }
+        update_option('sspa_share_manual_consent_version', SSPA_Community_Schema::CONSENT_VERSION, false);
+        return $queued;
     }
 
     public static function queue_latest() {
@@ -94,12 +126,18 @@ class SSPA_Community_Outbox {
         self::queue_run((int) $run_id);
     }
 
+    /**
+     * The single authority on what this site is currently allowed to deliver. With the
+     * site-wide setting off, only analyses the owner explicitly chose to share remain due.
+     */
     public static function due() {
         global $wpdb;
         $now = gmdate('Y-m-d H:i:s');
+        $consent_clause = get_option('sspa_share_optin') ? '' : " AND consent_scope = 'manual'";
         return $wpdb->get_row($wpdb->prepare(
             'SELECT * FROM ' . self::table() . "
              WHERE state IN ('pending','retry') AND (next_attempt IS NULL OR next_attempt <= %s)
+             $consent_clause
              ORDER BY created ASC, id ASC LIMIT 1",
             $now
         ), ARRAY_A);

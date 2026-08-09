@@ -30,6 +30,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_submit_now', array(__CLASS__, 'ajax_submit_now'));
         add_action('wp_ajax_sspa_community_backfill', array(__CLASS__, 'ajax_community_backfill'));
         add_action('wp_ajax_sspa_outbox_action', array(__CLASS__, 'ajax_outbox_action'));
+        add_action('wp_ajax_sspa_share_run', array(__CLASS__, 'ajax_share_run'));
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }
@@ -1576,6 +1577,24 @@ class SSPA_Run_Controller {
             wp_send_json_error($result->get_error_message());
         }
         wp_send_json_success();
+    }
+
+    /**
+     * Share one analysis on its own. This is an explicit per-run consent action, so it works
+     * with the site-wide setting off, and it never turns that setting on.
+     */
+    public static function ajax_share_run() {
+        self::ajax_guard();
+        $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
+        $result = SSPA_Community_Outbox::share_run($run_id);
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success(array(
+            'outbox_id' => (int) $result['id'],
+            'state' => $result['state'],
+            'compressed_bytes' => (int) $result['compressed_bytes'],
+        ));
     }
 
     public static function ajax_community_backfill() {

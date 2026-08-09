@@ -145,6 +145,27 @@ if (!is_wp_error($queued)) {
     sspa_outbox_t(is_wp_error($privacy) && 'sspa_privacy_forbidden_key' === $privacy->get_error_code(), 'privacy gate rejects forbidden fields');
     $bare_host_collision = SSPA_Community_Privacy::validate(array('component_inventory' => array(array('slug' => 'sspa-wp'))));
     sspa_outbox_t(true === $bare_host_collision, 'bare development hostname does not falsely reject a matching public slug');
+
+    // A generic database name is a substring of our own core sentinel and of public slugs,
+    // so treating it as a site identifier blocked every submission the site could ever make.
+    sspa_outbox_t(
+        '' === SSPA_Community_Privacy::distinctive_db_name('wordpress')
+            && '' === SSPA_Community_Privacy::distinctive_db_name('WordPress')
+            && '' === SSPA_Community_Privacy::distinctive_db_name('db')
+            && '' === SSPA_Community_Privacy::distinctive_db_name('staging'),
+        'a generic database name is not treated as a site identifier'
+    );
+    sspa_outbox_t(
+        'ssp_live_7x2' === SSPA_Community_Privacy::distinctive_db_name('SSP_Live_7x2'),
+        'a distinctive database name is still treated as a site identifier'
+    );
+    sspa_outbox_t(
+        true === SSPA_Community_Privacy::validate(array('component_inventory' => array(
+            array('slug' => 'wordpress-core', 'type' => 'core'),
+            array('slug' => 'wordpress-seo', 'type' => 'plugin'),
+        ))),
+        'the core sentinel and public slugs containing "wordpress" are shareable'
+    );
 }
 
 // Shared fixed fixture from receiver/internal/auth/hmac_test.go.
@@ -175,6 +196,27 @@ sspa_outbox_t(
     '6d22a358db2bffa62f0d0f1a65018d9c47f0b2b42374893a5dd87b5cea1f51c7' === $fixture_signature,
     'PHP reservation HMAC matches the fixed Go receiver fixture'
 );
+
+// The receiver's Go tests pin the completion and status canonical strings by shape only
+// (TestCompletionCanonical, TestStatusCanonical) - there is no golden signature for either.
+// Pin the same shapes here, because a missing trailing newline or a dropped field in the
+// shortest canonical is exactly the drift nothing else would catch.
+$fixture_completion_row = array(
+    'transport_version' => 1,
+    'submission_uuid' => '22222222-2222-4222-8222-222222222222',
+    'payload_sha256' => str_repeat('a', 64),
+);
+sspa_outbox_t(
+    "SSPA-SUBMISSION-COMPLETE-V1\n1\n11111111-1111-4111-8111-111111111111\n22222222-2222-4222-8222-222222222222\n44444444-4444-4444-8444-444444444444\n" . str_repeat('a', 64) . "\n"
+        === SSPA_Community_Client::completion_canonical($fixture_completion_row, '44444444-4444-4444-8444-444444444444'),
+    'PHP completion canonical string matches the Go receiver shape'
+);
+sspa_outbox_t(
+    "SSPA-SUBMISSION-STATUS-V1\n11111111-1111-4111-8111-111111111111\n22222222-2222-4222-8222-222222222222\n"
+        === SSPA_Community_Client::status_canonical('22222222-2222-4222-8222-222222222222'),
+    'PHP status canonical string matches the Go receiver shape'
+);
+
 if (null === $old_install_uuid) {
     delete_option('sspa_install_uuid');
 } else {

@@ -15,18 +15,22 @@ class SSPA_Community_Worker {
     }
 
     public static function maybe_nudge() {
-        if (get_option('sspa_share_optin') && !wp_next_scheduled('sspa_submission_worker_event')) {
+        if (!wp_next_scheduled('sspa_submission_worker_event')
+            && (get_option('sspa_share_optin') || get_option('sspa_share_manual_pending'))) {
             SSPA_Community_Outbox::nudge(60);
         }
     }
 
     public static function run() {
-        if (!get_option('sspa_share_optin') || !self::lock()) {
+        // Consent is enforced by SSPA_Community_Outbox::due(), which returns nothing but
+        // explicitly shared analyses while the site-wide setting is off.
+        if (!self::lock()) {
             return;
         }
         try {
             $row = SSPA_Community_Outbox::due();
             if (!$row) {
+                delete_option('sspa_share_manual_pending');
                 return;
             }
             $row = SSPA_Community_Outbox::begin_attempt($row);

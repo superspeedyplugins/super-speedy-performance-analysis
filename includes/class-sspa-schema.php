@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.4';
+    const DB_VERSION = '1.5';
 
     public static function table($name) {
         global $wpdb;
@@ -186,6 +186,7 @@ class SSPA_Schema {
             uncompressed_bytes bigint(20) unsigned NOT NULL,
             state varchar(24) NOT NULL DEFAULT 'pending',
             phase varchar(24) NOT NULL DEFAULT 'pending',
+            consent_scope varchar(16) NOT NULL DEFAULT 'automatic',
             reservation_uuid char(36) NULL,
             upload_expires_at datetime NULL,
             receipt_uuid char(36) NULL,

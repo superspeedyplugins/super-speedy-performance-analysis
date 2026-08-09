@@ -90,6 +90,30 @@ class SSPA_Community_Privacy {
         return $safe;
     }
 
+    /**
+     * A database name is only worth scanning for when it could actually identify the site.
+     *
+     * The needle scan is a substring match, so a generic database name blocks every
+     * submission the site will ever make: the WordPress.org and Docker default is literally
+     * `wordpress`, which is a substring of our own `wordpress-core` sentinel - present in the
+     * component inventory of every payload - and of public slugs such as `wordpress-seo`.
+     * A generic name identifies nobody, and a database name that genuinely appears in SQL is
+     * already replaced outright by sql_fingerprint().
+     */
+    public static function distinctive_db_name($db_name) {
+        $db_name = strtolower(trim((string) $db_name));
+        $generic = array(
+            'wordpress', 'wordpress_db', 'wordpressdb', 'wp', 'wpdb', 'wp_db', 'wp_site',
+            'db', 'database', 'mysql', 'test', 'testing', 'tests', 'dev', 'development',
+            'local', 'localhost', 'site', 'website', 'blog', 'main', 'default', 'admin',
+            'staging', 'stage', 'production', 'prod', 'live', 'example', 'demo', 'sample',
+        );
+        if ('' === $db_name || strlen($db_name) < 5 || in_array($db_name, $generic, true)) {
+            return '';
+        }
+        return $db_name;
+    }
+
     public static function validate($payload) {
         $blocked_keys = '/(^|_)(url|domain|domain_hash|email|ip|user_id|order_id|product_id|session|cookie|nonce|authorization|request_body|response_body|filesystem_path)(_|$)/i';
         $host = strtolower((string) parse_url(home_url('/'), PHP_URL_HOST));
@@ -100,7 +124,7 @@ class SSPA_Community_Privacy {
             $host_needle,
             defined('ABSPATH') ? str_replace('\\', '/', ABSPATH) : '',
             defined('WP_CONTENT_DIR') ? str_replace('\\', '/', WP_CONTENT_DIR) : '',
-            defined('DB_NAME') ? DB_NAME : '',
+            defined('DB_NAME') ? self::distinctive_db_name(DB_NAME) : '',
         ));
 
         $scan = function ($value, $path = '$') use (&$scan, $blocked_keys, $needles) {

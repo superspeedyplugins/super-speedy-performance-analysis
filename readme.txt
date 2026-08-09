@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.11.4
+Stable tag: 0.12.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,19 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.12.0 (8th August 2026) =
+* Sharing your results with the community is now a durable background queue: each completed run becomes its own versioned anonymised payload, which survives reloads and outages and retries until the community archive confirms it is stored.
+* Deep analyses, cache analyses, checkout flows, ad-hoc page profiles, plugin-toggle spot checks and Excimer function, component and phase data are all shared now, each as one coherent run rather than a mixture of the latest profiles and unrelated history.
+* Ad-hoc page profiles are shared as a page classification and an opaque identifier, so no URL or URL-derived key leaves your site.
+* The Share tab previews the exact JSON each queued payload would send, with its compressed size, SHA-256 and receipt.
+* New `Queue existing runs` control shares the analysis history you already have, in bounded resumable batches, skipping runs that are already queued or archived.
+* New `Retry now`, `Pause` and `Resume` controls per queued payload, replacing the old Submit Now button, which rebuilt a payload from scratch on every press.
+* Payloads upload straight to the community archive using a short-lived single-object URL issued by superspeedy.org, and TLS verification is always on.
+* Sharing stays off until you opt in, an update never turns it on, and turning it off stops new payloads and delivery attempts without deleting anything already archived.
+* New `Share this` control on every analysis in the History tab, so you can contribute a single full scan, deep analysis, page analysis, cache analysis, spot check or checkout analysis without switching on sharing for everything else.
+* The Share tab now presents the two choices separately: share every analysis automatically, or pick individual analyses and share only those.
+* Analysis runs never wait on the network, so the community archive being unreachable cannot slow down or fail a run.
 
 = 0.11.4 (7th August 2026) =
 * The excimer install steps now use your distribution's package (`php8.3-excimer` style on Debian and Ubuntu, Remi's `php-pecl-excimer` on RHEL and Fedora, `php83-pecl-excimer` on Alpine), named for the exact PHP version the site runs so servers carrying more than one PHP enable it for the right one; pecl remains only where no package exists, as upstream no longer publishes excimer releases there.

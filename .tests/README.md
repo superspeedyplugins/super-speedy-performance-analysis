@@ -101,12 +101,27 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   afterwards, so the block pages are never edited. Two assertions pin the nonce binding
   that path depends on - the place-order nonce must differ from both an unbound one and one
   minted as the current admin, while the `update-order-review` nonce must not.
-- `20-community-outbox.php` - privacy gate, immutable gzip outbox artefacts, fixed PHP-to-Go
-  HMAC fixture, retry scheduling, and pause/resume queue controls.
+- `20-community-outbox.php` - privacy gate, immutable gzip outbox artefacts, retry scheduling,
+  pause/resume queue controls, and the cross-language HMAC fixtures: the reservation signature
+  against the receiver's golden Go vector, plus the completion and status canonical strings
+  against the shapes the Go tests declare (those two have no golden signature on the Go side).
 - `21-community-evidence.php` - payload generation for every supported run type, including
   page profiles, checkout flows, spot checks, deep scans and Excimer data.
 - `22-community-backfill.php` - bounded historical backfill, consent metadata and exact
   per-outbox preview data.
+- `23-community-run-integration.php` - the join between the two: REAL runs of every type
+  driven through `SSPA_Run_Controller::start()` with sharing ON, asserting each one
+  automatically queues exactly one payload carrying the evidence that analysis is for.
+  Cases 20-22 build payloads from their own inserted run rows, and cases 05/09/10/17/19 drive
+  real runs with sharing off, so until this case existed nothing exercised an analysis a site
+  actually performs turning into a queued payload. It also covers the per-run consent scope:
+  an opted-out run queues nothing, `share_run()` on that same run queues it as `manual`
+  without enabling the site-wide setting, and only that manual row is then due for delivery
+  while the automatically queued ones stay put. Takes several minutes - it runs a baseline, a
+  deep sweep and a full checkout purchase.
+
+Case 23 parks any pre-existing pending/retry outbox rows for its duration, because `due()`
+returns the oldest eligible row and a leftover would otherwise answer its assertions.
 
 ## Live receiver and R2 compatibility
 
@@ -129,6 +144,51 @@ cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-r2.php" http://host.dock
 
 This is deliberately manual because it writes a real object to R2 and requires the receiver's
 ignored `.env.r2` credentials file.
+
+Port 8788 is the R2-backed stack (`make integration-r2`, `compose.r2-test.yaml`). Do not point
+`live-r2.php` at port 8787 - that is the ordinary `make up` stack, which is MinIO-backed and
+hands back an `http://minio:9000/...` upload URL. The client rejects that with
+`sspa_invalid_upload_authorisation` by design: `wp_http_validate_url()` refuses a non-standard
+port, so the MinIO stack cannot exercise the direct-upload phase at all.
+
+## Production collector smoke test
+
+`.tests/manual/live-production.php` is the release check against the live collector. It refuses
+every host except `collector.superspeedy.org`, needs an explicit opt-in token, and writes one
+real permanent synthetic object to the production archive:
+
+```bash
+source .tests/docker/env.sh
+sync_plugin
+cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-production.php" \
+    https://collector.superspeedy.org production
+```
+
+The opt-in token is the bare word `production`, not `--production`: wp-cli parses any
+leading-dash argument as a flag belonging to `eval-file` itself and errors with
+`unknown --production parameter` rather than passing it through.
+
+It runs in two phases in one invocation. First it queues the payload with the collector
+deliberately unreachable (same host, discard port 9 - a genuine connection failure, no mocking)
+and asserts the item is left retryable with its exact bytes and hash intact. Then it restores
+the production URL and asserts the same submission UUID and hash receive a verified receipt.
+Expect the first phase to sit for up to 30 seconds waiting on the real connection timeout.
+
+Any unrelated queued outbox items are paused for the duration and resumed afterwards, so a
+local queue can never be flushed to the production archive as a side effect. The script prints
+the submission UUID, receipt UUID and SHA-256, and never prints the installation secret or a
+presigned upload URL.
+
+`.tests/manual/live-production-runs.php` takes the same two arguments and the same host guard,
+but delivers one REAL analysis of every run type - the most recent completed unshared run of
+each - instead of a synthetic fixture. It uses the per-run consent path, so the site-wide
+sharing setting stays off throughout, and it asserts that afterwards. Use it when the transport
+or the exporters change: the synthetic fixture is ~1 KB with one evidence record and will not
+notice a payload-size or evidence-volume problem.
+
+Both scripts write real permanent objects to the production archive. Run them only from the
+disposable Docker site, and expect `processing_status=partial` while the production processor
+is 1.0 and the payload schema is 1.1.
 
 ## Not yet covered (planned)
 

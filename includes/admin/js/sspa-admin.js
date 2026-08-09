@@ -289,6 +289,34 @@ jQuery(document).on('click', '.sspa-preview-outbox', function () {
 	});
 });
 
+// Share one analysis on its own. Deliberately no confirm()/alert(): the outcome is reported
+// in the cell itself, so the answer stays next to the run it refers to.
+jQuery(document).on('click', '.sspa-share-run', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var cell = btn.closest('.sspa-share-run-cell');
+	cell.find('.sspa-share-run-result').remove();
+	btn.after(' <span class="sspa-share-run-result description">Preparing the anonymised payload…</span>');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_share_run',
+		nonce: sspa_admin.nonce,
+		run_id: btn.data('run-id')
+	}, function (resp) {
+		if (!resp.success) {
+			cell.find('.sspa-share-run-result').text(resp.data || 'Could not share this analysis.');
+			btn.prop('disabled', false);
+			return;
+		}
+		btn.remove();
+		cell.find('.sspa-share-run-result').html(
+			'Queued to share (this run only) - ' + resp.data.compressed_bytes + ' bytes. ' +
+			'<button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="' + resp.data.outbox_id + '">Preview data</button>'
+		);
+	}).fail(function () {
+		cell.find('.sspa-share-run-result').text('Could not share this analysis.');
+		btn.prop('disabled', false);
+	});
+});
+
 jQuery(document).on('click', '#sspa-submit-now', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {

@@ -30,7 +30,12 @@ class SSPA_Community_Exporter {
         return $inventory;
     }
 
-    public static function build($run_id, $submission_uuid = null, $payload_created_at = null) {
+    /**
+     * @param string $consent_scope 'automatic' or 'manual'. A manual share is itself the act of
+     *                              consent, so the version in force is the current one rather
+     *                              than whatever the site-wide setting last recorded.
+     */
+    public static function build($run_id, $submission_uuid = null, $payload_created_at = null, $consent_scope = 'automatic') {
         global $wpdb;
         $run = $wpdb->get_row($wpdb->prepare(
             'SELECT * FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
@@ -140,7 +145,9 @@ class SSPA_Community_Exporter {
             'client' => array(
                 'name' => 'super-speedy-performance-analysis',
                 'version' => SSPA_VERSION,
-                'consent_version' => max(0, (int) get_option('sspa_share_consent_version', 0)),
+                'consent_version' => ('manual' === $consent_scope)
+                    ? SSPA_Community_Schema::CONSENT_VERSION
+                    : max(0, (int) get_option('sspa_share_consent_version', 0)),
             ),
             'anonymisation_version' => SSPA_Community_Schema::ANONYMISATION_VERSION,
             'payload_created_at' => $payload_created_at,

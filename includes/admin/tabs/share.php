@@ -16,13 +16,15 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <p><?php esc_html_e('Each completed baseline, page profile, deep analysis, checkout flow, cache analysis and plugin-toggle spot-check is saved as its own versioned payload. This includes generic page classifications, aggregate timings, safe component identifiers and versions, measured deltas, findings, normalised query fingerprints, Excimer summaries and bucketed site characteristics when those records exist.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Anonymisation happens in this plugin before the payload enters the local queue. Your domain, URLs, filesystem paths, raw SQL, credentials, emails, customer/order data and request contents are forbidden. A privacy validation failure prevents the payload from being queued or sent.', 'super-speedy-performance-analysis'); ?></p>
 
+    <h3><?php esc_html_e('1. Share every analysis automatically', 'super-speedy-performance-analysis'); ?></h3>
     <p>
         <label>
             <input type="checkbox" id="sspa-share-optin" value="1" <?php checked($sspa_optin); ?>>
-            <strong><?php esc_html_e('Share my anonymised results with superspeedy.org', 'super-speedy-performance-analysis'); ?></strong>
+            <strong><?php esc_html_e('Share every analysis I run with superspeedy.org', 'super-speedy-performance-analysis'); ?></strong>
         </label>
     </p>
     <p class="description">
+        <?php esc_html_e('Covers every full scan, spot check, deep analysis, cache analysis, page analysis and checkout analysis, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
         <?php
         printf(
             esc_html__('Consent text version %1$d%2$s. Turning sharing off stops new payload creation and delivery attempts; it does not delete already archived evidence.', 'super-speedy-performance-analysis'),
@@ -34,6 +36,14 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
 
     <p>
         <button type="button" class="button button-primary sspa-sharing-action" id="sspa-submit-now" <?php disabled(!$sspa_optin); ?>><?php esc_html_e('Queue latest run', 'super-speedy-performance-analysis'); ?></button>
+    </p>
+
+    <h3><?php esc_html_e('2. Or share individual analyses only', 'super-speedy-performance-analysis'); ?></h3>
+    <p>
+        <?php esc_html_e('You do not have to switch the setting above on. With it off, every analysis stays on your site until you choose one, and each Share this control sends that single run and nothing else - it never turns on sharing for anything else.', 'super-speedy-performance-analysis'); ?>
+    </p>
+    <p>
+        <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=sspa&tab=history')); ?>"><?php esc_html_e('Choose analyses to share', 'super-speedy-performance-analysis'); ?></a>
     </p>
 
     <p class="description">

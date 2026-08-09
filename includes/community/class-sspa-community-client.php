@@ -149,6 +149,50 @@ class SSPA_Community_Client {
         return self::verify_receipt($row, $complete['body'], $complete['status']);
     }
 
+    /**
+     * Read-only archival state for a submission this installation already made.
+     *
+     * The collector is the only authority on the processing outcome, so release and support
+     * checks ask it rather than inferring one from the local receipt.
+     */
+    public static function status($submission_uuid) {
+        if (!wp_is_uuid($submission_uuid, 4)) {
+            return self::error('sspa_invalid_submission_uuid', __('That submission identifier is not valid.', 'super-speedy-performance-analysis'), true);
+        }
+        $signature = self::sign(self::status_canonical($submission_uuid));
+        if (is_wp_error($signature)) {
+            return $signature;
+        }
+        $response = self::json_request(
+            'GET',
+            SSPA_Community_Identity::endpoint('submissions/' . rawurlencode($submission_uuid)),
+            null,
+            array(
+                'X-SSPA-Install' => SSPA_Community_Identity::install_uuid(),
+                'X-SSPA-Signature' => $signature,
+            ),
+            30
+        );
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        if (200 !== $response['status']) {
+            return self::response_error($response, 'sspa_status_failed');
+        }
+        if (($response['body']['submission_uuid'] ?? '') !== $submission_uuid) {
+            return self::error('sspa_status_identity_mismatch', __('The collector returned a different submission UUID.', 'super-speedy-performance-analysis'), true, $response['status']);
+        }
+        return $response['body'];
+    }
+
+    public static function status_canonical($submission_uuid) {
+        return implode("\n", array(
+            'SSPA-SUBMISSION-STATUS-V1',
+            SSPA_Community_Identity::install_uuid(),
+            $submission_uuid,
+        )) . "\n";
+    }
+
     public static function reservation_canonical($manifest) {
         return implode("\n", array(
             'SSPA-SUBMISSION-RESERVE-V1',
@@ -222,14 +266,17 @@ class SSPA_Community_Client {
     }
 
     private static function json_request($method, $url, $body, $headers = array(), $timeout = 30) {
-        $headers['Content-Type'] = 'application/json';
-        $response = wp_remote_request($url, array(
+        $args = array(
             'method' => $method,
             'timeout' => $timeout,
             'redirection' => 0,
             'headers' => $headers,
-            'body' => wp_json_encode($body),
-        ));
+        );
+        if (null !== $body) {
+            $args['headers']['Content-Type'] = 'application/json';
+            $args['body'] = wp_json_encode($body);
+        }
+        $response = wp_remote_request($url, $args);
         if (is_wp_error($response)) {
             return self::error('sspa_collector_network_error', __('The collector is unavailable; the queued payload will retry.', 'super-speedy-performance-analysis'), false);
         }
