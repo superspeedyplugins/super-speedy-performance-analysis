@@ -34,7 +34,7 @@ if (!$sspa_runs) : ?>
             <?php else : ?>
                 <?php esc_html_e('Sharing every analysis is off. You can still contribute any single analysis below with Share this - it sends only that one run, and it does not turn on sharing for anything else.', 'super-speedy-performance-analysis'); ?>
             <?php endif; ?>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=sspa&tab=share')); ?>"><?php esc_html_e('Sharing settings and privacy details', 'super-speedy-performance-analysis'); ?></a>
+            <a href="#share" class="sspa-goto-tab" data-tab="share"><?php esc_html_e('Sharing settings and privacy details', 'super-speedy-performance-analysis'); ?></a>
         </p>
     </div>
     <table class="widefat striped sspa-pages-table">

@@ -32,6 +32,8 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.12.0 (9th August 2026) =
+* Nothing on the Performance Analysis screen reloads the page any more: queueing a run, pruning detailed data, replacing a drop-in, retrying or pausing a submission, cancelling a run and finishing an analysis all update in place, keeping the tab you were on.
+* The Sharing settings and Choose analyses links now switch tab in place instead of reloading and landing you back on Overview.
 * Fixed sharing being refused on any site running a plugin with a four-part version number, e.g. 3.0.83.3, which the privacy check mistook for an IP address. Affected sites queued nothing at all; their existing analyses can be sent with Queue existing runs.
 * New Version column on the Plugins tab, showing the version each component was at when the analysis measured it.
 * Deep Analysis records the plugin version it measured, and the Plugins tab now says when a measured verdict was taken against a version you no longer run.

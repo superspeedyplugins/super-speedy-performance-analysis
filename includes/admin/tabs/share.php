@@ -43,7 +43,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         <?php esc_html_e('You do not have to switch the setting above on. With it off, every analysis stays on your site until you choose one, and each Share this control sends that single run and nothing else - it never turns on sharing for anything else.', 'super-speedy-performance-analysis'); ?>
     </p>
     <p>
-        <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=sspa&tab=history')); ?>"><?php esc_html_e('Choose analyses to share', 'super-speedy-performance-analysis'); ?></a>
+        <a class="button sspa-goto-tab" href="#history" data-tab="history"><?php esc_html_e('Choose analyses to share', 'super-speedy-performance-analysis'); ?></a>
     </p>
 
     <p class="description">

@@ -52,7 +52,8 @@ jQuery(document).on('click', '#sspa-replace-stale-dropin', function () {
 	var btn = jQuery(this).prop('disabled', true).text('Replacing…');
 	jQuery.post(ajaxurl, { action: 'sspa_replace_stale_dropin', nonce: sspa_admin.nonce }, function (resp) {
 		if (resp.success) {
-			window.location.reload();
+			// The health line lives on Overview, the install steps on Tools.
+			sspa_refresh_tabs(['overview', 'tools'], function () { btn.prop('disabled', false).text('Replace'); });
 		} else {
 			btn.prop('disabled', false);
 			alert(resp.data || 'Could not replace the drop-in.');
@@ -117,6 +118,33 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 		buttons.prop('disabled', false);
 		jQuery('#sspa-attrib-wrap').css('opacity', '');
 	});
+});
+
+// ---- Tab refresh ----
+// Nothing on this screen reloads the page. A reload loses the selected tab, the scroll
+// position and any open drill-down, so every action that changes server state re-renders
+// only the tabs it affected.
+function sspa_refresh_tabs(tabs, done) {
+	jQuery.post(ajaxurl, { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') }, function (resp) {
+		if (resp.success && resp.data.tabs) {
+			Object.keys(resp.data.tabs).forEach(function (slug) {
+				jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').html(resp.data.tabs[slug]);
+			});
+			jQuery('#sspa-runner').attr('data-active-run', resp.data.active_run || 0);
+		}
+		if (done) { done(resp); }
+	}).fail(function () {
+		if (done) { done(null); }
+	});
+}
+
+// In-page links between tabs. These used to be hrefs to ?tab=<slug>, which reloaded the page
+// AND landed on Overview anyway, because tab selection is driven by the hash.
+jQuery(document).on('click', '#sspa_main .sspa-goto-tab', function (e) {
+	e.preventDefault();
+	var slug = jQuery(this).data('tab');
+	window.history.pushState(null, null, '#' + slug);
+	sspa_click_tab(slug);
 });
 
 // ---- Pages drill-down ----
@@ -298,7 +326,7 @@ jQuery(document).on('click', '#sspa-prune-blobs', function () {
 	jQuery.post(ajaxurl, { action: 'sspa_prune_blobs', nonce: sspa_admin.nonce }, function (resp) {
 		if (resp.success) {
 			alert('Done. Detailed data now uses ' + resp.data.human + '.');
-			window.location.reload();
+			sspa_refresh_tabs(['overview', 'tools', 'history', 'share']);
 		}
 	});
 });
@@ -310,7 +338,7 @@ jQuery(document).on('change', '#sspa-share-optin', function () {
 	jQuery.post(ajaxurl, { action: 'sspa_share_optin', nonce: sspa_admin.nonce, optin: optin }, function (resp) {
 		if (!resp.success) {
 			alert(resp.data || 'Could not update sharing consent.');
-			window.location.reload();
+			sspa_refresh_tabs(['share']);
 			return;
 		}
 		jQuery('.sspa-sharing-action').prop('disabled', !optin);
@@ -362,7 +390,7 @@ jQuery(document).on('click', '#sspa-submit-now', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {
 		alert(resp.success ? 'Queued locally. Delivery runs in the background and retries automatically.' : (resp.data || 'Could not queue the submission.'));
-		window.location.reload();
+		sspa_refresh_tabs(['share', 'history'], function () { btn.prop('disabled', false); });
 	}).fail(function () {
 		alert('Could not queue the submission.');
 		btn.prop('disabled', false);
@@ -396,7 +424,7 @@ jQuery(document).on('click', '#sspa-backfill', function () {
 				return;
 			}
 			alert('Historical queueing finished: ' + totalQueued + ' queued, ' + totalFailed + ' requiring review.');
-			window.location.reload();
+			sspa_refresh_tabs(['share', 'history']);
 		}).fail(function () {
 			status.text('Historical queueing request failed. Progress has been saved; press the button to resume.');
 			btn.prop('disabled', false);
@@ -424,7 +452,7 @@ jQuery(document).on('click', '.sspa-outbox-action', function () {
 			btn.prop('disabled', false);
 			return;
 		}
-		window.location.reload();
+		sspa_refresh_tabs(['share', 'history']);
 	}).fail(function () {
 		alert('Could not update the submission.');
 		btn.prop('disabled', false);
@@ -480,7 +508,8 @@ jQuery(document).on('click', '#sspa-cancel-run, #sspa-runner-cancel', function (
 		return;
 	}
 	jQuery.post(ajaxurl, { action: 'sspa_cancel_run', nonce: sspa_admin.nonce }, function () {
-		window.location.reload();
+		sspa_runner_dismiss();
+		sspa_refresh_tabs(['overview', 'history']);
 	});
 });
 
@@ -592,17 +621,28 @@ function sspa_runner_update(s) {
 	runner.find('.sspa-runner-title').text(title);
 }
 
+// Take the panel down and release the dimmer, without touching the page.
+function sspa_runner_dismiss() {
+	var runner = jQuery('#sspa-runner').hide().removeClass('sspa-runner-min');
+	runner.find('.sspa-runner-current, .sspa-runner-eta, .sspa-runner-actions').show();
+	runner.find('.sspa-runner-feed').empty();
+	sspa_feed_seen = -1;
+	sspa_runner_backdrop(runner);
+}
+
 function sspa_runner_finish(status) {
 	var runner = jQuery('#sspa-runner').removeClass('sspa-runner-min');
-	var label = status === 'done' ? 'Analysis complete ✓ loading results…' : 'Analysis ' + status + ' - reloading…';
+	var label = status === 'done' ? 'Analysis complete ✓ loading results…' : 'Analysis ' + status + ' - loading results…';
 	runner.find('.sspa-runner-title').text(label);
 	runner.find('.sspa-runner-mini-summary').text('');
 	runner.find('.sspa-progress-fill').css('width', '100%');
 	runner.find('.sspa-runner-current, .sspa-runner-eta, .sspa-runner-actions').hide();
 	sspa_runner_backdrop(runner);
-	setTimeout(function () {
-		window.location.reload();
-	}, 1500);
+	// Every tab a run can change. The results appear under whichever tab the user is already
+	// looking at, rather than throwing them back to Overview via a reload.
+	sspa_refresh_tabs(['overview', 'pages', 'plugins', 'history', 'share'], function () {
+		sspa_runner_dismiss();
+	});
 }
 
 // The browser drives batches sequentially; WP-Cron is the backup for headless progress,

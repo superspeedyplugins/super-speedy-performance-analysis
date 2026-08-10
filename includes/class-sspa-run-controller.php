@@ -23,6 +23,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_page_detail', array(__CLASS__, 'ajax_page_detail'));
         add_action('wp_ajax_sspa_plugin_detail', array(__CLASS__, 'ajax_plugin_detail'));
         add_action('wp_ajax_sspa_attribution', array(__CLASS__, 'ajax_attribution'));
+        add_action('wp_ajax_sspa_render_tab', array(__CLASS__, 'ajax_render_tab'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
@@ -1556,6 +1557,33 @@ class SSPA_Run_Controller {
         ob_start();
         include SSPA_PLUGIN_DIR . 'includes/admin/tabs/tools.php';
         wp_send_json_success(array('html' => ob_get_clean()));
+    }
+
+    /**
+     * Re-render one or more tabs server-side.
+     *
+     * Every control on this screen updates in place, so nothing may reload the page: a reload
+     * loses the selected tab, the scroll position, any open drill-down, and on a slow admin it
+     * simply feels broken. Each tab file is already a self-contained template that fetches what
+     * it needs, so re-including it is the whole implementation.
+     */
+    public static function ajax_render_tab() {
+        self::ajax_guard();
+        $requested = isset($_POST['tabs']) ? (string) wp_unslash($_POST['tabs']) : '';
+        $html = array();
+        foreach (array_filter(array_map('sanitize_key', explode(',', $requested))) as $tab) {
+            // sanitize_key leaves only [a-z0-9_-], so no path can escape the tabs directory.
+            $file = SSPA_PLUGIN_DIR . 'includes/admin/tabs/' . $tab . '.php';
+            if (file_exists($file)) {
+                ob_start();
+                include $file;
+                $html[$tab] = ob_get_clean();
+            }
+        }
+        if (!$html) {
+            wp_send_json_error(__('No such tab.', 'super-speedy-performance-analysis'));
+        }
+        wp_send_json_success(array('tabs' => $html, 'active_run' => self::active_run_id()));
     }
 
     public static function ajax_replace_stale_dropin() {
