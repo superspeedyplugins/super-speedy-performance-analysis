@@ -131,6 +131,25 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   the dependency is missing. Sweeping the dependency must leave BOTH active. Without the
   mu-loader's `pre_update_option_active_plugins` guard this case fails with the plugin list
   shrunk by two, which is what happened to a real site's Rank Math install on 10th August 2026.
+  Its dependant assembles the dependency path at run time ON PURPOSE, so the code scanner
+  cannot see it and grouping (case 30) does not cover the pair - otherwise the dependant would
+  never be orphaned and the case would pass while testing nothing. Two assertions pin that:
+  grouping must not cover the pair, and the dependant must actually have tried to deactivate.
+- `30-dependency-groups.php` - the complement: a Rank Math Pro shaped pair, dependency named as
+  a literal with `activate_plugin()`/`deactivate_plugins()` in the main file. Asserts the scan
+  reads the edge and its direction, the sweep excludes both in one cell, the dependant is never
+  orphaned (0 times, against 4 with grouping stubbed out), the verdict records `group_members`,
+  and the Plugins tab names the group. Also that grouping is not a way round the fragile list:
+  a fixture using the `wordfence` slug (on the bundled security list) makes both itself and the
+  plugin it depends on ineligible.
+
+**Bounded fixtures.** Any test fixture doing deliberately expensive work must bound it against
+the table it reads. `run-tests.sh` reseeds the WooCommerce sample data whenever products drop
+below five, so `wp_posts` grows across runs, and an O(posts^3) join that cost ~800ms when it was
+written reached 99.9 million row combinations and an 82-second home page at 464 posts. Cases 07
+and 09 both use `(SELECT ID FROM posts LIMIT 120)` aliases for this reason. The symptom is never
+a slow-query failure: it is the crawler timing out, so the case fails with "deep run done:
+crawling" or "the analysis engine found nothing".
 
 Case 23 parks any pre-existing pending/retry outbox rows for its duration, because `due()`
 returns the oldest eligible row and a leftover would otherwise answer its assertions.

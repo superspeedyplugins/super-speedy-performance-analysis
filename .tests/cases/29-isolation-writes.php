@@ -13,6 +13,13 @@
 //
 // The fixture below is that site, reduced: one dependency, one dependant that removes itself
 // when the dependency is missing.
+//
+// Deliberately the case the code scanner CANNOT see. Since 0.15.0 a dependant that names its
+// dependency as a literal is excluded in the same cell as it (case 30), so it never discovers
+// anything missing - which would leave this case passing while exercising nothing. This
+// fixture assembles the path at run time instead, so it still gets orphaned and the guard is
+// still the only thing standing between a measurement and a permanent change. An assertion
+// below fails if grouping ever starts covering it.
 
 function sspa_iso_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
@@ -49,10 +56,13 @@ file_put_contents($sspa_dependant_dir . '/sspa-dependant-fixture.php', <<<'PHP'
  * Version: 1.0.0
  */
 add_action('plugins_loaded', function () {
-    $dep = 'sspa-dep-fixture/sspa-dep-fixture.php';
+    // Assembled, never written down: this is the dependency the code scanner cannot find.
+    $name = 'sspa-dep-' . 'fixture';
+    $dep = $name . '/' . $name . '.php';
     if (in_array($dep, (array) get_option('active_plugins', array()), true)) {
         return;
     }
+    update_option('sspa_dep_orphaned', (int) get_option('sspa_dep_orphaned', 0) + 1, false);
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
     deactivate_plugins('sspa-dependant-fixture/sspa-dependant-fixture.php');
 }, 1);
@@ -78,6 +88,15 @@ sspa_iso_t(
 );
 
 delete_transient('sspa_plugin_toggled');
+delete_option('sspa_dep_orphaned');
+delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+
+// This case only means anything while the dependant is left to discover the gap on its own.
+$sspa_together = SSPA_Dependency_Map::must_exclude_together();
+sspa_iso_t(
+    empty($sspa_together['sspa-dep-fixture']),
+    'grouping does not cover this pair, so the dependant really does get orphaned'
+);
 
 // A source run so the sweep has a page to work from, then the sweep itself.
 $sspa_source = SSPA_Run_Controller::start(array('type' => 'spot', 'page_keys' => array('home'), 'user_id' => 1));
@@ -113,6 +132,14 @@ if (is_wp_error($sspa_sweep)) {
     ));
     sspa_iso_t($sspa_cells > 0, 'the sweep measured the excluded cell (' . $sspa_cells . ')');
 
+    // And the dependant really did try to remove itself - otherwise every assertion below
+    // passes without the guard ever being asked to do anything.
+    wp_cache_flush();
+    sspa_iso_t(
+        (int) get_option('sspa_dep_orphaned') > 0,
+        'the dependant found itself orphaned and tried to deactivate (' . (int) get_option('sspa_dep_orphaned') . ' times)'
+    );
+
     // THE assertion: the site still runs what it ran before.
     wp_cache_delete('alloptions', 'options');
     wp_cache_delete('active_plugins', 'options');
@@ -139,4 +166,6 @@ deactivate_plugins(array($sspa_dep_file, $sspa_dependant_file));
 @rmdir($sspa_dep_dir);
 @rmdir($sspa_dependant_dir);
 delete_transient('sspa_plugin_toggled');
+delete_option('sspa_dep_orphaned');
+delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
 sspa_iso_t(!is_dir($sspa_dep_dir) && !is_dir($sspa_dependant_dir), 'fixtures removed');

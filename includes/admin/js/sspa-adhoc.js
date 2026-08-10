@@ -360,9 +360,15 @@
 		html += '<ul class="sspa-adhoc-planlist">';
 		data.plugins.forEach(function (p) {
 			var blamed = p.cost_ms > 0;
+			// A plugin that cannot run without this one comes out in the same measurement, so
+			// the verdict will name both. Say so here, not afterwards.
+			var group = (p.group && p.group.length)
+				? ' <small>' + esc(i18n.with_group.replace('%s', p.group.join(', '))) + '</small>'
+				: '';
 			html += '<li><label><input type="checkbox" class="sspa-adhoc-pluginpick" value="' + esc(p.slug) + '"' +
 				(blamed ? ' checked' : '') + ' data-blamed="' + (blamed ? '1' : '0') + '"> <code>' + esc(p.slug) + '</code> ' +
-				'<small>' + esc(blamed ? p.cost_ms.toFixed(1) + 'ms attributed here' : i18n.no_cost) + '</small></label></li>';
+				'<small>' + esc(blamed ? p.cost_ms.toFixed(1) + 'ms attributed here' : i18n.no_cost) + '</small>' +
+				group + '</label></li>';
 		});
 		html += '</ul>';
 		if (data.oc_capable) {

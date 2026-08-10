@@ -304,15 +304,35 @@ class SSPA_Run_Controller {
 
         // One isolation payload per candidate (+ optional theme swap), written up front;
         // deleted at finish/cancel/fail and by the stale-run janitor.
+        //
+        // A plugin that cannot run without another one goes in the SAME payload as it. Left
+        // out, it loads, finds its dependency missing and acts - Rank Math Pro deactivates
+        // itself and tries to reactivate Rank Math, running two installers' worth of hooks
+        // inside a measurement. Excluding the pair together is both safer and a better
+        // number: nobody runs Rank Math Pro without Rank Math, so the cost of the pair is
+        // the cost of having it.
+        $together = SSPA_Dependency_Map::must_exclude_together();
         $hashes = array(); // hash => slug ('theme' for the theme swap)
+        $groups = array(); // slug => [slugs excluded alongside it]
         foreach ($candidates as $slug) {
             if (!isset($files[$slug])) {
                 continue;
             }
-            $payload = array('plugins' => array($files[$slug]), 'theme' => null);
+            $group_files = array($files[$slug]);
+            $group_slugs = array();
+            foreach ((isset($together[$slug]) ? $together[$slug] : array()) as $dependant) {
+                if (isset($files[$dependant]) && !in_array($files[$dependant], $group_files, true)) {
+                    $group_files[] = $files[$dependant];
+                    $group_slugs[] = $dependant;
+                }
+            }
+            $payload = array('plugins' => $group_files, 'theme' => null);
             $hash = md5(wp_json_encode($payload));
             update_option('sspa_isolation_' . $hash, $payload, false);
             $hashes[$hash] = $slug;
+            if ($group_slugs) {
+                $groups[$slug] = $group_slugs;
+            }
         }
         $theme = empty($args['suspects']) ? self::default_theme() : null;
         if ($theme) {
@@ -372,6 +392,7 @@ class SSPA_Run_Controller {
                     'hash' => $slug_to_hash[$slug],
                     'modes' => array('normal'),
                     'samples' => $targeted ? 0 : self::SWEEP_SCREEN_SAMPLES,
+                    'group' => isset($groups[$slug]) ? $groups[$slug] : array(),
                 );
             }
         }
@@ -380,6 +401,9 @@ class SSPA_Run_Controller {
         $sweep = array(
             'source_run_id' => $source_run_id,
             'hashes' => $hashes,
+            // slug => the dependants excluded in the same cell, so the verdict can say who
+            // it covers rather than crediting the whole delta to one plugin.
+            'groups' => $groups,
             'oc_capable' => $oc_capable,
             // Whether phase 2 may spend three measurements per cell on the cache modes.
             // Site sweeps always have; a page-scoped sweep asks first, because there the
@@ -433,7 +457,14 @@ class SSPA_Run_Controller {
                     $since = 0;
                 }
                 foreach ($cell['modes'] as $mode) {
-                    $jobs[] = self::sweep_job($base, $mode, $cell['hash'], $cell['slug'], $cell['samples']);
+                    $jobs[] = self::sweep_job(
+                        $base,
+                        $mode,
+                        $cell['hash'],
+                        $cell['slug'],
+                        $cell['samples'],
+                        isset($cell['group']) ? (array) $cell['group'] : array()
+                    );
                 }
                 $since++;
             }
@@ -445,11 +476,14 @@ class SSPA_Run_Controller {
      * One sweep job. Modes: normal (cache as-is, warmed), disabled (object cache
      * bypassed per-request), prime (first cache-enabled request: no warm-up, 1 sample).
      */
-    private static function sweep_job($base, $mode, $hash, $slug, $samples) {
+    private static function sweep_job($base, $mode, $hash, $slug, $samples, $group = array()) {
         $job = $base;
         if ($hash) {
             $job['ps'] = $hash;
             $job['plugin'] = $slug;
+            if ($group) {
+                $job['group'] = array_values($group);
+            }
         }
         $job['oc_label'] = $mode;
         if ('disabled' === $mode) {
@@ -513,6 +547,7 @@ class SSPA_Run_Controller {
                     'hash' => $slug_to_hash[$slug],
                     'modes' => $modes,
                     'samples' => 0,
+                    'group' => isset($sweep['groups'][$slug]) ? (array) $sweep['groups'][$slug] : array(),
                 );
             }
         }
@@ -768,7 +803,7 @@ class SSPA_Run_Controller {
      * cache mode. This is the line the running-analysis feed shows, so it has to read as an
      * action ("home with super-speedy-search disabled") rather than as a job record.
      */
-    private static function job_label($job) {
+    public static function job_label($job) {
         $page = isset($job['page_key']) ? $job['page_key'] : '?';
         if (empty($job['plugin'])) {
             $label = sprintf(
@@ -778,6 +813,11 @@ class SSPA_Run_Controller {
             );
         } else {
             $plugin = ('theme' === $job['plugin']) ? get_stylesheet() . ' (theme)' : $job['plugin'];
+            // A grouped cell excludes a plugin and everything that cannot run without it, so
+            // the feed has to name them all or the measurement looks like it covered one.
+            if (!empty($job['group'])) {
+                $plugin .= ' + ' . implode(' + ', (array) $job['group']);
+            }
             $label = sprintf(
                 /* translators: 1: page key, 2: plugin slug */
                 __('%1$s with %2$s disabled', 'super-speedy-performance-analysis'),
@@ -1016,10 +1056,16 @@ class SSPA_Run_Controller {
             // someone later reads the row - a deep-analysis verdict belongs to one version.
             $is_theme = ('theme' === $d['slug']);
             $component = $is_theme ? get_stylesheet() : $d['slug'];
+            $group = (isset($sweep['groups'][$d['slug']]) && is_array($sweep['groups'][$d['slug']]))
+                ? $sweep['groups'][$d['slug']]
+                : array();
             $wpdb->insert(SSPA_Schema::table('plugin_impacts'), array(
                 'blog_id' => get_current_blog_id(),
                 'plugin' => $component,
                 'plugin_version' => self::component_version($run_id, $component, $is_theme ? 'theme' : 'plugin'),
+                // What else came out with it. The delta belongs to the group, not to the one
+                // plugin whose name is on the row, and a reader has to be told that.
+                'group_members' => $group ? implode(',', $group) : null,
                 'page_key' => $d['page_key'],
                 'method' => 'single_out',
                 'object_cache_mode' => $d['mode'],

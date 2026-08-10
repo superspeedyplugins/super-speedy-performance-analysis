@@ -26,7 +26,12 @@ add_action('wp_footer', function () {
         $wpdb->get_var("SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_id = " . $i);
     }
     $wpdb->get_results("SELECT meta_id, post_id, meta_key FROM {$wpdb->postmeta} LIMIT 600");
-    $wpdb->get_results("SELECT p1.ID FROM {$wpdb->posts} p1, {$wpdb->posts} p2, {$wpdb->posts} p3 ORDER BY rand() LIMIT 5");
+    // Every alias bounded, for the reason case 07 records: unbounded this is O(posts^3), and
+    // the environment accumulates posts every time run-tests.sh reseeds the sample data. At
+    // 464 posts it reached 99.9 MILLION row combinations and took 82 SECONDS to serve the home
+    // page, so the source run blew its 180s deadline and the sweep never got to start -
+    // presenting as "deep run done: crawling" rather than as a slow fixture.
+    $wpdb->get_results("SELECT p1.ID FROM (SELECT ID FROM {$wpdb->posts} LIMIT 120) p1, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p2, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p3 ORDER BY rand() LIMIT 5");
 });
 PHP;
 file_put_contents($bad_dir . '/sspa-bad-plugin.php', $bad_code);

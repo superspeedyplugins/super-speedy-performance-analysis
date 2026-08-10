@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.14.0
+Stable tag: 0.15.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,12 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.15.0 (10th August 2026) =
+* Plugin Impact Analysis now reads each plugin's own code to find which plugins cannot run without another one, and measures those together in one go, so nothing is ever left running without something it depends on.
+* Your SEO plugin, page builder or anything else another plugin depends on can now be measured at all: these used to be skipped entirely to keep them safe.
+* A verdict measured this way says so, e.g. "measured together with seo-by-rank-math-pro, which cannot run without it", and the running analysis names both plugins in the measurement.
+* The plugin picker on a page panel tells you which plugins will be measured together before you start.
 
 = 0.14.0 (10th August 2026) =
 * Fixed a plugin that switches itself off when a dependency is missing staying off after a Plugin Impact Analysis measured it: a measurement can no longer change which plugins your site runs.

@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.7';
+    const DB_VERSION = '1.8';
 
     const LOCK_OPTION = 'sspa_schema_lock';
 
@@ -154,6 +154,7 @@ class SSPA_Schema {
             blog_id bigint(20) unsigned NOT NULL DEFAULT 1,
             plugin varchar(191) NOT NULL,
             plugin_version varchar(32) NULL,
+            group_members text NULL,
             page_key varchar(64) NOT NULL,
             method varchar(16) NOT NULL,
             object_cache_mode varchar(16) NOT NULL DEFAULT 'normal',

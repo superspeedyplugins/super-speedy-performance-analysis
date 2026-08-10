@@ -251,10 +251,40 @@ class SSPA_Plugins_Table {
             )) . '</span>';
         }
 
+        echo self::group_note($mode_rows); // phpcs:ignore WordPress.Security.EscapeOutput
         echo self::provenance($mode_rows, $version, $run_id); // phpcs:ignore WordPress.Security.EscapeOutput
         echo '<br><a href="#" class="sspa-impact-details" data-plugin="' . esc_attr($c['component']) . '">' . esc_html__('per-page breakdown', 'super-speedy-performance-analysis') . '</a>';
 
         return ob_get_clean();
+    }
+
+    /**
+     * "measured together with X" - the verdict covers a group, not one plugin.
+     *
+     * A plugin that switches itself off without its dependency is excluded in the same cell as
+     * that dependency, so the delta is the cost of having both. Reading it as the cost of one
+     * would overstate it, and hide that removing one means removing the other.
+     */
+    private static function group_note($mode_rows) {
+        $members = array();
+        foreach ($mode_rows as $row) {
+            if (!empty($row['group_members'])) {
+                foreach (explode(',', (string) $row['group_members']) as $member) {
+                    $member = trim($member);
+                    if ('' !== $member) {
+                        $members[$member] = true;
+                    }
+                }
+            }
+        }
+        if (!$members) {
+            return '';
+        }
+        return '<br><small class="sspa-impact-detail">' . esc_html(sprintf(
+            /* translators: %s: comma-separated plugin slugs */
+            __('measured together with %s, which cannot run without it', 'super-speedy-performance-analysis'),
+            implode(', ', array_keys($members))
+        )) . '</small>';
     }
 
     /**

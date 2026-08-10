@@ -119,6 +119,7 @@ class SSPA_Adhoc {
                 'minutes' => __('%s minutes', 'super-speedy-performance-analysis'),
                 'seconds' => __('%s seconds', 'super-speedy-performance-analysis'),
                 'no_cost' => __('nothing attributed on this page', 'super-speedy-performance-analysis'),
+                'with_group' => __('· measured together with %s, which cannot run without it', 'super-speedy-performance-analysis'),
             ),
         ));
 

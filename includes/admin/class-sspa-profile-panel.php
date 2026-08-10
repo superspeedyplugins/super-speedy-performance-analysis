@@ -726,6 +726,15 @@ class SSPA_Profile_Panel {
                         mysql2date(get_option('date_format'), $first['created'])
                     )) . '</small>';
                 }
+                // A grouped verdict is the cost of the plugin AND whatever cannot run without
+                // it, which is not the same claim as the cost of the plugin.
+                if (!empty($first['group_members'])) {
+                    $html .= '<br><small>' . esc_html(sprintf(
+                        /* translators: %s: comma-separated plugin slugs */
+                        __('with %s, which cannot run without it', 'super-speedy-performance-analysis'),
+                        str_replace(',', ', ', (string) $first['group_members'])
+                    )) . '</small>';
+                }
                 $html .= '</td>';
                 foreach ($modes as $mode) {
                     $html .= '<td>' . (isset($cells[$mode]) ? self::impact_cell($cells[$mode]) : '-') . '</td>';
@@ -814,11 +823,20 @@ class SSPA_Profile_Panel {
             }
         }
 
+        // Plugins that come out in the same cell as this one, so the picker can say so before
+        // anybody presses the button rather than after the verdict arrives naming two plugins.
+        $together = SSPA_Dependency_Map::must_exclude_together();
+
         $plugins = array();
         foreach ($eligible as $slug) {
+            $group = array_values(array_intersect(
+                isset($together[$slug]) ? (array) $together[$slug] : array(),
+                $eligible
+            ));
             $plugins[] = array(
                 'slug' => $slug,
                 'cost_ms' => isset($blamed[$slug]) ? round((float) $blamed[$slug], 1) : 0.0,
+                'group' => $group,
             );
         }
         usort($plugins, function ($a, $b) {
