@@ -49,9 +49,16 @@ class SSPA_Community_Client {
             return self::error('sspa_outbox_integrity_failed', __('The local outbox bytes failed their integrity check.', 'super-speedy-performance-analysis'), true);
         }
 
-        $run = SSPA_Run_Controller::run_row((int) $row['run_id']);
-        if (!$run || $run['run_uuid'] !== $row['run_uuid']) {
-            return self::error('sspa_outbox_run_missing', __('The queued payload no longer matches its local run.', 'super-speedy-performance-analysis'), true);
+        // The queued bytes are meant to survive anything, so the manifest is built from the
+        // outbox row alone. Rows written before 0.13.1 have no run_type, and only those fall
+        // back to the run - a run deleted since then would otherwise strand its payload.
+        $run_type = isset($row['run_type']) ? (string) $row['run_type'] : '';
+        if ('' === $run_type) {
+            $run = SSPA_Run_Controller::run_row((int) $row['run_id']);
+            if (!$run || $run['run_uuid'] !== $row['run_uuid']) {
+                return self::error('sspa_outbox_run_missing', __('The queued payload no longer matches its local run.', 'super-speedy-performance-analysis'), true);
+            }
+            $run_type = $run['run_type'];
         }
         $manifest = array(
             'transport_version' => (int) $row['transport_version'],
@@ -64,7 +71,7 @@ class SSPA_Community_Client {
             'client_version' => $row['client_version'],
             'anonymisation_version' => (int) $row['anonymisation_version'],
             'run_uuid' => $row['run_uuid'],
-            'run_type' => sanitize_key($run['run_type']),
+            'run_type' => sanitize_key($run_type),
             'payload_created_at' => $row['payload_created_at'],
         );
         $signature = self::sign(self::reservation_canonical($manifest));
@@ -301,6 +308,13 @@ class SSPA_Community_Client {
         );
     }
 
+    /**
+     * Statuses worth another go on their own. Everything else is permanent - but see
+     * SSPA_Community_Outbox::failed(), which gives even a "permanent" status a couple of
+     * attempts first: a 404 from a mistyped collector URL is indistinguishable from a real
+     * rejection here, and killing every queued item on the first try means fixing the typo
+     * leaves the owner pressing Retry now once per row.
+     */
     private static function permanent_status($status) {
         return !in_array((int) $status, array(408, 425, 429, 500, 502, 503, 504), true);
     }

@@ -31,6 +31,15 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Changelog ==
 
+= 0.13.1 (10th August 2026) =
+* Deep Analysis is now called Plugin Impact Analysis, matching the Measured impact column it fills.
+* The Share tab now tells you when sharing is on but an analysis could not be prepared, instead of failing quietly.
+* A queued submission no longer stops if the collector address is wrong for a moment - it retries a few times before giving up, so correcting the address no longer means retrying every item by hand.
+* An analysis you chose to share on its own is no longer left waiting when it needs a retry.
+* The running analysis now shows which phase it is in beside the measurement count, so the total growing part-way through makes sense.
+* A queued submission no longer depends on its analysis still being in your history.
+* Database updates now run one at a time, so two visitors arriving together cannot collide.
+
 = 0.13.0 (10th August 2026) =
 * New "See exactly what gets sent" button on the Share tab: it builds the payload for your latest analysis, explains in plain English what it contains and what it never contains, and lets you download the file. Nothing is queued or sent.
 * Queued submissions are now delivered by your browser while you are on the analysis screen, instead of waiting for WP-Cron, which many hosts disable. Cron still runs as a backstop.

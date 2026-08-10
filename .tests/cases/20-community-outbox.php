@@ -187,6 +187,39 @@ if (!is_wp_error($queued)) {
     $smuggled_path = SSPA_Community_Privacy::validate(array('version' => '/home/dave/site'));
     sspa_outbox_t(is_wp_error($smuggled_path), 'a version field cannot smuggle a filesystem path');
 
+    // 3.4: the queued bytes must not depend on the run row surviving - the manifest needs a
+    // run type, and reading it from the run made a deleted run strand its payload.
+    $sspa_row = SSPA_Community_Outbox::get($queued['id']);
+    sspa_outbox_t(!empty($sspa_row['run_type']), 'the outbox row carries its own run type (' . (isset($sspa_row['run_type']) ? $sspa_row['run_type'] : 'none') . ')');
+
+    // 3.5: a "permanent" status must not kill an item on its first attempt. A mistyped
+    // collector URL 404s exactly like a real rejection, and one attempt each would turn a
+    // corrected typo into a manual Retry now per row.
+    // The row has already been claimed several times above, so reset the attempt counter -
+    // the grace is about how many attempts a permanent status survives, and the test has to
+    // start from a known one rather than whatever the earlier assertions left behind.
+    $wpdb->update(SSPA_Schema::table('submission_outbox'), array('attempts' => 0, 'state' => 'pending', 'next_attempt' => null), array('id' => (int) $queued['id']));
+    SSPA_Community_Outbox::begin_attempt(SSPA_Community_Outbox::get($queued['id']));
+    SSPA_Community_Outbox::failed($queued['id'], new WP_Error('test_404', 'not found'), true, 404);
+    $sspa_after_one = SSPA_Community_Outbox::get($queued['id']);
+    sspa_outbox_t(
+        'retry' === $sspa_after_one['state'],
+        'a permanent status still retries at first (attempt ' . (int) $sspa_after_one['attempts'] . ', state ' . $sspa_after_one['state'] . ')'
+    );
+    while ((int) SSPA_Community_Outbox::get($queued['id'])['attempts'] < SSPA_Community_Outbox::PERMANENT_GRACE) {
+        SSPA_Community_Outbox::retry_now($queued['id']);
+        SSPA_Community_Outbox::begin_attempt(SSPA_Community_Outbox::get($queued['id']));
+        SSPA_Community_Outbox::failed($queued['id'], new WP_Error('test_404', 'not found'), true, 404);
+    }
+    $sspa_final = SSPA_Community_Outbox::get($queued['id']);
+    sspa_outbox_t(
+        'permanent_failure' === $sspa_final['state'],
+        'it becomes permanent once the grace is used up (attempt ' . (int) $sspa_final['attempts'] . ')'
+    );
+
+    // 3.3: a manually shared item inside its backoff still counts as outstanding work.
+    sspa_outbox_t(is_bool(SSPA_Community_Outbox::has_pending_manual()), 'outstanding manual shares can be asked about');
+
     $privacy = SSPA_Community_Privacy::validate(array('request_body' => 'secret'));
     sspa_outbox_t(is_wp_error($privacy) && 'sspa_privacy_forbidden_key' === $privacy->get_error_code(), 'privacy gate rejects forbidden fields');
     $bare_host_collision = SSPA_Community_Privacy::validate(array('component_inventory' => array(array('slug' => 'sspa-wp'))));

@@ -208,7 +208,7 @@ class SSPA_Run_Controller {
             'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
         );
         if (!$source_run_id) {
-            return new WP_Error('sspa_no_baseline', __('Run a normal analysis first - deep analysis sweeps the pages it profiled.', 'super-speedy-performance-analysis'));
+            return new WP_Error('sspa_no_baseline', __('Run a normal analysis first - plugin impact analysis sweeps the pages it profiled.', 'super-speedy-performance-analysis'));
         }
 
         $files = SSPA_Dependency_Map::slug_to_file();

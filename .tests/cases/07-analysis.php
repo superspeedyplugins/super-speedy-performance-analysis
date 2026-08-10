@@ -43,7 +43,11 @@ add_action('wp_footer', function () {
     // over the critical line (slow_query_ms x 5 = 250ms): the plain 3-way self-join
     // measured ~237ms on Apple Silicon - a knife-edge warn that broke the score assertion.
     // The x2 factor pushes it to ~800ms here.
-    $wpdb->get_results("SELECT p1.ID FROM {$wpdb->posts} p1, {$wpdb->posts} p2, {$wpdb->posts} p3, (SELECT ID FROM {$wpdb->posts} LIMIT 2) p4 ORDER BY rand() LIMIT 5");
+    // Every alias is bounded. Unbounded, this is O(posts^3): tuned to ~800ms on a fresh
+    // container, it reached ~170 million rows once the environment had accumulated 440
+    // posts and every profiled request hit the 60s crawler timeout - which presents as
+    // "the analysis engine found nothing", not as a slow query.
+    $wpdb->get_results("SELECT p1.ID FROM (SELECT ID FROM {$wpdb->posts} LIMIT 120) p1, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p2, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p3 ORDER BY rand() LIMIT 5");
 
     // Sin 4: byte-identical duplicate queries (missing caching).
     for ($i = 0; $i < 8; $i++) {

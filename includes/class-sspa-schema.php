@@ -10,11 +10,37 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.6';
+    const DB_VERSION = '1.7';
+
+    const LOCK_OPTION = 'sspa_schema_lock';
 
     public static function table($name) {
         global $wpdb;
         return $wpdb->prefix . 'sspa_' . $name;
+    }
+
+    /**
+     * Schema work runs from plugins_loaded on whichever request arrives first after an update,
+     * so it must not run twice at once: dbDelta plus ensure_run_uuids()'s ALTER TABLE are DDL,
+     * and two concurrent requests can race the ADD UNIQUE into a duplicate-key-name error. The
+     * lock is an add_option insert, which is the cheapest thing WordPress offers that fails for
+     * the second caller, and it expires so a fatal cannot wedge the upgrade forever.
+     */
+    private static function lock() {
+        $now = time();
+        if (add_option(self::LOCK_OPTION, $now, '', false)) {
+            return true;
+        }
+        $held = (int) get_option(self::LOCK_OPTION);
+        if ($held && $held > $now - 300) {
+            return false;
+        }
+        delete_option(self::LOCK_OPTION);
+        return (bool) add_option(self::LOCK_OPTION, $now, '', false);
+    }
+
+    private static function unlock() {
+        delete_option(self::LOCK_OPTION);
     }
 
     public static function create_tables() {
@@ -175,6 +201,7 @@ class SSPA_Schema {
             submission_uuid char(36) NOT NULL,
             run_id bigint(20) unsigned NOT NULL,
             run_uuid char(36) NOT NULL,
+            run_type varchar(20) NOT NULL DEFAULT '',
             transport_version int(10) unsigned NOT NULL DEFAULT 1,
             payload_schema_major int(10) unsigned NOT NULL DEFAULT 1,
             payload_schema_minor int(10) unsigned NOT NULL DEFAULT 0,
@@ -240,7 +267,14 @@ class SSPA_Schema {
 
     public static function upgrade($from_version) {
         // No destructive migrations yet; dbDelta in create_tables() covers additive changes.
-        self::create_tables();
+        if (!self::lock()) {
+            return;
+        }
+        try {
+            self::create_tables();
+        } finally {
+            self::unlock();
+        }
     }
 
     public static function drop_tables() {

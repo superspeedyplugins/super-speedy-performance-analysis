@@ -17,6 +17,9 @@ class SSPA_Community_Outbox {
      */
     const ATTEMPT_LEASE_SECONDS = 600;
 
+    /** Attempts a 'permanent' failure gets before it is treated as one. */
+    const PERMANENT_GRACE = 3;
+
     /**
      * @param string $consent_scope 'automatic' (the site-wide setting) or 'manual' (the owner
      *                              explicitly chose to share this one analysis). A manual share
@@ -30,7 +33,7 @@ class SSPA_Community_Outbox {
             return new WP_Error('sspa_not_opted_in', __('Sharing is not enabled.', 'super-speedy-performance-analysis'));
         }
         $run = $wpdb->get_row($wpdb->prepare(
-            'SELECT id, run_uuid FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+            'SELECT id, run_uuid, run_type FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
             (int) $run_id
         ), ARRAY_A);
         if (!$run || !wp_is_uuid($run['run_uuid'], 4)) {
@@ -50,25 +53,32 @@ class SSPA_Community_Outbox {
         }
         $json = SSPA_Community_Schema::encode($payload);
         if (is_wp_error($json)) {
+            self::remember_local_error($run_id, $json);
             return $json;
         }
         $uncompressed_bytes = strlen($json);
         if ($uncompressed_bytes > SSPA_Community_Schema::MAX_UNCOMPRESSED_BYTES) {
-            return new WP_Error('sspa_payload_uncompressed_too_large', __('The community payload exceeds the 256 MiB uncompressed limit.', 'super-speedy-performance-analysis'));
+            $error = new WP_Error('sspa_payload_uncompressed_too_large', __('The community payload exceeds the 256 MiB uncompressed limit.', 'super-speedy-performance-analysis'));
+            self::remember_local_error($run_id, $error);
+            return $error;
         }
         $gzip = SSPA_Community_Schema::compress($json);
         if (is_wp_error($gzip)) {
+            self::remember_local_error($run_id, $gzip);
             return $gzip;
         }
         $compressed_bytes = strlen($gzip);
         if ($compressed_bytes > SSPA_Community_Schema::MAX_COMPRESSED_BYTES) {
-            return new WP_Error('sspa_payload_compressed_too_large', __('The community payload exceeds the 32 MiB compressed limit.', 'super-speedy-performance-analysis'));
+            $error = new WP_Error('sspa_payload_compressed_too_large', __('The community payload exceeds the 32 MiB compressed limit.', 'super-speedy-performance-analysis'));
+            self::remember_local_error($run_id, $error);
+            return $error;
         }
         $now = gmdate('Y-m-d H:i:s');
         $inserted = $wpdb->insert(self::table(), array(
             'submission_uuid' => $submission_uuid,
             'run_id' => (int) $run_id,
             'run_uuid' => $run['run_uuid'],
+            'run_type' => $run['run_type'],
             'transport_version' => SSPA_Community_Schema::TRANSPORT_VERSION,
             'payload_schema_major' => SSPA_Community_Schema::PAYLOAD_SCHEMA_MAJOR,
             'payload_schema_minor' => SSPA_Community_Schema::PAYLOAD_SCHEMA_MINOR,
@@ -152,6 +162,17 @@ class SSPA_Community_Outbox {
              ORDER BY created ASC, id ASC LIMIT 1",
             $now
         ), ARRAY_A);
+    }
+
+    /**
+     * Is any explicitly shared analysis still working its way out? Includes rows inside their
+     * retry backoff, which is exactly the case "is anything due?" misses.
+     */
+    public static function has_pending_manual() {
+        global $wpdb;
+        return (bool) $wpdb->get_var(
+            'SELECT id FROM ' . self::table() . " WHERE consent_scope = 'manual' AND state IN ('pending','retry') LIMIT 1"
+        );
     }
 
     public static function get($id) {
@@ -254,7 +275,11 @@ class SSPA_Community_Outbox {
         $code = is_wp_error($error) ? sanitize_key($error->get_error_code()) : 'unknown_error';
         $detail = is_wp_error($error) ? $error->get_error_message() : __('Submission attempt failed.', 'super-speedy-performance-analysis');
         $delay = $retry_after ? max(60, (int) $retry_after) : self::retry_delay($attempt);
-        $state = $permanent ? 'permanent_failure' : 'retry';
+        // Give a "permanent" failure PERMANENT_GRACE attempts before believing it. A wrong
+        // collector URL 404s identically to a genuine rejection, and putting every queued item
+        // into permanent_failure on attempt one turns a corrected typo into a manual Retry now
+        // per row. A truly permanent error simply fails again and lands there anyway.
+        $state = ($permanent && $attempt >= self::PERMANENT_GRACE) ? 'permanent_failure' : 'retry';
         $wpdb->update(self::table(), array(
             'state' => $state,
             'phase' => $state,

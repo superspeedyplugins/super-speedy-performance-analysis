@@ -30,7 +30,13 @@ class SSPA_Community_Worker {
         try {
             $row = SSPA_Community_Outbox::due();
             if (!$row) {
-                delete_option('sspa_share_manual_pending');
+                // "Nothing due right now" is not "nothing left to do": a manually shared item
+                // inside its retry backoff is neither. Clearing the flag there left maybe_nudge()
+                // unable to re-arm on a site with sharing off, so the item depended on a single
+                // scheduled event and was stranded if that event was lost.
+                if (!SSPA_Community_Outbox::has_pending_manual()) {
+                    delete_option('sspa_share_manual_pending');
+                }
                 return;
             }
             $row = SSPA_Community_Outbox::begin_attempt($row);

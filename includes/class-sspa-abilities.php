@@ -179,7 +179,7 @@ class SSPA_Abilities {
         ));
 
         wp_register_ability(self::CATEGORY . '/run-deep-analysis', array(
-            'label' => __('Run deep analysis (culprit isolation)', 'super-speedy-performance-analysis'),
+            'label' => __('Run plugin impact analysis (culprit isolation)', 'super-speedy-performance-analysis'),
             'description' => __('Sweep every eligible plugin (or the given suspects) across every profiled page, re-measuring each page with each plugin virtually disabled for test requests only (visitors unaffected) - in three object-cache modes when a persistent cache is present. Thorough and slow by design. Requires a completed analysis first. Asynchronous - poll get-status, then get-plugin-impacts.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(

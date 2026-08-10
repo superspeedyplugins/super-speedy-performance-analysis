@@ -677,7 +677,13 @@ function sspa_runner_update(s) {
 	var runner = jQuery('#sspa-runner');
 	var pct = s.total ? Math.min(100, Math.round((s.done / s.total) * 100)) : 0;
 	runner.find('.sspa-progress-fill').css('width', pct + '%');
-	runner.find('.sspa-runner-counts').text(s.done + ' / ' + s.total + ' measurements (' + pct + '%)');
+	// The phase belongs next to the number, not only in the title: a total that jumps from 72
+	// to 216 mid-run reads as a bug unless the screen says why.
+	var counts = s.done + ' / ' + s.total + ' measurements (' + pct + '%)';
+	if (s.run_type === 'deep' && s.phase) {
+		counts = (s.phase === 1 ? 'Phase 1/2, screening' : 'Phase 2/2, confirming') + ' \u00b7 ' + counts;
+	}
+	runner.find('.sspa-runner-counts').text(counts);
 	runner.find('.sspa-runner-current').text(s.current ? 'Now testing: ' + s.current : (s.status === 'analysing' ? 'Analysing results…' : ''));
 	sspa_runner_feed(s);
 	var eta = sspa_fmt_duration(s.eta_seconds);
@@ -692,7 +698,7 @@ function sspa_runner_update(s) {
 	}
 	runner.find('.sspa-runner-eta').text(bits.join(' · '));
 	runner.find('.sspa-runner-mini-summary').text(pct + '%' + (eta ? ' · ~' + eta + ' left' : ''));
-	var title = { deep: 'Deep analysis running', cache_impact: 'Cache impact analysis running' }[s.run_type] || 'Analysis running';
+	var title = { deep: 'Plugin impact analysis running', cache_impact: 'Cache impact analysis running' }[s.run_type] || 'Analysis running';
 	if (s.run_type === 'deep' && s.phase) {
 		title += s.phase === 1 ? ' - phase 1/2: screening all plugins' : ' - phase 2/2: confirming impacted plugins';
 	}

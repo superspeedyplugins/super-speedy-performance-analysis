@@ -99,7 +99,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
         $sspa_deep_notes = is_array($sspa_deep_notes) ? $sspa_deep_notes : array(); ?>
     <div class="sspa-placeholder">
-        <h2><?php esc_html_e('Latest deep analysis', 'super-speedy-performance-analysis'); ?></h2>
+        <h2><?php esc_html_e('Latest plugin impact analysis', 'super-speedy-performance-analysis'); ?></h2>
         <p>
             <?php
             printf(
@@ -283,7 +283,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         </button>
         <?php if ($sspa_last_run) : ?>
         <button type="button" class="button" id="sspa-run-deep"<?php disabled((bool) $sspa_active_run); ?>>
-            <?php esc_html_e('Run Deep Analysis', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Run Plugin Impact Analysis', 'super-speedy-performance-analysis'); ?>
         </button>
         <?php if (wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php')) : ?>
         <button type="button" class="button" id="sspa-run-cache"<?php disabled((bool) $sspa_active_run); ?>>
@@ -297,7 +297,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     </p>
     <?php if ($sspa_last_run) : ?>
     <p class="description">
-        <?php esc_html_e('Deep analysis runs in two phases. Phase 1 screens EVERY eligible plugin by re-measuring its busiest pages with that plugin disabled FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation/deactivation hooks. Phase 2 then gives only the plugins that showed a measurable impact the full treatment: every remaining page, plus object-cache-disabled and cache-priming measurements when a persistent cache is present. Start it, walk away - the floating monitor shows exactly where it is up to and how long the current phase has left. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('Plugin impact analysis runs in two phases. Phase 1 screens EVERY eligible plugin by re-measuring its busiest pages with that plugin disabled FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation/deactivation hooks. Phase 2 then gives only the plugins that showed a measurable impact the full treatment: every remaining page, plus object-cache-disabled and cache-priming measurements when a persistent cache is present. Start it, walk away - the floating monitor shows exactly where it is up to and how long the current phase has left. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic.', 'super-speedy-performance-analysis'); ?>
     </p>
     <?php endif; ?>
 

@@ -13,7 +13,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
 <div class="sspa-placeholder">
     <h2><?php esc_html_e('Share with the community', 'super-speedy-performance-analysis'); ?></h2>
     <p><?php esc_html_e('Contribute your anonymised results to the community performance database at superspeedy.org. Together these submissions reveal which plugins are fast, which are slow, and which ignore your object cache - across thousands of real sites instead of one benchmark box.', 'super-speedy-performance-analysis'); ?></p>
-    <p><?php esc_html_e('Each completed baseline, page profile, deep analysis, checkout flow, cache analysis and plugin-toggle spot-check is saved as its own versioned payload. This includes generic page classifications, aggregate timings, safe component identifiers and versions, measured deltas, findings, normalised query fingerprints, Excimer summaries and bucketed site characteristics when those records exist.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('Each completed baseline, page profile, plugin impact analysis, checkout flow, cache analysis and plugin-toggle spot-check is saved as its own versioned payload. This includes generic page classifications, aggregate timings, safe component identifiers and versions, measured deltas, findings, normalised query fingerprints, Excimer summaries and bucketed site characteristics when those records exist.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Anonymisation happens in this plugin before the payload enters the local queue. Your domain, URLs, filesystem paths, raw SQL, credentials, emails, customer/order data and request contents are forbidden. A privacy validation failure prevents the payload from being queued or sent.', 'super-speedy-performance-analysis'); ?></p>
 
     <h3><?php esc_html_e('1. Share every analysis automatically', 'super-speedy-performance-analysis'); ?></h3>
@@ -24,7 +24,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         </label>
     </p>
     <p class="description">
-        <?php esc_html_e('Covers every full scan, spot check, deep analysis, cache analysis, page analysis and checkout analysis, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('Covers every full scan, spot check, plugin impact analysis, cache analysis, page analysis and checkout analysis, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
         <?php
         printf(
             esc_html__('Consent text version %1$d%2$s. Turning sharing off stops new payload creation and delivery attempts; it does not delete already archived evidence.', 'super-speedy-performance-analysis'),
@@ -33,6 +33,38 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         );
         ?>
     </p>
+
+    <?php
+    $sspa_build_errors = get_option('sspa_submission_build_errors', array());
+    $sspa_build_errors = is_array($sspa_build_errors) ? $sspa_build_errors : array();
+    // A payload that cannot be prepared used to fail into an option nobody rendered, so a site
+    // could have sharing on and send nothing for weeks with no sign of it anywhere.
+    if ($sspa_optin && $sspa_build_errors) : ?>
+        <div class="notice notice-warning inline">
+            <p>
+                <strong><?php esc_html_e('Sharing is on, but some analyses could not be prepared and were not sent.', 'super-speedy-performance-analysis'); ?></strong>
+                <?php
+                printf(
+                    esc_html(_n(
+                        '%d analysis was affected. This is usually a bug in the anonymiser rather than anything wrong with your site - please report it.',
+                        '%d analyses were affected. This is usually a bug in the anonymiser rather than anything wrong with your site - please report it.',
+                        count($sspa_build_errors),
+                        'super-speedy-performance-analysis'
+                    )),
+                    count($sspa_build_errors)
+                );
+                ?>
+            </p>
+            <details>
+                <summary><?php esc_html_e('Technical detail', 'super-speedy-performance-analysis'); ?></summary>
+                <ul>
+                    <?php foreach ($sspa_build_errors as $sspa_error_run_id => $sspa_error_row) : ?>
+                        <li><code><?php echo esc_html($sspa_error_row['code']); ?></code> - <?php echo esc_html($sspa_error_row['detail']); ?> (<?php printf(esc_html__('run %d', 'super-speedy-performance-analysis'), (int) $sspa_error_run_id); ?>)</li>
+                    <?php endforeach; ?>
+                </ul>
+            </details>
+        </div>
+    <?php endif; ?>
 
     <p>
         <button type="button" class="button button-primary sspa-sharing-action" id="sspa-submit-now" <?php disabled(!$sspa_optin); ?>><?php esc_html_e('Queue latest run', 'super-speedy-performance-analysis'); ?></button>
