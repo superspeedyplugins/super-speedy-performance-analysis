@@ -120,6 +120,37 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 	});
 });
 
+
+// ---- Submission queue, driven by the browser ----
+// WP-Cron only fires on traffic and many hosts disable it, so a queue that relies on it can
+// sit for days. While an admin is on this screen the browser drains it; cron stays as the
+// fallback for headless sites. Duplicate delivery is stopped by the compare-and-set claim in
+// begin_attempt() and by the receiver's own idempotency, so this needs no locking of its own.
+var sspa_ticking = false;
+
+function sspa_drive_submissions() {
+	if (sspa_ticking) {
+		return;
+	}
+	sspa_ticking = true;
+	jQuery.post(ajaxurl, { action: 'sspa_submission_tick', nonce: sspa_admin.nonce }, function (resp) {
+		sspa_ticking = false;
+		if (resp && resp.success && resp.data.more) {
+			window.setTimeout(sspa_drive_submissions, 1500);
+		} else if (resp && resp.success) {
+			sspa_refresh_tabs(['share']);
+		}
+	}).fail(function () {
+		sspa_ticking = false;
+	});
+}
+
+jQuery(function () {
+	if (jQuery('#sspa_main').length) {
+		window.setTimeout(sspa_drive_submissions, 2000);
+	}
+});
+
 // ---- Tab refresh ----
 // Nothing on this screen reloads the page. A reload loses the selected tab, the scroll
 // position and any open drill-down, so every action that changes server state re-renders
@@ -347,16 +378,60 @@ jQuery(document).on('change', '#sspa-share-optin', function () {
 
 jQuery(document).on('click', '.sspa-preview-outbox', function () {
 	var pre = jQuery('#sspa-payload-preview');
-	var outboxId = jQuery(this).data('outbox-id');
+	var summary = jQuery('#sspa-payload-summary');
+	var outboxId = jQuery(this).data('outbox-id') || 0;
 	if (pre.is(':visible') && pre.data('outbox-id') === outboxId) {
 		pre.hide();
+		summary.hide();
 		return;
 	}
-	pre.data('outbox-id', outboxId).text('Loading exact queued payload…').show();
+	pre.data('outbox-id', outboxId).text('Building the exact payload…').show();
+	summary.hide();
 	jQuery.post(ajaxurl, { action: 'sspa_payload_preview', nonce: sspa_admin.nonce, outbox_id: outboxId }, function (resp) {
-		pre.text(resp.success ? resp.data.payload : (resp.data || 'Could not build the payload.'));
+		if (!resp.success) {
+			pre.text(resp.data || 'Could not build the payload.');
+			return;
+		}
+		pre.text(resp.data.payload);
+		summary.html(sspa_payload_summary_html(resp.data)).show();
+		// Download is built from the payload already in hand - no second request, and the file
+		// is byte-identical to what was shown.
+		summary.find('.sspa-download-payload').on('click', function (e) {
+			e.preventDefault();
+			var blob = new Blob([resp.data.payload], { type: 'application/json' });
+			var a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = resp.data.filename || 'sspa-shared-data.json';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(a.href);
+		});
 	});
 });
+
+// Plain English above the JSON. Most people do not read JSON, and they are exactly the people
+// a privacy promise has to convince.
+function sspa_payload_summary_html(data) {
+	var s = data.summary || {};
+	var kb = Math.max(1, Math.round((data.bytes || 0) / 1024));
+	var html = '<p><strong>This is everything that would be sent';
+	if (s.run_type) { html += ' for this ' + sspa_esc(s.run_type) + ' analysis'; }
+	html += ' (' + kb + ' KB).</strong></p>';
+	if (s.includes && s.includes.length) {
+		html += '<p>It contains: ';
+		html += s.includes.map(function (i) { return sspa_esc(i); }).join(', ');
+		if (s.components) { html += ', and the names and versions of ' + s.components + ' active components'; }
+		html += '.</p>';
+	}
+	if (s.excludes && s.excludes.length) {
+		html += '<p>It does <strong>not</strong> contain ';
+		html += s.excludes.map(function (i) { return sspa_esc(i); }).join('; ');
+		html += '.</p>';
+	}
+	html += '<p><a href="#" class="button button-small sspa-download-payload">Download this file</a></p>';
+	return html;
+}
 
 // Share one analysis on its own. Deliberately no confirm()/alert(): the outcome is reported
 // in the cell itself, so the answer stays next to the run it refers to.
@@ -391,6 +466,7 @@ jQuery(document).on('click', '#sspa-submit-now', function () {
 	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {
 		alert(resp.success ? 'Queued locally. Delivery runs in the background and retries automatically.' : (resp.data || 'Could not queue the submission.'));
 		sspa_refresh_tabs(['share', 'history'], function () { btn.prop('disabled', false); });
+		sspa_drive_submissions();
 	}).fail(function () {
 		alert('Could not queue the submission.');
 		btn.prop('disabled', false);
@@ -425,6 +501,7 @@ jQuery(document).on('click', '#sspa-backfill', function () {
 			}
 			alert('Historical queueing finished: ' + totalQueued + ' queued, ' + totalFailed + ' requiring review.');
 			sspa_refresh_tabs(['share', 'history']);
+			sspa_drive_submissions();
 		}).fail(function () {
 			status.text('Historical queueing request failed. Progress has been saved; press the button to resume.');
 			btn.prop('disabled', false);
@@ -453,6 +530,7 @@ jQuery(document).on('click', '.sspa-outbox-action', function () {
 			return;
 		}
 		sspa_refresh_tabs(['share', 'history']);
+		sspa_drive_submissions();
 	}).fail(function () {
 		alert('Could not update the submission.');
 		btn.prop('disabled', false);

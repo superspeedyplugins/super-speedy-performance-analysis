@@ -31,6 +31,13 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Changelog ==
 
+= 0.13.0 (10th August 2026) =
+* New "See exactly what gets sent" button on the Share tab: it builds the payload for your latest analysis, explains in plain English what it contains and what it never contains, and lets you download the file. Nothing is queued or sent.
+* Queued submissions are now delivered by your browser while you are on the analysis screen, instead of waiting for WP-Cron, which many hosts disable. Cron still runs as a backstop.
+* Measured impact now reads "adds 120ms typically, up to 340ms on wc-checkout", replacing a total that summed every page together - a figure no visitor ever experienced, and one that grew simply by measuring more pages.
+* Measured impact is now kept per page, so re-measuring one plugin on one page updates that page and leaves every other page's result standing.
+* Analysing a page that the full analysis already covers, such as the shop or the home page, now files it under that page rather than a one-off entry, so the two are comparable.
+
 = 0.12.0 (9th August 2026) =
 * Nothing on the Performance Analysis screen reloads the page any more: queueing a run, pruning detailed data, replacing a drop-in, retrying or pausing a submission, cancelling a run and finishing an analysis all update in place, keeping the tab you were on.
 * The Sharing settings and Choose analyses links now switch tab in place instead of reloading and landing you back on Overview.

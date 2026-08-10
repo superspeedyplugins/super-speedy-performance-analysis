@@ -125,6 +125,54 @@ $version = $wpdb->get_var($wpdb->prepare(
 ));
 sspa_scoped_t('1.0.0' === $version, 'refreshed impact carries the measured version (' . var_export($version, true) . ')');
 
+// --- A page-scoped re-measure must not erase the pages it did not touch ---
+// Selection is newest-per-plugin-per-page, not "every row of the plugin's latest run": keying
+// on the run would make a one-page re-measure look as though the plugin only affects one page.
+$sspa_wide = SSPA_Run_Controller::start(array(
+    'type' => 'deep',
+    'suspects' => array('sspa-scoped-fixture'),
+    'user_id' => 1,
+));
+if (!is_wp_error($sspa_wide)) {
+    $deadline = time() + 420;
+    do {
+        SSPA_Run_Controller::process_batch($sspa_wide);
+        $s = SSPA_Run_Controller::status($sspa_wide);
+    } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+
+    $wide_pages = $wpdb->get_col($wpdb->prepare(
+        'SELECT DISTINCT page_key FROM ' . SSPA_Schema::table('plugin_impacts') . ' WHERE test_run_id = %d',
+        $sspa_wide
+    ));
+    sspa_scoped_t(count($wide_pages) >= 2, 'the wide sweep measured ' . count($wide_pages) . ' pages');
+
+    // Now re-measure ONE page. The other page's verdict must survive.
+    $sspa_again = SSPA_Run_Controller::start(array(
+        'type' => 'deep',
+        'suspects' => array('sspa-scoped-fixture'),
+        'page_keys' => array('home'),
+        'user_id' => 1,
+    ));
+    $deadline = time() + 420;
+    do {
+        SSPA_Run_Controller::process_batch($sspa_again);
+        $s = SSPA_Run_Controller::status($sspa_again);
+    } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+
+    $shown = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('sspa-scoped-fixture'), ARRAY_A);
+    $shown_pages = array_values(array_unique(array_column($shown, 'page_key')));
+    sort($shown_pages);
+    sspa_scoped_t(count($shown_pages) >= 2, 'a page-scoped re-measure keeps the other pages: ' . implode(',', $shown_pages));
+
+    $home_run = 0;
+    foreach ($shown as $row) {
+        if ('home' === $row['page_key']) {
+            $home_run = max($home_run, (int) $row['test_run_id']);
+        }
+    }
+    sspa_scoped_t($home_run === (int) $sspa_again, 'the re-measured page shows the NEWEST measurement');
+}
+
 // --- The Plugins tab must date the verdict, and flag it once it goes stale ---
 // Three states, all produced by real runs rather than hand-written rows.
 

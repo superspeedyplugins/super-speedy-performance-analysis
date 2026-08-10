@@ -24,6 +24,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_plugin_detail', array(__CLASS__, 'ajax_plugin_detail'));
         add_action('wp_ajax_sspa_attribution', array(__CLASS__, 'ajax_attribution'));
         add_action('wp_ajax_sspa_render_tab', array(__CLASS__, 'ajax_render_tab'));
+        add_action('wp_ajax_sspa_submission_tick', array(__CLASS__, 'ajax_submission_tick'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
@@ -1701,18 +1702,12 @@ class SSPA_Run_Controller {
         if ('' === $plugin) {
             wp_send_json_error('no plugin');
         }
-        $table = SSPA_Schema::table('plugin_impacts');
-        $test_run_id = (int) $wpdb->get_var($wpdb->prepare("SELECT MAX(test_run_id) FROM $table WHERE plugin = %s", $plugin));
-        if (!$test_run_id) {
-            wp_send_json_error(__('No measured impacts for this plugin yet - run Deep Analysis.', 'super-speedy-performance-analysis'));
+        // Newest measurement per page and cache mode, matching the Plugins tab: a sweep scoped
+        // to one page must not hide every other page it did not re-measure.
+        $rows = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql($plugin), ARRAY_A);
+        if (!$rows) {
+            wp_send_json_error(__('No measured impacts for this plugin yet - run a plugin impact analysis.', 'super-speedy-performance-analysis'));
         }
-        $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT page_key, object_cache_mode, plugin_version, delta_ttfb_ms, delta_sql_ms, delta_http_ms,
-                    delta_mem_bytes, delta_queries, noise_floor_ms, confidence, created
-             FROM $table WHERE plugin = %s AND test_run_id = %d ORDER BY page_key, id",
-            $plugin,
-            $test_run_id
-        ), ARRAY_A);
         $measured_version = null;
         foreach ($rows as $row) {
             if (!empty($row['plugin_version'])) {
@@ -1748,7 +1743,34 @@ class SSPA_Run_Controller {
         if (is_wp_error($json)) {
             wp_send_json_error($json->get_error_message());
         }
-        wp_send_json_success(array('payload' => $json));
+        wp_send_json_success(array(
+            'payload' => $json,
+            'summary' => SSPA_Submitter::describe_payload($json),
+            'bytes' => strlen($json),
+            'filename' => 'sspa-shared-data-' . gmdate('Ymd-His') . '.json',
+        ));
+    }
+
+    /**
+     * Deliver one queued submission, driven by the browser.
+     *
+     * WP-Cron only fires when someone visits, and plenty of hosts disable it outright in favour
+     * of a real crontab, so a queue that depends on it can sit for days. The browser is the
+     * reliable driver while an admin is on the screen - the same reason runs are already driven
+     * this way, with cron as the fallback rather than the mechanism.
+     *
+     * Duplicate delivery is prevented where it has to be: the compare-and-set claim in
+     * begin_attempt(), and the receiver's own submission_uuid idempotency.
+     */
+    public static function ajax_submission_tick() {
+        self::ajax_guard();
+        SSPA_Community_Worker::run();
+        $due = SSPA_Community_Outbox::due();
+        $counts = SSPA_Community_Outbox::counts();
+        wp_send_json_success(array(
+            'more' => (bool) $due,
+            'counts' => $counts,
+        ));
     }
 
     public static function ajax_submit_now() {

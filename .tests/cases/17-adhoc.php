@@ -71,3 +71,35 @@ if ($profile) {
 // A one-page check must never become the "latest analysis" on the Overview/Pages tabs.
 $latest = $wpdb->get_var("SELECT id FROM $runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1");
 sspa_t((int) $latest !== (int) $run_id, 'adhoc run excluded from latest-analysis queries');
+
+// --- An adhoc URL that the catalogue already knows must reuse its page key ---
+// Otherwise analysing the shop page from the admin bar files it under url-<hash>, invisible
+// beside the same page measured by a full analysis, and comparable with nothing.
+$sspa_cat = SSPA_Catalogue::build();
+$sspa_known = null;
+foreach ($sspa_cat as $sspa_job) {
+    if (in_array($sspa_job['page_key'], array('home', 'shop', 'blog'), true) && !empty($sspa_job['url'])) {
+        $sspa_known = $sspa_job;
+        break;
+    }
+}
+if ($sspa_known) {
+    $sspa_matched = SSPA_Adhoc::job_for($sspa_known['url']);
+    sspa_t(
+        !is_wp_error($sspa_matched) && $sspa_matched['page_key'] === $sspa_known['page_key'],
+        'a catalogue URL reuses its page key: ' . (is_wp_error($sspa_matched) ? 'error' : $sspa_matched['page_key'] . ' (wanted ' . $sspa_known['page_key'] . ')')
+    );
+    // Trailing slash and our own cache-buster must not defeat the match.
+    $sspa_noisy = rtrim($sspa_known['url'], '/') . '/?sspa_nc=' . time();
+    $sspa_matched2 = SSPA_Adhoc::job_for($sspa_noisy);
+    sspa_t(
+        !is_wp_error($sspa_matched2) && $sspa_matched2['page_key'] === $sspa_known['page_key'],
+        'the match survives a trailing slash and a cache-buster'
+    );
+}
+// A URL the catalogue does not know still gets an opaque, URL-derived key.
+$sspa_unknown = SSPA_Adhoc::job_for(home_url('/an-page-the-catalogue-never-heard-of/'));
+sspa_t(
+    !is_wp_error($sspa_unknown) && 0 === strpos($sspa_unknown['page_key'], 'url-'),
+    'an unknown URL keeps its opaque key: ' . (is_wp_error($sspa_unknown) ? 'error' : $sspa_unknown['page_key'])
+);

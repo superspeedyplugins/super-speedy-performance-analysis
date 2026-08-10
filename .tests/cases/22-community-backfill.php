@@ -141,3 +141,20 @@ if (null === $old_errors) {
 }
 wp_clear_scheduled_hook('sspa_submission_worker_event');
 sspa_backfill_t(true, 'backfill fixtures and prior run statuses restored');
+
+// --- Seeing what would be sent must not queue it ---
+// "Turn sharing on, then look at what you agreed to" is the wrong order for a consent decision.
+global $wpdb;
+$sspa_outbox_table = SSPA_Schema::table('submission_outbox');
+$sspa_before = (int) $wpdb->get_var("SELECT COUNT(*) FROM $sspa_outbox_table");
+$sspa_dry = SSPA_Submitter::dry_run_preview();
+$sspa_after = (int) $wpdb->get_var("SELECT COUNT(*) FROM $sspa_outbox_table");
+sspa_backfill_t(!is_wp_error($sspa_dry) && strlen($sspa_dry) > 100, 'a payload can be built purely to look at');
+sspa_backfill_t($sspa_before === $sspa_after, "previewing queued nothing ($sspa_before -> $sspa_after)");
+$sspa_desc = SSPA_Submitter::describe_payload($sspa_dry);
+sspa_backfill_t(!empty($sspa_desc['includes']), 'the payload is described in plain English');
+sspa_backfill_t(!empty($sspa_desc['excludes']), 'the description states what is never sent');
+sspa_backfill_t(
+    false === strpos($sspa_dry, (string) parse_url(home_url('/'), PHP_URL_HOST)),
+    'the previewed payload carries no host name'
+);

@@ -114,5 +114,6 @@ if (!$sspa_runs) : ?>
         <?php endforeach; ?>
         </tbody>
     </table>
+    <div id="sspa-payload-summary" class="sspa-payload-summary" style="display:none"></div>
     <pre id="sspa-payload-preview" style="display:none;max-height:420px;overflow:auto;background:#fff;padding:12px;border:1px solid #dcdcde;"></pre>
 <?php endif; ?>

@@ -22,6 +22,33 @@ class SSPA_Plugins_Table {
         );
     }
 
+    /**
+     * The newest measurement for each plugin, page and cache mode.
+     *
+     * Deliberately NOT "every row from the plugin's most recent sweep". A sweep can be scoped
+     * to one page (`--pages`), which is the cheap way to re-measure something you have just
+     * fixed; keying on the run would then throw away every other page that sweep did not
+     * touch, and the plugin would appear to affect one page only. Keying on the measurement
+     * lets a targeted re-measure update exactly what it measured and leave the rest standing.
+     *
+     * MAX(id) rather than MAX(created): two sweeps in the same second are possible, and the
+     * autoincrement is the only strict ordering.
+     *
+     * @param string $plugin Optional single plugin to restrict to.
+     */
+    public static function latest_impacts_sql($plugin = '') {
+        global $wpdb;
+        $table = SSPA_Schema::table('plugin_impacts');
+        $where = '';
+        if ('' !== $plugin) {
+            $where = $wpdb->prepare(' WHERE plugin = %s', $plugin);
+        }
+        return "SELECT pi.* FROM $table pi
+                JOIN (SELECT MAX(id) mid FROM $table$where
+                      GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
+                ORDER BY pi.page_key, pi.id";
+    }
+
     public static function render($run_id, $mode) {
         global $wpdb;
 
@@ -66,17 +93,8 @@ class SSPA_Plugins_Table {
             }
         }
 
-        // Measured impacts per plugin from each plugin's most recent sweep: one row per page
-        // per cache mode. That sweep can be far older than $run_id above, which is why every
-        // row carries when it was measured.
         $impacts = array();
-        foreach ($wpdb->get_results(
-            'SELECT pi.* FROM ' . SSPA_Schema::table('plugin_impacts') . ' pi
-             JOIN (SELECT plugin, MAX(test_run_id) tr FROM ' . SSPA_Schema::table('plugin_impacts') . ' GROUP BY plugin) latest
-               ON latest.plugin = pi.plugin AND latest.tr = pi.test_run_id
-             ORDER BY pi.page_key, pi.id',
-            ARRAY_A
-        ) as $row) {
+        foreach ($wpdb->get_results(self::latest_impacts_sql(), ARRAY_A) as $row) {
             $impacts[$row['plugin']][] = $row;
         }
 
@@ -173,34 +191,46 @@ class SSPA_Plugins_Table {
         }));
 
         if ($measured) {
-            $net = 0.0;
+            // Typical and worst, never the sum. Adding the per-page deltas together produced a
+            // number nobody experiences - no visitor loads every page type at once - and it grew
+            // simply by measuring more pages, so a wider sweep made a plugin look worse.
+            // Median rather than mean: deltas are skewed, and one pathological page should not
+            // define "typical".
+            $deltas = array();
             $worst = $measured[0];
             foreach ($measured as $r) {
-                $net += (float) $r['delta_ttfb_ms'];
+                $deltas[] = (float) $r['delta_ttfb_ms'];
                 if (abs((float) $r['delta_ttfb_ms']) > abs((float) $worst['delta_ttfb_ms'])) {
                     $worst = $r;
                 }
             }
-            $saves = $net < 0;
+            sort($deltas);
+            $count = count($deltas);
+            $typical = (0 === $count % 2)
+                ? ($deltas[$count / 2 - 1] + $deltas[$count / 2]) / 2
+                : $deltas[(int) floor($count / 2)];
+
+            $saves = $typical < 0;
             echo '<strong class="' . ($saves ? 'sspa-impact-saves' : 'sspa-impact-adds') . '">';
             echo esc_html($saves
-                ? sprintf(__('saves %sms', 'super-speedy-performance-analysis'), number_format(abs($net)))
-                : sprintf(__('adds %sms', 'super-speedy-performance-analysis'), number_format($net)));
+                ? sprintf(__('saves %sms typically', 'super-speedy-performance-analysis'), number_format(abs($typical)))
+                : sprintf(__('adds %sms typically', 'super-speedy-performance-analysis'), number_format($typical)));
             echo '</strong> ';
-            printf(
-                esc_html__('across %1$d of %2$d pages', 'super-speedy-performance-analysis'),
-                count($measured),
-                count($mode_rows)
-            );
-            echo ' <span class="sspa-badge sspa-badge-measured">' . esc_html('warm' === $pref ? __('measured, warm cache', 'super-speedy-performance-analysis') : __('measured', 'super-speedy-performance-analysis')) . '</span><br>';
             $worst_delta = (float) $worst['delta_ttfb_ms'];
-            echo '<small class="sspa-impact-detail">';
             echo esc_html(sprintf(
                 $worst_delta < 0
-                    ? __('biggest saving: %1$sms on %2$s', 'super-speedy-performance-analysis')
-                    : __('biggest cost: %1$sms on %2$s', 'super-speedy-performance-analysis'),
+                    ? __('up to %1$sms saved on %2$s', 'super-speedy-performance-analysis')
+                    : __('up to %1$sms on %2$s', 'super-speedy-performance-analysis'),
                 number_format(abs($worst_delta)),
                 $worst['page_key']
+            ));
+            echo ' <span class="sspa-badge sspa-badge-measured">' . esc_html('warm' === $pref ? __('measured, warm cache', 'super-speedy-performance-analysis') : __('measured', 'super-speedy-performance-analysis')) . '</span><br>';
+            echo '<small class="sspa-impact-detail">';
+            echo esc_html(sprintf(
+                /* translators: 1: pages with a measurable effect, 2: pages measured */
+                __('measurable on %1$d of %2$d pages measured', 'super-speedy-performance-analysis'),
+                count($measured),
+                count($mode_rows)
             ));
             echo '</small>';
         } else {

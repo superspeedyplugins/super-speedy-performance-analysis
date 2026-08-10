@@ -130,11 +130,71 @@ class SSPA_Adhoc {
             return new WP_Error('sspa_bad_url', __('Only URLs on this site can be profiled.', 'super-speedy-performance-analysis'));
         }
         $path = isset($parts['path']) ? $parts['path'] : '/';
+
+        // If this URL is one the catalogue already knows - the shop, a product, the cart -
+        // reuse ITS page key and variant. Otherwise analysing the shop page from the admin bar
+        // would file its result under url-<hash>, invisible beside the same page measured by a
+        // full analysis, and comparable with nothing.
+        $known = self::catalogue_match($url);
+        if ($known) {
+            return array(
+                'url' => $known['url'],
+                'page_key' => $known['page_key'],
+                'variant' => $known['variant'],
+            );
+        }
+
         return array(
             'url' => $url,
             'page_key' => 'url-' . substr(md5($url), 0, 12),
             'variant' => (false !== strpos($path, '/wp-admin')) ? 'admin' : 'anon',
         );
+    }
+
+    /**
+     * The catalogue job whose URL addresses the same page as $url, or null.
+     *
+     * Compared on path plus the query arguments that actually select content: the catalogue
+     * builds its URLs from permalinks, so trailing slashes and our own cache-buster differ
+     * without meaning anything.
+     */
+    private static function catalogue_match($url) {
+        $wanted = self::compare_key($url);
+        if ('' === $wanted) {
+            return null;
+        }
+        foreach (SSPA_Catalogue::build() as $job) {
+            if (empty($job['url']) || 0 === strpos($job['page_key'], 'write-')) {
+                continue;
+            }
+            // Probe endpoints answer with a stub, so they are never a match for a real page.
+            if (in_array($job['page_key'], array('baseline', 'mail-probe'), true)) {
+                continue;
+            }
+            if (self::compare_key($job['url']) === $wanted) {
+                return $job;
+            }
+        }
+        return null;
+    }
+
+    private static function compare_key($url) {
+        $parts = parse_url((string) $url);
+        if (!is_array($parts)) {
+            return '';
+        }
+        $path = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
+        $args = array();
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $args);
+            foreach (array_keys($args) as $key) {
+                if (0 === strpos($key, 'sspa_')) {
+                    unset($args[$key]);
+                }
+            }
+            ksort($args);
+        }
+        return strtolower($path) . '?' . http_build_query($args);
     }
 
     private static function guard() {

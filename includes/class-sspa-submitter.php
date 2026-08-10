@@ -55,10 +55,79 @@ class SSPA_Submitter {
 
     public static function preview($outbox_id = 0) {
         $row = $outbox_id ? SSPA_Community_Outbox::get((int) $outbox_id) : SSPA_Community_Outbox::latest();
-        if (!$row && self::opted_in()) {
-            $row = SSPA_Community_Outbox::queue_latest();
+        if (!$row) {
+            // Nothing queued: show what WOULD be sent for the latest shareable run, without
+            // queueing it. "Turn it on and then look at what you agreed to" is the wrong order
+            // for a consent decision.
+            return self::dry_run_preview();
         }
-        return is_wp_error($row) ? $row : SSPA_Community_Outbox::preview($row);
+        return SSPA_Community_Outbox::preview($row);
+    }
+
+    /**
+     * Build the payload for the newest shareable run purely to show it. Nothing is stored,
+     * nothing is queued and nothing is sent.
+     */
+    public static function dry_run_preview() {
+        global $wpdb;
+        $run_id = (int) $wpdb->get_var(
+            'SELECT id FROM ' . SSPA_Schema::table('runs') . "
+             WHERE status = 'done' OR (run_type = 'checkout' AND status = 'failed')
+             ORDER BY id DESC LIMIT 1"
+        );
+        if (!$run_id) {
+            return new WP_Error('sspa_no_run', __('Run an analysis first - there is nothing to preview yet.', 'super-speedy-performance-analysis'));
+        }
+        $payload = SSPA_Community_Exporter::build($run_id);
+        if (is_wp_error($payload)) {
+            return $payload;
+        }
+        $json = SSPA_Community_Schema::encode($payload);
+        return is_wp_error($json) ? $json : $json;
+    }
+
+    /**
+     * A plain-English account of one payload, for people who do not read JSON - which is most
+     * people, and exactly the people a privacy promise has to convince.
+     */
+    public static function describe_payload($json) {
+        $payload = json_decode((string) $json, true);
+        if (!is_array($payload)) {
+            return array();
+        }
+        $counts = array();
+        foreach ((array) (isset($payload['evidence']) ? $payload['evidence'] : array()) as $item) {
+            $type = isset($item['type']) ? $item['type'] : 'unknown';
+            $counts[$type] = isset($counts[$type]) ? $counts[$type] + 1 : 1;
+        }
+        $labels = array(
+            'sspa/site-snapshot' => __('site summary (WordPress, PHP and database versions, bucketed size)', 'super-speedy-performance-analysis'),
+            'sspa/page-profile' => __('page timings', 'super-speedy-performance-analysis'),
+            'sspa/component-observation' => __('per-plugin measurements', 'super-speedy-performance-analysis'),
+            'sspa/excimer-profile' => __('function-level samples', 'super-speedy-performance-analysis'),
+            'sspa/finding' => __('findings', 'super-speedy-performance-analysis'),
+            'sspa/plugin-impact' => __('plugin impact measurements', 'super-speedy-performance-analysis'),
+            'sspa/cache-impact' => __('object cache measurements', 'super-speedy-performance-analysis'),
+            'sspa/checkout-flow' => __('checkout step timings', 'super-speedy-performance-analysis'),
+            'sspa/plugin-toggle-spot' => __('plugin activation spot checks', 'super-speedy-performance-analysis'),
+            'sspa/adhoc-page-profile' => __('single page timings', 'super-speedy-performance-analysis'),
+        );
+        $includes = array();
+        foreach ($counts as $type => $n) {
+            $includes[] = sprintf('%d %s', $n, isset($labels[$type]) ? $labels[$type] : $type);
+        }
+        return array(
+            'run_type' => isset($payload['run']['run_type']) ? $payload['run']['run_type'] : '',
+            'components' => count((array) (isset($payload['component_inventory']) ? $payload['component_inventory'] : array())),
+            'includes' => $includes,
+            'excludes' => array(
+                __('your domain name and every URL', 'super-speedy-performance-analysis'),
+                __('filesystem paths', 'super-speedy-performance-analysis'),
+                __('raw SQL - queries are reduced to a shape with all values removed', 'super-speedy-performance-analysis'),
+                __('any customer, order, user or email data', 'super-speedy-performance-analysis'),
+                __('option and setting values', 'super-speedy-performance-analysis'),
+            ),
+        );
     }
 
     public static function history() {

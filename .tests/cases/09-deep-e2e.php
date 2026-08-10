@@ -129,6 +129,23 @@ sspa_t(
     'plugins table renders one header row'
 );
 
+// The measured-impact cell must report worst and typical, never a sum. Adding per-page deltas
+// together produced a number nobody experiences and that grew simply by measuring more pages.
+// Asserted here, not in the scoped case, because this fixture's impact is guaranteed measurable
+// (asserted above) - a guard on 'is it measured' would silently skip these.
+$sspa_bad_row = '';
+foreach (explode('<tr>', $sspa_table) as $sspa_r) {
+    if (false !== strpos($sspa_r, '<code>sspa-bad-plugin</code>')) {
+        $sspa_bad_row = $sspa_r;
+    }
+}
+sspa_t('' !== $sspa_bad_row, 'the measured plugin has a row in the table');
+sspa_t(false !== strpos($sspa_bad_row, 'sspa-badge-measured'), 'its verdict is a measured one');
+sspa_t(false !== strpos($sspa_bad_row, 'typically'), 'the verdict reports a typical figure');
+sspa_t(false !== strpos($sspa_bad_row, 'up to '), 'the verdict reports the worst page');
+sspa_t(false !== strpos($sspa_bad_row, 'measurable on '), 'the verdict reports its coverage');
+sspa_t(false === strpos($sspa_bad_row, 'across '), 'the summed-across-pages wording is gone');
+
 // The attribution switch is a table swap, so both modes render from this one method. Caller
 // mode is recomputed from the capture blobs rather than read from component_stats, so the
 // thing worth asserting is that the recompute produced rows at all - the two modes agree on

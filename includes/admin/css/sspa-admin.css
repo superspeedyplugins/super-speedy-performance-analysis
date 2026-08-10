@@ -397,3 +397,21 @@
 }
 #sspa_main .sspa-env td:first-child { width: 220px; font-weight: 600; }
 #sspa_main .sspa-tools td { vertical-align: top; }
+
+/* Plain-English account of a payload, above the raw JSON. */
+#sspa_main .sspa-payload-summary {
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin: 8px 0;
+	max-width: 900px;
+}
+
+#sspa_main .sspa-payload-summary p {
+	margin: 0 0 8px;
+}
+
+#sspa_main .sspa-payload-summary p:last-child {
+	margin-bottom: 0;
+}
