@@ -179,103 +179,15 @@ jQuery(document).on('click', '#sspa_main .sspa-goto-tab', function (e) {
 });
 
 // ---- Pages drill-down ----
+// Opens THE profile panel - the same one the admin bar's "Analyse this page" opens, rendered
+// by the same PHP partial. This used to build its own markup here with html += concatenation,
+// which is precisely how the two views ended up showing different subsets of one capture.
 
 jQuery(document).on('click', '.sspa-page-row', function () {
-	var row = jQuery(this);
-	var existing = row.next('.sspa-detail-row');
-	if (existing.length) {
-		existing.toggle();
+	if (!window.sspaPanel) {
 		return;
 	}
-	var profileId = row.data('profile-id');
-	var cols = row.children('td').length;
-	var detail = jQuery('<tr class="sspa-detail-row"><td colspan="' + cols + '">Loading&hellip;</td></tr>');
-	row.after(detail);
-	jQuery.post(ajaxurl, { action: 'sspa_page_detail', nonce: sspa_admin.nonce, profile_id: profileId }, function (resp) {
-		if (!resp.success) {
-			detail.children('td').text(resp.data || 'No detail available.');
-			return;
-		}
-		var d = resp.data;
-		var html = '<div class="sspa-detail"><h4>By component</h4><table class="widefat"><thead><tr><th>Component</th><th>Queries</th><th>SQL ms</th><th>Rows</th><th>Slowest ms</th><th>HTTP ms</th></tr></thead><tbody>';
-		d.components.forEach(function (c) {
-			html += '<tr><td><code>' + sspa_esc(c.component) + '</code></td><td>' + c.query_count + '</td><td>' + c.sql_ms.toFixed(1) + '</td><td>' + c.rows + '</td><td>' + c.slowest_ms.toFixed(1) + '</td><td>' + c.http_ms.toFixed(1) + '</td></tr>';
-		});
-		html += '</tbody></table><h4>Slowest queries</h4><table class="widefat"><thead><tr><th>ms</th><th>Rows</th><th>Component</th><th>Query</th><th>Caller</th></tr></thead><tbody>';
-		d.queries.forEach(function (q) {
-			html += '<tr><td>' + q.ms.toFixed(1) + '</td><td>' + (q.rows === null ? '-' : q.rows) + '</td><td><code>' + sspa_esc(q.component) + '</code></td><td class="sspa-sql"><code>' + sspa_esc(q.sql) + '</code></td><td>' + sspa_esc(q.caller) + '</td></tr>';
-		});
-		html += '</tbody></table>';
-		if (d.http.length) {
-			html += '<h4>HTTP calls</h4><table class="widefat"><thead><tr><th>ms</th><th>URL</th><th>Code</th><th>Component</th></tr></thead><tbody>';
-			d.http.forEach(function (h) {
-				html += '<tr><td>' + (h.ms === null ? '-' : h.ms) + '</td><td>' + sspa_esc(h.url) + '</td><td>' + sspa_esc(String(h.code)) + '</td><td><code>' + sspa_esc(h.component) + '</code></td></tr>';
-			});
-			html += '</tbody></table>';
-		}
-		if (d.boot) {
-			// The PHP floor decomposed: request phases, then per-plugin PHP cost
-			// (file include + timed hook callbacks), then the slowest single callbacks.
-			html += '<h4>Where the PHP time went</h4>';
-			var segNames = {
-				core_before_plugins: 'WordPress core (before plugins)',
-				plugin_includes: 'Plugin file loading',
-				plugins_loaded_callbacks: 'plugins_loaded callbacks (plugin boot)',
-				theme_load_and_setup: 'Theme load + setup',
-				init_callbacks: 'init callbacks',
-				post_init_boot: 'Post-init boot (widgets, REST)',
-				routing_and_query: 'Routing + main query',
-				render_and_output: 'Template render + output'
-			};
-			html += '<table class="widefat"><thead><tr><th>Request phase</th><th>ms</th></tr></thead><tbody>';
-			Object.keys(d.boot.segments || {}).forEach(function (k) {
-				html += '<tr><td>' + sspa_esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + '</td></tr>';
-			});
-			html += '</tbody></table>';
-			var comps = d.boot.components || {};
-			var compKeys = Object.keys(comps).filter(function (k) { return comps[k] >= 1; }).slice(0, 25);
-			if (compKeys.length) {
-				html += '<h4>PHP cost per plugin (load + hook callbacks)</h4><table class="widefat"><thead><tr><th>Plugin</th><th>Load ms</th><th>Hook ms</th><th>Total ms</th></tr></thead><tbody>';
-				compKeys.forEach(function (k) {
-					var inc = (d.boot.includes && d.boot.includes[k]) ? d.boot.includes[k] : 0;
-					html += '<tr><td><code>' + sspa_esc(k) + '</code></td><td>' + inc.toFixed(1) + '</td><td>' + (comps[k] - inc).toFixed(1) + '</td><td>' + comps[k].toFixed(1) + '</td></tr>';
-				});
-				html += '</tbody></table>';
-			}
-			if (d.boot.top_callbacks && d.boot.top_callbacks.length) {
-				html += '<h4>Slowest hook callbacks</h4><table class="widefat"><thead><tr><th>ms</th><th>Hook</th><th>Callback</th><th>Component</th></tr></thead><tbody>';
-				d.boot.top_callbacks.forEach(function (c) {
-					html += '<tr><td>' + c.ms.toFixed(1) + '</td><td><code>' + sspa_esc(c.hook) + '</code></td><td>' + sspa_esc(c.label) + '</td><td><code>' + sspa_esc(c.component) + '</code></td></tr>';
-				});
-				html += '</tbody></table>';
-			}
-			if (d.profile && d.profile.functions && d.profile.functions.length) {
-				html += '<h4>By function (Excimer sampling - ' + d.profile.samples + ' samples at ' + d.profile.period_ms + 'ms)</h4><table class="widefat"><thead><tr><th>Incl ms</th><th>Self ms</th><th>Function</th><th>Component</th></tr></thead><tbody>';
-				d.profile.functions.forEach(function (f) {
-					var by = '';
-					var byKeys = f.by ? Object.keys(f.by) : [];
-					if (byKeys.length > 1 || (byKeys.length === 1 && byKeys[0] !== f.component)) {
-						by = '<br><small>driven by: ' + byKeys.map(function (c) { return sspa_esc(c) + ' ' + f.by[c].toFixed(0) + 'ms'; }).join(' · ') + '</small>';
-					}
-					html += '<tr><td>' + f.incl_ms.toFixed(0) + '</td><td>' + f.self_ms.toFixed(0) + '</td><td><code>' + sspa_esc(f.fn) + '</code>' + (f.file ? ' <small>' + sspa_esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + by + '</td><td><code>' + sspa_esc(f.component) + '</code></td></tr>';
-				});
-				html += '</tbody></table>';
-			}
-			var rb = d.boot.render;
-			if (rb && (rb.timed_ms > 0 || (rb.untimed_ms !== null && rb.untimed_ms > 0))) {
-				html += '<h4>Render breakdown (wp_head/wp_footer/content filters, shortcodes, widgets)</h4><table class="widefat"><thead><tr><th>ms</th><th>Unit</th><th>Kind</th><th>Component</th></tr></thead><tbody>';
-				(rb.top || []).forEach(function (t) {
-					html += '<tr><td>' + t.ms.toFixed(1) + '</td><td>' + sspa_esc(t.label) + '</td><td><code>' + sspa_esc(t.hook) + '</code></td><td><code>' + sspa_esc(t.component) + '</code></td></tr>';
-				});
-				if (rb.untimed_ms !== null && rb.untimed_ms > 0) {
-					html += '<tr><td>' + rb.untimed_ms.toFixed(1) + '</td><td>Theme templates + direct output (untimed remainder)</td><td>-</td><td><code>theme</code></td></tr>';
-				}
-				html += '</tbody></table>';
-			}
-		}
-		html += '</div>';
-		detail.children('td').html(html);
-	});
+	window.sspaPanel.openProfile(jQuery(this).data('profile-id'));
 });
 
 function sspa_esc(str) {

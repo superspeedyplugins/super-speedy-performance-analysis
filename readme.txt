@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.12.0
+Stable tag: 0.14.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,16 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.14.0 (10th August 2026) =
+* Fixed a plugin that switches itself off when a dependency is missing staying off after a Plugin Impact Analysis measured it: a measurement can no longer change which plugins your site runs.
+* "Analyse this page" and clicking a page on the Pages tab now open the same panel, carrying everything either of them used to show on its own.
+* That panel now also shows per-plugin attribution in both modes, the outbound HTTP calls, what `EXPLAIN` says about each slow query, the object cache hit rate for the page, and what has been measured by disabling plugins on it.
+* New "Measure plugin impact on this page" on the panel: tick the plugins, read "7 plugins x 1 page = 9 measurements, about 20 seconds" before anything starts, and the verdicts appear in the same panel when it finishes.
+* Plugin Impact Analysis can now be pointed at any URL on your site, including a page no analysis has ever profiled, because it measures that page's own baseline as it goes.
+* The Pages tab now lists the newest measurement of each page, whether it came from a full analysis or from analysing that page on its own, with the date it was taken; the site score still comes only from full analyses.
+* Removed the "Open in Performance Analysis" link from the page panel, which is now the full view.
+* New `--url` and `--no-cache-modes` options on `wp sspa run --type=deep`, and `url`, `pages` and `cache_modes` on the `run-deep-analysis` ability.
 
 = 0.13.1 (10th August 2026) =
 * Deep Analysis is now called Plugin Impact Analysis, matching the Measured impact column it fills.

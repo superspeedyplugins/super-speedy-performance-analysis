@@ -119,6 +119,18 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   without enabling the site-wide setting, and only that manual row is then due for delivery
   while the automatically queued ones stay put. Takes several minutes - it runs a baseline, a
   deep sweep and a full checkout purchase.
+- `28-profile-panel.php` - the one profile panel: every section it must carry, both attribution
+  modes in the markup, a URL and a profile id rendering byte-identical HTML, a pruned profile
+  degrading rather than fatalling, catalogue-matched ad-hoc results merging into the Pages tab
+  while one-off URLs stay out and the site score stays on baseline/spot. Then plugin impact
+  scoped to one page: a sweep pointed at a URL no analysis ever profiled, the measurement count
+  it queues matching the estimate the panel promised (1 plugin = 2, 2 plugins = 3), and
+  `cache_modes => false` keeping phase 2 out of the cache modes.
+- `29-isolation-writes.php` - a measurement must never change which plugins the site runs.
+  Two fixtures: a dependency, and a dependant that calls `deactivate_plugins()` on itself when
+  the dependency is missing. Sweeping the dependency must leave BOTH active. Without the
+  mu-loader's `pre_update_option_active_plugins` guard this case fails with the plugin list
+  shrunk by two, which is what happened to a real site's Rank Math install on 10th August 2026.
 
 Case 23 parks any pre-existing pending/retry outbox rows for its duration, because `due()`
 returns the oldest eligible row and a leftover would otherwise answer its assertions.

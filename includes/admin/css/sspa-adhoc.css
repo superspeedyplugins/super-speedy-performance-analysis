@@ -634,3 +634,146 @@
 #sspa-adhoc-pop .sspa-ck-table td.sspa-ck-wide:last-child {
 	padding-left: 14px;
 }
+
+/* ── Numeric column sets ────────────────────────────────────────────── */
+/* .sspa-adhoc-table already right-aligns its last column. Tables carrying two, three or
+   four measured columns need the same treatment applied further left, or the numbers
+   drift and stop being comparable down the column. */
+
+#sspa-adhoc-pop .sspa-adhoc-num2 td:nth-last-child(2),
+#sspa-adhoc-pop .sspa-adhoc-num3 td:nth-last-child(2),
+#sspa-adhoc-pop .sspa-adhoc-num3 td:nth-last-child(3),
+#sspa-adhoc-pop .sspa-adhoc-num4 td:nth-last-child(2),
+#sspa-adhoc-pop .sspa-adhoc-num4 td:nth-last-child(3),
+#sspa-adhoc-pop .sspa-adhoc-num4 td:nth-last-child(4) {
+	width: 76px;
+	text-align: right;
+	white-space: nowrap;
+	font-family: var(--sspa-font-mono);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Impact cells carry a verdict and a sub-line, so they need room to breathe. */
+#sspa-adhoc-pop .sspa-adhoc-num2 td:nth-last-child(2),
+#sspa-adhoc-pop .sspa-adhoc-num3 td:nth-last-child(2),
+#sspa-adhoc-pop .sspa-adhoc-num3 td:nth-last-child(3) {
+	white-space: normal;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-hrow td {
+	color: var(--sspa-muted);
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	border-bottom: 1px solid var(--sspa-outline);
+}
+
+/* ── EXPLAIN notes under a query ────────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-explain {
+	color: #8a6116;
+}
+
+/* ── Measured impact verdicts ───────────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-adds {
+	color: #a4262c;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-saves {
+	color: #0a6b3d;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-noise {
+	color: var(--sspa-faint);
+}
+
+/* ── Attribution mode switch ────────────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-modes {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 0 0 8px;
+}
+
+/* ── The plugin-impact plan: pick, estimate, then commit ────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-planbox {
+	background: var(--sspa-surface);
+	border: 1px solid var(--sspa-outline);
+	border-radius: 8px;
+	padding: 10px 14px;
+	margin-top: 8px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-planbox h4 {
+	margin-top: 4px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-planactions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-planlist {
+	list-style: none;
+	margin: 8px 0;
+	padding: 0;
+	max-height: 220px;
+	overflow-y: auto;
+	columns: 2;
+	column-gap: 24px;
+}
+
+@media screen and (max-width: 760px) {
+	#sspa-adhoc-pop .sspa-adhoc-planlist {
+		columns: 1;
+	}
+}
+
+#sspa-adhoc-pop .sspa-adhoc-planlist li {
+	break-inside: avoid;
+	margin-bottom: 3px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-planlist small {
+	color: var(--sspa-faint);
+}
+
+/* The estimate is the point of the whole box: say the number before it is spent. */
+#sspa-adhoc-pop .sspa-adhoc-estimate {
+	font-weight: 600;
+	margin: 10px 0;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-btn[disabled]:hover {
+	background: #fff;
+	color: var(--sspa-primary);
+	border-color: var(--sspa-primary);
+}
+
+#sspa-adhoc-pop .sspa-adhoc-btn-primary[disabled]:hover {
+	background: var(--sspa-primary);
+	color: #fff;
+}
+
+/* Impact cells carry a verdict plus a sub-line ("adds 201ms / SQL +39ms · +77 queries"), so
+   the base 76px nowrap numeric column clips them. One column per cache mode, wide enough for
+   the sentence and allowed to wrap. */
+#sspa-adhoc-pop .sspa-adhoc-impact-table td:not(:first-child) {
+	width: 170px;
+	text-align: right;
+	white-space: normal;
+	font-family: var(--sspa-font-mono);
+	font-size: 12px;
+}

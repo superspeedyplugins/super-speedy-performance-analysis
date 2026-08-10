@@ -1,6 +1,29 @@
 # One page view everywhere, and plugin impact per page
 
-Status: **design, nothing built**, 2026-08-10. Written from Dave's brief.
+Status: **sections 1, 2, 3, 5 and 6.1 built in 0.14.0** (section 5 landed in 0.13.1), 2026-08-10.
+Section 4 (flows) deliberately deferred and needs its own doc. Written from Dave's brief.
+
+What was built, and the decisions taken where the doc left a choice open:
+
+- One renderer, `SSPA_Profile_Panel::render($profile_id)`, a PHP partial. `SSPA_Adhoc::ajax_result()`
+  is now only a URL -> newest-profile resolver; the Pages tab calls `sspa_profile_panel` with an id.
+  The `html +=` builder in `sspa-admin.js` and the `sspa_page_detail` endpoint are gone.
+- Presentation is the branded popover in BOTH places: the Pages tab row click opens the floating
+  panel rather than an inline table row.
+- Page-scoped impact defaults to the plugins that page's own attribution blames, each tickable,
+  with "select every eligible plugin" for the full set; the estimate quotes measurements and a
+  duration derived from this site's own last five runs, and the cache modes are an opt-in
+  tick-box quoting their own ceiling.
+- Sweeps accept a `url`, so the button works on a page no analysis has ever profiled - the sweep
+  takes its own baselines. `wp sspa run --type=deep --url=` and the ability expose the same.
+- Open question 1: per-page views merge on newest-per-page for catalogue-matched keys only
+  (`url-<hash>` one-offs stay out); score and component totals stay baseline/spot.
+- Open question 2: both attribution modes, rendered up front and swapped client-side.
+
+Found while testing this on a real site, and fixed in the same release: a plugin measured without
+its dependency can call `deactivate_plugins()` on ITSELF, and that write persisted - the sweep
+left two plugins genuinely inactive. The mu-loader now blocks any write to the plugin lists while
+isolation is armed. See `.changelog-full.md` 0.14.0 and `.tests/cases/29-isolation-writes.php`.
 
 Two related complaints:
 

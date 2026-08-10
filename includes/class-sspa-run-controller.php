@@ -20,7 +20,6 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_process_batch', array(__CLASS__, 'ajax_process_batch'));
         add_action('wp_ajax_sspa_run_status', array(__CLASS__, 'ajax_run_status'));
         add_action('wp_ajax_sspa_cancel_run', array(__CLASS__, 'ajax_cancel_run'));
-        add_action('wp_ajax_sspa_page_detail', array(__CLASS__, 'ajax_page_detail'));
         add_action('wp_ajax_sspa_plugin_detail', array(__CLASS__, 'ajax_plugin_detail'));
         add_action('wp_ajax_sspa_attribution', array(__CLASS__, 'ajax_attribution'));
         add_action('wp_ajax_sspa_render_tab', array(__CLASS__, 'ajax_render_tab'));
@@ -196,7 +195,9 @@ class SSPA_Run_Controller {
      * Pages are swept page-major with a fresh baseline at each block start and every
      * SWEEP_REBASELINE_EVERY plugin cells so server drift cannot masquerade as cost.
      *
-     * @param array $args {suspects?: [slugs] to restrict the sweep}
+     * @param array $args {suspects?: [slugs] to restrict the sweep, page_keys?: [keys],
+     *                     url?: one URL to scope the whole sweep to,
+     *                     cache_modes?: bool - whether phase 2 may add the cache modes}
      * @param array $sweep Set by reference; stored in the queue for the phase-2
      *                     extension, finish and cleanup.
      * @return array|WP_Error ordered phase-1 job list
@@ -204,10 +205,16 @@ class SSPA_Run_Controller {
     private static function build_sweep_jobs($args, &$sweep) {
         global $wpdb;
 
+        // One URL, measured where you are looking at it. The source run is only needed to
+        // choose pages and rank suspects - the deltas come from baselines this run takes for
+        // itself at each page block - so a page the last full analysis never profiled (a
+        // particular product, an order screen) is measurable without one.
+        $scoped_url = !empty($args['url']) ? (string) $args['url'] : '';
+
         $source_run_id = (int) $wpdb->get_var(
             'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
         );
-        if (!$source_run_id) {
+        if (!$source_run_id && !$scoped_url) {
             return new WP_Error('sspa_no_baseline', __('Run a normal analysis first - plugin impact analysis sweeps the pages it profiled.', 'super-speedy-performance-analysis'));
         }
 
@@ -224,42 +231,52 @@ class SSPA_Run_Controller {
             return new WP_Error('sspa_nothing_to_test', __('No plugins are eligible for isolation testing.', 'super-speedy-performance-analysis'));
         }
 
-        // Pages: everything real the source run successfully profiled, re-resolved to
-        // crawlable jobs now. Write/mail probes cannot be re-crawled and are skipped.
-        $page_keys = $wpdb->get_col($wpdb->prepare(
-            'SELECT DISTINCT page_key FROM ' . SSPA_Schema::table('profiles') . "
-             WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
-             AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'",
-            $source_run_id
-        ));
-        // A sweep can be narrowed to specific pages. Without this a targeted run still covers
-        // every page the source run profiled, which is the difference between re-measuring one
-        // fixed plugin on one page in a couple of minutes and re-running for hours.
-        if (!empty($args['page_keys'])) {
-            $requested = array_values(array_intersect($page_keys, (array) $args['page_keys']));
-            if (!$requested) {
-                return new WP_Error(
-                    'sspa_pages_not_profiled',
-                    __('None of those pages were profiled by the last analysis, so there is no baseline to compare against.', 'super-speedy-performance-analysis')
-                );
-            }
-            $page_keys = $requested;
-        }
-        $page_jobs_list = $page_keys ? SSPA_Catalogue::build($page_keys) : array();
-        if (!$page_jobs_list) {
-            return new WP_Error('sspa_no_jobs', __('No profiled pages from the last analysis could be resolved - run a fresh analysis first.', 'super-speedy-performance-analysis'));
-        }
         $page_jobs = array();
-        foreach ($page_jobs_list as $job) {
-            $page_jobs[$job['page_key']] = $job;
+        if ($scoped_url) {
+            $scoped_job = SSPA_Adhoc::job_for($scoped_url);
+            if (is_wp_error($scoped_job)) {
+                return $scoped_job;
+            }
+            $page_jobs[$scoped_job['page_key']] = $scoped_job;
+        } else {
+            // Pages: everything real the source run successfully profiled, re-resolved to
+            // crawlable jobs now. Write/mail probes cannot be re-crawled and are skipped.
+            $page_keys = $wpdb->get_col($wpdb->prepare(
+                'SELECT DISTINCT page_key FROM ' . SSPA_Schema::table('profiles') . "
+                 WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
+                 AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'",
+                $source_run_id
+            ));
+            // A sweep can be narrowed to specific pages. Without this a targeted run still
+            // covers every page the source run profiled, which is the difference between
+            // re-measuring one fixed plugin on one page in a couple of minutes and re-running
+            // for hours.
+            if (!empty($args['page_keys'])) {
+                $requested = array_values(array_intersect($page_keys, (array) $args['page_keys']));
+                if (!$requested) {
+                    return new WP_Error(
+                        'sspa_pages_not_profiled',
+                        __('None of those pages were profiled by the last analysis, so there is no baseline to compare against.', 'super-speedy-performance-analysis')
+                    );
+                }
+                $page_keys = $requested;
+            }
+            $page_jobs_list = $page_keys ? SSPA_Catalogue::build($page_keys) : array();
+            if (!$page_jobs_list) {
+                return new WP_Error('sspa_no_jobs', __('No profiled pages from the last analysis could be resolved - run a fresh analysis first.', 'super-speedy-performance-analysis'));
+            }
+            foreach ($page_jobs_list as $job) {
+                $page_jobs[$job['page_key']] = $job;
+            }
         }
 
         // Cache modes need the per-request object-cache toggle, i.e. OUR db.php shim.
         $has_oc = wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php');
         $oc_capable = $has_oc && 'ours' === SSPA_Helper_Files::dropin_status();
 
-        // Slowest resolvable page: the screening page every plugin gets tested on.
-        $slowest = $wpdb->get_var($wpdb->prepare(
+        // Slowest resolvable page: the screening page every plugin gets tested on. A sweep
+        // scoped to one URL has no source run to rank pages by, and only one page to pick.
+        $slowest = !$source_run_id ? null : $wpdb->get_var($wpdb->prepare(
             'SELECT page_key FROM ' . SSPA_Schema::table('profiles') . "
              WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
              AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'
@@ -306,8 +323,10 @@ class SSPA_Run_Controller {
         }
 
         // Screening pages per plugin. A targeted run (Measure button / --suspects) skips
-        // the screen and covers every page for its suspects directly.
-        $targeted = !empty($args['suspects']);
+        // the screen and covers every page for its suspects directly. A run scoped to one URL
+        // is targeted by construction: there is one page, so screening it at two samples and
+        // then confirming the same cell would only add measurements.
+        $targeted = !empty($args['suspects']) || (bool) $scoped_url;
         $anon_pages = array_keys(array_filter($page_jobs, function ($j) {
             return 'anon' === $j['variant'];
         }));
@@ -362,6 +381,12 @@ class SSPA_Run_Controller {
             'source_run_id' => $source_run_id,
             'hashes' => $hashes,
             'oc_capable' => $oc_capable,
+            // Whether phase 2 may spend three measurements per cell on the cache modes.
+            // Site sweeps always have; a page-scoped sweep asks first, because there the
+            // difference between 24 and 72 measurements is the difference between waiting
+            // and walking away.
+            'cache_modes' => !isset($args['cache_modes']) || !empty($args['cache_modes']),
+            'scoped_url' => $scoped_url ? $scoped_url : null,
             'phase' => 1,
             'targeted' => $targeted,
             'plugins' => count($hashes),
@@ -468,6 +493,7 @@ class SSPA_Run_Controller {
         }
 
         $slug_to_hash = array_flip($sweep['hashes']);
+        $cache_modes = !isset($sweep['cache_modes']) || !empty($sweep['cache_modes']);
         $plan = array();
         foreach ($impacted as $slug) {
             $screened = isset($sweep['phase1_pages'][$slug]) ? (array) $sweep['phase1_pages'][$slug] : array();
@@ -477,10 +503,10 @@ class SSPA_Run_Controller {
                 }
                 if (!in_array($page_key, $screened, true)) {
                     $modes = array('normal');
-                } elseif (!empty($sweep['oc_capable'])) {
+                } elseif (!empty($sweep['oc_capable']) && $cache_modes) {
                     $modes = array('disabled', 'prime');
                 } else {
-                    continue; // already screened, no cache modes available
+                    continue; // already screened, and no cache modes wanted or available
                 }
                 $plan[$page_key][] = array(
                     'slug' => $slug,
@@ -1004,7 +1030,9 @@ class SSPA_Run_Controller {
                 'delta_queries' => (int) $d['delta_queries'],
                 'noise_floor_ms' => round($d['gate'], 1),
                 'confidence' => !empty($d['measured']) ? 'measured' : 'none',
-                'baseline_run_id' => isset($sweep['source_run_id']) ? (int) $sweep['source_run_id'] : null,
+                // A sweep scoped to one URL takes its own baselines, so it has no source run
+                // to point at - null rather than a nonexistent run 0.
+                'baseline_run_id' => !empty($sweep['source_run_id']) ? (int) $sweep['source_run_id'] : null,
                 'test_run_id' => $run_id,
                 'created' => $now,
             ));
@@ -1027,7 +1055,9 @@ class SSPA_Run_Controller {
                 'plugins' => isset($sweep['plugins']) ? (int) $sweep['plugins'] : null,
                 'pages' => isset($sweep['pages']) ? (int) $sweep['pages'] : null,
                 'phase2_plugins' => isset($sweep['phase2_plugins']) ? (int) $sweep['phase2_plugins'] : 0,
-                'modes' => !empty($sweep['oc_capable']) ? array('normal', 'disabled', 'prime') : array('normal'),
+                'modes' => (!empty($sweep['oc_capable']) && (!isset($sweep['cache_modes']) || !empty($sweep['cache_modes'])))
+                    ? array('normal', 'disabled', 'prime')
+                    : array('normal'),
                 'fatal_cells' => array_values($fatal_cells),
             )),
         ), array('id' => $run_id));
@@ -1521,6 +1551,17 @@ class SSPA_Run_Controller {
         if ('deep' === $type && !empty($_POST['suspects'])) {
             $args['suspects'] = array_map('sanitize_key', (array) $_POST['suspects']);
         }
+        if ('deep' === $type) {
+            // Page-scoped impact, started from the profile panel: one URL, and an explicit
+            // answer on whether the cache modes are wanted. Absent, both keep their
+            // site-sweep behaviour - every page, cache modes included.
+            if (!empty($_POST['url'])) {
+                $args['url'] = esc_url_raw(wp_unslash($_POST['url']));
+            }
+            if (isset($_POST['cache_modes'])) {
+                $args['cache_modes'] = !empty($_POST['cache_modes']);
+            }
+        }
         if (isset($_POST['page_keys'])) {
             $args['page_keys'] = array_map('sanitize_text_field', (array) $_POST['page_keys']);
             if ('baseline' === $args['type']) {
@@ -1618,54 +1659,6 @@ class SSPA_Run_Controller {
             self::cancel($run_id);
         }
         wp_send_json_success();
-    }
-
-    public static function ajax_page_detail() {
-        global $wpdb;
-        self::ajax_guard();
-        $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
-        $blob = $wpdb->get_var($wpdb->prepare(
-            'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . ' WHERE id = %d',
-            $profile_id
-        ));
-        $capture = $blob ? json_decode((string) @gzuncompress($blob), true) : null;
-        if (!is_array($capture)) {
-            wp_send_json_error(__('No detailed data stored for this page (pruned or capture failed).', 'super-speedy-performance-analysis'));
-        }
-
-        $components = array();
-        foreach ((array) $capture['components'] as $name => $stats) {
-            $components[] = array('component' => $name) + $stats;
-        }
-        usort($components, function ($a, $b) {
-            return $b['sql_ms'] <=> $a['sql_ms'];
-        });
-
-        $queries = (array) $capture['sql']['queries'];
-        usort($queries, function ($a, $b) {
-            return $b['ms'] <=> $a['ms'];
-        });
-        $queries = array_map(function ($q) {
-            return array(
-                'sql' => $q['sql'] !== null ? $q['sql'] : $q['fp'],
-                'ms' => $q['ms'],
-                'rows' => $q['rows'],
-                'component' => $q['component'],
-                'caller' => $q['caller'],
-            );
-        }, array_slice($queries, 0, 10));
-
-        wp_send_json_success(array(
-            'components' => $components,
-            'queries' => $queries,
-            'http' => isset($capture['http']['calls']) ? array_map(function ($c) {
-                unset($c['frames']);
-                return $c;
-            }, $capture['http']['calls']) : array(),
-            'dupes' => isset($capture['sql']['dupe_details']) ? $capture['sql']['dupe_details'] : array(),
-            'boot' => isset($capture['boot']) ? $capture['boot'] : null,
-            'profile' => isset($capture['profile']) ? $capture['profile'] : null,
-        ));
     }
 
     /**

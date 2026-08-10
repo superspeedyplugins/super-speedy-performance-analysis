@@ -92,6 +92,19 @@ class SSPA_Attribution {
         return $rows;
     }
 
+    /**
+     * Caller-mode aggregates for ONE already-decoded capture.
+     *
+     * The profile panel shows both modes for a single page and has the capture in hand, so it
+     * must not go back to the database for the second table. Same computation as
+     * component_rows() performs per profile, exposed for that one caller.
+     *
+     * @return array component => {type, query_count, sql_ms, rows, slowest_ms, http_ms, ran_in}
+     */
+    public static function caller_aggregate($capture) {
+        return is_array($capture) ? self::aggregate_caller($capture) : array();
+    }
+
     private static function unpack($blob) {
         if (empty($blob)) {
             return null;

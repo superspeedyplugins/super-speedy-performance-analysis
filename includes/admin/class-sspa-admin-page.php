@@ -17,6 +17,13 @@ class SSPA_Admin_Page {
             if ('super-speedy-performance-analysis' === $slug) {
                 return;
             }
+            // A measurement request is not somebody toggling a plugin. A plugin measured with
+            // its dependency excluded can call deactivate_plugins() on itself, which fires
+            // this hook; the mu-loader stops that write persisting, and this stops it
+            // offering a spot-check for a deactivation that never happened.
+            if (defined('SSPA_PROFILED_REQUEST') && SSPA_PROFILED_REQUEST) {
+                return;
+            }
             set_transient('sspa_plugin_toggled', array('slug' => $slug, 'action' => $action), 10 * MINUTE_IN_SECONDS);
         };
         add_action('activated_plugin', function ($plugin) use ($note) {

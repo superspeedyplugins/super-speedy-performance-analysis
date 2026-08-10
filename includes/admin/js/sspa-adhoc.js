@@ -1,6 +1,12 @@
-// Admin-bar "Analyse this page" popover. Drives the run with sequential batch calls
-// (same pattern as the settings page's floating monitor) and renders the stored result;
-// re-clicking the admin-bar button re-opens the popover with the same result.
+// The profile panel: the popover shell, the run drivers, and the interactions on the markup
+// the server sends.
+//
+// It renders NOTHING of the result itself any more. The panel body is one PHP partial
+// (SSPA_Profile_Panel) shared with the Pages tab - two renderers over one dataset is exactly
+// how the two views drifted into showing different subsets of the same capture.
+//
+// Opened from the admin bar for the current URL, or from anywhere via
+// window.sspaPanel.openProfile(id) - which is what a Pages tab row click calls.
 (function ($) {
 	'use strict';
 
@@ -8,30 +14,6 @@
 
 	function esc(str) {
 		return $('<span>').text(str == null ? '' : String(str)).html();
-	}
-
-	// Attribute context needs quotes escaped too - SQL can legitimately contain them.
-	function escAttr(str) {
-		return esc(str).replace(/"/g, '&quot;');
-	}
-
-	// "5m ago" from a server-computed age, so nobody reconciles server vs local clocks.
-	function agoText(seconds) {
-		if (seconds == null || isNaN(seconds)) {
-			return '';
-		}
-		if (seconds < 45) {
-			return sspa_adhoc.i18n.just_now;
-		}
-		var v;
-		if (seconds < 3600) {
-			v = Math.round(seconds / 60) + 'm';
-		} else if (seconds < 86400) {
-			v = Math.round(seconds / 3600) + 'h';
-		} else {
-			v = Math.round(seconds / 86400) + 'd';
-		}
-		return sspa_adhoc.i18n.ago.replace('%s', v);
 	}
 
 	function pageUrl() {
@@ -69,12 +51,23 @@
 		pop().show();
 	}
 
-	function renderProgress(status) {
+	// Which page the panel is currently showing, so a re-run or a finished impact sweep knows
+	// what to reload. One of the two is always set.
+	var current = { profileId: 0, url: '' };
+
+	function renderProgress(status, message) {
 		var elapsed = status && status.elapsed_seconds ? Math.round(status.elapsed_seconds) + 's' : '';
+		var detail = sspa_adhoc.i18n.running_detail;
+		if (status && status.total) {
+			detail = status.done + ' / ' + status.total + ' measurements';
+			if (status.current) {
+				detail += ' · ' + status.current;
+			}
+		}
 		body(
 			'<p class="sspa-adhoc-running"><span class="sspa-adhoc-spin"></span>' +
-			esc(sspa_adhoc.i18n.running) + (elapsed ? ' <span class="sspa-adhoc-elapsed">' + esc(elapsed) + '</span>' : '') + '</p>' +
-			'<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.running_detail) + '</p>'
+			esc(message || sspa_adhoc.i18n.running) + (elapsed ? ' <span class="sspa-adhoc-elapsed">' + esc(elapsed) + '</span>' : '') + '</p>' +
+			'<p class="sspa-adhoc-note">' + esc(detail) + '</p>'
 		);
 	}
 
@@ -82,200 +75,77 @@
 		body('<p class="sspa-adhoc-error">' + esc(msg) + '</p><p><button type="button" class="sspa-adhoc-btn sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button></p>');
 	}
 
-	function renderResult(d, cached) {
-		var left = '';
-		var right = '';
-		var full = '';
-		// Re-run and provenance live at the TOP: whether you are looking at a stored
-		// result must be unmissable, and re-running must not require scrolling.
-		var bar = '<div class="sspa-adhoc-topbar sspa-adhoc-span">' +
-			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button>' +
-			'<span class="sspa-adhoc-badge ' + (cached ? 'is-cached' : 'is-fresh') + '">' + esc(cached ? sspa_adhoc.i18n.cached : sspa_adhoc.i18n.fresh) + '</span>' +
-			(d.created ? '<span class="sspa-adhoc-note"><strong>' + esc(cached ? agoText(d.age_seconds) : sspa_adhoc.i18n.just_now) + '</strong> · ' + esc(d.created) + ' · ' + esc('admin' === d.variant ? sspa_adhoc.i18n.as_admin : sspa_adhoc.i18n.as_visitor) + '</span>' : '') +
-			'<a class="sspa-adhoc-open" href="' + esc(sspa_adhoc.results_url) + '">' + esc(sspa_adhoc.i18n.full) + ' &rarr;</a>' +
-			'</div>';
-		if (d.blocked_by) {
-			full += '<p class="sspa-adhoc-error sspa-adhoc-span">Blocked by ' + esc(d.blocked_by) + '</p>';
-		}
-		// Measurement-path honesty: a loopback that bypassed the CDN was measured
-		// WITHOUT CDN-added headers, so header-dependent behaviour (e.g. WooCommerce
-		// using Cloudflare's country instead of its MaxMind database) differs from
-		// what real visitors experience.
-		if (d.via_cloudflare === false) {
-			full += '<p class="sspa-adhoc-note sspa-adhoc-span sspa-adhoc-pathnote">&#9432; The profiling request went directly to the origin server, not through Cloudflare - CDN-added headers (visitor country, WAF marks) were absent on this measurement. Costs that only occur without those headers (such as WooCommerce\'s MaxMind lookup) may not apply to real visitors.</p>';
-		} else if (d.via_cloudflare === true) {
-			full += '<p class="sspa-adhoc-note sspa-adhoc-span sspa-adhoc-pathnote">&#9432; Profiled through Cloudflare' + (d.cf_country ? ' (visitor country header: ' + esc(d.cf_country) + ')' : ' - no visitor country header; IP Geolocation is off in Cloudflare') + '.</p>';
-		}
-		left += '<div class="sspa-adhoc-stats">' +
-			stat(d.gen_ms !== null ? d.gen_ms + 'ms' : '?', 'Generation') +
-			stat(d.sql_ms !== null ? d.sql_ms + 'ms / ' + d.sql_count : '?', 'SQL / queries') +
-			stat(d.http_ms !== null ? d.http_ms + 'ms' : '0ms', 'HTTP') +
-			stat(d.peak_mem || '?', 'Peak RAM') +
-			'</div>';
+	// ---- loading the panel ----
 
-		if (d.boot && d.boot.segments) {
-			var segNames = {
-				core_before_plugins: 'Core (before plugins)',
-				plugin_includes: 'Plugin file loading',
-				plugins_loaded_callbacks: 'Plugin boot (plugins_loaded)',
-				theme_load_and_setup: 'Theme load + setup',
-				init_callbacks: 'init callbacks',
-				post_init_boot: 'Post-init boot (widgets, REST)',
-				routing_and_query: 'Routing + main query',
-				render_and_output: 'Template render + output'
-			};
-			left += '<h4>Where the PHP time went <small>Click a phase to expand it</small></h4><table class="sspa-adhoc-table">';
-			Object.keys(d.boot.segments).forEach(function (k) {
-				var detail = phaseDetail(d.boot, k);
-				var names = detail ? Object.keys(detail).filter(function (c) { return detail[c] >= 0.5; }) : [];
-				if (!names.length) {
-					left += '<tr><td class="sspa-adhoc-phase-plain">' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
-					return;
-				}
-				names.sort(function (a, b) { return detail[b] - detail[a]; });
-				left += '<tr class="sspa-adhoc-phase" data-phase="' + escAttr(k) + '"><td><span class="sspa-adhoc-caret">&#9656;</span>' + esc(segNames[k] || k) + '</td><td>' + d.boot.segments[k].toFixed(1) + 'ms</td></tr>';
-				var shown = 0;
-				names.slice(0, 12).forEach(function (c) {
-					left += '<tr class="sspa-adhoc-sub" data-parent="' + escAttr(k) + '" style="display:none"><td><code>' + esc(c) + '</code></td><td>' + detail[c].toFixed(1) + 'ms</td></tr>';
-					shown += detail[c];
-				});
-				// Phases are wall-clock; the detail is only the work our wrappers saw.
-				var gap = d.boot.segments[k] - shown;
-				if (gap > 1) {
-					var gapLabel = k === 'render_and_output' ? 'theme templates + direct output (untimed)' : 'untimed / core framework';
-					var hasPhaseFns = d.profile && d.profile.phases && d.profile.phases[k] && d.profile.phases[k].functions.length;
-					var gapLink = !hasPhaseFns && d.profile && d.profile.functions && d.profile.functions.length;
-					var cls = 'sspa-adhoc-sub' + (hasPhaseFns ? ' sspa-adhoc-untimed' : '') + (gapLink ? ' sspa-adhoc-tobyfn' : '');
-					var hint = hasPhaseFns ? ' title="Click: the functions the profiler sampled during this phase"' : (gapLink ? ' title="See the By function table - the sampling profiler names this time"' : '');
-					left += '<tr class="' + cls + '" data-parent="' + escAttr(k) + '" data-fns="' + escAttr(k) + '"' + hint + ' style="display:none"><td><small>' + gapLabel + ((hasPhaseFns || gapLink) ? ' &darr;' : '') + '</small></td><td><small>' + gap.toFixed(1) + 'ms</small></td></tr>';
-					left += fnSubRows(d, k);
-				}
-			});
-			left += '</table>';
-
-			var comps = d.boot.components || {};
-			var keys = Object.keys(comps).filter(function (k) { return comps[k] >= 5; }).slice(0, 10);
-			if (keys.length) {
-				right += '<h4>Top plugins (load + hooks)</h4><table class="sspa-adhoc-table">';
-				keys.forEach(function (k) {
-					right += '<tr><td><code>' + esc(k) + '</code></td><td>' + comps[k].toFixed(1) + 'ms</td></tr>';
-				});
-				right += '</table>';
+	function loadProfile(profileId, done) {
+		$.post(sspa_adhoc.ajaxurl, {
+			action: 'sspa_profile_panel',
+			nonce: sspa_adhoc.nonce,
+			profile_id: profileId
+		}, function (resp) {
+			if (!resp.success) {
+				renderError(resp.data || 'Could not load that page profile.');
+				return;
 			}
+			current.profileId = resp.data.profile_id;
+			body(resp.data.html);
+			if (done) { done(); }
+		}).fail(function () { renderError('Request failed.'); });
+	}
 
-			var r = d.boot.render;
-			if (r && (r.timed_ms > 0 || r.untimed_ms !== null)) {
-				right += '<h4>Render breakdown</h4><table class="sspa-adhoc-table">';
-				(r.top || []).slice(0, 6).forEach(function (t) {
-					right += '<tr><td>' + esc(t.label) + ' <small>' + esc(t.hook) + ' · ' + esc(t.component) + '</small></td><td>' + t.ms.toFixed(1) + 'ms</td></tr>';
-				});
-				if (r.untimed_ms !== null && r.untimed_ms > 0) {
-					var renderFns = d.profile && d.profile.phases && d.profile.phases.render_and_output && d.profile.phases.render_and_output.functions.length;
-					var linkable = !renderFns && d.profile && d.profile.functions && d.profile.functions.length;
-					var rcls = renderFns ? ' class="sspa-adhoc-untimed" data-fns="render_and_output" title="Click: the functions the profiler sampled during render"' : (linkable ? ' class="sspa-adhoc-tobyfn" title="See the By function table - the sampling profiler names this time"' : '');
-					right += '<tr' + rcls + '><td>Theme templates + direct output <small>(untimed remainder' + ((renderFns || linkable) ? ' - click for the function view' : '') + ')</small></td><td>' + r.untimed_ms.toFixed(1) + 'ms</td></tr>';
-					if (renderFns) {
-						right += fnSubRows(d, 'render_and_output');
-					}
+	function fetchByUrl(cb, fresh) {
+		$.post(sspa_adhoc.ajaxurl, {
+			action: 'sspa_adhoc_result',
+			nonce: sspa_adhoc.nonce,
+			url: current.url || pageUrl(),
+			fresh: fresh ? 1 : 0
+		}, cb).fail(function () { renderError('Request failed.'); });
+	}
+
+	// Whatever the panel is showing, show it again with fresh data.
+	function reload() {
+		if (current.url) {
+			fetchByUrl(function (resp) {
+				if (resp.success && resp.data.found) {
+					current.profileId = resp.data.profile_id;
+					body(resp.data.html);
+				} else {
+					renderError(sspa_adhoc.i18n.failed);
 				}
-				right += '</table>';
-			}
+			}, false);
+			return;
 		}
-		if (d.profile && d.profile.functions && d.profile.functions.length) {
-			// SELF time ordering: inclusive puts the bootstrap include-chain on top,
-			// which names plumbing, not culprits. Self time names where CPU was burnt -
-			// which is exactly what the "untimed remainder" rows link here for.
-			var fns = d.profile.functions.slice().sort(function (a, b) { return b.self_ms - a.self_ms; });
-			full += '<div class="sspa-adhoc-span" id="sspa-adhoc-byfn"><h4>By function, self time first <small>Excimer sampling, ' + esc(String(d.profile.samples)) + ' samples at ' + esc(String(d.profile.period_ms)) + 'ms - statistical, sees inside theme templates</small></h4><table class="sspa-adhoc-table sspa-adhoc-fn-table">';
-			fns.slice(0, 10).forEach(function (f) {
-				var by = '';
-				var byKeys = f.by ? Object.keys(f.by) : [];
-				// Worth a line when the time is driven by someone other than the
-				// function's owner, or split across several drivers.
-				if (byKeys.length > 1 || (byKeys.length === 1 && byKeys[0] !== f.component)) {
-					by = '<br><small>driven by: ' + byKeys.map(function (c) { return esc(c) + ' ' + f.by[c].toFixed(0) + 'ms'; }).join(' · ') + '</small>';
-				}
-				full += '<tr><td><code>' + esc(f.fn) + '</code>' + (f.file ? ' <small>' + esc(f.file + (f.line ? ':' + f.line : '')) + '</small>' : '') + by + '</td><td><code>' + esc(f.component) + '</code></td><td>' + f.self_ms.toFixed(0) + 'ms self</td><td>' + f.incl_ms.toFixed(0) + 'ms incl</td></tr>';
-			});
-			full += '</table></div>';
+		if (current.profileId) {
+			loadProfile(current.profileId);
 		}
-		if (d.queries && d.queries.length) {
-			full += '<div class="sspa-adhoc-span"><h4>Slowest queries <small>' + esc(sspa_adhoc.i18n.copy_hint) + '</small></h4><table class="sspa-adhoc-table">';
-			d.queries.forEach(function (q) {
-				full += '<tr class="sspa-adhoc-qrow" data-sql="' + escAttr(q.sql) + '" title="' + escAttr(sspa_adhoc.i18n.copy_hint) + '">' +
-					'<td class="sspa-adhoc-sql"><code>' + esc(q.sql.length > 160 ? q.sql.slice(0, 160) + '…' : q.sql) + '</code><br><small>' + esc(q.component) + '</small></td><td>' + q.ms + 'ms</td></tr>';
-			});
-			full += '</table></div>';
-		}
-		body('<div class="sspa-adhoc-grid">' + bar + '<div>' + left + '</div><div>' + right + '</div>' + full + '</div>');
 	}
 
-	function stat(value, label) {
-		return '<div class="sspa-adhoc-stat"><span class="sspa-adhoc-stat-value">' + esc(value) + '</span><span class="sspa-adhoc-stat-label">' + esc(label) + '</span></div>';
-	}
-
-	// Hidden rows listing what the sampling profiler caught DURING a phase - the
-	// contextual expansion behind each untimed-remainder row.
-	function fnSubRows(d, phaseKey) {
-		var p = d.profile && d.profile.phases ? d.profile.phases[phaseKey] : null;
-		if (!p || !p.functions.length) {
-			return '';
-		}
-		var html = '';
-		p.functions.forEach(function (f) {
-			html += '<tr class="sspa-adhoc-fnsub" data-fnparent="' + escAttr(phaseKey) + '" style="display:none"><td><small><code>' + esc(f.fn) + '</code> · ' + esc(f.component) + '</small></td><td><small>' + f.self_ms.toFixed(1) + 'ms</small></td></tr>';
-		});
-		return html;
-	}
-
-	// What each request phase can expand into, from data the capture already stores.
-	function phaseDetail(boot, key) {
-		function fromHooks(names) {
-			var out = {};
-			names.forEach(function (n) {
-				var h = boot.hooks && boot.hooks[n];
-				if (h && h.components) {
-					Object.keys(h.components).forEach(function (c) {
-						out[c] = (out[c] || 0) + h.components[c];
-					});
-				}
-			});
-			return out;
-		}
-		switch (key) {
-			case 'plugin_includes':
-				return boot.includes || null;
-			case 'plugins_loaded_callbacks':
-				return fromHooks(['plugins_loaded']);
-			case 'theme_load_and_setup':
-				return fromHooks(['after_setup_theme']);
-			case 'init_callbacks':
-				return fromHooks(['init', 'widgets_init']);
-			case 'post_init_boot':
-				return fromHooks(['wp_loaded', 'rest_api_init']);
-			case 'render_and_output':
-				return (boot.render && boot.render.components) ? boot.render.components : null;
-		}
-		return null;
-	}
-
-	function fetchResult(cb) {
-		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_result', nonce: sspa_adhoc.nonce, url: pageUrl() }, cb)
-			.fail(function () { renderError('Request failed.'); });
-	}
-
-	function start() {
+	function start(url) {
+		current.url = url || current.url || pageUrl();
 		renderProgress(null);
-		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_start', nonce: sspa_adhoc.nonce, url: pageUrl() }, function (resp) {
+		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_start', nonce: sspa_adhoc.nonce, url: current.url }, function (resp) {
 			if (!resp.success) {
 				renderError(resp.data || 'Could not start.');
 				return;
 			}
-			drive(resp.data.run_id);
+			drive(resp.data.run_id, function () {
+				fetchByUrl(function (r) {
+					if (r.success && r.data.found) {
+						current.profileId = r.data.profile_id;
+						body(r.data.html);
+					} else {
+						renderError(sspa_adhoc.i18n.failed);
+					}
+				}, true);
+			});
 		}).fail(function () { renderError('Request failed.'); });
 	}
 
-	function drive(runId) {
+	/**
+	 * Drive a run to completion with sequential batch calls, exactly as the settings page's
+	 * floating monitor does, then hand back to the caller to show the result.
+	 */
+	function drive(runId, onDone, message) {
 		if (driving) {
 			return;
 		}
@@ -286,19 +156,13 @@
 				failures = 0;
 				var s = resp.success ? resp.data : null;
 				if (s && (s.status === 'crawling' || s.status === 'analysing')) {
-					renderProgress(s);
+					renderProgress(s, message);
 					window.setTimeout(step, 400);
 					return;
 				}
 				driving = false;
 				if (s && s.status === 'done') {
-					fetchResult(function (r) {
-						if (r.success && r.data.found) {
-							renderResult(r.data, false);
-						} else {
-							renderError(sspa_adhoc.i18n.failed);
-						}
-					});
+					onDone();
 				} else {
 					renderError(sspa_adhoc.i18n.failed);
 				}
@@ -311,27 +175,48 @@
 				renderError('Request failed.');
 			});
 		}
-		renderProgress(null);
+		renderProgress(null, message);
 		step();
 	}
 
-	function open() {
+	function openUrl(url) {
+		current = { profileId: 0, url: url || pageUrl() };
 		show();
-		body('<p class="sspa-adhoc-note">Loading…</p>');
-		fetchResult(function (resp) {
+		body('<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.loading) + '</p>');
+		fetchByUrl(function (resp) {
 			if (!resp.success) {
 				renderError(resp.data || 'Request failed.');
 				return;
 			}
 			if (resp.data.running) {
-				drive(resp.data.running);
+				drive(resp.data.running, function () {
+					fetchByUrl(function (r) {
+						if (r.success && r.data.found) {
+							current.profileId = r.data.profile_id;
+							body(r.data.html);
+						} else {
+							renderError(sspa_adhoc.i18n.failed);
+						}
+					}, true);
+				});
 			} else if (resp.data.found) {
-				renderResult(resp.data, true);
+				current.profileId = resp.data.profile_id;
+				body(resp.data.html);
 			} else {
 				start();
 			}
-		});
+		}, false);
 	}
+
+	function openProfile(profileId) {
+		current = { profileId: profileId, url: '' };
+		show();
+		body('<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.loading) + '</p>');
+		loadProfile(profileId);
+	}
+
+	// The panel's public surface: the Pages tab opens it by profile id.
+	window.sspaPanel = { openProfile: openProfile, openUrl: openUrl };
 
 	$(document).on('click', '#wp-admin-bar-sspa-adhoc > a', function (e) {
 		e.preventDefault();
@@ -340,7 +225,7 @@
 			el.hide();
 			return;
 		}
-		open();
+		openUrl(pageUrl());
 	});
 
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-close', function () {
@@ -353,12 +238,16 @@
 		}
 	});
 
+	// Re-run: profile the page this panel is showing, which is not necessarily the page the
+	// browser is on - the button carries its own URL when the panel was opened from a row.
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-rerun', function () {
-		start();
+		start($(this).data('url') || current.url || pageUrl());
 	});
 
-	// Untimed-remainder rows: jump to the By-function table, which is where the
-	// sampling profiler names that time.
+	// ---- interactions on the server-rendered panel ----
+
+	// Untimed-remainder rows with no phase-scoped profiler data: jump to the By-function
+	// table, which is where the sampling profiler names that time.
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-tobyfn', function (e) {
 		e.stopPropagation();
 		var target = $('#sspa-adhoc-byfn');
@@ -395,6 +284,18 @@
 		subs.toggle(subs.first().is(':hidden'));
 	});
 
+	// Attribution mode: both tables are already in the page, so this is a swap, not a fetch.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-attrib-btn', function () {
+		var btn = $(this);
+		var mode = btn.data('mode');
+		var wrap = btn.closest('#sspa-adhoc-attrib');
+		wrap.find('.sspa-adhoc-attrib-btn').removeClass('sspa-adhoc-btn-primary').attr('aria-pressed', 'false');
+		btn.addClass('sspa-adhoc-btn-primary').attr('aria-pressed', 'true');
+		wrap.find('.sspa-adhoc-attrib-table').hide().filter('[data-mode="' + mode + '"]').show();
+		var desc = wrap.find('.sspa-adhoc-attrib-desc');
+		desc.text(desc.data(mode) || '');
+	});
+
 	// Click a query row: copy the FULL query (the cell only shows the start) and confirm
 	// with a small toast that rises and fades where you clicked.
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-qrow', function (e) {
@@ -417,5 +318,160 @@
 		tmp[0].select();
 		try { document.execCommand('copy'); toast(); } catch (err) { /* nothing to do */ }
 		tmp.remove();
+	});
+
+	// ---- plugin impact, scoped to the page in the panel ----
+
+	var plan = null; // the last plan fetched: {plugins, oc_capable, seconds_per_job, ...}
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-measure', function () {
+		var btn = $(this).prop('disabled', true);
+		var target = $('#sspa-adhoc-impact .sspa-adhoc-plan');
+		target.html('<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.loading) + '</p>');
+		$.post(sspa_adhoc.ajaxurl, {
+			action: 'sspa_impact_plan',
+			nonce: sspa_adhoc.nonce,
+			profile_id: btn.data('profile-id')
+		}, function (resp) {
+			btn.prop('disabled', false);
+			if (!resp.success) {
+				target.html('<p class="sspa-adhoc-error">' + esc(resp.data || 'Could not work out what to measure.') + '</p>');
+				return;
+			}
+			plan = resp.data;
+			target.html(planHtml(plan));
+			updateEstimate();
+		}).fail(function () {
+			btn.prop('disabled', false);
+			target.html('<p class="sspa-adhoc-error">Request failed.</p>');
+		});
+	});
+
+	function planHtml(data) {
+		var i18n = sspa_adhoc.i18n;
+		var html = '<div class="sspa-adhoc-planbox">';
+		html += '<h4>' + esc(i18n.plan_title) + '</h4>';
+		html += '<p class="sspa-adhoc-note">' + esc(i18n.plan_hint) + '</p>';
+		html += '<p class="sspa-adhoc-note">' + esc(i18n.plan_blamed) + '</p>';
+		html += '<p class="sspa-adhoc-planactions">' +
+			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-pick" data-pick="blamed">' + esc(i18n.select_blamed) + '</button> ' +
+			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-pick" data-pick="all">' + esc(i18n.select_all) + '</button> ' +
+			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-pick" data-pick="none">' + esc(i18n.select_none) + '</button></p>';
+		html += '<ul class="sspa-adhoc-planlist">';
+		data.plugins.forEach(function (p) {
+			var blamed = p.cost_ms > 0;
+			html += '<li><label><input type="checkbox" class="sspa-adhoc-pluginpick" value="' + esc(p.slug) + '"' +
+				(blamed ? ' checked' : '') + ' data-blamed="' + (blamed ? '1' : '0') + '"> <code>' + esc(p.slug) + '</code> ' +
+				'<small>' + esc(blamed ? p.cost_ms.toFixed(1) + 'ms attributed here' : i18n.no_cost) + '</small></label></li>';
+		});
+		html += '</ul>';
+		if (data.oc_capable) {
+			html += '<p><label><input type="checkbox" id="sspa-adhoc-cachemodes"> ' + esc(i18n.cache_modes) + '</label></p>';
+		}
+		html += '<p class="sspa-adhoc-estimate"></p>';
+		html += '<p><button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-measure-start">' + esc(i18n.start_measuring) + '</button> ' +
+			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-measure-cancel">' + esc(i18n.cancel) + '</button></p>';
+		html += '</div>';
+		return html;
+	}
+
+	function selected() {
+		return $('#sspa-adhoc-pop .sspa-adhoc-pluginpick:checked').map(function () {
+			return this.value;
+		}).get();
+	}
+
+	function duration(seconds) {
+		seconds = Math.round(seconds);
+		if (seconds < 90) {
+			return sspa_adhoc.i18n.seconds.replace('%s', Math.max(5, Math.round(seconds / 5) * 5));
+		}
+		return sspa_adhoc.i18n.minutes.replace('%s', Math.max(1, Math.round(seconds / 60)));
+	}
+
+	/**
+	 * What the sweep will cost, in the same unit the running-analysis panel counts in.
+	 *
+	 * Mirrors sweep_block_jobs(): one baseline per cache mode opens the page block and
+	 * another is taken every SWEEP_REBASELINE_EVERY plugin cells, because server drift over a
+	 * long block would otherwise masquerade as plugin cost.
+	 */
+	function measurements(cells, modes, rebaselineEvery) {
+		if (cells < 1) {
+			return 0;
+		}
+		var baselineGroups = 1 + Math.floor((cells - 1) / rebaselineEvery);
+		return (cells + baselineGroups) * modes;
+	}
+
+	function updateEstimate() {
+		if (!plan) {
+			return;
+		}
+		var i18n = sspa_adhoc.i18n;
+		var el = $('#sspa-adhoc-pop .sspa-adhoc-estimate');
+		var count = selected().length;
+		if (!count) {
+			el.text(i18n.estimate_none);
+			$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', true);
+			return;
+		}
+		$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
+		var jobs = measurements(count, 1, plan.rebaseline_every);
+		var text = i18n.estimate
+			.replace('%1$s', count)
+			.replace('%2$s', jobs)
+			.replace('%3$s', duration(jobs * plan.seconds_per_job));
+		// Phase 2 only runs for the plugins that showed something, so its cost is a ceiling,
+		// not a total - said as one, because a total that grows mid-run reads as a bug.
+		if (plan.oc_capable && $('#sspa-adhoc-cachemodes').is(':checked')) {
+			var extra = measurements(count, 2, plan.rebaseline_every);
+			text += ' ' + i18n.estimate_phase2
+				.replace('%1$s', extra)
+				.replace('%2$s', duration(extra * plan.seconds_per_job));
+		}
+		el.text(text);
+	}
+
+	$(document).on('change', '#sspa-adhoc-pop .sspa-adhoc-pluginpick, #sspa-adhoc-cachemodes', updateEstimate);
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-pick', function () {
+		var pick = $(this).data('pick');
+		$('#sspa-adhoc-pop .sspa-adhoc-pluginpick').each(function () {
+			var box = $(this);
+			box.prop('checked', pick === 'all' || (pick === 'blamed' && '1' === box.attr('data-blamed')));
+		});
+		updateEstimate();
+	});
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-measure-cancel', function () {
+		$('#sspa-adhoc-impact .sspa-adhoc-plan').empty();
+	});
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-measure-start', function () {
+		var slugs = selected();
+		if (!slugs.length || !plan) {
+			return;
+		}
+		var payload = {
+			action: 'sspa_start_run',
+			nonce: sspa_adhoc.nonce,
+			type: 'deep',
+			url: plan.url,
+			cache_modes: (plan.oc_capable && $('#sspa-adhoc-cachemodes').is(':checked')) ? 1 : 0,
+			'suspects[]': slugs
+		};
+		$(this).prop('disabled', true);
+		$.post(sspa_adhoc.ajaxurl, payload, function (resp) {
+			if (!resp.success) {
+				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || 'Could not start measuring.');
+				$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
+				return;
+			}
+			drive(resp.data.run_id, reload, 'Measuring plugin impact on this page…');
+		}).fail(function () {
+			$('#sspa-adhoc-pop .sspa-adhoc-estimate').text('Could not start measuring.');
+			$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
+		});
 	});
 })(jQuery);

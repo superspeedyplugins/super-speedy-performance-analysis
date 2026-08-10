@@ -34,15 +34,22 @@ class SSPA_Plugins_Table {
      * MAX(id) rather than MAX(created): two sweeps in the same second are possible, and the
      * autoincrement is the only strict ordering.
      *
-     * @param string $plugin Optional single plugin to restrict to.
+     * @param string $plugin   Optional single plugin to restrict to.
+     * @param string $page_key Optional single page to restrict to - the profile panel asks
+     *                         "what has been measured HERE", which is the same query the
+     *                         other way round.
      */
-    public static function latest_impacts_sql($plugin = '') {
+    public static function latest_impacts_sql($plugin = '', $page_key = '') {
         global $wpdb;
         $table = SSPA_Schema::table('plugin_impacts');
-        $where = '';
+        $conditions = array();
         if ('' !== $plugin) {
-            $where = $wpdb->prepare(' WHERE plugin = %s', $plugin);
+            $conditions[] = $wpdb->prepare('plugin = %s', $plugin);
         }
+        if ('' !== $page_key) {
+            $conditions[] = $wpdb->prepare('page_key = %s', $page_key);
+        }
+        $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
         return "SELECT pi.* FROM $table pi
                 JOIN (SELECT MAX(id) mid FROM $table$where
                       GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id

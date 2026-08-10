@@ -24,6 +24,21 @@ class SSPA_Adhoc {
         return is_admin_bar_showing() && current_user_can('manage_options');
     }
 
+    /** Our own settings page, where the Pages tab opens the same panel from a row click. */
+    private static function on_settings_page() {
+        return is_admin() && current_user_can('manage_options')
+            && isset($_GET['page']) && 'sspa' === $_GET['page']; // phpcs:ignore WordPress.Security.NonceVerification
+    }
+
+    /**
+     * The panel's assets are needed wherever it can be opened: the admin bar's button, and the
+     * Pages tab. Keyed on the admin bar alone, a site that hides the bar inside wp-admin lost
+     * the Pages drill-down entirely once it became this panel.
+     */
+    private static function panel_context() {
+        return self::available() || self::on_settings_page();
+    }
+
     public static function admin_bar_node($bar) {
         if (!self::available()) {
             return;
@@ -64,7 +79,7 @@ class SSPA_Adhoc {
     }
 
     public static function enqueue() {
-        if (!self::available()) {
+        if (!self::panel_context()) {
             return;
         }
         wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
@@ -77,7 +92,6 @@ class SSPA_Adhoc {
         wp_localize_script('sspa-adhoc', 'sspa_adhoc', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
-            'results_url' => admin_url('admin.php?page=sspa#pages'),
             'logo_url' => $logo,
             'version' => SSPA_VERSION,
             'i18n' => array(
@@ -85,22 +99,32 @@ class SSPA_Adhoc {
                 'running_detail' => __('Warm-up + 3 measured samples, then analysis. Usually under a minute.', 'super-speedy-performance-analysis'),
                 'failed' => __('The analysis failed - see the plugin page for details.', 'super-speedy-performance-analysis'),
                 'rerun' => __('Re-run', 'super-speedy-performance-analysis'),
-                'cached' => __('Cached result', 'super-speedy-performance-analysis'),
-                'fresh' => __('Fresh result', 'super-speedy-performance-analysis'),
-                'full' => __('Open in Performance Analysis', 'super-speedy-performance-analysis'),
                 'close' => __('Close', 'super-speedy-performance-analysis'),
                 'copied' => __('Copied', 'super-speedy-performance-analysis'),
-                'copy_hint' => __('Click to copy the full query', 'super-speedy-performance-analysis'),
-                'as_visitor' => __('profiled as a logged-out visitor', 'super-speedy-performance-analysis'),
-                'as_admin' => __('profiled as admin', 'super-speedy-performance-analysis'),
-                'just_now' => __('just now', 'super-speedy-performance-analysis'),
-                'ago' => __('%s ago', 'super-speedy-performance-analysis'),
+                'loading' => __('Loading…', 'super-speedy-performance-analysis'),
+                // The plugin-impact picker. Built client-side from the plan endpoint so the
+                // estimate can update as boxes are ticked, rather than after a round trip.
+                'plan_title' => __('Which plugins should I measure on this page?', 'super-speedy-performance-analysis'),
+                'plan_hint' => __('Each plugin is measured by requesting this page again with that plugin excluded from the test requests only. Your visitors always get the full site; nothing is ever really deactivated and no activation or deactivation hook fires.', 'super-speedy-performance-analysis'),
+                'plan_blamed' => __('Ticked by default: the plugins this page\'s own attribution blames.', 'super-speedy-performance-analysis'),
+                'select_blamed' => __('Select blamed', 'super-speedy-performance-analysis'),
+                'select_all' => __('Select every eligible plugin', 'super-speedy-performance-analysis'),
+                'select_none' => __('Clear', 'super-speedy-performance-analysis'),
+                'cache_modes' => __('Also measure with the object cache off and while it primes (three times the measurements, for the plugins that show an impact)', 'super-speedy-performance-analysis'),
+                'estimate' => __('%1$s plugins × 1 page = %2$s measurements, about %3$s.', 'super-speedy-performance-analysis'),
+                'estimate_phase2' => __('Plugins that show an impact are then re-measured with the object cache off and priming - up to %1$s more measurements, about %2$s, if every one of them does.', 'super-speedy-performance-analysis'),
+                'estimate_none' => __('Tick at least one plugin.', 'super-speedy-performance-analysis'),
+                'start_measuring' => __('Start measuring', 'super-speedy-performance-analysis'),
+                'cancel' => __('Cancel', 'super-speedy-performance-analysis'),
+                'minutes' => __('%s minutes', 'super-speedy-performance-analysis'),
+                'seconds' => __('%s seconds', 'super-speedy-performance-analysis'),
+                'no_cost' => __('nothing attributed on this page', 'super-speedy-performance-analysis'),
             ),
         ));
 
         // The checkout-flow panel reuses this popover's CSS wholesale; it only needs its
         // own script because the disclosure step has no equivalent here.
-        if (self::checkout_flow_available() || (is_admin() && isset($_GET['page']) && 'sspa' === $_GET['page'])) { // phpcs:ignore WordPress.Security.NonceVerification
+        if (self::checkout_flow_available() || self::on_settings_page()) {
             wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-checkout.js'), true);
             wp_localize_script('sspa-checkout', 'sspa_checkout', array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
@@ -221,11 +245,15 @@ class SSPA_Adhoc {
     /**
      * The popover's single source of truth for a URL: an in-flight run to reattach to,
      * a stored result, or nothing yet.
+     *
+     * Since 0.14.0 this only RESOLVES - a URL to the newest profile of the page it addresses.
+     * The panel itself is rendered by SSPA_Profile_Panel, the same renderer the Pages tab
+     * uses, so the two views cannot show different subsets of the same capture again.
      */
     public static function ajax_result() {
-        global $wpdb;
         self::guard();
         $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
+        $fresh = !empty($_POST['fresh']);
         $job = self::job_for($url);
         if (is_wp_error($job)) {
             wp_send_json_error($job->get_error_message());
@@ -240,53 +268,18 @@ class SSPA_Adhoc {
             }
         }
 
-        $profiles = SSPA_Schema::table('profiles');
-        $runs = SSPA_Schema::table('runs');
-        $row = $wpdb->get_row($wpdb->prepare(
-            "SELECT p.* FROM $profiles p INNER JOIN $runs r ON r.id = p.run_id
-             WHERE p.page_key = %s AND r.status = 'done'
-             ORDER BY p.id DESC LIMIT 1",
-            $job['page_key']
-        ), ARRAY_A);
-        if (!$row) {
+        $profile_id = SSPA_Profile_Panel::newest_profile_id_for_page($job['page_key']);
+        if (!$profile_id) {
             wp_send_json_success(array('found' => false));
         }
-
-        $capture = $row['profile_blob'] ? json_decode((string) @gzuncompress($row['profile_blob']), true) : null;
-        $queries = array();
-        if (is_array($capture) && !empty($capture['sql']['queries'])) {
-            $queries = $capture['sql']['queries'];
-            usort($queries, function ($a, $b) {
-                return $b['ms'] <=> $a['ms'];
-            });
-            $queries = array_map(function ($q) {
-                return array(
-                    'sql' => null !== $q['sql'] ? $q['sql'] : $q['fp'],
-                    'ms' => round((float) $q['ms'], 1),
-                    'rows' => $q['rows'],
-                    'component' => $q['component'],
-                );
-            }, array_slice($queries, 0, 5));
+        $html = SSPA_Profile_Panel::render($profile_id, array('cached' => !$fresh));
+        if (is_wp_error($html)) {
+            wp_send_json_error($html->get_error_message());
         }
-
         wp_send_json_success(array(
             'found' => true,
-            'created' => get_date_from_gmt($row['created'], get_option('date_format') . ' ' . get_option('time_format')),
-            // Server-side age so the popover can say "5m ago" without the viewer doing
-            // timezone arithmetic against the site's clock.
-            'age_seconds' => max(0, time() - (int) strtotime($row['created'] . ' UTC')),
-            'variant' => $row['variant'],
-            'gen_ms' => null !== $row['page_gen_ms'] ? round((float) $row['page_gen_ms'], 1) : null,
-            'sql_ms' => null !== $row['sql_ms'] ? round((float) $row['sql_ms'], 1) : null,
-            'sql_count' => null !== $row['sql_count'] ? (int) $row['sql_count'] : null,
-            'http_ms' => null !== $row['http_ms'] ? round((float) $row['http_ms'], 1) : null,
-            'peak_mem' => $row['peak_mem_bytes'] ? size_format((int) $row['peak_mem_bytes']) : null,
-            'blocked_by' => $row['blocked_by'],
-            'boot' => (is_array($capture) && isset($capture['boot'])) ? $capture['boot'] : null,
-            'profile' => (is_array($capture) && isset($capture['profile'])) ? $capture['profile'] : null,
-            'via_cloudflare' => (is_array($capture) && array_key_exists('via_cloudflare', $capture['overview'])) ? (bool) $capture['overview']['via_cloudflare'] : null,
-            'cf_country' => (is_array($capture) && isset($capture['overview']['cf_country'])) ? $capture['overview']['cf_country'] : null,
-            'queries' => $queries,
+            'profile_id' => $profile_id,
+            'html' => $html,
         ));
     }
 }

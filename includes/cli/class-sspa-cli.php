@@ -23,6 +23,14 @@ class SSPA_CLI {
      * [--suspects=<slugs>]
      * : deep only - comma-separated plugin slugs to isolate.
      *
+     * [--url=<url>]
+     * : deep only - scope the whole sweep to ONE url on this site, even one no analysis has
+     * ever profiled. The sweep takes its own baselines for that page, so it needs no prior run.
+     *
+     * [--no-cache-modes]
+     * : deep only - skip the object-cache-off and cache-priming measurements phase 2 would
+     * otherwise add for every plugin that shows an impact.
+     *
      * [--include-writes]
      * : Also profile save/order cascades against temporary objects.
      *
@@ -35,6 +43,7 @@ class SSPA_CLI {
      *     wp sspa run --type=spot --pages=home,shop
      *     wp sspa run --type=deep --suspects=some-plugin
      *     wp sspa run --type=deep --suspects=some-plugin --pages=admin-orders-search
+     *     wp sspa run --type=deep --suspects=some-plugin --url=https://example.com/product/thing/
      */
     public function run($args, $assoc_args) {
         $type = isset($assoc_args['type']) ? $assoc_args['type'] : 'baseline';
@@ -50,6 +59,13 @@ class SSPA_CLI {
         }
         if (!empty($assoc_args['suspects'])) {
             $start_args['suspects'] = array_map('trim', explode(',', $assoc_args['suspects']));
+        }
+        if (!empty($assoc_args['url'])) {
+            $start_args['url'] = $assoc_args['url'];
+        }
+        if (isset($assoc_args['cache-modes'])) {
+            // WP-CLI turns --no-cache-modes into cache-modes => false.
+            $start_args['cache_modes'] = (bool) $assoc_args['cache-modes'];
         }
         if (!empty($assoc_args['include-writes'])) {
             $start_args['include_writes'] = true;

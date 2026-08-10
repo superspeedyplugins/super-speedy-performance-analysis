@@ -83,6 +83,13 @@ if (!add_option('sspa_used_' . $sspa_tok['id'], time(), '', false)) {
 
 header('X-SSPA-Profiled: ' . $sspa_tok['id']);
 
+// This request is a measurement, not a person using the site. Anything that reacts to what
+// happens during a request - our own "you just toggled a plugin" prompt, for one - has to be
+// able to tell the difference.
+if (!defined('SSPA_PROFILED_REQUEST')) {
+    define('SSPA_PROFILED_REQUEST', true);
+}
+
 if (!defined('DONOTCACHEPAGE')) {
     define('DONOTCACHEPAGE', true);
 }
@@ -94,13 +101,35 @@ if (!defined('SAVEQUERIES')) {
 
 // Virtual isolation override (deep analysis): the plugin stores {plugins: [files to
 // exclude], theme: slug|null} under a hash key; only token-bearing requests ever see the
-// filtered set. Real visitors are never affected and no (de)activation hooks fire.
+// filtered set. Real visitors are never affected and we fire no (de)activation hooks.
 if (!empty($sspa_tok['flags']['ps'])) {
     $sspa_ps_hash = preg_replace('/[^a-f0-9]/', '', $sspa_tok['flags']['ps']);
     $sspa_iso = get_option('sspa_isolation_' . $sspa_ps_hash);
     if (is_array($sspa_iso)) {
         if (!empty($sspa_iso['plugins']) && is_array($sspa_iso['plugins'])) {
             $sspa_exclude = $sspa_iso['plugins'];
+
+            // The REAL stored list, read before any filter of ours exists. It is what gets
+            // written back below, so it must not be the filtered view.
+            $sspa_real_active = get_option('active_plugins', array());
+            $sspa_real_network = is_multisite() ? get_site_option('active_sitewide_plugins', array()) : array();
+
+            // WE never deactivate anything - but a plugin measured with its dependency
+            // excluded can deactivate ITSELF, for real, and that write would outlive the
+            // measurement and take the plugin off the live site. Observed: excluding Rank
+            // Math took Rank Math Pro down with it, permanently, on a real site.
+            //
+            // So while the filter is armed, no write to the plugin lists may persist. The
+            // pre_update filter runs before update_option's equality check, so returning the
+            // true stored list turns any such write into a no-op on the stored content -
+            // whatever the caller believed it was doing.
+            add_filter('pre_update_option_active_plugins', function () use ($sspa_real_active) {
+                return $sspa_real_active;
+            }, PHP_INT_MAX);
+            add_filter('pre_update_site_option_active_sitewide_plugins', function () use ($sspa_real_network) {
+                return $sspa_real_network;
+            }, PHP_INT_MAX);
+
             add_filter('option_active_plugins', function ($plugins) use ($sspa_exclude) {
                 return array_values(array_diff((array) $plugins, $sspa_exclude));
             });

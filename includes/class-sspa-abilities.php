@@ -186,6 +186,9 @@ class SSPA_Abilities {
                 'type' => 'object',
                 'properties' => array(
                     'suspects' => array('type' => 'array', 'items' => array('type' => 'string'), 'description' => __('Plugin slugs to isolate; defaults to every plugin named in findings.', 'super-speedy-performance-analysis')),
+                    'pages' => array('type' => 'array', 'items' => array('type' => 'string'), 'description' => __('Page keys to limit the sweep to, e.g. ["shop"]. Far cheaper than the whole site when you are checking one page.', 'super-speedy-performance-analysis')),
+                    'url' => array('type' => 'string', 'description' => __('Scope the whole sweep to one URL on this site, even one no analysis has profiled - the sweep takes its own baselines for that page.', 'super-speedy-performance-analysis')),
+                    'cache_modes' => array('type' => 'boolean', 'description' => __('Whether plugins that show an impact are also measured with the object cache off and priming. True by default; false makes a scoped sweep three times cheaper.', 'super-speedy-performance-analysis')),
                 ),
                 'additionalProperties' => false,
                 'default' => array(),
@@ -325,6 +328,15 @@ class SSPA_Abilities {
         $args = array('type' => 'deep', 'trigger' => 'mcp');
         if (!empty($input['suspects'])) {
             $args['suspects'] = array_map('sanitize_key', (array) $input['suspects']);
+        }
+        if (!empty($input['pages'])) {
+            $args['page_keys'] = array_map('sanitize_text_field', (array) $input['pages']);
+        }
+        if (!empty($input['url'])) {
+            $args['url'] = esc_url_raw((string) $input['url']);
+        }
+        if (isset($input['cache_modes'])) {
+            $args['cache_modes'] = (bool) $input['cache_modes'];
         }
         $run_id = SSPA_Run_Controller::start($args);
         if (is_wp_error($run_id)) {
