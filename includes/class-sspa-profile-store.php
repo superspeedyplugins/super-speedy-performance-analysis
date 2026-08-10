@@ -62,13 +62,20 @@ class SSPA_Profile_Store {
 
         // Sample summaries only - full captures are large; the blob keeps the median one.
         $sample_summaries = array_map(function ($s) {
-            return array(
+            $summary = array(
                 'wall_ms' => $s['wall_ms'],
                 'code' => $s['code'],
                 'error' => $s['error'],
                 'cached' => $s['cached'],
                 'gen_ms' => isset($s['capture']['overview']['gen_ms']) ? round($s['capture']['overview']['gen_ms'], 1) : null,
             );
+            // A plugin reacted to the excluded set during this sample. Kept in the summary
+            // (not only the median blob) so the sweep can spot a reacted cell without
+            // unpacking blobs - the cell must be reported, never trusted as a delta.
+            if (!empty($s['capture']['reactions'])) {
+                $summary['reactions'] = count((array) $s['capture']['reactions']);
+            }
+            return $summary;
         }, $samples);
 
         $wpdb->insert(SSPA_Schema::table('profiles'), array(

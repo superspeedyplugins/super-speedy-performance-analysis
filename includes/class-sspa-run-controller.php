@@ -75,11 +75,15 @@ class SSPA_Run_Controller {
         if ('deep' === $type) {
             $jobs = self::build_sweep_jobs($args, $sweep);
             if (is_wp_error($jobs)) {
+                // The foreign drop-in may already be displaced (swap happens above); an
+                // aborted start must not leave the site running our shim indefinitely.
+                SSPA_Helper_Files::restore_held_dropin();
                 return $jobs;
             }
         } elseif ('cache_impact' === $type) {
             $jobs = self::build_cache_impact_jobs($args, $oc_mode);
             if (is_wp_error($jobs)) {
+                SSPA_Helper_Files::restore_held_dropin();
                 return $jobs;
             }
         } elseif ('checkout' === $type) {
@@ -87,6 +91,7 @@ class SSPA_Run_Controller {
             // jobs rather than one so the existing status polling, cancel button, lock and
             // stale-run janitor all keep working unchanged.
             if (!class_exists('WooCommerce')) {
+                SSPA_Helper_Files::restore_held_dropin();
                 return new WP_Error('sspa_no_store', __('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
             }
             $jobs = array(
@@ -99,12 +104,14 @@ class SSPA_Run_Controller {
             // analysis" queries so a one-page check never replaces a full run.
             $job = SSPA_Adhoc::job_for(!empty($args['url']) ? $args['url'] : '');
             if (is_wp_error($job)) {
+                SSPA_Helper_Files::restore_held_dropin();
                 return $job;
             }
             $jobs = array($job);
         } else {
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
             if (!$jobs) {
+                SSPA_Helper_Files::restore_held_dropin();
                 return new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
             }
             if (!empty($args['include_writes'])) {
@@ -204,6 +211,22 @@ class SSPA_Run_Controller {
      */
     private static function build_sweep_jobs($args, &$sweep) {
         global $wpdb;
+
+        // Excluding a plugin can provoke a reaction from another one, and the guard that
+        // refuses destructive statements while that can happen lives in OUR db.php shim.
+        // No shim, no guard - so no exclusion sweep. Degraded mode (core SAVEQUERIES under
+        // a foreign drop-in) is fine for observation-only runs and unacceptable here.
+        $dropin = SSPA_Helper_Files::dropin_status();
+        if ('ours' !== $dropin) {
+            $why = in_array($dropin, array('foreign', 'qm'), true)
+                ? __('Another plugin currently owns wp-content/db.php: start the analysis from the Overview tab with "Temporarily swap db.php for this run" ticked, and the original is restored the moment the run finishes.', 'super-speedy-performance-analysis')
+                : __('It could not be installed - wp-content is not writable.', 'super-speedy-performance-analysis');
+            return new WP_Error('sspa_dropin_required', sprintf(
+                /* translators: %s: what to do about the missing drop-in */
+                __('Plugin impact analysis needs this plugin\'s own database drop-in in place - it is what refuses destructive database statements if a plugin reacts to another being excluded during a measurement. %s', 'super-speedy-performance-analysis'),
+                $why
+            ));
+        }
 
         // One URL, measured where you are looking at it. The source run is only needed to
         // choose pages and rank suspects - the deltas come from baselines this run takes for
@@ -1036,11 +1059,15 @@ class SSPA_Run_Controller {
         $measured = 0;
         $unresolved = 0;
         $fatal_cells = array();
+        $reacted_cells = array();
         $now = gmdate('Y-m-d H:i:s');
 
         foreach ($deltas as $d) {
             if (!empty($d['unresolved'])) {
                 $unresolved++;
+                if (!empty($d['reacted'])) {
+                    $reacted_cells[] = $d;
+                }
                 if (!empty($d['fatal'])) {
                     $fatal_cells[$d['slug'] . '|' . $d['page_key']] = array(
                         'plugin' => $d['slug'],
@@ -1084,6 +1111,8 @@ class SSPA_Run_Controller {
             ));
         }
 
+        $reactions = self::record_reactions($run_id, $reacted_cells, $now);
+
         foreach (array_keys($hashes) as $hash) {
             delete_option('sspa_isolation_' . $hash);
         }
@@ -1094,6 +1123,7 @@ class SSPA_Run_Controller {
             'finished' => $now,
             'notes' => wp_json_encode(array(
                 'type' => 'deep',
+                'reactions' => $reactions,
                 'impacts' => $measured,
                 'measurements' => count($deltas),
                 'cells' => count($deltas) - $unresolved,
@@ -1145,6 +1175,22 @@ class SSPA_Run_Controller {
                 continue; // not one of ours (should not happen)
             }
             $slug = $hashes[$p['plugin_set_hash']];
+            // A cell during which some plugin REACTED to the exclusion - tried to
+            // (de)activate something, or ran a destructive statement the shim refused - is
+            // not a measurement of the excluded plugin. Everything was neutralised, but the
+            // page did different work, so the delta is reported as a reaction, never
+            // trusted, and finish_sweep turns the pair into a learned group.
+            if (self::samples_reacted($p['samples'])) {
+                $deltas[] = array(
+                    'slug' => $slug,
+                    'page_key' => $p['page_key'],
+                    'mode' => $p['object_cache_mode'],
+                    'unresolved' => true,
+                    'reacted' => true,
+                    'profile_id' => (int) $p['id'],
+                );
+                continue;
+            }
             if (!$ok || !isset($baselines[$key])) {
                 $deltas[] = array(
                     'slug' => $slug,
@@ -1177,6 +1223,113 @@ class SSPA_Run_Controller {
             );
         }
         return $deltas;
+    }
+
+    /**
+     * Turn reacted cells into the three things a reaction is FOR:
+     *
+     *  1. a finding on this run, so it is visible and - findings being part of every shared
+     *     payload - reaches superspeedy.org, where enough of them can become a community
+     *     dependency map;
+     *  2. a learned group, so the NEXT sweep excludes the pair together and the reaction can
+     *     never recur on this site;
+     *  3. the run notes, so History says why some cells have no verdict.
+     *
+     * @return array[] {excluded, reactor, ops} for the run notes
+     */
+    private static function record_reactions($run_id, $reacted_cells, $now) {
+        global $wpdb;
+        if (!$reacted_cells) {
+            return array();
+        }
+
+        // One pair may react on every page and in every cache mode; report it once.
+        $pairs = array(); // "excluded|reactor" => {excluded, reactor, ops: [op => count], sql: sample, page_key}
+        foreach ($reacted_cells as $cell) {
+            $blob = $wpdb->get_var($wpdb->prepare(
+                'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . ' WHERE id = %d',
+                (int) $cell['profile_id']
+            ));
+            $capture = $blob ? json_decode((string) @gzuncompress($blob), true) : null;
+            if (!is_array($capture) || empty($capture['reactions'])) {
+                continue;
+            }
+            foreach ((array) $capture['reactions'] as $reaction) {
+                $reactor = isset($reaction['component']) ? (string) $reaction['component'] : '';
+                if ('' === $reactor || $reactor === $cell['slug']) {
+                    continue;
+                }
+                $key = $cell['slug'] . '|' . $reactor;
+                if (!isset($pairs[$key])) {
+                    $pairs[$key] = array(
+                        'excluded' => $cell['slug'],
+                        'reactor' => $reactor,
+                        'ops' => array(),
+                        'sql' => null,
+                        'page_key' => $cell['page_key'],
+                    );
+                }
+                $op = isset($reaction['op']) ? (string) $reaction['op'] : 'unknown';
+                $pairs[$key]['ops'][$op] = (isset($pairs[$key]['ops'][$op]) ? $pairs[$key]['ops'][$op] : 0) + 1;
+                if ('sql' === $op && null === $pairs[$key]['sql'] && !empty($reaction['sql'])) {
+                    $pairs[$key]['sql'] = (string) $reaction['sql'];
+                }
+            }
+        }
+
+        $learned = (array) get_option(SSPA_Dependency_Map::LEARNED_OPTION, array());
+        $notes = array();
+        foreach ($pairs as $pair) {
+            // The privacy allowlist for shared findings passes 'shape' and fingerprints an
+            // 'sql' key, so the payload carries what KIND of reaction and, for a refused
+            // statement, its fingerprint - never the raw SQL.
+            $shape = isset($pair['ops']['sql']) ? 'destructive_sql'
+                : (isset($pair['ops']['activate']) ? 'activate_dependency' : 'deactivate_self');
+            $wpdb->insert(SSPA_Schema::table('findings'), array(
+                'run_id' => $run_id,
+                'severity' => 'warn',
+                'finding_type' => 'isolation_reaction',
+                'component' => substr($pair['reactor'], 0, 191),
+                'page_key' => $pair['page_key'],
+                'evidence' => wp_json_encode(array(
+                    'excluded' => $pair['excluded'],
+                    'ops' => $pair['ops'],
+                    'shape' => $shape,
+                    'sql' => $pair['sql'],
+                )),
+                'recommendation_key' => 'isolation_reaction',
+                'confidence' => 'measured',
+                'created' => $now,
+            ));
+
+            // Learn the pair - except the theme swap, which has no slug to group by.
+            if ('theme' !== $pair['excluded']) {
+                $existing = isset($learned[$pair['excluded']]) ? (array) $learned[$pair['excluded']] : array();
+                if (!in_array($pair['reactor'], $existing, true)) {
+                    $existing[] = $pair['reactor'];
+                    $learned[$pair['excluded']] = $existing;
+                }
+            }
+            $notes[] = array(
+                'excluded' => $pair['excluded'],
+                'reactor' => $pair['reactor'],
+                'ops' => $pair['ops'],
+            );
+        }
+        if ($notes) {
+            update_option(SSPA_Dependency_Map::LEARNED_OPTION, $learned, false);
+        }
+        return $notes;
+    }
+
+    /** Did any sample of this profile record a reaction to the excluded set? */
+    private static function samples_reacted($samples_json) {
+        foreach ((array) json_decode((string) $samples_json, true) as $s) {
+            if (!empty($s['reactions'])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

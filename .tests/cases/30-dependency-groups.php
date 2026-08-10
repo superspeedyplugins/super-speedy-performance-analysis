@@ -64,6 +64,7 @@ activate_plugin('sspa-grp-free/sspa-grp-free.php');
 activate_plugin('sspa-grp-pro/sspa-grp-pro.php');
 SSPA_Helper_Files::ensure_installed();
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 delete_option('sspa_grp_orphaned');
 wp_cache_flush();
 sleep(3); // opcache
@@ -131,6 +132,7 @@ PHP
 );
 activate_plugin('wordfence/wordfence.php');
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 wp_cache_flush();
 sleep(3);
 
@@ -152,6 +154,7 @@ deactivate_plugins('wordfence/wordfence.php');
 @unlink($sspa_fragile_dir . '/wordfence.php');
 @rmdir($sspa_fragile_dir);
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 wp_cache_flush();
 sleep(3);
 sspa_grp_t(
@@ -251,4 +254,5 @@ deactivate_plugins(array('sspa-grp-free/sspa-grp-free.php', 'sspa-grp-pro/sspa-g
 @rmdir($sspa_pro_dir);
 delete_option('sspa_grp_orphaned');
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 sspa_grp_t(!is_dir($sspa_free_dir) && !is_dir($sspa_pro_dir), 'fixtures removed');

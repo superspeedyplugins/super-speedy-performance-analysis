@@ -143,6 +143,19 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   a fixture using the `wordfence` slug (on the bundled security list) makes both itself and the
   plugin it depends on ineligible.
 
+- `31-reaction-guards.php` - the reaction guards, each proven able to fail before being proven
+  to hold: a scalability-pro-shaped fixture whose deactivation hook drops a real index on
+  `wp_options`, plus an INLINE index drop and a runtime-assembled dependency the scanner cannot
+  see. Runs both destructive paths with the guards disarmed first (the hook really drops the
+  index; the same ALTER really executes through the shim with the guard off), then the e2e
+  sweep: routine never runs (hook silencing), index survives (statement refusal), both plugins
+  stay active, the reaction becomes a finding + run notes + a learned group, and a second sweep
+  groups the pair, provokes nothing, and finally yields a verdict with `group_members`.
+  Gotcha the case documents: `wp eval-file` textually replaces `__FILE__` before eval'ing, so a
+  fixture written via heredoc must name its plugin basename explicitly - `__FILE__` inside the
+  heredoc silently becomes the CASE file's path and hooks register under a name that never
+  fires, making guard assertions vacuous.
+
 **Bounded fixtures.** Any test fixture doing deliberately expensive work must bound it against
 the table it reads. `run-tests.sh` reseeds the WooCommerce sample data whenever products drop
 below five, so `wp_posts` grows across runs, and an O(posts^3) join that cost ~800ms when it was

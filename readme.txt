@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.15.0
+Stable tag: 0.16.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,13 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.16.0 (10th August 2026) =
+* Plugin Impact Analysis now always starts from a chooser: nothing is measured until you pick the plugins yourself, nothing is preselected, and the chooser explains exactly what will happen and what it will cost before anything runs.
+* If a plugin reacts to another being excluded during a measurement, its activation and deactivation routines are now silenced before they can run, and destructive database statements (`DROP`, `TRUNCATE`, `ALTER ... DROP`, whole-table `DELETE`) are refused for that request - measured on a real deactivation routine that drops database indexes.
+* Every caught reaction becomes a finding on the analysis, is included when you share results, and the pair is measured together from the next run on, so a reaction can happen at most once per site.
+* Plugin Impact Analysis now requires this plugin's own `db.php` drop-in during the run, because that is what enforces the database guard; sites where another plugin owns the drop-in can use the existing temporary swap option.
+* New `--no-cache-modes` behaviour applies from the chooser too: the object-cache measurements are opt-in rather than automatic.
 
 = 0.15.0 (10th August 2026) =
 * Plugin Impact Analysis now reads each plugin's own code to find which plugins cannot run without another one, and measures those together in one go, so nothing is ever left running without something it depends on.

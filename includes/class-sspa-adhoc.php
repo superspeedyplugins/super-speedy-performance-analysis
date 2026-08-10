@@ -104,21 +104,29 @@ class SSPA_Adhoc {
                 'loading' => __('Loading…', 'super-speedy-performance-analysis'),
                 // The plugin-impact picker. Built client-side from the plan endpoint so the
                 // estimate can update as boxes are ticked, rather than after a round trip.
+                // NOTHING is preselected: choosing which plugins get excluded from test
+                // requests is the site owner's decision, made knowing what it involves.
                 'plan_title' => __('Which plugins should I measure on this page?', 'super-speedy-performance-analysis'),
-                'plan_hint' => __('Each plugin is measured by requesting this page again with that plugin excluded from the test requests only. Your visitors always get the full site; nothing is ever really deactivated and no activation or deactivation hook fires.', 'super-speedy-performance-analysis'),
-                'plan_blamed' => __('Ticked by default: the plugins this page\'s own attribution blames.', 'super-speedy-performance-analysis'),
+                'plan_title_site' => __('Which plugins should I measure the impact of?', 'super-speedy-performance-analysis'),
+                'plan_hint' => __('Each chosen plugin is left out of our test requests only - it is never deactivated, no activation or deactivation hook fires, and your visitors always get the full site. A measurement is a warm-up plus three samples per page.', 'super-speedy-performance-analysis'),
+                'plan_risk' => __('One caution: a plugin that depends on one you choose may notice it missing during those test requests and react. Reactions we can reach are stopped - your plugin list cannot change, activation and deactivation routines are silenced, and destructive database statements are refused - and any reaction is recorded, with the pair measured together from then on. Even so, choose plugins you understand.', 'super-speedy-performance-analysis'),
+                'plan_pick' => __('Nothing is ticked until you tick it. Plugins are listed by the time attribution charges them, most expensive first.', 'super-speedy-performance-analysis'),
                 'select_blamed' => __('Select blamed', 'super-speedy-performance-analysis'),
                 'select_all' => __('Select every eligible plugin', 'super-speedy-performance-analysis'),
                 'select_none' => __('Clear', 'super-speedy-performance-analysis'),
                 'cache_modes' => __('Also measure with the object cache off and while it primes (three times the measurements, for the plugins that show an impact)', 'super-speedy-performance-analysis'),
                 'estimate' => __('%1$s plugins × 1 page = %2$s measurements, about %3$s.', 'super-speedy-performance-analysis'),
+                'estimate_site' => __('%1$s plugins × %2$s pages = %3$s measurements, about %4$s.', 'super-speedy-performance-analysis'),
+                'estimate_screen' => __('All %1$s plugins, screened: each is first measured on its busiest pages (about %2$s measurements, %3$s), then only the plugins that show an impact get the full treatment.', 'super-speedy-performance-analysis'),
                 'estimate_phase2' => __('Plugins that show an impact are then re-measured with the object cache off and priming - up to %1$s more measurements, about %2$s, if every one of them does.', 'super-speedy-performance-analysis'),
                 'estimate_none' => __('Tick at least one plugin.', 'super-speedy-performance-analysis'),
                 'start_measuring' => __('Start measuring', 'super-speedy-performance-analysis'),
                 'cancel' => __('Cancel', 'super-speedy-performance-analysis'),
                 'minutes' => __('%s minutes', 'super-speedy-performance-analysis'),
                 'seconds' => __('%s seconds', 'super-speedy-performance-analysis'),
-                'no_cost' => __('nothing attributed on this page', 'super-speedy-performance-analysis'),
+                'no_cost' => __('nothing attributed', 'super-speedy-performance-analysis'),
+                'attributed_here' => __('%sms attributed here', 'super-speedy-performance-analysis'),
+                'attributed_site' => __('%sms attributed across the site', 'super-speedy-performance-analysis'),
                 'with_group' => __('· measured together with %s, which cannot run without it', 'super-speedy-performance-analysis'),
             ),
         ));

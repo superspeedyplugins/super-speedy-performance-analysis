@@ -455,8 +455,15 @@ jQuery(document).on('click', '#sspa-run-analysis', function () {
 	sspa_start_typed_run({}, jQuery(this));
 });
 
+// Plugin Impact Analysis never starts from one press any more. The button opens the plugin
+// picker (rendered by sspa-adhoc.js into the panel shell): nothing is measured until the
+// site owner ticks the plugins themselves, with the estimate and the caution in front of
+// them. Measuring a plugin means excluding it from test requests, and which plugins that is
+// acceptable for is their call, not a default.
 jQuery(document).on('click', '#sspa-run-deep', function () {
-	sspa_start_typed_run({ type: 'deep' }, jQuery(this));
+	if (window.sspaPanel && window.sspaPanel.openImpactPicker) {
+		window.sspaPanel.openImpactPicker();
+	}
 });
 
 jQuery(document).on('click', '#sspa-run-cache', function () {

@@ -139,6 +139,66 @@ if (!empty($sspa_tok['flags']['ps'])) {
                 }
                 return $plugins;
             });
+
+            // The write guard above is only half of it: core runs a plugin's OWN activation
+            // and deactivation routines BEFORE the option write it guards, and those are
+            // whole installers - scalability-pro's deactivation hook drops its database
+            // indexes. A dependant that reacts to its dependency being excluded must not get
+            // to run any of that because we measured something.
+            //
+            // Both core paths fire a general action first:
+            //   deactivate_plugin -> deactivate_{$file} -> deactivated_plugin -> write
+            //   activate_plugin   -> activate_{$file}   -> activated_plugin   -> write
+            // so a listener at the head of the first can CATCH the attempt (it becomes a
+            // recorded reaction: the cell is reported instead of trusted, and the pair is
+            // grouped from the next run on) and then remove every listener core is about to
+            // call - its own routine, and third-party observers such as a security plugin's
+            // audit log, which would otherwise record a deactivation that never happened.
+            if (!function_exists('sspa_catch_plugin_reaction')) {
+                function sspa_catch_plugin_reaction($sspa_which, $sspa_plugin) {
+                    if (!isset($GLOBALS['sspa_plugin_reactions'])) {
+                        $GLOBALS['sspa_plugin_reactions'] = array();
+                    }
+                    // The backtrace names the REACTOR - the plugin whose code called
+                    // (de)activate - which is not the same as the target: Rank Math Pro
+                    // reacting calls activate_plugin() on Rank Math. Our own catcher frames
+                    // are skipped or attribution lands on this loader instead of the plugin
+                    // that actually reacted.
+                    $sspa_frames = array();
+                    foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 24) as $sspa_f) {
+                        if (isset($sspa_f['file']) && __FILE__ !== $sspa_f['file']) {
+                            $sspa_frames[] = array(
+                                $sspa_f['file'],
+                                isset($sspa_f['line']) ? $sspa_f['line'] : 0,
+                                (isset($sspa_f['class']) ? $sspa_f['class'] . '::' : '') . $sspa_f['function'],
+                            );
+                        }
+                    }
+                    $GLOBALS['sspa_plugin_reactions'][] = array(
+                        'op' => $sspa_which,
+                        'plugin' => (string) $sspa_plugin,
+                        'frames' => $sspa_frames,
+                    );
+                    remove_all_actions($sspa_which . '_' . $sspa_plugin);
+                    remove_all_actions($sspa_which . 'd_plugin');
+                    // Clear the general hook too (third-party observers), then re-arm this
+                    // catcher so a second attempt in the same request is still caught.
+                    $sspa_self = ('deactivate' === $sspa_which) ? 'sspa_catch_deactivation' : 'sspa_catch_activation';
+                    remove_all_actions($sspa_which . '_plugin');
+                    add_action($sspa_which . '_plugin', $sspa_self, PHP_INT_MIN);
+                }
+                function sspa_catch_deactivation($sspa_plugin) {
+                    sspa_catch_plugin_reaction('deactivate', $sspa_plugin);
+                }
+                function sspa_catch_activation($sspa_plugin) {
+                    sspa_catch_plugin_reaction('activate', $sspa_plugin);
+                }
+            }
+            if (!isset($GLOBALS['sspa_plugin_reactions'])) {
+                $GLOBALS['sspa_plugin_reactions'] = array();
+            }
+            add_action('deactivate_plugin', 'sspa_catch_deactivation', PHP_INT_MIN);
+            add_action('activate_plugin', 'sspa_catch_activation', PHP_INT_MIN);
         }
         if (!empty($sspa_iso['theme'])) {
             $sspa_theme = $sspa_iso['theme'];

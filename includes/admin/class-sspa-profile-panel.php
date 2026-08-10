@@ -792,14 +792,25 @@ class SSPA_Profile_Panel {
      * time, before the user commits to it.
      */
     public static function ajax_impact_plan() {
+        global $wpdb;
         self::guard();
+
+        // Two scopes, one picker. With a profile id it plans "measure plugins on this page";
+        // without one it plans the site-wide sweep - which is now reached the same way, by
+        // choosing plugins one by one, rather than by a button that swept everything. Nothing
+        // this endpoint returns is preselected: measuring a plugin means excluding it from
+        // test requests, another plugin can react to that, and "we think it is safe" is not a
+        // decision to make on somebody else's site.
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
-        $row = self::profile_row($profile_id);
-        if (!$row) {
-            wp_send_json_error(__('That page profile no longer exists.', 'super-speedy-performance-analysis'));
-        }
-        if (!self::is_reprofilable($row)) {
-            wp_send_json_error(__('This measurement is not a page request, so it cannot be re-measured plugin by plugin.', 'super-speedy-performance-analysis'));
+        $row = null;
+        if ($profile_id) {
+            $row = self::profile_row($profile_id);
+            if (!$row) {
+                wp_send_json_error(__('That page profile no longer exists.', 'super-speedy-performance-analysis'));
+            }
+            if (!self::is_reprofilable($row)) {
+                wp_send_json_error(__('This measurement is not a page request, so it cannot be re-measured plugin by plugin.', 'super-speedy-performance-analysis'));
+            }
         }
 
         $eligible = SSPA_Dependency_Map::isolation_candidates();
@@ -807,20 +818,40 @@ class SSPA_Profile_Panel {
             wp_send_json_error(__('No plugins can be safely excluded on this site - every active plugin is either a dependency of another or on the fragile list.', 'super-speedy-performance-analysis'));
         }
 
-        // What this page's own attribution blames, so the default selection is the shortlist
-        // somebody would pick by hand: SQL + HTTP from the capture, plus the PHP the boot
-        // timer charged to each plugin (a plugin can cost 200ms of hook time without running a
-        // single query).
-        $capture = self::capture($row);
+        // What attribution blames, so the list is ordered by who is worth suspecting: SQL +
+        // HTTP, plus the PHP the boot timer charged to each plugin (a plugin can cost 200ms
+        // of hook time without running a single query). Ordering only, never preselection.
         $blamed = array();
-        if (is_array($capture)) {
-            foreach ((array) (isset($capture['components']) ? $capture['components'] : array()) as $component => $stats) {
-                $blamed[$component] = (isset($blamed[$component]) ? $blamed[$component] : 0)
-                    + (float) $stats['sql_ms'] + (float) $stats['http_ms'];
+        $pages = 1;
+        if ($row) {
+            $capture = self::capture($row);
+            if (is_array($capture)) {
+                foreach ((array) (isset($capture['components']) ? $capture['components'] : array()) as $component => $stats) {
+                    $blamed[$component] = (isset($blamed[$component]) ? $blamed[$component] : 0)
+                        + (float) $stats['sql_ms'] + (float) $stats['http_ms'];
+                }
+                foreach ((array) (isset($capture['boot']['components']) ? $capture['boot']['components'] : array()) as $component => $ms) {
+                    $blamed[$component] = (isset($blamed[$component]) ? $blamed[$component] : 0) + (float) $ms;
+                }
             }
-            foreach ((array) (isset($capture['boot']['components']) ? $capture['boot']['components'] : array()) as $component => $ms) {
-                $blamed[$component] = (isset($blamed[$component]) ? $blamed[$component] : 0) + (float) $ms;
+        } else {
+            $run_id = SSPA_Plugins_Table::latest_run_id();
+            if (!$run_id) {
+                wp_send_json_error(__('Run a normal analysis first - plugin impact analysis re-measures the pages it profiled.', 'super-speedy-performance-analysis'));
             }
+            foreach ($wpdb->get_results($wpdb->prepare(
+                'SELECT component, SUM(sql_ms + http_ms) cost FROM ' . SSPA_Schema::table('component_stats') . '
+                 WHERE run_id = %d GROUP BY component',
+                $run_id
+            ), ARRAY_A) as $component_row) {
+                $blamed[$component_row['component']] = (float) $component_row['cost'];
+            }
+            $pages = max(1, (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(DISTINCT page_key) FROM ' . SSPA_Schema::table('profiles') . "
+                 WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
+                 AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'",
+                $run_id
+            )));
         }
 
         // Plugins that come out in the same cell as this one, so the picker can say so before
@@ -847,10 +878,13 @@ class SSPA_Profile_Panel {
             && 'ours' === SSPA_Helper_Files::dropin_status();
 
         wp_send_json_success(array(
-            'profile_id' => (int) $row['id'],
-            'page_key' => $row['page_key'],
-            'url' => $row['url'],
+            'scope' => $row ? 'page' : 'site',
+            'profile_id' => $row ? (int) $row['id'] : 0,
+            'page_key' => $row ? $row['page_key'] : '',
+            'url' => $row ? $row['url'] : '',
             'plugins' => $plugins,
+            'pages' => $pages,
+            'screen_pages' => SSPA_Run_Controller::SWEEP_SCREEN_PAGES,
             'oc_capable' => $oc_capable,
             'seconds_per_job' => self::seconds_per_job(),
             'rebaseline_every' => SSPA_Run_Controller::SWEEP_REBASELINE_EVERY,

@@ -66,6 +66,15 @@ if (isset($sspa_shim_tok['flags']['oc']) && '0' === $sspa_shim_tok['flags']['oc'
     add_filter('enable_loading_object_cache_dropin', '__return_false');
 }
 
+// Isolation cells (a plugin virtually excluded) arm the destructive-statement guard in the
+// profiling wpdb below: a plugin reacting to another being excluded must not be able to
+// drop, truncate or wipe anything because we measured something. This is why plugin impact
+// analysis requires OUR db.php - without this seat there is nothing between a reaction and
+// the database.
+if (!empty($sspa_shim_tok['flags']['ps'])) {
+    $GLOBALS['sspa_isolation_cell'] = true;
+}
+
 // Baseline requests need no profiling wpdb.
 if (!empty($sspa_shim_tok['flags']['bl'])) {
     unset($sspa_shim_tok);

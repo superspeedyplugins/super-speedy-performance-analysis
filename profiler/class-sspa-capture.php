@@ -295,6 +295,12 @@ if (!class_exists('SSPA_Capture')) {
                 // never values, which hold licence keys, API tokens and customer data.
                 // Armed in the db.php drop-in; see the coverage note there.
                 'options' => $this->collect_options(),
+                // Reactions to a plugin being virtually excluded: another plugin trying to
+                // (de)activate something, or running a destructive statement the shim
+                // refused. All neutralised before they could act; recorded so the cell is
+                // reported as a reaction rather than trusted, and so the pair can be
+                // grouped from the next run on.
+                'reactions' => $this->collect_reactions($map),
                 'conditionals' => $this->conditionals,
                 'components' => $this->aggregate_components($sql, $http, $mail),
                 'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
@@ -450,6 +456,44 @@ if (!class_exists('SSPA_Capture')) {
                 'frames_truncated' => isset($wpdb->sspa_frames_truncated) ? (int) $wpdb->sspa_frames_truncated : 0,
                 'queries' => $queries,
             );
+        }
+
+        /**
+         * Reactions collected by the mu-loader's hook catcher and the shim's statement
+         * guard, attributed to the component that reacted. Null when nothing reacted, which
+         * is every cell on a healthy sweep.
+         */
+        private function collect_reactions($map) {
+            if (empty($GLOBALS['sspa_plugin_reactions']) || !is_array($GLOBALS['sspa_plugin_reactions'])) {
+                return null;
+            }
+            $reactions = array();
+            foreach ($GLOBALS['sspa_plugin_reactions'] as $r) {
+                if (!is_array($r) || empty($r['op'])) {
+                    continue;
+                }
+                if ('sql' === $r['op']) {
+                    $attr = $map->attribute(isset($r['frames']) ? (array) $r['frames'] : array());
+                    $reactions[] = array(
+                        'op' => 'sql',
+                        'component' => $attr['component'],
+                        'sql' => isset($r['sql']) ? (string) $r['sql'] : '',
+                    );
+                    continue;
+                }
+                // The reactor is whoever CALLED (de)activate - attributed from the frames -
+                // and the target is the plugin file it acted on. They differ: Rank Math Pro
+                // reacting calls activate_plugin() on Rank Math.
+                $file = isset($r['plugin']) ? (string) $r['plugin'] : '';
+                $target = (dirname($file) !== '.') ? dirname($file) : basename($file, '.php');
+                $attr = $map->attribute(isset($r['frames']) ? (array) $r['frames'] : array());
+                $reactions[] = array(
+                    'op' => (string) $r['op'],
+                    'component' => ('core' !== $attr['component']) ? $attr['component'] : $target,
+                    'target' => $target,
+                );
+            }
+            return $reactions ? $reactions : null;
         }
 
         /**

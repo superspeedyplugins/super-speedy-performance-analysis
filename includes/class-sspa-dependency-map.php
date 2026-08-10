@@ -26,6 +26,15 @@ class SSPA_Dependency_Map {
     /** Cached code scan, invalidated by any change to an active plugin's main file. */
     const SIGNALS_OPTION = 'sspa_dep_signals';
 
+    /**
+     * Pairs learned by EXPERIMENT: a sweep excluded X and plugin Y reacted (tried to
+     * (de)activate something, or ran a destructive statement the shim refused). The scan
+     * only sees dependencies written as literals in a main file; this option is how a
+     * dependency the scan cannot see still gets grouped - once, after its first (fully
+     * neutralised) reaction, instead of on every sweep forever.
+     */
+    const LEARNED_OPTION = 'sspa_learned_groups';
+
     /** Main files larger than this are scanned only up to here - a loader is never this big. */
     const SCAN_BYTES = 1048576;
 
@@ -119,6 +128,15 @@ class SSPA_Dependency_Map {
      */
     public static function must_exclude_together() {
         $dependants = self::required_by(); // dependency slug => [dependants], from headers
+
+        // Pairs proven by a previous sweep's caught reaction outrank any heuristic.
+        foreach ((array) get_option(self::LEARNED_OPTION, array()) as $dependency => $reactors) {
+            foreach ((array) $reactors as $reactor) {
+                if (!isset($dependants[$dependency]) || !in_array($reactor, $dependants[$dependency], true)) {
+                    $dependants[$dependency][] = (string) $reactor;
+                }
+            }
+        }
 
         foreach (self::code_signals() as $slug => $signal) {
             if (empty($signal['self_deactivates']) && empty($signal['activates_others'])) {

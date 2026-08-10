@@ -90,6 +90,7 @@ sspa_iso_t(
 delete_transient('sspa_plugin_toggled');
 delete_option('sspa_dep_orphaned');
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 
 // This case only means anything while the dependant is left to discover the gap on its own.
 $sspa_together = SSPA_Dependency_Map::must_exclude_together();
@@ -168,4 +169,5 @@ deactivate_plugins(array($sspa_dep_file, $sspa_dependant_file));
 delete_transient('sspa_plugin_toggled');
 delete_option('sspa_dep_orphaned');
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
+delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 sspa_iso_t(!is_dir($sspa_dep_dir) && !is_dir($sspa_dependant_dir), 'fixtures removed');
