@@ -20,7 +20,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
 <?php if ($sspa_last_run) : ?>
     <div class="sspa-placeholder sspa-score-row">
         <div class="sspa-score <?php echo (int) $sspa_run_notes['score'] >= 80 ? 'good' : ((int) $sspa_run_notes['score'] >= 50 ? 'ok' : 'bad'); ?>">
-            <span class="sspa-score-number"><?php echo (int) $sspa_run_notes['score']; ?></span>
+            <span class="sspa-score-number"><?php echo (int) $sspa_run_notes['score']; ?><span class="sspa-score-denom">/100</span></span>
             <span class="sspa-score-label"><?php esc_html_e('site score', 'super-speedy-performance-analysis'); ?></span>
         </div>
         <div class="sspa-score-meta">

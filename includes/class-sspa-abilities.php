@@ -83,7 +83,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/get-report', array(
             'label' => __('Get performance report', 'super-speedy-performance-analysis'),
-            'description' => __('The full report for the latest completed analysis: site score, plain-English insights with recommendations, per-page metrics, all findings, and measured per-plugin impacts. This is the primary read for interpreting results.', 'super-speedy-performance-analysis'),
+            'description' => __('The full report for the latest completed analysis: site score (out of 100), plain-English insights with recommendations, per-page metrics, all findings, and measured per-plugin impacts. This is the primary read for interpreting results.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',

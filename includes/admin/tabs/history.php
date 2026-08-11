@@ -75,7 +75,7 @@ if (!$sspa_runs) : ?>
                 <td><?php echo $pages; ?></td>
                 <td><?php echo $median_gen !== null ? esc_html(number_format((float) $median_gen, 1)) : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['findings']) ? (int) $notes['findings'] : '-'; ?></td>
-                <td><?php echo is_array($notes) && isset($notes['score']) ? (int) $notes['score'] : '-'; ?></td>
+                <td><?php echo is_array($notes) && isset($notes['score']) ? (int) $notes['score'] . '/100' : '-'; ?></td>
                 <td>
                     <?php if ($sspa_run_versions) : ?>
                         <details class="sspa-run-components">

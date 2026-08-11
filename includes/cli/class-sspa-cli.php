@@ -100,7 +100,7 @@ class SSPA_CLI {
         if ('deep' !== $type) {
             $report = SSPA_Report::build($run_id === SSPA_Report::latest_done_run_id() ? $run_id : 0);
             if (!is_wp_error($report) && $report['score'] !== null) {
-                WP_CLI::log('Site score: ' . $report['score'] . ' - ' . count($report['findings']) . ' finding(s). Run `wp sspa report` for detail.');
+                WP_CLI::log('Site score: ' . $report['score'] . '/100 - ' . count($report['findings']) . ' finding(s). Run `wp sspa report` for detail.');
             }
         }
     }

@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.8';
+    const DB_VERSION = '1.9';
 
     const LOCK_OPTION = 'sspa_schema_lock';
 
@@ -76,6 +76,7 @@ class SSPA_Schema {
             PRIMARY KEY  (id),
             KEY run_uuid_lookup (run_uuid),
             KEY blog_status (blog_id,status),
+            KEY status (status),
             KEY started (started)
         ) $charset_collate;");
 
