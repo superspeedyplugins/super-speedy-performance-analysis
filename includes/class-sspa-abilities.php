@@ -50,11 +50,11 @@ class SSPA_Abilities {
         $readonly = array(
             'annotations' => array('readonly' => true, 'destructive' => false, 'idempotent' => true),
             'show_in_rest' => true,
-        );
+            'mcp' => array('public' => true),        );
         $active = array(
             'annotations' => array('readonly' => false, 'destructive' => false, 'idempotent' => false),
             'show_in_rest' => true,
-        );
+            'mcp' => array('public' => true),        );
         // Gotcha: input only reaches the callback when input_schema is non-empty.
         $no_input = array(
             'type' => 'object',
@@ -229,7 +229,7 @@ class SSPA_Abilities {
             'meta' => array(
                 'annotations' => array('readonly' => false, 'destructive' => true, 'idempotent' => false),
                 'show_in_rest' => true,
-            ),
+                'mcp' => array('public' => true),            ),
         ));
 
         wp_register_ability(self::CATEGORY . '/get-checkout-flow', array(
