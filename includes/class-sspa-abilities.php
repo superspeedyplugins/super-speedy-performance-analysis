@@ -207,7 +207,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/run-checkout-flow', array(
             'label' => __('Measure the checkout flow (buys something for real)', 'super-speedy-performance-analysis'),
-            'description' => __('Measure what a customer waits through while buying something: each step of the purchase funnel, with the full plugin set active and nothing switched off. THIS CREATES A REAL ORDER. Real order emails are sent and real integrations fire; the order is cancelled and deleted afterwards and stock is restored. Call with dry_run first to get the pre-flight inventory - exactly which emails, webhooks and plugins the run would set off - and show it to the site owner before running for real. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
+            'description' => __('Measure a real purchase AND handling the order afterwards: each step of the purchase funnel, then viewing the order in wp-admin and marking it completed - the two things a shop owner does most - with the full plugin set active and nothing switched off. THIS CREATES A REAL ORDER. Real order emails are sent (including the completed-order email when the order is marked completed) and real integrations fire; the order is cancelled and deleted afterwards and stock is restored. Call with dry_run first to get the pre-flight inventory - exactly which emails, webhooks and plugins the run would set off - and show it to the site owner before running for real. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',

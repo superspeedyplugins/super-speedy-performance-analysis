@@ -259,6 +259,15 @@ sspa_t(isset($flow['orders_deleted']) && $flow['orders_deleted'] >= 1 && 0 === (
 
 // ---------------------------------------------------------------- 6. mail behaviour matches the mode
 
+// The observer wrote the log from INSIDE the loopback requests (a different process); this
+// controller process called delete_option('sspa_test_mail_log') before the run, which put the
+// key in its own `notoptions` cache, so a plain get_option here can return the stale empty
+// default and never see the loopbacks' DB writes - both the value cache AND the notoptions
+// array have to be busted. (Surfaced in 0.17.0 when the flow began writing a completed-order
+// email from a management loopback after the delete; the raw DB row was correct, only the
+// controller's cache was stale.)
+wp_cache_delete('sspa_test_mail_log', 'options');
+wp_cache_delete('notoptions', 'options');
 $mail_log = get_option('sspa_test_mail_log', array());
 $delivered = array_filter($mail_log, function ($entry) {
     return $entry['ok'] || false === stripos($entry['message'], 'recipient');
@@ -683,6 +692,10 @@ if (is_wp_error($classic_run)) {
     sspa_t(null !== $classic_mark && $classic_mark > 0 && $classic_mark < (float) $classic_rows['flow-place-order']['page_gen_ms'],
         'classic payment boundary marked at ' . round((float) $classic_mark, 1) . 'ms');
 
+    // Cross-process read: bust the controller's option caches first (see the note at the
+    // block-run mail read above).
+    wp_cache_delete('sspa_test_mail_log', 'options');
+    wp_cache_delete('notoptions', 'options');
     $classic_mail = get_option('sspa_test_mail_log', array());
     sspa_t(count($classic_mail) >= 1, 'classic run sent order emails for real (' . count($classic_mail) . ')');
 

@@ -96,6 +96,25 @@ class SSPA_Probes {
             self::done('flow-delete-order-skipped');
         }
 
+        // Order-management flow: mark the order the checkout just created as completed,
+        // inside a profiled request so the completion cascade - the completed-order email,
+        // stock/download permissions and every plugin hooking `completed` - is measured, and
+        // the email is intercepted per the run's mail mode exactly as a checkout email is.
+        // The from-status is whatever the checkout left it (processing for physical goods);
+        // update_status is a no-op when it already equals completed, so a virtual order that
+        // finished completed measures an honest ~0ms rather than sending a second email.
+        if ('complete' === $ck && !empty($flags['oid'])) {
+            if (function_exists('wc_get_order')) {
+                $order = wc_get_order((int) $flags['oid']);
+                // Same inviolable rule as the delete probe: only ever an order carrying our
+                // own marker, whatever the flags say.
+                if ($order && $order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
+                    $order->update_status('completed', 'SSPA order-management flow');
+                }
+            }
+            self::done('flow-complete-order');
+        }
+
         if (!empty($flags['wp']) && !empty($flags['tid'])) {
             $target = (int) $flags['tid'];
             switch ($flags['wp']) {

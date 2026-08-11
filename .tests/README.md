@@ -163,6 +163,24 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   must NOT be `sspa_`-prefixed - the catalogue matcher strips `sspa_*` keys and the run would
   file under `home` and measure the catalogue URL without the sleep.
 
+- `33-order-management.php` - the order-management steps the checkout flow appends (view order
+  in wp-admin, mark processing -> completed). Drives the real `start(['type' => 'checkout'])`
+  path; asserts both steps measured, the view ran as admin and rendered, a fixture hooking
+  `woocommerce_order_status_completed` fired inside the measured step, the transition was
+  processing -> completed, the waterfall's `management` bucket holds both steps with real time
+  while the customer `total_ms` excludes them, and the completed order was still deleted. Gotcha:
+  the transition runs in the loopback, so the flow must bust its order cache (`wp_cache_delete($id,
+  'orders')` + `clean_post_cache`) before reading the resulting status or it reads back stale.
+
+**Cross-process option reads.** A fixture that records into an option from inside the loopback
+requests, read back by the controller process, is only reliable if the controller busts BOTH the
+value cache (`wp_cache_delete('key', 'options')`) AND the `notoptions` array
+(`wp_cache_delete('notoptions', 'options')`) before reading - especially when the controller
+`delete_option`'d the key earlier, which caches it as known-missing. Case 19's mail-observer read
+hit this in 0.17.0: the DB row was correct, the controller's `get_option` returned the stale empty
+default. Symptom: a mail/observer assertion reads 0 while a raw `SELECT option_value` shows the
+rows. Verify with a raw `$wpdb->get_var` before concluding it is a product bug - here it was not.
+
 **Bounded fixtures.** Any test fixture doing deliberately expensive work must bound it against
 the table it reads. `run-tests.sh` reseeds the WooCommerce sample data whenever products drop
 below five, so `wp_posts` grows across runs, and an O(posts^3) join that cost ~800ms when it was

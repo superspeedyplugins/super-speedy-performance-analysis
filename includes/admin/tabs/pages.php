@@ -12,10 +12,10 @@ $sspa_last_run_id = (int) $wpdb->get_var("SELECT id FROM $sspa_runs_table WHERE 
 if (class_exists('WooCommerce')) : ?>
     <p class="sspa-checkout-cta">
         <button type="button" class="button button-secondary sspa-ck-open">
-            <?php esc_html_e('Analyse checkout flow', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Analyse checkout &amp; order flow', 'super-speedy-performance-analysis'); ?>
         </button>
         <span class="description">
-            <?php esc_html_e('Measures what a customer waits through while buying something: one real purchase, every plugin active, order deleted afterwards. Shows you the disclosure first.', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Measures one real purchase AND handling the order afterwards - viewing it in wp-admin and marking it completed - with every plugin active. Order deleted afterwards. Shows you the disclosure first.', 'super-speedy-performance-analysis'); ?>
         </span>
     </p>
 <?php endif;

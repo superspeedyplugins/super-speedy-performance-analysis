@@ -81,9 +81,10 @@
 		}
 
 		html += '<p class="sspa-adhoc-note">Measuring your <strong>' +
-			('block' === inv.checkout_type ? 'block' : 'shortcode') + '</strong> checkout. ' +
-			'It buys something, for real, with every plugin on your site active. ' +
+			('block' === inv.checkout_type ? 'block' : 'shortcode') + '</strong> checkout <strong>and what you do with the order after</strong>. ' +
+			'It buys something, for real, with every plugin on your site active, then <strong>opens the order in wp-admin and marks it completed</strong> &mdash; the two things you handle most. ' +
 			'That is the point: a run that switches your integrations off measures a store nobody has. ' +
+			'Marking it completed sends the completed-order email and fires everything hooking order completion. ' +
 			'The order is <strong>cancelled and deleted</strong> afterwards and stock is put back.</p>';
 
 		html += '<ul class="sspa-ck-list">';
@@ -176,7 +177,8 @@
 	}
 
 	function renderResult(d) {
-		var all = d.at_risk.concat(d.secured);
+		var management = d.management || [];
+		var all = d.at_risk.concat(d.secured).concat(management);
 		var max = 0;
 		all.forEach(function (r) { if (r.gen_ms > max) { max = r.gen_ms; } });
 
@@ -206,6 +208,19 @@
 			'<td class="sspa-ck-num">' + ms(d.total_ms) + '</td>' +
 			'<td colspan="2" class="sspa-ck-wide">&nbsp;</td></tr></table>' +
 			'<p class="sspa-adhoc-note">' + esc(d.basis) + '</p>';
+
+		// Order management: the shop owner's own time, after the sale. Its own section and
+		// subtotal, deliberately below the customer total - "your order screen takes 3s" is a
+		// real cost, but not one a customer waits through.
+		if (management.length) {
+			var transition = (d.complete_from_status && d.complete_to_status)
+				? ' (' + esc(d.complete_from_status) + ' &rarr; ' + esc(d.complete_to_status) + ')'
+				: '';
+			html += '<h3 class="sspa-ck-h">Order management &mdash; what YOU wait through handling the order' + transition + '</h3>' +
+				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(management, max, d.slowest) +
+				'<tr class="sspa-ck-total"><td>Order-management total</td><td class="sspa-ck-num">' + ms(d.management_ms) +
+				'</td><td colspan="2" class="sspa-ck-wide">your staff time per order, not the customer\'s</td></tr></table>';
+		}
 
 		if (false === d.boundary_known) {
 			html += '<p class="sspa-adhoc-note">The payment boundary could not be determined for this run &mdash; ' +

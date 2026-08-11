@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.16.1
+Stable tag: 0.17.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,12 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.17.0 (11th August 2026) =
+* The checkout analysis now measures order management too: after the purchase it opens the order in wp-admin and marks it completed - the two things a shop owner does most - so you can see how slow your order screen is and what marking an order completed sets off (the completed-order email, stock and downloads, and every plugin hooking order completion).
+* The order-management time is shown in its own section below the customer's wait, because it is your staff time per order, not something a customer waits through.
+* "Analyse checkout flow" is now "Analyse checkout & order flow" on the admin bar and the Pages tab, and the disclosure lists the order view and completion before anything runs.
+* The completed-order email is timed or intercepted exactly as the other order emails are, following your mail setting.
 
 = 0.16.1 (11th August 2026) =
 * New Settings tab with the measurement timeout: how long each measurement request may wait for a page before giving up (10-900 seconds, default 60). Raise it when the pages you are diagnosing take longer than a minute to load - a page slower than the limit records nothing at all, and those are exactly the pages worth measuring.

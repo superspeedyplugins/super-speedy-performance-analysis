@@ -170,6 +170,9 @@ class SSPA_Run_Controller {
             $queue['sweep'] = $sweep;
         }
         if ('checkout' === $type) {
+            // The resolved run user (never a temporary admin), so the order-management steps
+            // authenticate as them.
+            $args['user_id'] = $user_id;
             $queue['checkout'] = array(
                 'opts' => self::checkout_opts($args, $run_id),
                 'inventory' => null,
@@ -652,6 +655,9 @@ class SSPA_Run_Controller {
         $payment_mode = !empty($args['payment_mode']) ? $args['payment_mode'] : sspa_get_option('checkout_payment_mode');
         return array(
             'run_id' => (int) $run_id,
+            // The order-management steps (view + complete) run as the admin who started the
+            // run - no temporary admin users (Dave's rule) - so the flow needs their id.
+            'user_id' => !empty($args['user_id']) ? (int) $args['user_id'] : get_current_user_id(),
             'product_id' => !empty($args['product_id']) ? (int) $args['product_id'] : (int) sspa_get_option('checkout_product_id'),
             'quantity' => !empty($args['quantity']) ? (int) $args['quantity'] : max(1, (int) sspa_get_option('checkout_quantity')),
             'mail_mode' => in_array($mail_mode, array('deliver', 'construct', 'suppress'), true) ? $mail_mode : 'deliver',
@@ -715,7 +721,9 @@ class SSPA_Run_Controller {
             'page_key' => $step['page_key'],
             'url' => $step['url'],
             'method' => $step['method'],
-            'variant' => 'guest',
+            // The checkout steps are a guest's; the order-management steps are the admin's,
+            // and carry their own variant so the panel and the community page-class are right.
+            'variant' => isset($step['variant']) ? $step['variant'] : 'guest',
             'samples' => array($step['sample']),
             'blocked_by' => $step['sample']['blocked_by'],
             'plugin_set_hash' => !empty($opts['plugin_set_hash']) ? $opts['plugin_set_hash'] : '',

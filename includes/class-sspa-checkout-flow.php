@@ -568,12 +568,20 @@ class SSPA_Checkout_Flow {
         // running finally, so an early `return $result` in there would hand back a copy
         // taken before cleanup recorded anything - every failure path reporting "0 orders
         // deleted" while having deleted one.
+        $user_id = isset($opts['user_id']) ? (int) $opts['user_id'] : 0;
         $ctx = compact('product', 'quantity', 'billing', 'shipping', 'email', 'payment_mode', 'cart_token', 'headers');
         try {
             if ('classic' === $checkout_type) {
                 self::run_classic($crawler, $flags, $result, $ctx, $jar);
             } else {
                 self::run_block($crawler, $flags, $result, $ctx, $jar);
+            }
+            // The order the checkout just created is now the order to manage: view it in
+            // wp-admin and mark it completed, the two things a shop owner does most. Only
+            // when the purchase succeeded and produced an order - there is nothing to manage
+            // otherwise - and never on a failed checkout, whose outcome is already recorded.
+            if ('ok' === $result['outcome'] && $result['order_ids']) {
+                self::run_order_management($crawler, $flags, $result, $user_id);
             }
         } catch (Throwable $e) {
             $result['outcome'] = 'exception';
@@ -828,6 +836,75 @@ class SSPA_Checkout_Flow {
 
         // --- 7. the confirmation the customer lands on ---
         $result['steps'][] = self::page_request($crawler, 'flow-order-received', $redirect, $flags, '', $jar);
+    }
+
+    /**
+     * Order management: the two things a shop owner does most, measured on the order the
+     * checkout just created (Dave's brief, 11th August 2026).
+     *
+     *  - view the order in wp-admin (how slow is the order-edit screen);
+     *  - mark it processing -> completed (the completed-order email, stock/download
+     *    permissions and every plugin hooking `completed` - the saleable "changing an order
+     *    to completed takes N seconds because plugin X does Y").
+     *
+     * Both run as the admin who started the run (their own cookies, no temporary admin
+     * user), so the screen and the transition see what that admin would. The transition is
+     * performed inside a profiled probe request - the same mechanism the delete step uses -
+     * so its email is intercepted per the run's mail mode, exactly as a checkout email is.
+     */
+    private static function run_order_management($crawler, $flags, &$result, $user_id) {
+        $order_id = (int) end($result['order_ids']);
+        $order = ($order_id && function_exists('wc_get_order')) ? wc_get_order($order_id) : null;
+        if (!$order) {
+            $result['steps'][] = self::skipped_step('flow-view-order', __('no order to manage', 'super-speedy-performance-analysis'));
+            $result['steps'][] = self::skipped_step('flow-complete-order', __('no order to manage', 'super-speedy-performance-analysis'));
+            return;
+        }
+
+        $admin_cookies = SSPA_Auth::cookies_for('admin', $user_id);
+        if (!$admin_cookies) {
+            // No admin session means the order screen would render the logged-out login
+            // redirect, not the order - an honest skip beats a misleading 302.
+            $why = __('no admin session to view the order as', 'super-speedy-performance-analysis');
+            $result['steps'][] = self::skipped_step('flow-view-order', $why);
+            $result['steps'][] = self::skipped_step('flow-complete-order', $why);
+            return;
+        }
+
+        // --- 12. view the order in wp-admin ---
+        $hpos = class_exists('\Automattic\WooCommerce\Utilities\OrderUtil')
+            && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+        $view_url = $hpos
+            ? admin_url('admin.php?page=wc-orders&action=edit&id=' . $order_id)
+            : admin_url('post.php?post=' . $order_id . '&action=edit');
+        $view = self::request($crawler, 'flow-view-order', 'GET', $view_url, array('v' => 'admin'), array('cookies' => $admin_cookies));
+        $view['variant'] = 'admin';
+        $result['steps'][] = $view;
+
+        // The status the checkout left it at, so the panel can name the transition honestly
+        // ("processing -> completed" on physical goods; the default product is physical, so
+        // that is the usual case).
+        $result['notes']['complete_from_status'] = $order->get_status();
+
+        // --- 13. mark it completed (the transition cascade) ---
+        $complete_flags = array('v' => 'admin', 'ck' => 'complete', 'oid' => (string) $order_id);
+        if (!empty($flags['mail'])) {
+            $complete_flags['mail'] = $flags['mail']; // the completed-order email, timed or intercepted per mode
+        }
+        if (!empty($flags['ps'])) {
+            $complete_flags['ps'] = $flags['ps']; // phase 4: which plugin costs order completion
+        }
+        $complete = self::request($crawler, 'flow-complete-order', 'GET', home_url('/?sspa_flow_probe=1'), $complete_flags, array('cookies' => $admin_cookies));
+        $complete['variant'] = 'admin';
+        $result['steps'][] = $complete;
+
+        // The transition happened in the loopback, a different process, so this process's
+        // order cache is stale - bust it before reading the resulting status, or a completed
+        // order still reads as processing.
+        wp_cache_delete($order_id, 'orders');
+        clean_post_cache($order_id);
+        $fresh = wc_get_order($order_id);
+        $result['notes']['complete_to_status'] = $fresh ? $fresh->get_status() : null;
     }
 
     /**
@@ -1452,9 +1529,11 @@ class SSPA_Checkout_Flow {
 
         $at_risk = array();
         $secured = array();
+        $management = array();
         $excluded = array();
         $at_risk_ms = 0.0;
         $secured_ms = 0.0;
+        $management_ms = 0.0;
         $boundary_known = null;
         $step_profiles = array();
         $http_calls = array();
@@ -1538,13 +1617,22 @@ class SSPA_Checkout_Flow {
                 $secured_ms += (float) $gen;
                 continue;
             }
+            // Order management is the SHOP OWNER's time, after the sale - neither at-risk
+            // (the customer has gone) nor secured checkout time. Its own bucket, kept out of
+            // the customer-facing total, because "your order screen takes 3s" is a real cost
+            // but not one a customer waits through.
+            if (in_array($key, array('flow-view-order', 'flow-complete-order'), true)) {
+                $management[] = $entry;
+                $management_ms += (float) $gen;
+                continue;
+            }
             $at_risk[] = $entry;
             $at_risk_ms += (float) $gen;
         }
 
         // By label, not page key: place-order contributes two rows that share a key.
         $slowest = null;
-        foreach (array_merge($at_risk, $secured) as $entry) {
+        foreach (array_merge($at_risk, $secured, $management) as $entry) {
             if (null !== $entry['gen_ms'] && (!$slowest || $entry['gen_ms'] > $slowest['gen_ms'])) {
                 $slowest = $entry;
             }
@@ -1561,6 +1649,13 @@ class SSPA_Checkout_Flow {
             'secured' => $secured,
             'secured_ms' => round($secured_ms, 1),
             'total_ms' => round($at_risk_ms + $secured_ms, 1),
+            // Post-sale admin work, kept separate from the customer total (Dave, 11 Aug 2026).
+            // The from/to statuses live under the flow notes, where finish_checkout stores the
+            // flow's own notes - not at the top level.
+            'management' => $management,
+            'management_ms' => round($management_ms, 1),
+            'complete_from_status' => isset($notes['flow']['complete_from_status']) ? $notes['flow']['complete_from_status'] : null,
+            'complete_to_status' => isset($notes['flow']['complete_to_status']) ? $notes['flow']['complete_to_status'] : null,
             'excluded' => $excluded,
             'slowest' => $slowest ? $slowest['label'] : null,
             'slowest_step' => $slowest ? $slowest['page_key'] : null,
@@ -1593,6 +1688,8 @@ class SSPA_Checkout_Flow {
             'flow-checkout-draft' => __('create draft order', 'super-speedy-performance-analysis'),
             'flow-place-order' => __('place order', 'super-speedy-performance-analysis'),
             'flow-order-received' => __('order received', 'super-speedy-performance-analysis'),
+            'flow-view-order' => __('view order (wp-admin)', 'super-speedy-performance-analysis'),
+            'flow-complete-order' => __('mark order completed', 'super-speedy-performance-analysis'),
             'flow-delete-order' => __('delete order (admin cleanup)', 'super-speedy-performance-analysis'),
         );
         return isset($labels[$page_key]) ? $labels[$page_key] : $page_key;

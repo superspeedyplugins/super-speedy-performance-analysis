@@ -55,9 +55,9 @@ class SSPA_Adhoc {
         if (self::checkout_flow_available()) {
             $bar->add_node(array(
                 'id' => 'sspa-checkout',
-                'title' => '<span class="ab-icon dashicons dashicons-cart" style="top:2px"></span>' . esc_html__('Analyse checkout flow', 'super-speedy-performance-analysis'),
+                'title' => '<span class="ab-icon dashicons dashicons-cart" style="top:2px"></span>' . esc_html__('Analyse checkout & order flow', 'super-speedy-performance-analysis'),
                 'href' => '#',
-                'meta' => array('title' => __('Measure what your customer waits through while buying something', 'super-speedy-performance-analysis')),
+                'meta' => array('title' => __('Measure a real purchase and handling the order afterwards - viewing it and marking it completed', 'super-speedy-performance-analysis')),
             ));
         }
     }
