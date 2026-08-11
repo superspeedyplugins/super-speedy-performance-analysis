@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.16.0
+Stable tag: 0.16.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.16.1 (11th August 2026) =
+* New Settings tab with the measurement timeout: how long each measurement request may wait for a page before giving up (10-900 seconds, default 60). Raise it when the pages you are diagnosing take longer than a minute to load - a page slower than the limit records nothing at all, and those are exactly the pages worth measuring.
 
 = 0.16.0 (10th August 2026) =
 * Plugin Impact Analysis now always starts from a chooser: nothing is measured until you pick the plugins yourself, nothing is preselected, and the chooser explains exactly what will happen and what it will cost before anything runs.

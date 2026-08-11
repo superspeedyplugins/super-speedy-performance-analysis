@@ -156,6 +156,13 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   heredoc silently becomes the CASE file's path and hooks register under a name that never
   fires, making guard assertions vacuous.
 
+- `32-loopback-timeout.php` - the measurement timeout genuinely reaches the crawler, proven
+  both ways with a page that sleeps 12s: at a 10s timeout nothing measures and the samples
+  record the abandonment; at 30s the same page measures at ~12,000ms. Also the sanitiser table
+  (floor 10, ceiling 900, non-numeric falls back to 60). Gotcha: the slow-page probe query arg
+  must NOT be `sspa_`-prefixed - the catalogue matcher strips `sspa_*` keys and the run would
+  file under `home` and measure the catalogue URL without the sleep.
+
 **Bounded fixtures.** Any test fixture doing deliberately expensive work must bound it against
 the table it reads. `run-tests.sh` reseeds the WooCommerce sample data whenever products drop
 below five, so `wp_posts` grows across runs, and an O(posts^3) join that cost ~800ms when it was

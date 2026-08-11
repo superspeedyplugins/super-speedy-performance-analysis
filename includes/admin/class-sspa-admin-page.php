@@ -111,6 +111,7 @@ class SSPA_Admin_Page {
             'plugins' => __('Plugins', 'super-speedy-performance-analysis'),
             'history' => __('History', 'super-speedy-performance-analysis'),
             'tools' => __('Tools', 'super-speedy-performance-analysis'),
+            'settings' => __('Settings', 'super-speedy-performance-analysis'),
             'share' => __('Share', 'super-speedy-performance-analysis'),
         );
     }

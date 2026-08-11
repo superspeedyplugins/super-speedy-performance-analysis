@@ -12,6 +12,30 @@ class SSPA_Crawler {
     const SAMPLES = 3;
 
     /**
+     * Seconds each measurement request may wait for the page, from Settings.
+     *
+     * The old hardcoded 60 abandoned every sample on a site whose pages take minutes -
+     * the exact site whose owner most needs the measurement, and who has already raised
+     * their server timeouts to load the page in a browser.
+     */
+    public static function loopback_timeout() {
+        return self::sanitise_loopback_timeout(sspa_get_option('loopback_timeout'));
+    }
+
+    /**
+     * 10-900 seconds; anything non-numeric or absurd falls back to the default 60.
+     * Shared by the crawler and the Settings save handler so the stored value and the
+     * used value can never disagree.
+     */
+    public static function sanitise_loopback_timeout($value) {
+        $value = (int) $value;
+        if ($value <= 0) {
+            return 60;
+        }
+        return max(10, min(900, $value));
+    }
+
+    /**
      * @return array Profile data ready for SSPA_Profile_Store::save().
      */
     public function profile_job($job, $user_id) {
@@ -224,7 +248,7 @@ class SSPA_Crawler {
         $start = microtime(true);
         $response = wp_remote_request($hop_url, array(
             'method' => $method,
-            'timeout' => 60,
+            'timeout' => self::loopback_timeout(),
             'redirection' => 0,
             'sslverify' => false,
             'headers' => $headers,
@@ -291,7 +315,7 @@ class SSPA_Crawler {
             $headers[SSPA_Token::HEADER] = $token_header;
         }
         $args = array(
-            'timeout' => 60,
+            'timeout' => self::loopback_timeout(),
             'redirection' => 0,
             'sslverify' => false,
             'headers' => $headers,

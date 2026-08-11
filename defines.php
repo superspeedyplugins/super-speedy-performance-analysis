@@ -8,6 +8,13 @@ function sspa_default_options() {
         'remove_data_on_uninstall' => false,
         'blob_retention_runs' => 5, // used by the manual "delete older than" button, never auto-pruned
 
+        // How long each measurement request may wait for the page, in seconds. A page
+        // slower than this records nothing: on a struggling site whose pages take minutes,
+        // 60 seconds abandons every sample while the owner's own browser - with the
+        // server timeouts they raised - loads the page fine. Settable for exactly that
+        // site; the Settings tab explains the trade-offs.
+        'loopback_timeout' => 60,
+
         // Checkout flow profiling. All defaults work unconfigured, so the button does
         // something sensible on a store that has never opened these settings.
         'checkout_product_id' => 0,       // 0 = cheapest purchasable, in-stock, simple product
