@@ -1,13 +1,30 @@
 {
   "schema": 1,
-  "compiled": "2026-08-02",
-  "previous_compile": "2026-07-28",
+  "compiled": "2026-08-12",
+  "previous_compile": "2026-08-02",
   "compiled_against": {
-    "git_sha": "c9d785a",
-    "plugin_version": "0.9.2",
+    "git_sha": "70f5123",
+    "plugin_version": "0.18.0",
     "working_tree_dirty": false
   },
-  "also_covered": [],
-  "changelog_high_water_mark": "0.9.2",
-  "notes": "Incremental re-run. The 0.9.2 changelog section GREW since the last compile without the version number changing - the previous run saw only the update-source bullet, this one covers the other 14. A version-number high-water mark is not sufficient for this repo while it is pre-1.0; diff from git_sha as well. Covered: commits 3a5c48b (attribution fix, caller mode, EXPLAIN), 39ca41a (Tools tab), c9d785a (performance_schema digests). New doc: .features/server-tools.md. Plugin is still free, no edition split, no licence gate, and still not published - neither the zip nor the update JSON exists on superspeedyplugins.com."
+  "baseline_used": {
+    "recorded_sha": "c9d785a",
+    "recorded_sha_resolves": false,
+    "actual_baseline_sha": "7dd865a",
+    "why": "History was rewritten after the 2026-08-02 compile - c9d785a no longer exists. The equivalent content commit is a5a6d7b (performance_schema digests); 7dd865a is the commit that added the fact folders, so the diff was taken from there. Next run: diff from 70f5123 and expect it to resolve."
+  },
+  "also_covered": [
+    {
+      "what": "0.9.3 through 0.18.0 - 56 releases, ~190 changelog bullets",
+      "where": "readme.txt changelog plus the code",
+      "why": "The gap since the last compile spanned the excimer work, the whole checkout/order flow feature, the community submission rewrite, page-analysis unification and site cohorts. Effectively a full recompile rather than an incremental pass."
+    },
+    {
+      "what": "Live publication state",
+      "where": "curl of the update JSON, the deployed readme.txt and the GitHub Releases API",
+      "why": "The previous compile recorded the plugin as unpublished. It is now released to customers at 0.18.0, which retires the largest item on the old roadmap."
+    }
+  ],
+  "changelog_high_water_mark": "0.18.0",
+  "notes": "Full recompile in practice. New docs: .features/checkout-flow.md, .compatibility/server-capabilities.md, .compatibility/woocommerce.md. Two standing internal warnings were overturned by the code and rewritten: excimer IS now used (0.10.0), so server-tools.md's 'do not write function-level profiling' is void; and the bundled WordPress hub in hub/ was DELETED (commit d1e0b1d), so community.md's companion-hub entry was removed. Deep Analysis was renamed Plugin Impact Analysis in 0.13.1 - the doc filename deep-analysis.md is kept deliberately so the re-run map and downstream skills keep resolving. Plugin is still free, no edition split, no licence gate. A version-number high-water mark alone is not sufficient for this repo; always diff from git_sha as well."
 }

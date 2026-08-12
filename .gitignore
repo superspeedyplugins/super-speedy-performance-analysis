@@ -4,3 +4,7 @@ node_modules/
 /.claude/
 /.codex/
 /.tests/scratch/
+
+# Infrastructure audits: these name the protected zip path and the fleet's update-channel
+# state. This repo is PUBLIC - they must never be tracked here. Kept on disk deliberately.
+/.docs/*download-url-audit.md
