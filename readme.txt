@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.21.0
+Stable tag: 0.21.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.21.1 (13th August 2026) =
+* An analysis now starts even when collecting another plugin's published settings fails, instead of the analysis failing with it. The reason is recorded and shown on the Share tab.
 
 = 0.21.0 (13th August 2026) =
 * The Share tab now lists every plugin publishing its own settings, in that plugin's own words, with a switch for each one. Switching a plugin off stops it publishing anything from your next analysis onwards; the rest of your analysis is shared exactly as before.

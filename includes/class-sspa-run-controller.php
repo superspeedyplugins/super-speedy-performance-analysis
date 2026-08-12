@@ -133,28 +133,51 @@ class SSPA_Run_Controller {
                 $share_context['plugin_toggle'] = array('slug' => $slug, 'action' => $action);
             }
         }
-        // Which half of a before/after cycle this run is, when an orchestrator (Scalability Pro's
-        // good-settings flow, Archives' apply flow) is driving one.
-        if (!empty($args['share_context']['change_cycle'])) {
-            $cycle = SSPA_Community_State::change_cycle($args['share_context']['change_cycle']);
-            if ($cycle) {
-                $share_context['change_cycle'] = $cycle;
+        // Everything below enriches the run for SHARING. None of it is what an analysis is for,
+        // so none of it may stop one starting.
+        //
+        // That is not defensive programming for its own sake. It runs third-party code: any
+        // plugin can register `sspa_component_state`, and a fatal in somebody else's filter would
+        // otherwise take out the button that starts an analysis. It happened for real on a client
+        // site - a truncated deploy of this plugin left `collect()` calling a method that was not
+        // in the file, and the whole Apply Good Settings flow died with a 500 rather than simply
+        // running without the enrichment. A site whose sharing metadata is incomplete is a much
+        // smaller problem than a site that cannot measure itself.
+        //
+        // Errors are recorded rather than swallowed: silence here would mean a payload quietly
+        // missing its component state with nothing anywhere to say why.
+        try {
+            // Which half of a before/after cycle this run is, when an orchestrator (Scalability
+            // Pro's good-settings flow, Archives' apply flow) is driving one.
+            if (!empty($args['share_context']['change_cycle']) && class_exists('SSPA_Community_State')) {
+                $cycle = SSPA_Community_State::change_cycle($args['share_context']['change_cycle']);
+                if ($cycle) {
+                    $share_context['change_cycle'] = $cycle;
+                }
             }
-        }
-        $component_inventory = SSPA_Community_Exporter::component_inventory_snapshot();
 
-        // Configuration state is captured HERE, at run start, for the same reason plugin_set is:
-        // the run is a measurement of the site as it was configured at this moment. Asking at
-        // export time would stamp today's settings onto last week's baseline and silently
-        // mislabel exactly the before/after pairs this exists to tell apart. The failure mode is
-        // a perfectly well-formed payload that is wrong, which is the kind that goes unnoticed.
-        $component_state = SSPA_Community_State::collect(array(
-            'run_type' => $type,
-            'trigger' => !empty($args['trigger']) ? $args['trigger'] : 'manual',
-        ));
-        if ($component_state) {
-            $share_context['component_state'] = $component_state;
+            // Configuration state is captured HERE, at run start, for the same reason plugin_set
+            // is: the run is a measurement of the site as it was configured at this moment. Asking
+            // at export time would stamp today's settings onto last week's baseline and silently
+            // mislabel exactly the before/after pairs this exists to tell apart. The failure mode
+            // is a perfectly well-formed payload that is wrong, which is the kind that goes
+            // unnoticed.
+            if (class_exists('SSPA_Community_State') && method_exists('SSPA_Community_State', 'collect')) {
+                $component_state = SSPA_Community_State::collect(array(
+                    'run_type' => $type,
+                    'trigger' => !empty($args['trigger']) ? $args['trigger'] : 'manual',
+                ));
+                if ($component_state) {
+                    $share_context['component_state'] = $component_state;
+                }
+            }
+        } catch (Throwable $e) {
+            // PHP 7+. Error and Exception both land here, which is the point: a broken filter
+            // throws Error, not Exception.
+            self::record_state_capture_error($e->getMessage());
         }
+
+        $component_inventory = SSPA_Community_Exporter::component_inventory_snapshot();
         $wpdb->insert(SSPA_Schema::table('runs'), array(
             'run_uuid' => wp_generate_uuid4(),
             'blog_id' => get_current_blog_id(),
@@ -1989,6 +2012,23 @@ class SSPA_Run_Controller {
             update_option('sspa_share_disabled_at', gmdate('Y-m-d H:i:s'), false);
         }
         wp_send_json_success(array('optin' => SSPA_Submitter::opted_in()));
+    }
+
+    /**
+     * Remember that capturing another plugin's configuration failed, and why.
+     *
+     * Kept to the last few, and surfaced on the Share tab, so "why does this payload have no
+     * component state" has an answer on the screen rather than only in a log file the site owner
+     * has probably not enabled.
+     */
+    private static function record_state_capture_error($message) {
+        $errors = get_option('sspa_state_capture_errors', array());
+        $errors = is_array($errors) ? $errors : array();
+        array_unshift($errors, array(
+            'time' => gmdate('Y-m-d H:i:s'),
+            'message' => substr((string) $message, 0, 500),
+        ));
+        update_option('sspa_state_capture_errors', array_slice($errors, 0, 5), false);
     }
 
     /**
