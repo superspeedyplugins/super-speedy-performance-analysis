@@ -114,6 +114,7 @@ class SSPA_Community_Exporter {
         }
 
         self::add_findings($evidence, $run_id, $measurement_version, $submission_uuid);
+        self::add_archives($evidence, $run_id, $measurement_version);
         if ('deep' === $run['run_type']) {
             self::add_impacts($evidence, $run, $measurement_version, $submission_uuid, $versions);
         }
@@ -375,6 +376,149 @@ class SSPA_Community_Exporter {
                 'evidence' => SSPA_Community_Privacy::finding_evidence(is_array($raw) ? $raw : array()),
             ));
         }
+    }
+
+    /**
+     * What this site's archives filter and order by, as SHAPES.
+     *
+     * Built from the aggregate, never from profile_blob, which is not submitted and must not
+     * be: the blob holds SQL with its literals, absolute server paths, outbound URLs carrying
+     * API keys and every option name the request read.
+     *
+     * What travels is column names, index shapes and plan verdicts - facts about WordPress,
+     * WooCommerce and MySQL rather than about this business. Row counts are banded like every
+     * other size. Meta VALUES never leave, at any point.
+     *
+     * Meta KEY names are the one judgement call, and they are the first site-authored strings
+     * to leave an install at all - option names are not shared, they only live in the local
+     * capture. A key on the known-keys list identifies software and is named; anything else
+     * identifies a business and travels as "custom", keeping its sort direction so the index
+     * shape survives.
+     *
+     * Worth collecting because "what do real archives sort by, and how often must the database
+     * sort them by hand" is a question no single site can answer.
+     */
+    private static function add_archives(&$evidence, $run_id, $measurement_version) {
+        if (!class_exists('SSPA_Archive_Profile')) {
+            return;
+        }
+        $profile = SSPA_Archive_Profile::build($run_id);
+        if (is_wp_error($profile) || empty($profile['archives'])) {
+            return;
+        }
+
+        $known = array_flip(SSPA_Rules::known_meta_keys());
+
+        $archives = array();
+        foreach ($profile['archives'] as $entry) {
+            $orderby = array();
+            foreach ($entry['orderby'] as $term) {
+                $orderby[] = array(
+                    'source' => $term['source'],
+                    'table' => $term['table'],
+                    // A postmeta term's column is always "meta_value" and says nothing; the
+                    // key is the informative part, and the part needing the allowlist.
+                    'column' => ('postmeta' === $term['source'])
+                        ? self::share_meta_key($term['meta_key'], $known)
+                        : $term['column'],
+                    'order' => $term['order'],
+                    'cast' => $term['cast'],
+                );
+            }
+
+            $archives[] = array(
+                'page_class' => SSPA_Community_Privacy::page_class($entry['page_key']),
+                'main' => !empty($entry['main']),
+                'post_type' => $entry['post_type'],
+                'taxonomy' => $entry['taxonomy'],
+                'rows' => SSPA_Anonymiser::bucket($entry['found_rows']),
+                'ms' => $entry['ms'],
+                'cached' => !empty($entry['cached']),
+                'worth_indexing' => !empty($entry['worth_indexing']),
+                'filesort' => !empty($entry['explain']['filesort']),
+                'scan' => !empty($entry['explain']['scan']),
+                'index_used' => isset($entry['explain']['key']) ? $entry['explain']['key'] : null,
+                'est_rows' => isset($entry['explain']['est_rows']) ? SSPA_Anonymiser::bucket($entry['explain']['est_rows']) : null,
+                'orderby' => $orderby,
+            );
+        }
+
+        $materialise = array('postmeta' => array(), 'other_table' => array());
+        foreach ($profile['materialise']['postmeta'] as $key => $verdict) {
+            $materialise['postmeta'][] = array(
+                'key' => self::share_meta_key($key, $known),
+                'sql_type' => isset($verdict['sql_type']) ? $verdict['sql_type'] : null,
+                'confidence' => isset($verdict['confidence']) ? $verdict['confidence'] : null,
+                'used_for' => isset($verdict['used_for']) ? $verdict['used_for'] : array(),
+            );
+        }
+        foreach ($profile['materialise']['other_table'] as $key => $verdict) {
+            $materialise['other_table'][] = array(
+                'column' => $key,
+                'sql_type' => isset($verdict['sql_type']) ? $verdict['sql_type'] : null,
+                'confidence' => isset($verdict['confidence']) ? $verdict['confidence'] : null,
+                'used_for' => isset($verdict['used_for']) ? $verdict['used_for'] : array(),
+            );
+        }
+
+        $composites = array();
+        foreach ($profile['candidate_composites'] as $composite) {
+            $columns = array();
+            foreach ($composite['columns'] as $column) {
+                // A mirror-table meta column carries the key in its own name, so it needs the
+                // same allowlisting the key itself gets.
+                $columns[] = (0 === strpos($column, 'meta_'))
+                    ? self::share_meta_column($column, $known)
+                    : $column;
+            }
+            $composites[] = array(
+                'columns' => $columns,
+                'taxonomy' => $composite['taxonomy'],
+                'pages' => count($composite['seen_on']),
+                'rows' => SSPA_Anonymiser::bucket($composite['max_rows']),
+            );
+        }
+
+        self::add_evidence($evidence, 'sspa/archive-profile', $measurement_version, array(
+            'schema' => SSPA_Archive_Profile::SCHEMA,
+            'complete' => !empty($profile['complete']),
+            'pages_seen' => (int) $profile['pages_seen'],
+            'archives_worth_indexing' => (int) $profile['archives_worth_indexing'],
+            'archives' => $archives,
+            'candidate_composites' => $composites,
+            'materialise' => $materialise,
+            'posts_columns' => $profile['materialise']['posts_columns'],
+            'unsupported' => $profile['unsupported'],
+        ));
+    }
+
+    /**
+     * A recognised key identifies software and is shared by name. Anything else identifies a
+     * business, and only the fact that a custom key was used survives.
+     */
+    private static function share_meta_key($key, $known) {
+        if (!$key) {
+            return null;
+        }
+        return isset($known[$key]) ? $key : 'custom';
+    }
+
+    private static function share_meta_column($column, $known) {
+        // A composite column carries its sort direction ("meta__price DESC"), which is part of
+        // the index definition and has to survive; only the key half is allowlisted.
+        $direction = '';
+        if (preg_match('/^(.*?)(\s+(?:ASC|DESC))$/i', $column, $matches)) {
+            $column = $matches[1];
+            $direction = $matches[2];
+        }
+
+        $key = substr($column, strlen('meta_'));
+        foreach (array_keys($known) as $candidate) {
+            if (sanitize_key($candidate) === $key) {
+                return $column . $direction;
+            }
+        }
+        return 'meta_custom' . $direction;
     }
 
     private static function add_impacts(&$evidence, $run, $measurement_version, $submission_uuid, $versions) {

@@ -81,6 +81,99 @@ sspa_t(is_array($record) && (null !== $record['ms'] || !empty($record['cached'])
 // its plan would otherwise be unavailable on exactly the sites that need this most.
 sspa_t(is_array($record) && !empty($record['request']), 'the statement is retained so its plan can still be read');
 
+// --- Probe pages are instruments, not pages ---
+//
+// `baseline` deliberately writes no capture at all: the mu-loader short-circuits it so it can
+// measure the server's noise floor. Counting it as a page that failed made `complete` false on
+// every full run, which tells every consumer to refuse the data.
+
+$probe_profile = SSPA_Report::archive_profile($run_id);
+sspa_t(!is_wp_error($probe_profile) && true === $probe_profile['complete'], 'a run with no failed pages reports complete');
+
+global $wpdb;
+$wpdb->insert(SSPA_Schema::table('profiles'), array(
+    'run_id' => $run_id,
+    'page_key' => 'baseline',
+    'variant' => 'anon',
+    'response_code' => 200,
+    'profile_blob' => null,
+));
+delete_transient('sspa_archive_profile_' . $run_id);
+$with_probe = SSPA_Report::archive_profile($run_id);
+sspa_t(!is_wp_error($with_probe) && true === $with_probe['complete'], 'a capture-less baseline probe does not make the run incomplete');
+$wpdb->delete(SSPA_Schema::table('profiles'), array('run_id' => $run_id, 'page_key' => 'baseline'));
+delete_transient('sspa_archive_profile_' . $run_id);
+
+// --- Size decides what gets recommended, not what gets recorded ---
+//
+// WordPress runs its own taxonomy-filtered queries on every front-end request
+// (wp_global_styles and wp_template_part, scoped by the wp_theme taxonomy). They hold one row
+// and filesort like everything else, so without a size floor they dominate the
+// recommendations - 18 of 20 on a real run. They must still be RECORDED, because the consumer
+// is entitled to see every archive with its size and its time and decide for itself.
+
+$big_term = wp_insert_term('SSPA big archive', 'category', array('slug' => 'sspa-big-archive'));
+$big_term_id = is_wp_error($big_term) ? (int) $big_term->get_error_data('term_exists') : (int) $big_term['term_id'];
+$big_posts = array();
+for ($i = 0; $i < 220; $i++) {
+    $big_posts[] = wp_insert_post(array(
+        'post_title' => 'SSPA big archive post ' . $i,
+        'post_status' => 'publish',
+        'post_type' => 'post',
+        'post_category' => array($big_term_id),
+    ));
+}
+sspa_t(count($big_posts) === 220, 'seeded an archive above the size floor (220 posts)');
+
+$big_run = sspa_archive_run(get_term_link($big_term_id, 'category'));
+$big_profile = is_wp_error($big_run) ? null : SSPA_Report::archive_profile($big_run);
+
+$big_entry = null;
+$tiny_entry = null;
+$wp_internal = array('wp_global_styles', 'wp_template_part', 'wp_template', 'wp_navigation');
+if (is_array($big_profile)) {
+    foreach ($big_profile['archives'] as $candidate) {
+        $internal = (bool) array_intersect($wp_internal, $candidate['post_type']);
+        // A category archive leaves post_type empty in the query vars - WordPress applies its
+        // 'post' default without writing it back - so the seeded archive is identified as the
+        // main query that is not one of WordPress's own internal post types.
+        if (!empty($candidate['main']) && !$internal) {
+            $big_entry = $candidate;
+        }
+        if ($internal) {
+            $tiny_entry = $candidate;
+        }
+    }
+}
+
+sspa_t(is_array($big_entry) && $big_entry['found_rows'] >= 220, 'the seeded archive was measured at its true size: ' . (is_array($big_entry) ? $big_entry['found_rows'] : 'not found'));
+sspa_t(is_array($big_entry) && !empty($big_entry['worth_indexing']), 'an archive above the floor with a bad plan is worth indexing');
+sspa_t(is_array($big_entry) && !empty($big_entry['qualifies']), 'and says why: ' . (is_array($big_entry) ? implode(',', $big_entry['qualifies']) : ''));
+
+// WordPress's own one-row queries: recorded, with their size and time, but never recommended.
+sspa_t(is_array($tiny_entry), "WordPress's own taxonomy queries are still recorded");
+sspa_t(is_array($tiny_entry) && empty($tiny_entry['worth_indexing']), 'but a one-row archive is not worth an index');
+sspa_t(is_array($tiny_entry) && array_key_exists('rows_returned', $tiny_entry) && array_key_exists('ms', $tiny_entry), 'and it still carries a row count and a time, so the consumer can choose');
+
+// The composite must describe the mirror table, not the table it replaces. term_relationships
+// is what the mirror table exists to avoid, so its columns must never reach an index prefix.
+$composite_json = is_array($big_profile) ? wp_json_encode($big_profile['candidate_composites']) : '';
+sspa_t(false === strpos($composite_json, 'term_taxonomy_id'), 'no composite carries term_relationships columns');
+$has_terms = false;
+if (is_array($big_profile)) {
+    foreach ($big_profile['candidate_composites'] as $composite) {
+        if (in_array('topterm_id', $composite['columns'], true) && $composite['taxonomy']) {
+            $has_terms = true;
+        }
+    }
+}
+sspa_t($has_terms, 'the seeded archive produced a composite carrying the term columns');
+
+foreach ($big_posts as $big_post) {
+    wp_delete_post($big_post, true);
+}
+wp_delete_term($big_term_id, 'category');
+
 // --- The WooCommerce case: ordering that query vars alone cannot see ---
 //
 // Woo resolves orderby=price at posts_clauses into wc_product_meta_lookup.min_price. A capture
@@ -145,11 +238,13 @@ if (class_exists('WooCommerce')) {
     sspa_t(!$visibility_indexed, 'no composite is built to serve the product_visibility exclusion');
 
     // The lookup column's type is read from INFORMATION_SCHEMA, so it is exact rather than
-    // sampled - there is nothing to infer about a declared column.
-    $min_price = null;
-    if (!is_wp_error($profile) && isset($profile['materialise']['other_table']['wc_product_meta_lookup.min_price'])) {
-        $min_price = $profile['materialise']['other_table']['wc_product_meta_lookup.min_price'];
-    }
+    // sampled - there is nothing to infer about a declared column. Asserted directly rather
+    // than through the aggregate, because a sample store's catalogue sits below the size floor
+    // and so contributes nothing to materialise - which is the correct behaviour, not a bug.
+    $lookup_types = SSPA_Archive_Types::infer(array(
+        'other_table' => array('wc_product_meta_lookup' => array('min_price' => array('order'))),
+    ));
+    $min_price = isset($lookup_types['wc_product_meta_lookup.min_price']) ? $lookup_types['wc_product_meta_lookup.min_price'] : null;
     sspa_t(is_array($min_price) && 'schema' === $min_price['confidence'], 'lookup column type taken from the schema, not sampled');
     sspa_t(is_array($min_price) && 'decimal' === $min_price['sql_type'], 'min_price typed decimal: ' . ($min_price ? $min_price['sql_type'] : 'none'));
 }
@@ -227,15 +322,18 @@ foreach (array_merge(array_keys($types_fixture), array('sspa_t_thin')) as $key) 
 // profile_blob is never submitted, so the shared block is built from the aggregate. Meta keys
 // are the first site-authored strings that would ever leave an install, so a recognised key
 // (software) is shared by name and an unrecognised one (a business) is not.
+//
+// Asserted against SSPA_Community_Exporter, which is the builder the outbox actually calls.
+// The first cut of this put the block in SSPA_Anonymiser::build(), which has no callers, so
+// these assertions passed while nothing ran. Anchor them to the live path.
 
-// The same selection SSPA_Anonymiser::build() makes - adhoc runs are deliberately excluded
-// from it, so seeding any other run id would leave this asserting against the wrong data.
-$share_run = (int) $wpdb->get_var('SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1");
+$share_run = (int) $wpdb->get_var('SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' ORDER BY id DESC LIMIT 1");
 set_transient('sspa_archive_profile_' . $share_run, array(
     'run_id' => $share_run,
     'schema' => 1,
     'complete' => true,
     'pages_seen' => 1,
+    'archives_worth_indexing' => 1,
     'archives' => array(array(
         'page_key' => 'cpt-listing-archive',
         'main' => true,
@@ -243,7 +341,11 @@ set_transient('sspa_archive_profile_' . $share_run, array(
         'taxonomy' => array('listing_cat'),
         'taxonomy_excluded' => array(),
         'found_rows' => 480000,
+        'rows_returned' => 12,
         'ms' => 910.2,
+        'cached' => false,
+        'qualifies' => array('ms', 'filesort', 'scan'),
+        'worth_indexing' => true,
         'explain' => array('filesort' => true, 'scan' => true, 'key' => null, 'est_rows' => 1904322),
         'orderby' => array(
             array('source' => 'postmeta', 'table' => null, 'column' => 'meta_value', 'meta_key' => '_acme_client_ref', 'order' => 'ASC', 'cast' => null),
@@ -253,10 +355,10 @@ set_transient('sspa_archive_profile_' . $share_run, array(
     )),
     'candidate_composites' => array(array(
         'columns' => array('post_type', 'post_status', 'taxonomy', 'topterm_id', 'meta__acme_client_ref ASC', 'meta__price DESC'),
+        'taxonomy' => array('listing_cat'),
         'seen_on' => array('cpt-listing-archive'),
         'max_rows' => 480000,
     )),
-    'qualified_by' => array(),
     'materialise' => array(
         'postmeta' => array(
             '_acme_client_ref' => array('sql_type' => 'varchar', 'confidence' => 'sampled', 'used_for' => array('order')),
@@ -269,20 +371,40 @@ set_transient('sspa_archive_profile_' . $share_run, array(
     'unsupported' => array(),
 ), 300);
 
-$payload = SSPA_Anonymiser::build();
-$shared = (!is_wp_error($payload) && isset($payload['archives'])) ? $payload['archives'] : null;
-$shared_json = wp_json_encode($shared);
+$payload = SSPA_Community_Exporter::build($share_run);
+$block = null;
+$manifested = false;
+if (!is_wp_error($payload)) {
+    foreach ($payload['evidence'] as $item) {
+        if ('sspa/archive-profile' === $item['type']) {
+            $block = $item['data'];
+            break;
+        }
+    }
+    foreach ($payload['evidence_manifest'] as $row) {
+        if ('sspa/archive-profile' === $row['type']) {
+            $manifested = true;
+        }
+    }
+}
+$shared_json = wp_json_encode($block);
 
 sspa_t($share_run > 0, 'a shareable run exists to build the payload from');
-sspa_t(is_array($shared) && !empty($shared['archives']), 'the shared payload carries an archives block');
+// The assertion that would have caught the original bug: it has to be in the payload the
+// outbox sends, not merely in a method that builds one.
+sspa_t(is_array($block), 'the submitted payload carries archive-profile evidence');
+sspa_t($manifested, 'and declares it in the evidence manifest, so a receiver can find it');
 sspa_t(is_string($shared_json) && false === strpos($shared_json, '_acme_client_ref'), 'a bespoke meta key never leaves the site');
 sspa_t(is_string($shared_json) && false !== strpos($shared_json, '_price'), 'a known WooCommerce key is shared by name');
 sspa_t(is_string($shared_json) && false !== strpos($shared_json, 'meta__price DESC'), 'and keeps its sort direction, which is part of the index definition');
 sspa_t(is_string($shared_json) && false !== strpos($shared_json, 'meta_custom ASC'), 'the redacted key keeps its direction too');
 // Row counts are bucketed exactly like every other size in the payload.
-$first_shared = (is_array($shared) && !empty($shared['archives'])) ? $shared['archives'][0] : array();
+$first_shared = (is_array($block) && !empty($block['archives'])) ? $block['archives'][0] : array();
 sspa_t(isset($first_shared['rows']) && '<1m' === $first_shared['rows'], 'archive size bucketed, not sent exactly: ' . (isset($first_shared['rows']) ? $first_shared['rows'] : 'none'));
 sspa_t(!empty($first_shared['filesort']), 'the plan verdict is shared - the reason, not just the timing');
+// A page key never travels; only its class.
+sspa_t(is_string($shared_json) && false === strpos($shared_json, 'cpt-listing-archive'), 'the raw page key is replaced by its page class');
+sspa_t(!is_wp_error($payload) && !is_wp_error(SSPA_Community_Privacy::validate($payload)), 'the payload still passes the privacy gate');
 
 delete_transient('sspa_archive_profile_' . $share_run);
 

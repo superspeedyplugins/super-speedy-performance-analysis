@@ -105,6 +105,11 @@ if (!class_exists('SSPA_Archive_Queries')) {
             $this->records[] = array(
                 'main' => method_exists($query, 'is_main_query') ? (bool) $query->is_main_query() : false,
                 'found_rows' => $found_rows,
+                // Always available, unlike found_rows, which WordPress skips computing when
+                // no_found_rows is set - as it is on most of its own internal queries. A
+                // consumer deciding whether an index is worth building needs SOME size signal
+                // for every archive, not only for the ones that asked for a total.
+                'rows_returned' => is_array($posts) ? count($posts) : null,
                 'posts_per_page' => isset($qv['posts_per_page']) ? (int) $qv['posts_per_page'] : null,
                 // Filled in at report() time from the matched SQL entry, so the attribution
                 // already computed for the query is reused rather than taking a second
@@ -476,8 +481,18 @@ if (!class_exists('SSPA_Archive_Queries')) {
 
             $out = array();
             $seen = array();
-            $posts_table = isset($wpdb->posts) ? $wpdb->posts : 'wp_posts';
-            $meta_table = isset($wpdb->postmeta) ? $wpdb->postmeta : 'wp_postmeta';
+            // The taxonomy tables are excluded for the same reason wp_posts and wp_postmeta
+            // are: they are not a joined THIRD table whose column belongs in an index prefix.
+            // term_relationships is the table the mirror table exists to replace, so recording
+            // its term_taxonomy_id as a filtered column would propose a composite carrying the
+            // very column the optimisation removes.
+            $skip = array(
+                isset($wpdb->posts) ? $wpdb->posts : 'wp_posts',
+                isset($wpdb->postmeta) ? $wpdb->postmeta : 'wp_postmeta',
+                isset($wpdb->term_relationships) ? $wpdb->term_relationships : 'wp_term_relationships',
+                isset($wpdb->term_taxonomy) ? $wpdb->term_taxonomy : 'wp_term_taxonomy',
+                isset($wpdb->terms) ? $wpdb->terms : 'wp_terms',
+            );
 
             // Every alias.column reference, without trying to pair it with its comparison
             // operator. Which columns are filtered is what decides the index prefix; the
@@ -497,7 +512,7 @@ if (!class_exists('SSPA_Archive_Queries')) {
                     continue;
                 }
                 $table = $aliases[$alias];
-                if ($table === $posts_table || $table === $meta_table) {
+                if (in_array($table, $skip, true)) {
                     continue;
                 }
                 $key = $table . '.' . $m[2];

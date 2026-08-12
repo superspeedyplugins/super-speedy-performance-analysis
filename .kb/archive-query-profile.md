@@ -50,6 +50,8 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
   "complete": true,
   "pages_seen": 2,
   "predates_contract": 0,
+  "archives_worth_indexing": 1,
+  "thresholds": { "min_rows": 200, "slow_ms": 50 },
   "archives": [
     {
       "page_key": "product-cat",
@@ -58,8 +60,11 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
       "taxonomy": ["product_cat"],
       "taxonomy_excluded": ["product_visibility"],
       "found_rows": 34,
+      "rows_returned": 12,
       "ms": 8.865,
       "cached": false,
+      "qualifies": ["filesort"],
+      "worth_indexing": false,
       "explain": {
         "scan": false,
         "filesort": true,
@@ -88,7 +93,6 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
       "max_rows": 34
     }
   ],
-  "qualified_by": { "product-cat": ["filesort"], "shop": ["filesort", "scan"] },
   "materialise": {
     "postmeta": {
       "_price": { "sql_type": "decimal", "confidence": "sampled",
@@ -114,9 +118,10 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
 | `complete` | `false` when any profiled page failed, was blocked, hit the per-request cap, or predates the contract. **Treat `false` as insufficient evidence, never as "nothing needed".** |
 | `pages_seen` | Pages that contributed. |
 | `predates_contract` | Profiles from before this feature existed, which carry no archive data. Counted separately because "we did not look" and "there was nothing there" are different answers. |
-| `archives[]` | One entry per qualifying archive query. |
+| `archives[]` | Every archive query that ran, whether or not it needs an index. |
 | `candidate_composites[]` | The indexes to create. The actionable output. |
-| `qualified_by{}` | Why each page qualified, keyed by `page_key`. |
+| `archives_worth_indexing` | How many of them clear both bars below. |
+| `thresholds{}` | The size and time bars actually applied, so they are visible rather than implied. |
 | `materialise{}` | Columns that must exist before those indexes can be built. |
 | `largest_archive_rows` | The biggest archive measured. |
 | `unsupported[]` | Archives that cannot be helped, and why. |
@@ -130,12 +135,15 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
 | `post_type[]` | Post types queried. |
 | `taxonomy[]` | Taxonomies that **narrow** the query. |
 | `taxonomy_excluded[]` | Taxonomies that only **exclude**. See below - the distinction matters. |
-| `found_rows` | Total matching the archive, not the page size. `null` when WordPress did not compute it. |
+| `found_rows` | Total matching the archive, not the page size. `null` when WordPress did not compute it (`no_found_rows`). |
+| `rows_returned` | Posts this query actually returned. Always present, so there is a size signal even when `found_rows` is `null`. |
 | `ms` | Measured SQL time, or `null` when the query was answered from the object cache. |
 | `cached` | `true` when it was served from the object cache and never reached the database. |
 | `explain` | The query plan. `null` when no plan could be read. |
 | `orderby[]` | The **resolved** ordering, in order. |
 | `orderby_requested[]` | The ordering as the query asked for it, before plugins resolved it. |
+| `qualifies[]` | Why this archive's plan is poor: `ms`, `filesort`, `scan`, `est_rows`. Empty is fine. |
+| `worth_indexing` | Whether an index is worth building. **Only these feed the recommendations.** |
 
 ### Narrowing versus excluding taxonomies
 
@@ -229,9 +237,15 @@ The type is not recoverable from the query. A cast in the SQL says what the quer
 Never auto-apply a `mixed` or `low` verdict. `mixed` means the data itself disagrees - some rows numeric, some not - so either choice is wrong for part of your content. It is a data-quality finding in its own right and wants a human.
 :::
 
-## qualified_by{} and how selection works
+## What gets recorded, and what gets recommended
 
-An archive is listed when the **plan** says it is worth an index, not when it is slow today:
+These are two different questions and the profile answers both.
+
+**Every** archive query that ran is in `archives[]`, with its size, its time and its plan - including WordPress's own. Nothing is hidden from you, and a consumer is entitled to sort them by time or impact and decide for itself.
+
+**Recommendations** - `candidate_composites[]` and `materialise{}` - are fed only by archives where `worth_indexing` is `true`, which needs two things at once.
+
+**A bad plan** (`qualifies[]` is non-empty):
 
 | Reason | Meaning |
 |---|---|
@@ -240,7 +254,15 @@ An archive is listed when the **plan** says it is worth an index, not when it is
 | `scan` | No usable index. |
 | `est_rows` | The optimiser expects to examine 1,000 rows or more. |
 
-Rows *returned* is deliberately not a criterion. The archive this feature exists to fix examines two million rows to return twelve, so a result-size threshold would discard exactly the queries worth fixing. `found_rows` is recorded as a growth signal - a large archive that is fast today will not stay fast - and never as a reason to skip a query.
+**And enough rows to be worth an index**: 200 or more, taken as the largest of `found_rows`, `rows_returned` and `est_rows`.
+
+Both bars matter, and they are doing different jobs. Rows returned is a poor measure of *cost* - the archive this feature exists for examines two million rows to return twelve, which is why a query is never skipped for being small in its results. But rows are the right measure of *whether an index is worth building*, because no index helps a table with one row in it.
+
+:::callout{variant="did-you-know"}
+That size bar is doing more work than it looks. WordPress stores its own editor and theme data as posts - `wp_global_styles`, `wp_template_part`, `wp_template` - each scoped by the `wp_theme` taxonomy, and it queries them on ordinary front-end requests whether or not you run a block theme. They are taxonomy-filtered archives that filesort, exactly like a category archive, and they hold one row each. Without the size bar they outnumber your real archives roughly nine to one in the recommendations.
+:::
+
+There is deliberately no list of post types to ignore. A site whose template-part table somehow grew to 50,000 rows would be reported like anything else that size, and nothing needs updating when WordPress adds its next internal post type.
 
 ## unsupported[]
 
@@ -259,3 +281,4 @@ When a profile is shared with superspeedy.org, less again travels: row counts ar
 3. Honour `taxonomy_excluded` - it is not a filter.
 4. Honour per-column `order`; an index declared in the wrong direction will not be used.
 5. Do not treat an empty `archives[]` as "this site has no archives" without checking `pages_seen` and `predates_contract`.
+6. Configure from `worth_indexing` archives, not from every entry in `archives[]`. The rest are there so you can see the whole picture, not so you can act on all of it.

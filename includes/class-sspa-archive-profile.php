@@ -29,6 +29,27 @@ class SSPA_Archive_Profile {
     /** Optimiser row estimate above which a scan is worth removing. */
     const EST_ROWS = 1000;
 
+    /**
+     * Size floor below which no index is worth building, measured as the larger of the rows
+     * the archive holds and the rows the optimiser expects to examine.
+     *
+     * Rows are a poor COST signal - an archive that examines two million rows to return twelve
+     * is the case this whole feature exists for - but they are the right signal for "is this
+     * worth an index at all". WordPress runs its own taxonomy-filtered queries on every front
+     * end request (wp_global_styles, wp_template_part, both scoped by the wp_theme taxonomy),
+     * and those hold one row and filesort like everything else. Without a size floor they
+     * dominate the recommendations: 18 of 20 on a real run.
+     */
+    const MIN_INDEXABLE_ROWS = 200;
+
+    /**
+     * Instruments, not pages. `baseline` deliberately writes no capture at all - the mu-loader
+     * short-circuits it so it can measure the server's noise floor - so counting it as a page
+     * that failed made `complete` false on every full run, which tells every consumer to refuse
+     * the data. Spot runs scoped to real page keys hid this.
+     */
+    private static $probe_page_keys = array('baseline', 'mail-probe');
+
     public static function build($run_id) {
         global $wpdb;
 
@@ -54,7 +75,6 @@ class SSPA_Archive_Profile {
         }
 
         $archives = array();
-        $qualified_by = array();
         $unsupported = array();
         $needed = array('postmeta' => array(), 'other_table' => array());
         $posts_columns = array();
@@ -64,6 +84,10 @@ class SSPA_Archive_Profile {
         $predates = 0;
 
         foreach ($profiles as $profile) {
+            if (self::is_probe($profile['page_key'])) {
+                continue;
+            }
+
             // A page that failed or was blocked has not proved that its archive needs nothing.
             // It has proved nothing about it at all, which is a different answer entirely.
             if ((int) $profile['response_code'] !== 200) {
@@ -105,13 +129,16 @@ class SSPA_Archive_Profile {
                     continue;
                 }
 
-                $reasons = self::qualifies($entry);
-                if (!$reasons) {
+                // Every archive that ran is reported, with its size and its time, because the
+                // consumer is the one entitled to decide what it optimises for. Only the ones
+                // that pass both the size and the cost bar feed the recommendations below.
+                $entry['qualifies'] = self::qualifies($entry);
+                $entry['worth_indexing'] = self::worth_indexing($entry);
+                $archives[] = $entry;
+
+                if (!$entry['worth_indexing']) {
                     continue;
                 }
-
-                $archives[] = $entry;
-                $qualified_by[$profile['page_key']] = $reasons;
 
                 self::collect_needed($record, $needed, $posts_columns);
                 self::collect_composite($record, $entry, $composites);
@@ -121,8 +148,12 @@ class SSPA_Archive_Profile {
         $types = SSPA_Archive_Types::for_run($run_id, $needed);
 
         $largest = 0;
+        $indexable = 0;
         foreach ($archives as $entry) {
             $largest = max($largest, (int) $entry['found_rows']);
+            if ($entry['worth_indexing']) {
+                $indexable++;
+            }
         }
 
         $out = array(
@@ -132,10 +163,11 @@ class SSPA_Archive_Profile {
             'pages_seen' => $pages_seen,
             'predates_contract' => $predates,
             'archives' => $archives,
+            'archives_worth_indexing' => $indexable,
             'candidate_composites' => array_values($composites),
-            'qualified_by' => $qualified_by,
             'materialise' => self::materialise($types, $posts_columns),
             'largest_archive_rows' => $largest,
+            'thresholds' => array('min_rows' => self::MIN_INDEXABLE_ROWS, 'slow_ms' => self::SLOW_MS),
             'unsupported' => $unsupported,
         );
 
@@ -153,6 +185,7 @@ class SSPA_Archive_Profile {
             'taxonomy' => self::taxonomies($record, true),
             'taxonomy_excluded' => self::taxonomies($record, false),
             'found_rows' => isset($record['found_rows']) ? $record['found_rows'] : null,
+            'rows_returned' => isset($record['rows_returned']) ? $record['rows_returned'] : null,
             'ms' => isset($record['ms']) ? $record['ms'] : null,
             // Served from the object cache, so it cost nothing on this hit. The plan below is
             // still real - it is what the database WOULD do on a cold hit, which is what a
@@ -252,6 +285,36 @@ class SSPA_Archive_Profile {
         }
 
         return $reasons;
+    }
+
+    /**
+     * Whether an index is worth building for this archive: it has to be big enough to matter
+     * AND have something wrong with its plan. Both, not either.
+     *
+     * The size half is what keeps WordPress's own one-row taxonomy queries out of the
+     * recommendations without naming them - no hardcoded list of post types to fall out of
+     * date, and a site whose wp_template_part table somehow grew to 50,000 rows would be
+     * reported like anything else that size.
+     */
+    private static function worth_indexing($entry) {
+        return self::size_of($entry) >= self::MIN_INDEXABLE_ROWS && (bool) $entry['qualifies'];
+    }
+
+    /**
+     * The larger of what the archive holds and what the optimiser expects to examine. A query
+     * that examines two million rows to return twelve is large by the measure that matters,
+     * and found_rows is null whenever no_found_rows was set, so neither alone is enough.
+     */
+    private static function size_of($entry) {
+        return max(
+            (int) $entry['found_rows'],
+            (int) $entry['rows_returned'],
+            isset($entry['explain']['est_rows']) ? (int) $entry['explain']['est_rows'] : 0
+        );
+    }
+
+    private static function is_probe($page_key) {
+        return in_array($page_key, self::$probe_page_keys, true) || 0 === strpos($page_key, 'write-');
     }
 
     private static function unsupported_reason($record, $capture) {

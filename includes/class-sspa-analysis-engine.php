@@ -667,12 +667,16 @@ class SSPA_Analysis_Engine {
         }
 
         foreach ($profile['archives'] as $entry) {
-            $reasons = isset($profile['qualified_by'][$entry['page_key']])
-                ? $profile['qualified_by'][$entry['page_key']]
-                : array();
+            // Only archives big enough for an index to be worth building. WordPress runs its
+            // own one-row taxonomy queries (wp_global_styles, wp_template_part) on every front
+            // end request and they filesort like anything else; reporting each as a finding
+            // would bury the two that matter under eighteen that do not.
+            if (empty($entry['worth_indexing'])) {
+                continue;
+            }
 
             // Timing alone is not evidence of a bad plan, and this finding is about the plan.
-            $plan_reasons = array_intersect($reasons, array('filesort', 'scan', 'est_rows'));
+            $plan_reasons = array_intersect($entry['qualifies'], array('filesort', 'scan', 'est_rows'));
             if (!$plan_reasons) {
                 continue;
             }

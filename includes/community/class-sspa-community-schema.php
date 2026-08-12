@@ -34,6 +34,10 @@ class SSPA_Community_Schema {
             // the checkout flow: it measures a different person's time and must never be
             // added to what a customer waited through.
             'sspa/order-management-flow' => 1,
+            // What the site's archives filter and order by, and the composite indexes that
+            // would serve them. Shapes only - column names, index shapes, plan verdicts,
+            // banded row counts. Meta key names are allowlisted; meta values never travel.
+            'sspa/archive-profile' => 1,
             'sspa/plugin-toggle-spot' => 1,
             'sspa/adhoc-page-profile' => 1,
         );
