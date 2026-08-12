@@ -360,6 +360,13 @@ function sspa_payload_summary_html(data) {
 		if (s.components) { html += ', and the names and versions of ' + s.components + ' active components'; }
 		html += '.</p>';
 	}
+	// Named, not counted. "Which plugins are publishing their settings" is the one question the
+	// narrower exclusion below raises, and it should not need the JSON to answer.
+	if (s.state_components && s.state_components.length) {
+		html += '<p>These plugins have opted in to publishing their own performance settings: ';
+		html += s.state_components.map(function (i) { return '<code>' + sspa_esc(i) + '</code>'; }).join(', ');
+		html += '.</p>';
+	}
 	if (s.excludes && s.excludes.length) {
 		html += '<p>It does <strong>not</strong> contain ';
 		html += s.excludes.map(function (i) { return sspa_esc(i); }).join('; ');

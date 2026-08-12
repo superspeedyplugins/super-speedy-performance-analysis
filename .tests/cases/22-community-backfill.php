@@ -109,7 +109,7 @@ ob_start();
 include SSPA_PLUGIN_DIR . 'includes/admin/tabs/share.php';
 $share_html = ob_get_clean();
 sspa_backfill_t(false !== strpos($share_html, 'Submission history') && false !== strpos($share_html, 'sspa-outbox-table'), 'Share tab renders the operational outbox table');
-sspa_backfill_t(false !== strpos($share_html, 'sspa-preview-outbox') && false !== strpos($share_html, 'schema 1.2'), 'Share tab exposes exact-payload controls and versioned rows');
+sspa_backfill_t(false !== strpos($share_html, 'sspa-preview-outbox') && false !== strpos($share_html, 'schema 1.3'), 'Share tab exposes exact-payload controls and versioned rows');
 
 foreach ($outbox_ids as $outbox_id) {
     $wpdb->delete($events_table, array('outbox_id' => $outbox_id));

@@ -132,7 +132,28 @@ class SSPA_Run_Controller {
                 $share_context['plugin_toggle'] = array('slug' => $slug, 'action' => $action);
             }
         }
+        // Which half of a before/after cycle this run is, when an orchestrator (Scalability Pro's
+        // good-settings flow, Archives' apply flow) is driving one.
+        if (!empty($args['share_context']['change_cycle'])) {
+            $cycle = SSPA_Community_State::change_cycle($args['share_context']['change_cycle']);
+            if ($cycle) {
+                $share_context['change_cycle'] = $cycle;
+            }
+        }
         $component_inventory = SSPA_Community_Exporter::component_inventory_snapshot();
+
+        // Configuration state is captured HERE, at run start, for the same reason plugin_set is:
+        // the run is a measurement of the site as it was configured at this moment. Asking at
+        // export time would stamp today's settings onto last week's baseline and silently
+        // mislabel exactly the before/after pairs this exists to tell apart. The failure mode is
+        // a perfectly well-formed payload that is wrong, which is the kind that goes unnoticed.
+        $component_state = SSPA_Community_State::collect(array(
+            'run_type' => $type,
+            'trigger' => !empty($args['trigger']) ? $args['trigger'] : 'manual',
+        ));
+        if ($component_state) {
+            $share_context['component_state'] = $component_state;
+        }
         $wpdb->insert(SSPA_Schema::table('runs'), array(
             'run_uuid' => wp_generate_uuid4(),
             'blog_id' => get_current_blog_id(),

@@ -110,7 +110,7 @@ if (!is_wp_error($queued)) {
     sspa_outbox_t(hash_equals($queued['payload_sha256'], hash('sha256', $queued['payload_gzip'])), 'compressed payload hash matches immutable bytes');
     sspa_outbox_t(
         ($payload['payload_schema']['major'] ?? 0) === 1
-        && ($payload['payload_schema']['minor'] ?? 0) === 2
+        && ($payload['payload_schema']['minor'] ?? 0) === 3
         && ($versions['sspa/page-profile'] ?? 0) === 2
         && ($payload['run']['run_uuid'] ?? '') === $run_uuid,
         'payload, page evidence and run identities are independently versioned'

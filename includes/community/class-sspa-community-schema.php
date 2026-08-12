@@ -10,10 +10,16 @@ class SSPA_Community_Schema {
     const PAYLOAD_SCHEMA_MAJOR = 1;
     // Minor 2 adds site cohort dimensions to the top-level site snapshot. Purely additive:
     // every field a 1.1 receiver reads is still present, with the same name and meaning.
-    const PAYLOAD_SCHEMA_MINOR = 2;
+    // Minor 3 adds `run.change_cycle` and the sspa/component-state evidence type. Also additive.
+    const PAYLOAD_SCHEMA_MINOR = 3;
     const ANONYMISATION_VERSION = 1;
     const MEASUREMENT_VERSION = 1;
-    const CONSENT_VERSION = 1;
+    // Version 2 is the first to submit another plugin's settings, and only for plugins that have
+    // opted in by registering the `sspa_component_state` filter. That is a genuine widening of
+    // what leaves the site, so it is a new consent version rather than a silent addition: a site
+    // that agreed to version 1 agreed to a payload with no third-party settings in it at all, and
+    // every payload records which version was in force when it was built.
+    const CONSENT_VERSION = 2;
     const MAX_COMPRESSED_BYTES = 33554432;
     const MAX_UNCOMPRESSED_BYTES = 268435456;
 
@@ -40,6 +46,10 @@ class SSPA_Community_Schema {
             'sspa/archive-profile' => 1,
             'sspa/plugin-toggle-spot' => 1,
             'sspa/adhoc-page-profile' => 1,
+            // Another plugin's own account of how it was configured when the run was measured,
+            // published by that plugin through the `sspa_component_state` filter. Never read out
+            // of another plugin's options by this one.
+            'sspa/component-state' => 1,
         );
     }
 

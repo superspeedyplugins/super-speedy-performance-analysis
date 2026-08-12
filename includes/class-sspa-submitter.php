@@ -111,21 +111,38 @@ class SSPA_Submitter {
             'sspa/checkout-flow' => __('checkout step timings', 'super-speedy-performance-analysis'),
             'sspa/plugin-toggle-spot' => __('plugin activation spot checks', 'super-speedy-performance-analysis'),
             'sspa/adhoc-page-profile' => __('single page timings', 'super-speedy-performance-analysis'),
+            'sspa/component-state' => __('performance settings published by plugins that opted in', 'super-speedy-performance-analysis'),
         );
         $includes = array();
         foreach ($counts as $type => $n) {
             $includes[] = sprintf('%d %s', $n, isset($labels[$type]) ? $labels[$type] : $type);
         }
+        // Which plugins chose to publish their own settings, named, so the answer to "whose
+        // settings are in here" does not require reading the JSON.
+        $state_components = array();
+        foreach ((array) (isset($payload['evidence']) ? $payload['evidence'] : array()) as $item) {
+            if (isset($item['type']) && 'sspa/component-state' === $item['type'] && !empty($item['data']['component']['slug'])) {
+                $state_components[] = (string) $item['data']['component']['slug'];
+            }
+        }
+        $state_components = array_values(array_unique($state_components));
+
         return array(
             'run_type' => isset($payload['run']['run_type']) ? $payload['run']['run_type'] : '',
             'components' => count((array) (isset($payload['component_inventory']) ? $payload['component_inventory'] : array())),
             'includes' => $includes,
+            'state_components' => $state_components,
             'excludes' => array(
                 __('your domain name and every URL', 'super-speedy-performance-analysis'),
                 __('filesystem paths', 'super-speedy-performance-analysis'),
                 __('raw SQL - queries are reduced to a shape with all values removed', 'super-speedy-performance-analysis'),
                 __('any customer, order, user or email data', 'super-speedy-performance-analysis'),
-                __('option and setting values', 'super-speedy-performance-analysis'),
+                // The narrower promise. Until 0.20.0 this said "option and setting values" with
+                // no exception, and that was true. A plugin can now publish its own performance
+                // settings by registering the `sspa_component_state` filter, and only those
+                // appear - this plugin never reads another plugin's options itself, so a plugin
+                // that has not opted in still contributes nothing.
+                __('option and setting values, except the performance settings a plugin publishes about itself - listed in the preview below', 'super-speedy-performance-analysis'),
             ),
         );
     }

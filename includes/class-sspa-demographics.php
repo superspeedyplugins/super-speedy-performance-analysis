@@ -91,6 +91,14 @@ class SSPA_Demographics {
             'memory_limit' => ini_get('memory_limit'),
             'multisite' => is_multisite(),
             'locale' => get_locale(),
+            // Whether this is a real site at all. WordPress's own closed set:
+            // production / staging / development / local. A developer's laptop copy of a store
+            // measures nothing about how that store performs for its customers - different
+            // hardware, no traffic, often a partial database - so a corpus that pools it with
+            // production is quietly wrong about every cohort it contains. Declared rather than
+            // guessed, and the guess would be poor: "localhost" is not a reliable signal and a
+            // staging site usually looks exactly like the live one.
+            'environment_type' => function_exists('wp_get_environment_type') ? wp_get_environment_type() : 'production',
         );
 
         $sector = self::infer_sector($post_counts, $active_plugins);

@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.19.1
+Stable tag: 0.20.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,14 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.20.0 (12th August 2026) =
+* Other plugins can now publish their own performance settings alongside a shared analysis, through the new `sspa_component_state` filter. A plugin only publishes what it deliberately opts in to publishing; this plugin never reads another plugin's options.
+* Scalability Pro and Super Speedy Archives are the first to opt in, publishing which optimisations were on and whether the archive table was built.
+* The two halves of an Enable good settings run are now labelled `before` and `after` and share a cycle identifier, so a shared pair can be compared as one experiment.
+* A shared analysis now records whether the site is a production, staging, development or local one.
+* The Share tab names every plugin publishing its settings, and the consent text is updated to match. Existing sharing settings are unaffected.
+* Fixed an analysis reporting itself as incomplete when one page fetch failed after that page had already been profiled successfully.
 
 = 0.19.1 (12th August 2026) =
 * Archive recommendations now only cover archives big enough for an index to be worth building, so WordPress's own one-row template and global-styles queries no longer crowd out your real archives. Every archive is still reported with its size and its time, so anything reading the results can make its own choice.

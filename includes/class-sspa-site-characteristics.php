@@ -238,6 +238,14 @@ class SSPA_Site_Characteristics {
         $locale_family = preg_match('/^([a-z]{2})(?:[_-]|$)/', $locale, $m) ? $m[1] : null;
 
         return array(
+            // WordPress's own closed set. A receiver should almost always restrict a corpus to
+            // 'production': a laptop copy of a store measures the laptop, not the store. Absent
+            // in payloads built before 0.20.0, where it must be read as "unknown" rather than
+            // assumed to be production.
+            'environment_type' => self::allowed(
+                isset($metrics['environment_type']) ? $metrics['environment_type'] : null,
+                array('production', 'staging', 'development', 'local')
+            ),
             'wordpress_version' => self::safe_version(isset($metrics['wp']) ? $metrics['wp'] : null),
             'php_version' => self::safe_version(isset($metrics['php']) ? $metrics['php'] : null),
             'database_family' => self::allowed(isset($metrics['db_family']) ? $metrics['db_family'] : null, array('mysql', 'mariadb')),

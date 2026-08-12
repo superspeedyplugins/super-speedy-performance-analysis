@@ -65,7 +65,7 @@ class SSPA_Archive_Profile {
         }
 
         $profiles = $wpdb->get_results($wpdb->prepare(
-            'SELECT id, page_key, variant, response_code, profile_blob
+            'SELECT id, page_key, variant, response_code, blocked_by, profile_blob
              FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d',
             $run_id
         ), ARRAY_A);
@@ -90,13 +90,26 @@ class SSPA_Archive_Profile {
 
             // A page that failed or was blocked has not proved that its archive needs nothing.
             // It has proved nothing about it at all, which is a different answer entirely.
-            if ((int) $profile['response_code'] !== 200) {
-                $complete = false;
-                continue;
-            }
-
+            //
+            // But the CAPTURE is the evidence, not the response code. A page is fetched several
+            // times and `response_code` reflects the samples, so one flaky fetch of a page that
+            // had already been profiled successfully used to discard a capture sitting right
+            // there with its `archives` section intact - and, because that made `complete` false,
+            // it also told Super Speedy Archives to refuse to configure itself from the entire
+            // run. On this install `admin-new-post` failed one sample in three, every run, which
+            // permanently blocked auto-configuration from a run where all 23 other pages and
+            // every archive it needed were profiled perfectly. A page with no capture at all is
+            // still a genuine gap; a page that produced one is not.
+            //
+            // Two things remain gaps even with a capture present, because both mean the request
+            // did not finish doing what a visitor's would: a blocked fetch, and a 5xx, where
+            // WordPress ran far enough to write a capture and then died. Half a page's queries is
+            // not the same answer as a page with no archives.
             $capture = self::decode($profile['profile_blob']);
-            if (!is_array($capture)) {
+            $usable = is_array($capture)
+                && empty($profile['blocked_by'])
+                && (int) $profile['response_code'] < 500;
+            if (!$usable) {
                 $complete = false;
                 continue;
             }

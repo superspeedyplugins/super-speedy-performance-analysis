@@ -133,6 +133,7 @@ class SSPA_Community_Exporter {
             ));
         }
         self::add_toggle_context($evidence, $run, $measurement_version, $submission_uuid, $versions);
+        self::add_component_state($evidence, $run, $measurement_version, $submission_uuid, $versions);
 
         usort($evidence, array(__CLASS__, 'sort_evidence'));
         $manifest = self::manifest($evidence);
@@ -163,6 +164,11 @@ class SSPA_Community_Exporter {
                 'finished_at' => SSPA_Community_Schema::canonical_time($run['finished']),
                 'outcome' => $outcome,
                 'incomplete_reason' => ('complete' === $outcome) ? null : 'run_failed',
+                // Which half of a deliberate before/after cycle this run is, when one was driving
+                // it. On the `run` object rather than on any single state record, because it is a
+                // property of the MEASUREMENT: two records in one payload could otherwise
+                // disagree about which side of the change the run sat on.
+                'change_cycle' => self::change_cycle($run),
             ),
             'component_inventory' => $inventory,
             'evidence_manifest' => $manifest,
@@ -744,6 +750,75 @@ class SSPA_Community_Exporter {
             'run_uuid' => $run['run_uuid'],
             'evidence_class' => 'after_toggle_observation',
         ));
+    }
+
+    /**
+     * The before/after pairing recorded when the run started, or null for a standalone run.
+     *
+     * `cycle_uuid` is generated per cycle by the orchestrator and is the only thing linking the
+     * two runs. It is deliberately NOT derived from anything about the site, so it identifies a
+     * pair and nothing else.
+     */
+    private static function change_cycle($run) {
+        if (empty($run['share_context'])) {
+            return null;
+        }
+        $context = json_decode((string) $run['share_context'], true);
+        if (!is_array($context) || empty($context['change_cycle'])) {
+            return null;
+        }
+        return SSPA_Community_State::change_cycle($context['change_cycle']);
+    }
+
+    /**
+     * What other plugins were configured as when this run was measured.
+     *
+     * Read from the run's OWN stored snapshot, never re-asked here. The distinction matters more
+     * than it looks: re-asking at export time produces a perfectly valid payload that says the
+     * "before" run was measured with the settings that were only applied afterwards, which is the
+     * exact inversion this evidence exists to prevent. The record is written once, at run start,
+     * by SSPA_Community_State::collect().
+     *
+     * Each record is validated ALONE and dropped on failure. SSPA_Community_Privacy::validate()
+     * aborts the whole payload on one forbidden value, so without this a single badly written
+     * third-party filter would stop the site submitting anything, ever, with no visible cause.
+     */
+    private static function add_component_state(&$evidence, $run, $measurement_version, $submission_uuid, $versions) {
+        if (empty($run['share_context'])) {
+            return;
+        }
+        $context = json_decode((string) $run['share_context'], true);
+        if (!is_array($context) || empty($context['component_state']) || !is_array($context['component_state'])) {
+            return;
+        }
+
+        foreach ($context['component_state'] as $record) {
+            if (!is_array($record) || empty($record['component']['slug'])) {
+                continue;
+            }
+            $component = SSPA_Community_Privacy::component(
+                $record['component']['slug'],
+                isset($record['component']['type']) ? $record['component']['type'] : 'plugin',
+                $submission_uuid
+            );
+            $key = $component['type'] . ':' . $component['slug'];
+            $data = array(
+                'component' => $component,
+                // Filled in here rather than trusted from the filter, so a state record can never
+                // disagree with the rest of the payload about which version was measured.
+                'component_version' => isset($versions[$key]) ? $versions[$key] : null,
+                'state_schema_version' => isset($record['state_schema_version']) ? (int) $record['state_schema_version'] : 1,
+                'summary' => isset($record['summary']) ? (array) $record['summary'] : array(),
+                'options' => isset($record['options']) ? (array) $record['options'] : array(),
+                'state' => isset($record['state']) ? (array) $record['state'] : array(),
+                'omitted_keys' => isset($record['omitted_keys']) ? (int) $record['omitted_keys'] : 0,
+            );
+
+            if (is_wp_error(SSPA_Community_Privacy::validate($data))) {
+                continue;
+            }
+            self::add_evidence($evidence, 'sspa/component-state', $measurement_version, $data);
+        }
     }
 
     private static function manifest($evidence) {
