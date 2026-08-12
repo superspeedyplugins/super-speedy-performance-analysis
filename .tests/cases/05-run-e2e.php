@@ -77,7 +77,10 @@ sspa_t(in_array('core', $components, true), 'core component attributed');
 // Blob stored and unpackable.
 $blob = $wpdb->get_var($wpdb->prepare("SELECT profile_blob FROM $profiles_table WHERE run_id = %d AND page_key = 'home'", $run_id));
 $capture = $blob ? json_decode(gzuncompress($blob), true) : null;
-sspa_t(is_array($capture) && $capture['schema'] === 1, 'profile blob stored + unpacks');
+// Pinned to the literal rather than to SSPA_Capture::SCHEMA_VERSION: comparing the constant
+// against itself would pass whatever it became, and the whole point is that a consumer reading
+// an older capture can tell which contract it was written to. 2 added the archives section.
+sspa_t(is_array($capture) && $capture['schema'] === 2, 'profile blob stored + unpacks');
 sspa_t(is_array($capture) && $capture['overview']['capture_mode'] === 'full', 'capture mode full (shim active): ' . ($capture ? $capture['overview']['capture_mode'] : '?'));
 sspa_t(is_array($capture) && !empty($capture['sql']['queries'][0]['fp']), 'queries carry fingerprints');
 

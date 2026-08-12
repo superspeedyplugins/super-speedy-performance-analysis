@@ -8,8 +8,8 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
   `get-status`, `get-report`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
-  `run-analysis`, `run-deep-analysis`, `run-checkout-flow`, `get-checkout-flow`,
-  `submit-results`. Readonly ones answer GET at
+  `get-archive-profile`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
+  `get-checkout-flow`, `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
 - **MCP**: when the MCP Adapter plugin is installed, a server is registered at
   `/wp-json/mcp/super-speedy-performance` exposing the same abilities as tools
@@ -86,6 +86,20 @@ measurement with the plugin virtually excluded. **Positive = the plugin ADDS tha
 the plugin is speeding the site up (common for search/filter replacement plugins). Never
 describe a negative delta as the plugin being slow.
 
+## Archive profile object (get-archive-profile)
+
+Separate from the report and additive to it, so `SSPA_Report::SCHEMA` does not move. It has its
+own `schema` (currently 1, `SSPA_Archive_Profile::SCHEMA`).
+
+What it answers: which composite database indexes this site's archive pages would actually use,
+and which columns have to exist before those indexes can be built. Intended for auto-configuring
+Super Speedy Archives.
+
+**The full field-by-field contract is a single document: `.kb/archive-query-profile.md`**, also
+published at https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/ - build
+against that, not against this summary. It is deliberately the only place the shape is
+specified, so there is nothing to drift out of sync.
+
 ## Guarantees agents can rely on
 
 - Page keys are stable across runs - compare runs by page_key.
@@ -96,3 +110,7 @@ describe a negative delta as the plugin being slow.
   measurement (drift control), and the excluded plugin set gets its own warm-up request.
 - Profiled requests never send mail and never change the live plugin set.
 - `run-analysis` without `include_writes` performs GET requests only.
+- An archive profile never claims a query is unindexed without a query plan to say so. A
+  `mixed` or `low` type confidence must not be auto-applied - either choice is wrong for part
+  of the data. `complete: false` means insufficient evidence, never "nothing needed": a run
+  whose CPT archive timed out has proved nothing about that archive.

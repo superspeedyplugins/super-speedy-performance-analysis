@@ -99,6 +99,24 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        wp_register_ability(self::CATEGORY . '/get-archive-profile', array(
+            'label' => __('Get archive query profile', 'super-speedy-performance-analysis'),
+            'description' => __('What this site\'s archive pages (category, tag, shop, product category, CPT and custom taxonomy archives) actually filter and order by, measured from a real run. Returns the composite indexes those archives would use, in column order with per-column direction, plus the postmeta keys and lookup-table columns that must be materialised as typed columns first - each with an inferred SQL type and a confidence. Intended for auto-configuring Super Speedy Archives. Never auto-apply a type whose confidence is "mixed" or "low", and treat complete=false as insufficient evidence rather than as "nothing needed".', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'run_id' => array('type' => 'integer', 'description' => __('Specific run id; defaults to the latest completed run.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_archive_profile'),
+            'meta' => $readonly,
+        ));
+
         wp_register_ability(self::CATEGORY . '/get-findings', array(
             'label' => __('Get findings', 'super-speedy-performance-analysis'),
             'description' => __('Findings from the latest completed run, most severe first, each with a headline, evidence and an explicit recommendation.', 'super-speedy-performance-analysis'),
@@ -279,6 +297,10 @@ class SSPA_Abilities {
     public static function exec_get_report($input) {
         $report = SSPA_Report::build(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
         return is_wp_error($report) ? $report : $report;
+    }
+
+    public static function exec_get_archive_profile($input) {
+        return SSPA_Report::archive_profile(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_findings($input) {

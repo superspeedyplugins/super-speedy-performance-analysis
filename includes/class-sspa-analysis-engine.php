@@ -47,6 +47,7 @@ class SSPA_Analysis_Engine {
         $this->build_plans();
 
         $this->slow_queries();
+        $this->archive_queries();
         $this->big_result_sets();
         $this->unindexed_queries();
         $this->over_examining_queries();
@@ -645,6 +646,78 @@ class SSPA_Analysis_Engine {
                 'over_examining_query'
             );
         }
+    }
+
+    /**
+     * Archive pages whose sort the database cannot serve from an index.
+     *
+     * A term-filtered archive is the case where wp_posts' own indexes stop helping: the filter
+     * and the sort live in different tables, so MySQL filters and then filesorts. A mirror
+     * table carrying the term columns and the sort column in one composite index removes that.
+     *
+     * The claim here is "the plan is bad", so it is made from the PLAN and never from timing
+     * alone - a filesort on a small catalogue is fast today and is exactly what stops being
+     * fast as the catalogue grows. Queries whose plan could not be read produce no finding
+     * rather than an assumed one.
+     */
+    private function archive_queries() {
+        $profile = SSPA_Archive_Profile::build($this->run_id);
+        if (is_wp_error($profile) || empty($profile['archives'])) {
+            return;
+        }
+
+        foreach ($profile['archives'] as $entry) {
+            $reasons = isset($profile['qualified_by'][$entry['page_key']])
+                ? $profile['qualified_by'][$entry['page_key']]
+                : array();
+
+            // Timing alone is not evidence of a bad plan, and this finding is about the plan.
+            $plan_reasons = array_intersect($reasons, array('filesort', 'scan', 'est_rows'));
+            if (!$plan_reasons) {
+                continue;
+            }
+
+            $columns = array();
+            foreach ($entry['orderby'] as $term) {
+                $columns[] = $term['column'] . ' ' . $term['order'];
+            }
+
+            $this->add(
+                (!empty($entry['explain']['scan']) && $entry['found_rows'] >= 1000) ? 'warn' : 'info',
+                'archive_query_unindexed',
+                'core',
+                $entry['page_key'],
+                array(
+                    'rows' => (int) $entry['found_rows'],
+                    'ms' => (float) $entry['ms'],
+                    'shape' => implode(', ', $columns),
+                    'taxonomy' => $entry['taxonomy'],
+                    'reasons' => array_values($plan_reasons),
+                    'plan_note' => $this->archive_plan_note($entry),
+                ),
+                'slow_query_tax',
+                // The plan was read, not inferred. This is the one finding here that can say so.
+                !empty($entry['explain']) ? 'measured' : 'inferred'
+            );
+        }
+    }
+
+    private function archive_plan_note($entry) {
+        $parts = array();
+        if (!empty($entry['explain']['filesort'])) {
+            $parts[] = __('sorts the results in memory or on disk (filesort)', 'super-speedy-performance-analysis');
+        }
+        if (!empty($entry['explain']['scan'])) {
+            $parts[] = __('reads the table with no usable index', 'super-speedy-performance-analysis');
+        }
+        if (!empty($entry['explain']['est_rows'])) {
+            $parts[] = sprintf(
+                /* translators: %s: number of rows */
+                __('MySQL expects to examine about %s rows', 'super-speedy-performance-analysis'),
+                number_format((int) $entry['explain']['est_rows'])
+            );
+        }
+        return implode('; ', $parts);
     }
 
     private function add($severity, $type, $component, $page_key, $evidence, $rec_key, $confidence = 'inferred') {

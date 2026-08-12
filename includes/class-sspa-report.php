@@ -127,6 +127,23 @@ class SSPA_Report {
         return $out;
     }
 
+    /**
+     * The archive query profile: which composite indexes this site's archives would use, and
+     * which columns must be materialised first. Consumed by Super Speedy Archives to configure
+     * its mirror table without a human filling the settings in by hand.
+     *
+     * Additive to the report schema, so SCHEMA does not move. Documented in docs/agent-api.md.
+     *
+     * @return array|WP_Error
+     */
+    public static function archive_profile($run_id = 0) {
+        $run_id = $run_id ? (int) $run_id : self::latest_done_run_id();
+        if (!$run_id) {
+            return new WP_Error('sspa_no_run', __('No completed analysis run found. Run an analysis first.', 'super-speedy-performance-analysis'));
+        }
+        return SSPA_Archive_Profile::build($run_id);
+    }
+
     public static function impacts() {
         global $wpdb;
         $out = array();

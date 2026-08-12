@@ -159,11 +159,148 @@ class SSPA_Anonymiser {
             ),
             'plugins' => $plugins,
             'profiles' => $profiles,
+            'archives' => self::archives($run_id),
             'observations' => $observations,
             'findings' => $findings,
             'impacts' => $impacts,
             'cache_effectiveness' => $cache,
         );
+    }
+
+    /**
+     * What the archives on this site filter and order by, as SHAPES.
+     *
+     * Built from the aggregate rather than from profile_blob, which is never submitted and must
+     * stay that way: the blob holds SQL with its literals (search terms, order numbers,
+     * customer emails in WHERE clauses), absolute server paths, outbound URLs carrying API keys
+     * and every option name the request read.
+     *
+     * What goes out here is column names, index shapes and plan verdicts - facts about
+     * WordPress, WooCommerce and MySQL, not about this business. Row counts are bucketed like
+     * every other size. Meta keys are the one judgement call and are allowlisted; see
+     * SSPA_Rules::known_meta_keys(). Meta VALUES never leave, at any point.
+     *
+     * The point of collecting it: "what do real archives actually sort by, and how often does
+     * the database have to filesort them" is a question no single site can answer.
+     */
+    private static function archives($run_id) {
+        if (!class_exists('SSPA_Archive_Profile')) {
+            return null;
+        }
+        $profile = SSPA_Archive_Profile::build($run_id);
+        if (is_wp_error($profile)) {
+            return null;
+        }
+
+        $known = array_flip(SSPA_Rules::known_meta_keys());
+
+        $archives = array();
+        foreach ($profile['archives'] as $entry) {
+            $orderby = array();
+            foreach ($entry['orderby'] as $term) {
+                $orderby[] = array(
+                    'source' => $term['source'],
+                    'table' => $term['table'],
+                    // A postmeta term is named only when the key is recognised software; the
+                    // column name on a meta join is always "meta_value" and says nothing.
+                    'column' => ('postmeta' === $term['source'])
+                        ? self::share_meta_key($term['meta_key'], $known)
+                        : $term['column'],
+                    'order' => $term['order'],
+                    'cast' => $term['cast'],
+                );
+            }
+
+            $archives[] = array(
+                'page_key' => $entry['page_key'],
+                'main' => !empty($entry['main']),
+                'post_type' => $entry['post_type'],
+                'taxonomy' => $entry['taxonomy'],
+                'rows' => self::bucket($entry['found_rows']),
+                'ms' => $entry['ms'],
+                'filesort' => !empty($entry['explain']['filesort']),
+                'scan' => !empty($entry['explain']['scan']),
+                'index_used' => isset($entry['explain']['key']) ? $entry['explain']['key'] : null,
+                'est_rows' => isset($entry['explain']['est_rows']) ? self::bucket($entry['explain']['est_rows']) : null,
+                'orderby' => $orderby,
+            );
+        }
+
+        $materialise = array('postmeta' => array(), 'other_table' => array());
+        foreach ($profile['materialise']['postmeta'] as $key => $verdict) {
+            $name = self::share_meta_key($key, $known);
+            $materialise['postmeta'][] = array(
+                'key' => $name,
+                'sql_type' => isset($verdict['sql_type']) ? $verdict['sql_type'] : null,
+                'confidence' => isset($verdict['confidence']) ? $verdict['confidence'] : null,
+                'used_for' => isset($verdict['used_for']) ? $verdict['used_for'] : array(),
+            );
+        }
+        foreach ($profile['materialise']['other_table'] as $key => $verdict) {
+            $materialise['other_table'][] = array(
+                'column' => $key,
+                'sql_type' => isset($verdict['sql_type']) ? $verdict['sql_type'] : null,
+                'confidence' => isset($verdict['confidence']) ? $verdict['confidence'] : null,
+                'used_for' => isset($verdict['used_for']) ? $verdict['used_for'] : array(),
+            );
+        }
+
+        $composites = array();
+        foreach ($profile['candidate_composites'] as $composite) {
+            $columns = array();
+            foreach ($composite['columns'] as $column) {
+                // Mirror-table meta columns carry the key in their name, so they need the same
+                // allowlisting as the key itself.
+                $columns[] = (0 === strpos($column, 'meta_'))
+                    ? self::share_meta_column($column, $known)
+                    : $column;
+            }
+            $composites[] = array(
+                'columns' => $columns,
+                'pages' => count($composite['seen_on']),
+                'rows' => self::bucket($composite['max_rows']),
+            );
+        }
+
+        return array(
+            'schema' => SSPA_Archive_Profile::SCHEMA,
+            'complete' => !empty($profile['complete']),
+            'pages_seen' => (int) $profile['pages_seen'],
+            'archives' => $archives,
+            'candidate_composites' => $composites,
+            'materialise' => $materialise,
+            'posts_columns' => $profile['materialise']['posts_columns'],
+            'unsupported' => $profile['unsupported'],
+        );
+    }
+
+    /**
+     * A recognised key identifies software and is shared by name. Anything else identifies a
+     * business and is not - only the fact that A custom key was used survives.
+     */
+    private static function share_meta_key($key, $known) {
+        if (!$key) {
+            return null;
+        }
+        return isset($known[$key]) ? $key : 'custom';
+    }
+
+    private static function share_meta_column($column, $known) {
+        // A composite column carries its sort direction ("meta__price DESC"), which is part of
+        // the index definition and has to survive; only the key half is allowlisted.
+        $direction = '';
+        if (preg_match('/^(.*?)(\s+(?:ASC|DESC))$/i', $column, $m)) {
+            $column = $m[1];
+            $direction = $m[2];
+        }
+
+        $key = substr($column, strlen('meta_'));
+        foreach (array_keys($known) as $candidate) {
+            if (sanitize_key($candidate) === $key) {
+                return $column . $direction;
+            }
+        }
+        return 'meta_custom' . $direction;
     }
 
     public static function bucket($n) {

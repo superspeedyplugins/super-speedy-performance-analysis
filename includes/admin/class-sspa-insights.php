@@ -118,6 +118,27 @@ class SSPA_Insights {
                 ) . $via_note;
                 $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
+            case 'archive_query_unindexed':
+                $headline = sprintf(
+                    /* translators: 1: page, 2: the ORDER BY columns */
+                    __('The %1$s archive cannot sort by %2$s from an index', 'super-speedy-performance-analysis'),
+                    $page,
+                    !empty($e['shape']) ? $e['shape'] : __('its chosen order', 'super-speedy-performance-analysis')
+                );
+                $body = !empty($e['taxonomy'])
+                    ? sprintf(
+                        /* translators: 1: rows in the archive, 2: taxonomy list */
+                        __('This archive holds %1$s posts and filters by %2$s. Filtering by term and sorting by a column of another table cannot use one index, so the database sorts the matched rows every time - which costs more as the catalogue grows, not less.', 'super-speedy-performance-analysis'),
+                        number_format((int) $e['rows']),
+                        implode(', ', (array) $e['taxonomy'])
+                    )
+                    : sprintf(
+                        /* translators: %s: rows in the archive */
+                        __('This archive holds %s posts. The database cannot serve this sort from an index, so it sorts the matched rows every time - which costs more as the catalogue grows, not less.', 'super-speedy-performance-analysis'),
+                        number_format((int) $e['rows'])
+                    );
+                $detail = trim($body . ($plan_line ? "\n" . $plan_line : ''));
+                break;
             case 'over_examining_query':
                 $headline = sprintf(
                     /* translators: 1: component, 2: rows examined, 3: rows returned, 4: page */

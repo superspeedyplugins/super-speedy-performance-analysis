@@ -28,11 +28,13 @@ class SSPA_Rules {
                             );
                         }
                     }
-                    if (!empty($feed['fragile']) && is_array($feed['fragile'])) {
-                        self::$data['fragile'] = array_values(array_unique(array_merge(
-                            isset(self::$data['fragile']) ? self::$data['fragile'] : array(),
-                            $feed['fragile']
-                        )));
+                    foreach (array('fragile', 'known_meta_keys') as $list) {
+                        if (!empty($feed[$list]) && is_array($feed[$list])) {
+                            self::$data[$list] = array_values(array_unique(array_merge(
+                                isset(self::$data[$list]) ? self::$data[$list] : array(),
+                                $feed[$list]
+                            )));
+                        }
                     }
                 }
             }
@@ -59,6 +61,23 @@ class SSPA_Rules {
     public static function categories() {
         $data = self::load();
         return isset($data['categories']) ? $data['categories'] : array();
+    }
+
+    /**
+     * Meta keys that belong to WordPress core, WooCommerce or a widely-installed plugin, and
+     * so identify software rather than a site.
+     *
+     * Used as an allowlist when sharing an archive profile: a recognised key is shared by name
+     * because "_price" says something about WooCommerce, while an unrecognised key is reported
+     * as "custom" because "_acme_client_ref" says something about one business. Meta keys would
+     * otherwise be the first site-authored strings ever to leave an install - option names are
+     * not shared, they only live in the local capture.
+     *
+     * Overlayable from the community feed, so the list can grow without a plugin release.
+     */
+    public static function known_meta_keys() {
+        $data = self::load();
+        return isset($data['known_meta_keys']) ? (array) $data['known_meta_keys'] : array();
     }
 
     public static function sector_signatures() {

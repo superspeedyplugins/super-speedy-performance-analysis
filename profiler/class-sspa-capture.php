@@ -6,7 +6,10 @@
 if (!class_exists('SSPA_Capture')) {
     class SSPA_Capture {
 
-        const SCHEMA_VERSION = 1;
+        // 2 added the `archives` section. A consumer seeing no `archives` key on a schema-1
+        // capture must read it as "this run predates the contract", never as "this site has no
+        // archives" - the two are indistinguishable from the payload alone.
+        const SCHEMA_VERSION = 2;
         const FULL_SQL_TOP_N = 20;
         const FULL_SQL_MS = 50;
         const FULL_SQL_ROWS = 200;
@@ -35,6 +38,7 @@ if (!class_exists('SSPA_Capture')) {
 
         private $boot_timer = null;
         private $excimer = null;
+        private $archives = null;
 
         public function arm() {
             // Armed from the mu-loader, i.e. BEFORE any regular plugin loads - the only
@@ -78,6 +82,14 @@ if (!class_exists('SSPA_Capture')) {
                 add_action('wp_mail_failed', array($this, 'mail_construct_failed'));
             } else {
                 add_filter('pre_wp_mail', array($this, 'intercept_mail'), 9999, 2);
+            }
+            // Which WP_Query instances Super Speedy Archives could optimise, and what they
+            // order by once every plugin has had its say. Hooks only, no work per request
+            // beyond a query-var read on the queries that qualify.
+            require_once __DIR__ . '/class-sspa-archive-queries.php';
+            if (class_exists('SSPA_Archive_Queries')) {
+                $this->archives = new SSPA_Archive_Queries();
+                $this->archives->arm();
             }
             add_action('wp', array($this, 'snapshot_conditionals'));
             register_shutdown_function(array($this, 'finalize'));
@@ -302,6 +314,10 @@ if (!class_exists('SSPA_Capture')) {
                 // grouped from the next run on.
                 'reactions' => $this->collect_reactions($map),
                 'conditionals' => $this->conditionals,
+                // Archive queries Super Speedy Archives could optimise. Passed the assembled
+                // sql section so each record can borrow the cost and component attribution
+                // already computed for the statement it matched.
+                'archives' => $this->archives ? $this->archives->report($sql) : null,
                 'components' => $this->aggregate_components($sql, $http, $mail),
                 'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
                 // Point-in-time marks in ms since $timestart, set by whatever is driving

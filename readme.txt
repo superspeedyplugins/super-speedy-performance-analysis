@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.18.1
+Stable tag: 0.19.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,15 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.19.0 (12th August 2026) =
+* Analysis now records what your archive pages - category, tag, shop, product category, custom post type and custom taxonomy archives - actually filter and sort by, and works out the exact database indexes that would let those pages sort without the database re-sorting every matching row each time.
+* It also reports which custom fields would need to become real typed columns first, and infers the correct type for each by sampling the values you actually store. A price stored as text sorts "100" before "99", so the type is the difference between an optimisation that works and one that quietly corrupts the order.
+* Fields whose values do not agree on a type are reported as mixed rather than guessed at, and are never recommended for automatic application.
+* A new finding names each archive the database cannot sort from an index, with the query plan that proves it. The plan is read directly, so an archive that is fast today but will not stay fast as the catalogue grows is still caught.
+* This works on sites with a persistent object cache, where a warm archive page never reaches the database at all.
+* New agent ability `get-archive-profile` (also available over MCP) so Super Speedy Archives can configure itself from a measured analysis instead of asking you to fill the settings in by hand. The full contract is documented in the knowledge base article "The Archive Query Profile".
+* Archive profiles stay on your own site for now; nothing about them is shared with superspeedy.org in this release.
 
 = 0.18.1 (12th August 2026) =
 * The agent report schema and the OpenAI agent instructions moved to `docs/` in the repo, so the links in this readme, the README and SKILL.md resolve for anyone reading them on GitHub.
