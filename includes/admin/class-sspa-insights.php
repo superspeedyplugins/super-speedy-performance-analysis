@@ -14,8 +14,24 @@ class SSPA_Insights {
      * any real site has several critical per-page query findings above it. On a live store the
      * autoload finding named 374 KB of options loaded on every request and was still invisible,
      * ranked below a slow query on one page.
+     *
+     * An isolation reaction is here for the opposite reason: it has no measured impact at all,
+     * so the within-severity ranking (biggest delta first) puts it last among the warns and it
+     * drops off the list - when what it says is that a plugin tried to change the live site.
      */
-    const STANDALONE = array('autoload_coverage');
+    const STANDALONE = array('autoload_coverage', 'isolation_reaction');
+
+    /**
+     * Every finding of one type for a run - one reaction per reacting pair.
+     */
+    public static function all_of_type($run_id, $finding_type) {
+        global $wpdb;
+        return $wpdb->get_results($wpdb->prepare(
+            'SELECT * FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d AND finding_type = %s ORDER BY id ASC',
+            (int) $run_id,
+            $finding_type
+        ), ARRAY_A);
+    }
 
     /**
      * The single finding of one type for a run, or null. Feeds the dedicated Overview blocks.
@@ -183,6 +199,38 @@ class SSPA_Insights {
                 break;
             case 'duplicate_functionality':
                 $headline = sprintf(__('%1$d overlapping %2$s plugins active: %3$s', 'super-speedy-performance-analysis'), count($e['plugins']), $e['category'], implode(', ', $e['plugins']));
+                break;
+            case 'isolation_reaction':
+                // The one finding where the site owner needs to be told what was ATTEMPTED,
+                // not what it cost: a plugin tried to change the live site because we
+                // measured something. All of it was refused, and the pair is grouped from
+                // now on, but it is his site and his plugin list, so he gets told plainly.
+                $ops = isset($e['ops']) && is_array($e['ops']) ? $e['ops'] : array();
+                if (isset($ops['sql'])) {
+                    $attempt = __('run a destructive database statement', 'super-speedy-performance-analysis');
+                } elseif (isset($ops['activate'])) {
+                    $attempt = __('switch a plugin back on', 'super-speedy-performance-analysis');
+                } else {
+                    $attempt = __('deactivate a plugin', 'super-speedy-performance-analysis');
+                }
+                $headline = sprintf(
+                    /* translators: 1: reacting plugin, 2: what it tried to do, 3: excluded plugin */
+                    __('%1$s tried to %2$s while %3$s was excluded for measurement', 'super-speedy-performance-analysis'),
+                    $component,
+                    $attempt,
+                    !empty($e['excluded']) ? $e['excluded'] : __('another plugin', 'super-speedy-performance-analysis')
+                );
+                $attempts = array_sum(array_map('intval', $ops));
+                $detail = sprintf(
+                    /* translators: %d: number of attempts */
+                    _n(
+                        '%d attempt, every one refused: your plugin list, the plugins\' own activation and deactivation routines and your database were all left untouched.',
+                        '%d attempts, every one refused: your plugin list, the plugins\' own activation and deactivation routines and your database were all left untouched.',
+                        max(1, $attempts),
+                        'super-speedy-performance-analysis'
+                    ),
+                    max(1, $attempts)
+                );
                 break;
             case 'security_block':
                 $headline = sprintf(__('%1$s blocked profiling of %2$d page(s)', 'super-speedy-performance-analysis'), $e['layer'], count((array) $e['pages']));

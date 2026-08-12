@@ -192,7 +192,63 @@ if (is_wp_error($sspa_sweep)) {
         $sspa_ev = json_decode((string) $sspa_finding['evidence'], true);
         sspa_rg_t(is_array($sspa_ev) && 'sspa-guard-dep' === $sspa_ev['excluded'], 'the evidence names the excluded plugin');
         sspa_rg_t(is_array($sspa_ev) && !empty($sspa_ev['ops']['sql']) && !empty($sspa_ev['ops']['deactivate']), 'the evidence records both reaction kinds');
+
+        // A reaction is only useful to superspeedy.org as a PAIR: "something reacted" cannot
+        // become a community dependency map. Both share paths are checked, against the row
+        // the run actually wrote - the community outbox and the Share tab payload have
+        // separate allowlists and one used to drop the excluded plugin.
+        $sspa_shared = SSPA_Community_Privacy::finding_evidence((array) $sspa_ev);
+        sspa_rg_t(
+            isset($sspa_shared['excluded']) && 'sspa-guard-dep' === $sspa_shared['excluded'] && !empty($sspa_shared['ops']['sql']),
+            'the community payload carries the pair, not just the reactor'
+        );
+        $sspa_built = SSPA_Community_Exporter::build($sspa_sweep);
+        $sspa_shared_finding = null;
+        if (!is_wp_error($sspa_built)) {
+            foreach ((array) $sspa_built['evidence'] as $sspa_item) {
+                if ('sspa/finding' === $sspa_item['type'] && 'isolation_reaction' === $sspa_item['data']['finding_type']) {
+                    $sspa_shared_finding = $sspa_item['data'];
+                }
+            }
+        }
+        sspa_rg_t(
+            $sspa_shared_finding && 'sspa-guard-dep' === $sspa_shared_finding['evidence']['excluded'],
+            'the real submission payload names the excluded plugin'
+        );
+        // Raw SQL must still never leave the site - only its fingerprint.
+        sspa_rg_t(
+            $sspa_shared_finding
+            && !isset($sspa_shared_finding['evidence']['sql'])
+            && !empty($sspa_shared_finding['evidence']['fingerprint'])
+            && !isset($sspa_shared['sql']),
+            'and it carries the fingerprint of the refused statement, never the statement'
+        );
+
+        // What the site owner sees. Without a case of its own this renders as the literal
+        // string "isolation_reaction - sspa-guard-reactor".
+        $sspa_rendered = SSPA_Insights::render($sspa_finding);
+        sspa_rg_t(
+            false !== strpos($sspa_rendered['headline'], 'sspa-guard-reactor')
+            && false !== strpos($sspa_rendered['headline'], 'sspa-guard-dep')
+            && false === strpos($sspa_rendered['headline'], 'isolation_reaction'),
+            'the insight names both plugins in plain English: ' . $sspa_rendered['headline']
+        );
     }
+
+    // Notified: a sweep can finish with nobody on the analysis screen.
+    $sspa_notice = (array) get_option(SSPA_Run_Controller::REACTION_NOTICE_OPTION, array());
+    sspa_rg_t(
+        isset($sspa_notice['sspa-guard-dep|sspa-guard-reactor']),
+        'the admin notice is armed with the pair'
+    );
+    ob_start();
+    wp_set_current_user(1); // the notice is for whoever can manage plugins
+    SSPA_Admin_Page::reaction_notice();
+    $sspa_notice_html = ob_get_clean();
+    sspa_rg_t(
+        false !== strpos($sspa_notice_html, 'sspa-guard-reactor') && false !== strpos($sspa_notice_html, 'sspa-guard-dep'),
+        'and it renders naming the reactor and the excluded plugin'
+    );
     $sspa_notes = json_decode((string) $wpdb->get_var($wpdb->prepare(
         'SELECT notes FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
         $sspa_sweep

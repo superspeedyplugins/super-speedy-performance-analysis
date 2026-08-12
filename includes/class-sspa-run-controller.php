@@ -11,6 +11,9 @@ class SSPA_Run_Controller {
 
     const BATCH_SECONDS = 15;
 
+    /** Caught reactions waiting to be shown to the site owner, cleared when he dismisses. */
+    const REACTION_NOTICE_OPTION = 'sspa_reaction_notice';
+
     public static function register() {
         add_action('sspa_process_batch_event', array(__CLASS__, 'process_batch'));
         add_action('sspa_cleanup_event', array(__CLASS__, 'cleanup'));
@@ -773,6 +776,10 @@ class SSPA_Run_Controller {
                 'webhooks' => isset($inventory['webhooks']) ? $inventory['webhooks'] : array(),
                 'order_hooks' => isset($inventory['order_hooks']) ? $inventory['order_hooks'] : array(),
                 'checkout_type' => isset($inventory['checkout_type']) ? $inventory['checkout_type'] : null,
+                // Where orders live. The order screens the management steps measure are a
+                // different piece of software under HPOS, so a management timing shared
+                // without it cannot be compared with anybody else's.
+                'hpos' => isset($inventory['hpos']) ? (bool) $inventory['hpos'] : null,
             ) : null,
         );
 
@@ -1327,6 +1334,17 @@ class SSPA_Run_Controller {
         }
         if ($notes) {
             update_option(SSPA_Dependency_Map::LEARNED_OPTION, $learned, false);
+            // 4. an admin notice, because a sweep can finish while nobody is looking at the
+            //    analysis screen and "a plugin tried to switch itself off on your live site"
+            //    is not something to leave sitting in a tab he might not open.
+            $seen = (array) get_option(self::REACTION_NOTICE_OPTION, array());
+            foreach ($notes as $note) {
+                $seen[$note['excluded'] . '|' . $note['reactor']] = array(
+                    'excluded' => $note['excluded'],
+                    'reactor' => $note['reactor'],
+                );
+            }
+            update_option(self::REACTION_NOTICE_OPTION, $seen, false);
         }
         return $notes;
     }

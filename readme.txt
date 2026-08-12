@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.17.3
+Stable tag: 0.18.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,19 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.18.0 (12th August 2026) =
+* Shared analyses now describe what kind of site this is - an online shop, a jobs board, a publisher, or honestly more than one of them - with the signals that led to the label, so superspeedy.org can compare your results against sites genuinely like yours instead of a single average.
+* Site sizes are shared as bands and never exact counts, and now cover pages, total orders, orders in the last 30 days, comments and how many plugins are active, alongside the posts, products, users and database size already sent. Order counts use safe routes only: total orders come from WooCommerce's own order table estimate or WordPress's maintained count, and from nothing at all on a posts table too large to count cheaply, while the 30-day figure is a real count of that window and stays accurate however busy your shop is.
+* A checkout analysis now shares your order-management time - opening the order and marking it completed - as its own record with its own total. It was measured but discarded on the way out before. Customer checkout totals are unchanged and still contain no admin time.
+* A management sequence that was blocked by a security plugin, or that only got half way, is shared as blocked or partial rather than quietly left out.
+* The Share tab now describes all of this in plain terms: what the bands mean, and that checkout and order management travel separately.
+
+= 0.17.4 (12th August 2026) =
+* When a plugin reacts to another being excluded for measurement - trying to switch a plugin on or off, or to run a destructive database statement - you are now told, with an admin notice naming the plugin that reacted and the plugin it reacted to. Every attempt was already refused; now you find out even if the analysis finished while you were elsewhere.
+* Reactions get their own block on the Overview tab instead of competing for a top-five slot they always lost, and read as plain English ("Rank Math Pro tried to deactivate a plugin while Rank Math was excluded for measurement") rather than a rule name.
+* Shared analyses now carry which plugin was excluded alongside which plugin reacted, so these pairs can build a community dependency map. The refused statement itself is still never shared, only its fingerprint.
+* Fixed the SEO plugin slug in the bundled rules (Rank Math installs as seo-by-rank-math), so a Rank Math site is correctly spotted when a second SEO plugin is also active.
 
 = 0.17.3 (11th August 2026) =
 * MCP abilities are now marked public so agent tooling can discover them

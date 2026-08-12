@@ -121,6 +121,81 @@ if ('ok' === $sspa_outcome) {
         'the order-view step is in management, never in the at-risk (customer) bucket'
     );
 
+    // --- What the community receives: two records, from this real run ---
+    $sspa_built = SSPA_Community_Exporter::build($sspa_run);
+    sspa_om_t(!is_wp_error($sspa_built), 'the run exports as a community payload'
+        . (is_wp_error($sspa_built) ? ' (' . $sspa_built->get_error_message() . ')' : ''));
+    if (!is_wp_error($sspa_built)) {
+        $sspa_of = function ($type) use ($sspa_built) {
+            $out = array();
+            foreach ((array) $sspa_built['evidence'] as $sspa_item) {
+                if ($type === $sspa_item['type']) {
+                    $out[] = $sspa_item;
+                }
+            }
+            return $out;
+        };
+        $sspa_flow = $sspa_of('sspa/checkout-flow');
+        $sspa_mgmt = $sspa_of('sspa/order-management-flow');
+        sspa_om_t(1 === count($sspa_mgmt) && 1 === $sspa_mgmt[0]['version'], 'order management is its own evidence record at v1');
+        sspa_om_t(1 === count($sspa_flow), 'the customer checkout flow is still exported separately');
+
+        if ($sspa_mgmt && $sspa_flow) {
+            $sspa_m = $sspa_mgmt[0]['data'];
+            $sspa_c = $sspa_flow[0]['data'];
+            $sspa_classes = array_map(function ($s) { return $s['page_class']; }, (array) $sspa_m['steps']);
+            sspa_om_t(
+                in_array('flow-view-order', $sspa_classes, true) && in_array('flow-complete-order', $sspa_classes, true),
+                'both management steps are in it (' . implode(', ', $sspa_classes) . ')'
+            );
+            // The measured time is no longer discarded on the way out, which was the whole
+            // point: the local waterfall had it, the payload did not.
+            sspa_om_t(
+                abs($sspa_m['management_ms'] - $sspa_wf['management_ms']) < 0.5 && $sspa_m['management_ms'] > 0,
+                'it carries the management total (' . $sspa_m['management_ms'] . 'ms)'
+            );
+            sspa_om_t(
+                'processing' === $sspa_m['from_status'] && 'completed' === $sspa_m['to_status'],
+                'and the status transition (' . var_export($sspa_m['from_status'], true) . ' -> ' . var_export($sspa_m['to_status'], true) . ')'
+            );
+            sspa_om_t('complete' === $sspa_m['outcome'], 'a run that did both steps reports outcome complete (' . $sspa_m['outcome'] . ')');
+            sspa_om_t(in_array($sspa_m['order_storage'], array('hpos', 'posts'), true), 'it records where orders live (' . var_export($sspa_m['order_storage'], true) . ')');
+
+            // Every step points at its own page-profile evidence, so the receiver can join
+            // the timing to the full profile rather than storing a second copy.
+            $sspa_uuids = array();
+            foreach ($sspa_of('sspa/page-profile') as $sspa_pp) {
+                $sspa_uuids[] = $sspa_pp['data']['page_profile_uuid'];
+            }
+            $sspa_linked = true;
+            foreach ((array) $sspa_m['steps'] as $sspa_step) {
+                if (!$sspa_step['page_profile_uuid'] || !in_array($sspa_step['page_profile_uuid'], $sspa_uuids, true)) {
+                    $sspa_linked = false;
+                }
+            }
+            sspa_om_t($sspa_linked, 'each management step links to its page-profile evidence');
+
+            // The separation has to survive export, not just the local panel.
+            $sspa_customer_classes = array_map(function ($s) { return $s['page_class']; }, (array) $sspa_c['steps']);
+            sspa_om_t(
+                !in_array('flow-view-order', $sspa_customer_classes, true)
+                && !in_array('flow-complete-order', $sspa_customer_classes, true),
+                'the customer flow contains no management step'
+            );
+            sspa_om_t(
+                abs(($sspa_c['at_risk_ms'] + $sspa_c['secured_ms']) - $sspa_c['total_ms']) < 0.5,
+                'and its total is at-risk + secured only, with no management time added'
+            );
+            $sspa_harness = 0;
+            foreach ((array) $sspa_c['steps'] as $sspa_step) {
+                if ('harness' === $sspa_step['classification']) {
+                    $sspa_harness++;
+                }
+            }
+            sspa_om_t($sspa_harness > 0, 'harness steps are exported but explicitly labelled (' . $sspa_harness . ')');
+        }
+    }
+
     // --- Cleanup still deleted the order ---
     $sspa_safety = isset($sspa_notes['safety']) ? $sspa_notes['safety'] : array();
     sspa_om_t(

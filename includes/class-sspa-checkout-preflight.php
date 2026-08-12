@@ -34,6 +34,9 @@ class SSPA_Checkout_Preflight {
         $out = array(
             'woocommerce' => class_exists('WooCommerce'),
             'checkout_type' => null,
+            // Where orders live. The order screens this flow measures are a different piece
+            // of software under HPOS, so a management timing without it is uncomparable.
+            'hpos' => null,
             'emails' => array(),
             'emails_deferred' => null,
             'webhooks' => array(),
@@ -53,6 +56,8 @@ class SSPA_Checkout_Preflight {
         }
 
         $out['checkout_type'] = self::checkout_type();
+        $out['hpos'] = class_exists('\Automattic\WooCommerce\Utilities\OrderUtil')
+            && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
         $out['emails'] = self::emails();
         $out['emails_deferred'] = self::emails_deferred();
         $out['webhooks'] = self::webhooks();

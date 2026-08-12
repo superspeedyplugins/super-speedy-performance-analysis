@@ -83,6 +83,24 @@ class SSPA_Anonymiser {
                         $safe[$key] = $evidence[$key];
                     }
                 }
+                // The excluded plugin of an isolation reaction: without it the shared finding
+                // says a plugin reacted but not what to, and the pair is what makes a
+                // community dependency map possible. A slug identifies a plugin, not a site,
+                // and every active slug is already in this payload.
+                if (isset($evidence['excluded']) && preg_match('/^[A-Za-z0-9._-]{1,96}$/', (string) $evidence['excluded'])) {
+                    $safe['excluded'] = (string) $evidence['excluded'];
+                }
+                if (isset($evidence['ops']) && is_array($evidence['ops'])) {
+                    $ops = array();
+                    foreach ($evidence['ops'] as $op => $count) {
+                        if (in_array($op, array('deactivate', 'activate', 'sql', 'unknown'), true) && is_numeric($count)) {
+                            $ops[$op] = (int) $count;
+                        }
+                    }
+                    if ($ops) {
+                        $safe['ops'] = $ops;
+                    }
+                }
                 if (isset($evidence['fp'])) {
                     $safe['fingerprint'] = $evidence['fp'];
                 } elseif (isset($evidence['sql'])) {

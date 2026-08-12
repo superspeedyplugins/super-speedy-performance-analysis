@@ -33,6 +33,46 @@ class SSPA_Admin_Page {
             $note($plugin, 'deactivated');
         });
         add_action('admin_notices', array(__CLASS__, 'toggle_prompt_notice'));
+        add_action('admin_notices', array(__CLASS__, 'reaction_notice'));
+    }
+
+    /**
+     * A plugin tried to change the live site because we measured something.
+     *
+     * Every attempt was refused and the pair is grouped from the next sweep on, so nothing
+     * needs fixing - but it is his site and his plugin list, and a sweep can finish while he
+     * is nowhere near the analysis screen. An option, not a transient: this waits until it
+     * has actually been read and dismissed rather than expiring unseen.
+     */
+    public static function reaction_notice() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        if (isset($_GET['sspa_dismiss_reaction'])) {
+            delete_option(SSPA_Run_Controller::REACTION_NOTICE_OPTION);
+            return;
+        }
+        $pairs = get_option(SSPA_Run_Controller::REACTION_NOTICE_OPTION);
+        if (!is_array($pairs) || !$pairs) {
+            return;
+        }
+        $lines = array();
+        foreach ($pairs as $pair) {
+            $lines[] = sprintf(
+                /* translators: 1: reacting plugin, 2: excluded plugin */
+                __('%1$s reacted to %2$s being excluded', 'super-speedy-performance-analysis'),
+                isset($pair['reactor']) ? $pair['reactor'] : '?',
+                isset($pair['excluded']) ? $pair['excluded'] : '?'
+            );
+        }
+        echo '<div class="notice notice-warning is-dismissible"><p><strong>';
+        esc_html_e('Performance Analysis: a plugin tried to change your site during a measurement.', 'super-speedy-performance-analysis');
+        echo '</strong><br>' . esc_html(implode('; ', $lines)) . '<br>';
+        esc_html_e('Every attempt was refused - your plugin list, the plugins\' own activation and deactivation routines and your database were left untouched. These plugins will be measured together from now on.', 'super-speedy-performance-analysis');
+        echo '</p><p>';
+        echo '<a class="button button-small" href="' . esc_url(admin_url('admin.php?page=sspa#overview')) . '">' . esc_html__('See the details', 'super-speedy-performance-analysis') . '</a> ';
+        echo '<a href="' . esc_url(add_query_arg('sspa_dismiss_reaction', '1')) . '">' . esc_html__('Dismiss', 'super-speedy-performance-analysis') . '</a>';
+        echo '</p></div>';
     }
 
     public static function toggle_prompt_notice() {

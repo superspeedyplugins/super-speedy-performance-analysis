@@ -8,7 +8,9 @@ class SSPA_Community_Schema {
 
     const TRANSPORT_VERSION = 1;
     const PAYLOAD_SCHEMA_MAJOR = 1;
-    const PAYLOAD_SCHEMA_MINOR = 1;
+    // Minor 2 adds site cohort dimensions to the top-level site snapshot. Purely additive:
+    // every field a 1.1 receiver reads is still present, with the same name and meaning.
+    const PAYLOAD_SCHEMA_MINOR = 2;
     const ANONYMISATION_VERSION = 1;
     const MEASUREMENT_VERSION = 1;
     const CONSENT_VERSION = 1;
@@ -17,7 +19,10 @@ class SSPA_Community_Schema {
 
     public static function evidence_versions() {
         return array(
-            'sspa/site-snapshot' => 1,
+            // 2: site cohort dimensions (classification, banded sizes, environment). A
+            // superset of 1, so a receiver that only understands 1 can still read every
+            // field it knew about; one that understands 2 gets the cohort dimensions.
+            'sspa/site-snapshot' => 2,
             'sspa/page-profile' => 2,
             'sspa/component-observation' => 1,
             'sspa/excimer-profile' => 1,
@@ -25,6 +30,10 @@ class SSPA_Community_Schema {
             'sspa/plugin-impact' => 1,
             'sspa/cache-impact' => 1,
             'sspa/checkout-flow' => 2,
+            // The shop owner's post-sale work, kept as its own type rather than more steps on
+            // the checkout flow: it measures a different person's time and must never be
+            // added to what a customer waited through.
+            'sspa/order-management-flow' => 1,
             'sspa/plugin-toggle-spot' => 1,
             'sspa/adhoc-page-profile' => 1,
         );

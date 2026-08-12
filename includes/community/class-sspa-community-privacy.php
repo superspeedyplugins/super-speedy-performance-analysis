@@ -82,6 +82,25 @@ class SSPA_Community_Privacy {
         if (isset($evidence['shape']) && preg_match('/^[a-z0-9_-]{1,64}$/', (string) $evidence['shape'])) {
             $safe['shape'] = (string) $evidence['shape'];
         }
+        // An isolation reaction is only useful to the community as a PAIR. The finding row
+        // already carries the reactor as its component; without the plugin that was excluded,
+        // "something reacted" cannot become a shared dependency map, which is the whole point
+        // of collecting it. A plugin slug identifies a plugin, never a site, and the payload
+        // already lists every active slug.
+        if (isset($evidence['excluded']) && preg_match('/^[A-Za-z0-9._-]{1,96}$/', (string) $evidence['excluded'])) {
+            $safe['excluded'] = (string) $evidence['excluded'];
+        }
+        if (isset($evidence['ops']) && is_array($evidence['ops'])) {
+            $ops = array();
+            foreach ($evidence['ops'] as $op => $count) {
+                if (in_array($op, array('deactivate', 'activate', 'sql', 'unknown'), true) && is_numeric($count)) {
+                    $ops[$op] = (int) $count;
+                }
+            }
+            if ($ops) {
+                $safe['ops'] = $ops;
+            }
+        }
         if (isset($evidence['fp'])) {
             $safe['fingerprint'] = self::sql_fingerprint($evidence['fp']);
         } elseif (isset($evidence['sql'])) {

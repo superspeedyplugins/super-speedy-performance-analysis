@@ -20,7 +20,7 @@ class SSPA_Rules {
             if (class_exists('SSPA_Rules_Feed')) {
                 $feed = SSPA_Rules_Feed::get();
                 if (is_array($feed)) {
-                    foreach (array('thresholds', 'recommendations', 'categories', 'sector_signatures') as $section) {
+                    foreach (array('thresholds', 'recommendations', 'categories', 'sector_signatures', 'purpose_taxonomy') as $section) {
                         if (!empty($feed[$section]) && is_array($feed[$section])) {
                             self::$data[$section] = array_merge(
                                 isset(self::$data[$section]) ? self::$data[$section] : array(),
@@ -64,6 +64,28 @@ class SSPA_Rules {
     public static function sector_signatures() {
         $data = self::load();
         return isset($data['sector_signatures']) ? $data['sector_signatures'] : array();
+    }
+
+    /**
+     * The versioned map from public content types and plugin slugs to canonical site
+     * purposes. Versioned because the receiver has to know which mapping produced a
+     * classification: a site does not change when we improve the taxonomy, but its label may.
+     *
+     * The feed can extend it, and `version` comes along with the rest of the section, so an
+     * improved mapping arrives already stamped.
+     *
+     * @return array {version, labels[], content_types{}, plugin_slugs{}, content_classes{}}
+     */
+    public static function purpose_taxonomy() {
+        $data = self::load();
+        $taxonomy = isset($data['purpose_taxonomy']) ? $data['purpose_taxonomy'] : array();
+        return array(
+            'version' => isset($taxonomy['version']) ? (int) $taxonomy['version'] : 0,
+            'labels' => isset($taxonomy['labels']) ? (array) $taxonomy['labels'] : array(),
+            'content_types' => isset($taxonomy['content_types']) ? (array) $taxonomy['content_types'] : array(),
+            'plugin_slugs' => isset($taxonomy['plugin_slugs']) ? (array) $taxonomy['plugin_slugs'] : array(),
+            'content_classes' => isset($taxonomy['content_classes']) ? (array) $taxonomy['content_classes'] : array(),
+        );
     }
 
     public static function fragile() {

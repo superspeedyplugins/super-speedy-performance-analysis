@@ -76,6 +76,33 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         </div>
     <?php endif; ?>
 
+    <?php
+    // Reactions get their own block for the opposite reason to autoload: nothing was measured,
+    // so they rank last among the warns and vanish from the top-5 - and this is the one finding
+    // that is about the site owner's plugins doing something to his site rather than about
+    // speed. Every reaction of the run is listed, not just the first.
+    $sspa_reactions = SSPA_Insights::all_of_type($sspa_last_run['id'], 'isolation_reaction');
+    if ($sspa_reactions) :
+        ?>
+        <div class="sspa-placeholder">
+            <h2><?php esc_html_e('Plugins that reacted to being measured', 'super-speedy-performance-analysis'); ?></h2>
+            <ul class="sspa-insights">
+                <?php foreach ($sspa_reactions as $sspa_reaction) :
+                    $sspa_r = SSPA_Insights::render($sspa_reaction); ?>
+                    <li class="sspa-insight sspa-sev-warn">
+                        <strong><?php echo esc_html($sspa_r['headline']); ?></strong>
+                        <?php if ($sspa_r['detail']) : ?>
+                            <p class="description"><?php echo esc_html($sspa_r['detail']); ?></p>
+                        <?php endif; ?>
+                        <?php if ($sspa_r['rec_body']) : ?>
+                            <p class="sspa-insight-rec"><?php echo esc_html($sspa_r['rec_body']); ?></p>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <?php if (!empty($sspa_run_notes['unmeasured_pages'])) : ?>
     <div class="notice notice-error inline">
         <p>

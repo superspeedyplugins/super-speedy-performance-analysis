@@ -122,6 +122,7 @@ class SSPA_Community_Exporter {
         }
         if ('checkout' === $run['run_type']) {
             self::add_checkout($evidence, $run, $measurement_version, $page_refs_by_key);
+            self::add_order_management($evidence, $run, $measurement_version, $page_refs_by_key);
         }
         if ('adhoc' === $run['run_type'] && $profiles) {
             self::add_evidence($evidence, 'sspa/adhoc-page-profile', $measurement_version, array(
@@ -193,6 +194,20 @@ class SSPA_Community_Exporter {
                 break;
             }
         }
+        $cohort = SSPA_Site_Characteristics::cohort_dimensions($metrics);
+
+        // Version 2 is a SUPERSET of version 1, not a replacement. The same array is both the
+        // `sspa/site-snapshot` evidence record and the payload's top-level `site_snapshot`,
+        // and the top-level field is read by receivers that predate this change: dropping or
+        // renaming a v1 key there would break payloads that are otherwise perfectly readable.
+        // So every v1 key keeps its name and meaning, `sizes` grows new members alongside the
+        // five it already had, and everything new sits under `classification`,
+        // `primary_content` and `environment`.
+        //
+        // `sector` is the retired single-label inference. It stays for continuity - the
+        // receiver has years of rows keyed on it - but `classification.primary_purpose` is
+        // what new work should group by: it is versioned, carries its signals and admits that
+        // a store with a magazine attached is both things.
         return array(
             'wordpress_version' => self::safe_version(isset($metrics['wp']) ? $metrics['wp'] : null),
             'php_version' => self::safe_version(isset($metrics['php']) ? $metrics['php'] : null),
@@ -200,13 +215,10 @@ class SSPA_Community_Exporter {
             'object_cache' => isset($metrics['object_cache']) ? (bool) $metrics['object_cache'] : null,
             'sector' => $sector ?: null,
             'theme' => $theme,
-            'sizes' => array(
-                'posts' => SSPA_Anonymiser::bucket(isset($metrics['post_counts']['post']) ? $metrics['post_counts']['post'] : 0),
-                'products' => SSPA_Anonymiser::bucket(isset($metrics['post_counts']['product']) ? $metrics['post_counts']['product'] : 0),
-                'postmeta' => SSPA_Anonymiser::bucket(isset($metrics['postmeta_rows']) ? $metrics['postmeta_rows'] : 0),
-                'users' => SSPA_Anonymiser::bucket(isset($metrics['users']) ? $metrics['users'] : 0),
-                'database_bytes' => SSPA_Anonymiser::bucket(isset($metrics['db_bytes']) ? $metrics['db_bytes'] : 0),
-            ),
+            'sizes' => $cohort['sizes'],
+            'classification' => $cohort['classification'],
+            'primary_content' => $cohort['primary_content'],
+            'environment' => $cohort['environment'],
         );
     }
 
@@ -423,20 +435,28 @@ class SSPA_Community_Exporter {
         if (!is_array($waterfall)) {
             return;
         }
+        // Each segment is walked with its own label rather than asking, per step, which array
+        // it came from. `in_array($step, $waterfall['secured'], true)` compared whole step
+        // arrays: place-order contributes TWO rows that share a page key and differ only in
+        // their label and timing, so segment membership rested on those two rows never
+        // becoming equal. A future step with the same numbers as a harness row would have
+        // been silently relabelled. Walking the groups cannot be wrong in that way.
         $steps = array();
-        foreach (array_merge((array) $waterfall['at_risk'], (array) $waterfall['secured'], (array) $waterfall['excluded']) as $step) {
-            $steps[] = array(
-                'page_profile_uuid' => isset($page_refs_by_key[$step['page_key']]) ? $page_refs_by_key[$step['page_key']] : null,
-                'page_class' => SSPA_Community_Privacy::page_class($step['page_key']),
-                'method' => in_array($step['method'], array('GET', 'POST'), true) ? $step['method'] : 'OTHER',
-                'generation_ms' => isset($step['gen_ms']) ? $step['gen_ms'] + 0 : null,
-                'sql_ms' => isset($step['sql_ms']) ? $step['sql_ms'] + 0 : null,
-                'query_count' => isset($step['sql_count']) ? (int) $step['sql_count'] : null,
-                'http_ms' => isset($step['http_ms']) ? $step['http_ms'] + 0 : null,
-                'response_code' => isset($step['code']) ? (int) $step['code'] : null,
-                'blocked' => !empty($step['blocked_by']),
-                'classification' => in_array($step, (array) $waterfall['excluded'], true) ? 'harness' : (in_array($step, (array) $waterfall['secured'], true) ? 'secured' : 'at_risk'),
-            );
+        foreach (array('at_risk' => 'at_risk', 'secured' => 'secured', 'excluded' => 'harness') as $group => $classification) {
+            foreach ((array) $waterfall[$group] as $step) {
+                $steps[] = array(
+                    'page_profile_uuid' => isset($page_refs_by_key[$step['page_key']]) ? $page_refs_by_key[$step['page_key']] : null,
+                    'page_class' => SSPA_Community_Privacy::page_class($step['page_key']),
+                    'method' => in_array($step['method'], array('GET', 'POST'), true) ? $step['method'] : 'OTHER',
+                    'generation_ms' => isset($step['gen_ms']) ? $step['gen_ms'] + 0 : null,
+                    'sql_ms' => isset($step['sql_ms']) ? $step['sql_ms'] + 0 : null,
+                    'query_count' => isset($step['sql_count']) ? (int) $step['sql_count'] : null,
+                    'http_ms' => isset($step['http_ms']) ? $step['http_ms'] + 0 : null,
+                    'response_code' => isset($step['code']) ? (int) $step['code'] : null,
+                    'blocked' => !empty($step['blocked_by']),
+                    'classification' => $classification,
+                );
+            }
         }
         $notes = json_decode((string) $run['notes'], true);
         self::add_evidence($evidence, 'sspa/checkout-flow', $measurement_version, array(
@@ -461,6 +481,106 @@ class SSPA_Community_Exporter {
             ),
             'methodology_version' => 1,
         ));
+    }
+
+    /**
+     * The shop owner's post-sale work: open the order, mark it completed.
+     *
+     * Its own evidence type, and its own total. Checkout time is what a customer waits
+     * through and can abandon during; this is administrative work after the money is taken.
+     * Adding the two together would flatter neither and answer no question anybody has.
+     *
+     * Only emitted when the run's own rows prove the steps were ATTEMPTED. A run from before
+     * order management existed has no such rows and gets no record - inventing a "skipped"
+     * one would tell the receiver that a store was measured and found to skip management,
+     * which is not what happened.
+     */
+    private static function add_order_management(&$evidence, $run, $measurement_version, $page_refs_by_key) {
+        $waterfall = SSPA_Checkout_Flow::waterfall((int) $run['id']);
+        if (!is_array($waterfall) || empty($waterfall['management'])) {
+            return;
+        }
+
+        $steps = array();
+        $blocked = false;
+        $incomplete = false;
+        foreach ((array) $waterfall['management'] as $step) {
+            $step_blocked = !empty($step['blocked_by']);
+            $blocked = $blocked || $step_blocked;
+            if (null === $step['gen_ms']) {
+                $incomplete = true;
+            }
+            $steps[] = array(
+                'page_profile_uuid' => isset($page_refs_by_key[$step['page_key']]) ? $page_refs_by_key[$step['page_key']] : null,
+                'page_class' => SSPA_Community_Privacy::page_class($step['page_key'], 'admin'),
+                'method' => in_array($step['method'], array('GET', 'POST'), true) ? $step['method'] : 'OTHER',
+                'generation_ms' => isset($step['gen_ms']) ? $step['gen_ms'] + 0 : null,
+                'sql_ms' => isset($step['sql_ms']) ? $step['sql_ms'] + 0 : null,
+                'query_count' => isset($step['sql_count']) ? (int) $step['sql_count'] : null,
+                'http_ms' => isset($step['http_ms']) ? $step['http_ms'] + 0 : null,
+                'response_code' => isset($step['code']) ? (int) $step['code'] : null,
+                'blocked' => $step_blocked,
+            );
+        }
+
+        // The slowest MANAGEMENT step, which is not the waterfall's slowest step: that one
+        // ranks across the customer journey too and is usually place-order.
+        $slowest = null;
+        foreach ((array) $waterfall['management'] as $step) {
+            if (null !== $step['gen_ms'] && (!$slowest || $step['gen_ms'] > $slowest['gen_ms'])) {
+                $slowest = $step;
+            }
+        }
+
+        $from = self::order_status($waterfall['complete_from_status']);
+        $to = self::order_status($waterfall['complete_to_status']);
+        $both_steps = count($steps) >= 2;
+        if ('done' !== $run['status']) {
+            $outcome = 'failed';
+        } elseif ($blocked) {
+            $outcome = 'blocked';
+        } elseif (!$both_steps || $incomplete || null === $to) {
+            // Attempted and measured something, but not the whole sequence - say which of the
+            // two it was rather than presenting a half-run as a clean one.
+            $outcome = 'partial';
+        } else {
+            $outcome = 'complete';
+        }
+
+        $notes = json_decode((string) $run['notes'], true);
+        self::add_evidence($evidence, 'sspa/order-management-flow', $measurement_version, array(
+            'outcome' => $outcome,
+            'checkout_type' => isset($notes['inventory']['checkout_type']) ? sanitize_key($notes['inventory']['checkout_type']) : null,
+            'order_storage' => isset($notes['inventory']['hpos'])
+                ? ($notes['inventory']['hpos'] ? 'hpos' : 'posts')
+                : null,
+            'steps' => $steps,
+            'management_ms' => isset($waterfall['management_ms']) ? $waterfall['management_ms'] + 0 : 0,
+            'slowest_step' => $slowest ? SSPA_Community_Privacy::page_class($slowest['page_key'], 'admin') : null,
+            'from_status' => $from,
+            'to_status' => $to,
+            'methodology_version' => 1,
+        ));
+    }
+
+    /**
+     * A WooCommerce order status, canonicalised to the standard set. A store can register its
+     * own statuses and they get named after the business ("awaiting-pallet-collection"), so
+     * anything outside the core list becomes 'other'.
+     */
+    private static function order_status($status) {
+        $status = strtolower(trim((string) $status));
+        if ('' === $status) {
+            return null;
+        }
+        if (0 === strpos($status, 'wc-')) {
+            $status = substr($status, 3);
+        }
+        $known = array(
+            'pending', 'processing', 'on-hold', 'completed', 'cancelled',
+            'refunded', 'failed', 'checkout-draft',
+        );
+        return in_array($status, $known, true) ? $status : 'other';
     }
 
     private static function add_toggle_context(&$evidence, $run, $measurement_version, $submission_uuid, $versions) {
