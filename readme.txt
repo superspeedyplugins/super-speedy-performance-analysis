@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.18.0
+Stable tag: 0.18.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.18.1 (12th August 2026) =
+* The agent report schema and the OpenAI agent instructions moved to `docs/` in the repo, so the links in this readme, the README and SKILL.md resolve for anyone reading them on GitHub.
+* The documented ability list now includes `run-checkout-flow` and `get-checkout-flow`, and the documented CLI list includes `wp sspa checkout-flow`. All four have existed since 0.11.0; only the documentation was behind.
 
 = 0.18.0 (12th August 2026) =
 * Shared analyses now describe what kind of site this is - an online shop, a jobs board, a publisher, or honestly more than one of them - with the signals that led to the label, so superspeedy.org can compare your results against sites genuinely like yours instead of a single average.
@@ -333,7 +337,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Phase 6 Agents: AI assistants and scripts can now drive the whole plugin.
 * WP-CLI commands: wp sspa run (synchronous with progress, all run types), wp sspa status, wp sspa findings, wp sspa impacts, wp sspa report - JSON output throughout.
 * WordPress Abilities API (WP 6.9+): category super-speedy-performance with get-status, get-report, get-findings, get-plugin-impacts, get-site-metrics, run-analysis, run-deep-analysis and submit-results. Read-only abilities answer plain GETs on the core abilities REST controller; with the MCP Adapter plugin installed the same abilities appear as MCP tools automatically.
-* Agent-ready report JSON: stable schema (documented in .docs/agent-api.md) with plain-English headlines and explicit recommendation objects per finding - built for LLM consumption.
+* Agent-ready report JSON: stable schema (documented in docs/agent-api.md) with plain-English headlines and explicit recommendation objects per finding - built for LLM consumption.
 * Guard rails for agents: all abilities require manage_options, submissions still require the site owner's opt-in on the Share tab, and run-analysis without include_writes performs GET requests only.
 * SKILL.md published in the repo (Claude agents) plus OpenAI-equivalent instructions; knowledge-base articles for getting started, understanding results, security whitelisting and methodology.
 

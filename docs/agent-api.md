@@ -4,11 +4,12 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 ## Surfaces (identical data)
 
-- **WP-CLI**: `wp sspa run|status|findings|impacts|report` (report/findings/impacts take
-  `--format=json` or emit JSON directly).
+- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|report` (report/findings/impacts
+  take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
   `get-status`, `get-report`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
-  `run-analysis`, `run-deep-analysis`, `submit-results`. Readonly ones answer GET at
+  `run-analysis`, `run-deep-analysis`, `run-checkout-flow`, `get-checkout-flow`,
+  `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
 - **MCP**: when the MCP Adapter plugin is installed, a server is registered at
   `/wp-json/mcp/super-speedy-performance` exposing the same abilities as tools

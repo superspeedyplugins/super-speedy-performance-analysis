@@ -48,8 +48,8 @@ The whole plugin is drivable without the GUI:
 - **WordPress Abilities API** (WP 6.9+) with the same surface, and with the MCP Adapter
   plugin installed the abilities appear as MCP tools automatically.
 - **[SKILL.md](SKILL.md)** teaches Claude-based agents the install -> run -> interpret
-  workflow; `.docs/agent-instructions-openai.md` is the OpenAI equivalent. The report schema
-  is documented in `.docs/agent-api.md`.
+  workflow; `docs/agent-instructions-openai.md` is the OpenAI equivalent. The report schema
+  is documented in `docs/agent-api.md`.
 
 ## Requirements
 

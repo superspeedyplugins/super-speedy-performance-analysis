@@ -5,6 +5,14 @@ node_modules/
 /.codex/
 /.tests/scratch/
 
-# Infrastructure audits: these name the protected zip path and the fleet's update-channel
-# state. This repo is PUBLIC - they must never be tracked here. Kept on disk deliberately.
-/.docs/*download-url-audit.md
+# THIS REPO IS PUBLIC. The working documents below live in the private meta repo
+# (~/superspeedy-plugin-meta/super-speedy-performance-analysis) and are symlinked in at these
+# paths, so every skill that reads them keeps working. They must never be tracked here:
+# .roadmap is a competitive tell, .docs describes unbuilt work, and .features/.compatibility
+# carry <!-- internal --> blocks that exist to stop things reaching customers.
+/.docs
+/.roadmap
+/.features
+/.compatibility
+/.devdiary
+/.todo

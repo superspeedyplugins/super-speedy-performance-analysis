@@ -4,7 +4,7 @@ defined('ABSPATH') || exit;
 /**
  * The agent-facing report: one stable JSON structure consumed by WP-CLI, the Abilities
  * API and (indirectly) any LLM interpreting results. Schema documented in
- * .docs/agent-api.md - keep them in sync and bump SCHEMA on breaking changes.
+ * docs/agent-api.md - keep them in sync and bump SCHEMA on breaking changes.
  */
 class SSPA_Report {
 

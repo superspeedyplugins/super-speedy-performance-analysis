@@ -43,7 +43,7 @@ changes nothing. Expect 1-5 minutes on a typical site.
 ## 3. Interpret the report
 
 The report JSON (`wp sspa report`, or the `get-report` ability - schema in
-`.docs/agent-api.md`) contains:
+`docs/agent-api.md`) contains:
 
 - `score` - 0-100; below 80 means real findings exist.
 - `insights` - the top findings, each with a plain-English `headline`, `evidence` and an
