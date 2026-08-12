@@ -10,6 +10,7 @@ node_modules/
 # paths, so every skill that reads them keeps working. They must never be tracked here:
 # .roadmap is a competitive tell, .docs describes unbuilt work, and .features/.compatibility
 # carry <!-- internal --> blocks that exist to stop things reaching customers.
+/CLAUDE.md
 /.docs
 /.roadmap
 /.features
