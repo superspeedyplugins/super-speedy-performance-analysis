@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.20.0
+Stable tag: 0.21.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.21.0 (13th August 2026) =
+* The Share tab now lists every plugin publishing its own settings, in that plugin's own words, with a switch for each one. Switching a plugin off stops it publishing anything from your next analysis onwards; the rest of your analysis is shared exactly as before.
+* A plugin that publishes without describing what it publishes is now listed as having declared nothing, rather than appearing as a bare slug.
+* The consent text is built from what the installed plugins actually say they publish, so it stays accurate on a site running plugins that did not exist when the text was written.
 
 = 0.20.0 (12th August 2026) =
 * Other plugins can now publish their own performance settings alongside a shared analysis, through the new `sspa_component_state` filter. A plugin only publishes what it deliberately opts in to publishing; this plugin never reads another plugin's options.

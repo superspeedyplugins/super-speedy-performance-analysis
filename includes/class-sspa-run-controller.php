@@ -32,6 +32,7 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
         add_action('wp_ajax_sspa_save_settings', array(__CLASS__, 'ajax_save_settings'));
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
+        add_action('wp_ajax_sspa_publisher_toggle', array(__CLASS__, 'ajax_publisher_toggle'));
         add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
         add_action('wp_ajax_sspa_submit_now', array(__CLASS__, 'ajax_submit_now'));
         add_action('wp_ajax_sspa_community_backfill', array(__CLASS__, 'ajax_community_backfill'));
@@ -1988,6 +1989,27 @@ class SSPA_Run_Controller {
             update_option('sspa_share_disabled_at', gmdate('Y-m-d H:i:s'), false);
         }
         wp_send_json_success(array('optin' => SSPA_Submitter::opted_in()));
+    }
+
+    /**
+     * Switch one publishing plugin on or off.
+     *
+     * Deliberately independent of the site-wide sharing setting: a site owner can decide that
+     * Scalability Pro may publish its settings and another plugin may not, without turning
+     * sharing off altogether. The decision is read at run start, so it takes effect on the next
+     * analysis rather than retrospectively - runs already measured keep what they captured, and
+     * the Share tab's per-run preview shows exactly what each one holds.
+     */
+    public static function ajax_publisher_toggle() {
+        self::ajax_guard();
+        $slug = isset($_POST['slug']) ? sanitize_text_field(wp_unslash($_POST['slug'])) : '';
+        $enabled = !empty($_POST['enabled']);
+        SSPA_Community_State::set_enabled($slug, $enabled);
+        wp_send_json_success(array(
+            'slug' => $slug,
+            'enabled' => $enabled,
+            'publishers' => SSPA_Community_State::publishers(),
+        ));
     }
 
     public static function ajax_payload_preview() {

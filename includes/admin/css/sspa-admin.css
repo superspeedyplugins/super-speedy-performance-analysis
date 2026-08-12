@@ -197,6 +197,37 @@
 	cursor: pointer;
 }
 
+#sspa_main .sspa-publisher-list {
+	margin: 0.5em 0 1.5em;
+}
+
+#sspa_main .sspa-publisher-list > li {
+	margin: 0 0 1em;
+	padding: 0 0 0 0.75em;
+	border-left: 3px solid #dcdcde;
+}
+
+#sspa_main .sspa-publisher-list > li code {
+	font-size: 11px;
+	color: #646970;
+	background: none;
+	padding: 0;
+}
+
+#sspa_main .sspa-publisher-detail {
+	margin: 0.35em 0 0 1.9em;
+	list-style: disc;
+	color: #50575e;
+}
+
+#sspa_main .sspa-publisher-detail li {
+	margin: 0 0 0.15em;
+}
+
+#sspa_main .sspa-publisher-undeclared {
+	margin: 0.35em 0 0 1.9em;
+}
+
 #sspa_main .sspa-outbox-table {
 	margin: 1em 0;
 }

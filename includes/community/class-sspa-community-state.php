@@ -81,10 +81,24 @@ class SSPA_Community_State {
          *     array(
          *         'component' => array('type' => 'plugin', 'slug' => 'your-plugin'),
          *         'state_schema_version' => 1,
+         *         'disclosure' => array(
+         *             'label' => 'Your Plugin',
+         *             'publishes' => array(
+         *                 'which of its optimisations are switched on',
+         *                 'how many of its indexes are installed',
+         *             ),
+         *         ),
          *         'summary' => array('profile' => 'good'),
          *         'options' => array('some_setting' => 'enabled'),
          *         'state'   => array('index_installed' => true),
          *     )
+         *
+         * `disclosure` is what the site's owner is shown before they agree to any of this, in
+         * their language rather than in key names. It is NOT submitted: it is consent text, and a
+         * receiver has the keys themselves. Declaring it is not optional in spirit - a plugin
+         * that publishes without saying what it publishes is asking for consent to something
+         * nobody can read - so a record with no disclosure is listed as undeclared and the site
+         * owner is told exactly that.
          *
          * `component.version` is filled in by this plugin from the inventory captured for the
          * same run, so a state record can never disagree with the rest of the payload about what
@@ -92,6 +106,11 @@ class SSPA_Community_State {
          *
          * Values must be scalar: bool, int, float, null, a short token string, or a list of
          * those. Anything else is dropped and counted in `omitted_keys`.
+         *
+         * The site's owner can switch off any individual publisher on the Share tab, and that
+         * decision is honoured here, at capture time - a switched-off plugin's configuration is
+         * never written to the run in the first place, rather than being collected and filtered
+         * out later.
          *
          * @param array $records Records collected so far.
          * @param array $context {run_type:string, trigger:string}
@@ -102,15 +121,25 @@ class SSPA_Community_State {
             return array();
         }
 
+        $disabled = self::disabled();
+
         $clean = array();
         foreach ($records as $record) {
             if (count($clean) >= self::MAX_RECORDS) {
                 break;
             }
             $safe = self::sanitise_record($record);
-            if ($safe) {
-                $clean[$safe['component']['type'] . ':' . $safe['component']['slug']] = $safe;
+            if (!$safe) {
+                continue;
             }
+            // The owner's decision wins over the plugin author's. Applied before storage, so a
+            // switched-off publisher leaves no trace on the run at all.
+            if (in_array($safe['component']['slug'], $disabled, true)) {
+                continue;
+            }
+            // Consent text, for the owner. Never submitted.
+            unset($safe['disclosure']);
+            $clean[$safe['component']['type'] . ':' . $safe['component']['slug']] = $safe;
         }
 
         $clean = array_values($clean);
@@ -148,6 +177,10 @@ class SSPA_Community_State {
             'state_schema_version' => isset($record['state_schema_version'])
                 ? max(1, min(65535, (int) $record['state_schema_version']))
                 : 1,
+            'disclosure' => self::sanitise_disclosure(
+                isset($record['disclosure']) ? $record['disclosure'] : array(),
+                $slug
+            ),
         );
 
         foreach (self::MAPS as $map) {
@@ -158,6 +191,140 @@ class SSPA_Community_State {
         // censored on its way out". Those support opposite conclusions.
         $safe['omitted_keys'] = $omitted;
         return $safe;
+    }
+
+    /**
+     * The plain-English account a plugin gives of what it publishes.
+     *
+     * Held to a different standard from the payload maps, because it is going on a screen rather
+     * than into a JSON document: prose is allowed, tags are not, and it is never submitted.
+     *
+     * A plugin that declares nothing is not refused - refusing would mean a plugin author's
+     * omission silently removes their configuration from a payload the owner already agreed to,
+     * which is a worse failure than an unlabelled row. It is marked `declared => false` instead,
+     * and the Share tab says in as many words that the plugin has not described what it sends.
+     * That is a bug report the site owner can act on, which is what it should be.
+     */
+    private static function sanitise_disclosure($disclosure, $slug) {
+        $disclosure = is_array($disclosure) ? $disclosure : array();
+
+        $label = isset($disclosure['label']) ? wp_strip_all_tags((string) $disclosure['label']) : '';
+        $label = trim(preg_replace('/\s+/', ' ', $label));
+
+        $publishes = array();
+        foreach ((array) (isset($disclosure['publishes']) ? $disclosure['publishes'] : array()) as $line) {
+            if (!is_string($line)) {
+                continue;
+            }
+            $line = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags($line)));
+            if ('' === $line) {
+                continue;
+            }
+            $publishes[] = self::truncate($line, 200);
+            if (count($publishes) >= 12) {
+                break;
+            }
+        }
+
+        return array(
+            // Fall back to the slug rather than to nothing: an unnamed row the owner cannot
+            // identify is not a consent screen.
+            'label' => '' !== $label ? self::truncate($label, 64) : $slug,
+            'publishes' => $publishes,
+            'declared' => ('' !== $label || (bool) $publishes),
+        );
+    }
+
+    private static function truncate($text, $limit) {
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            return (mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text;
+        }
+        return (strlen($text) > $limit) ? rtrim(substr($text, 0, $limit - 1)) . '…' : $text;
+    }
+
+    /**
+     * Every plugin that has registered the filter, whether or not the owner has switched it off,
+     * with what it says it publishes and whether it is currently publishing.
+     *
+     * This is what the Share tab lists. It deliberately includes switched-off publishers: a
+     * consent screen that hides the things you have declined gives you no way to change your
+     * mind, and no way to see that the plugin is still installed and still asking.
+     *
+     * @return array<int, array{slug, type, label, publishes, declared, enabled}>
+     */
+    public static function publishers() {
+        $records = apply_filters('sspa_component_state', array(), array('run_type' => '', 'trigger' => 'disclosure'));
+        if (!is_array($records)) {
+            return array();
+        }
+
+        $disabled = self::disabled();
+
+        $out = array();
+        foreach ($records as $record) {
+            $safe = self::sanitise_record($record);
+            if (!$safe) {
+                continue;
+            }
+            $slug = $safe['component']['slug'];
+            $out[$slug] = array(
+                'slug' => $slug,
+                'type' => $safe['component']['type'],
+                'label' => $safe['disclosure']['label'],
+                'publishes' => $safe['disclosure']['publishes'],
+                'declared' => $safe['disclosure']['declared'],
+                'enabled' => !in_array($slug, $disabled, true),
+            );
+        }
+
+        ksort($out, SORT_STRING);
+        return array_values($out);
+    }
+
+    /**
+     * Slugs the site's owner has switched off. Stored as an explicit deny list rather than an
+     * allow list so that installing a new plugin does not silently start publishing under a
+     * decision made before it existed... which is exactly why the Share tab shows every
+     * publisher rather than only the ones in this list.
+     */
+    public static function disabled() {
+        $disabled = get_option('sspa_component_state_disabled', array());
+        if (!is_array($disabled)) {
+            return array();
+        }
+        $clean = array();
+        foreach ($disabled as $slug) {
+            $slug = strtolower(trim((string) $slug));
+            if (preg_match('/^[a-z0-9][a-z0-9._-]{0,190}$/', $slug)) {
+                $clean[] = $slug;
+            }
+        }
+        return array_values(array_unique($clean));
+    }
+
+    /**
+     * Switch one publisher on or off.
+     *
+     * @param string $slug
+     * @param bool   $enabled
+     * @return array The deny list now in force.
+     */
+    public static function set_enabled($slug, $enabled) {
+        $slug = strtolower(trim((string) $slug));
+        if (!preg_match('/^[a-z0-9][a-z0-9._-]{0,190}$/', $slug)) {
+            return self::disabled();
+        }
+
+        $disabled = self::disabled();
+        if ($enabled) {
+            $disabled = array_values(array_diff($disabled, array($slug)));
+        } elseif (!in_array($slug, $disabled, true)) {
+            $disabled[] = $slug;
+        }
+
+        sort($disabled, SORT_STRING);
+        update_option('sspa_component_state_disabled', $disabled, false);
+        return $disabled;
     }
 
     /**

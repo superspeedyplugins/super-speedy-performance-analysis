@@ -312,6 +312,29 @@ jQuery(document).on('change', '#sspa-share-optin', function () {
 	});
 });
 
+// Per-plugin publishing. Independent of the site-wide setting above: a site owner can let one
+// plugin publish its settings and refuse another without turning sharing off altogether.
+jQuery(document).on('change', '.sspa-publisher-toggle', function () {
+	var box = jQuery(this);
+	var enabled = box.is(':checked') ? 1 : 0;
+	jQuery.post(ajaxurl, {
+		action: 'sspa_publisher_toggle',
+		nonce: sspa_admin.nonce,
+		slug: box.val(),
+		enabled: enabled
+	}, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || 'Could not update this plugin.');
+			// Put the box back where it was rather than leaving the screen claiming something
+			// the site does not believe.
+			box.prop('checked', !enabled);
+		}
+	}).fail(function () {
+		alert('Could not update this plugin.');
+		box.prop('checked', !enabled);
+	});
+});
+
 jQuery(document).on('click', '.sspa-preview-outbox', function () {
 	var pre = jQuery('#sspa-payload-preview');
 	var summary = jQuery('#sspa-payload-summary');

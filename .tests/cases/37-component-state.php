@@ -65,6 +65,10 @@ $sspa_good = function ($records) {
     $records[] = array(
         'component' => array('type' => 'plugin', 'slug' => 'sspa-state-fixture'),
         'state_schema_version' => 4,
+        'disclosure' => array(
+            'label' => 'State Fixture',
+            'publishes' => array('which of its optimisations are switched on'),
+        ),
         'summary' => array('profile' => 'good', 'steps_applied' => 7),
         'options' => array('some_setting' => 'enabled', 'recount_time' => '02:00', 'columns' => array('post_date', 'menu_order')),
         'state' => array('table_built' => true, 'rows' => 0, 'nothing_here' => array()),
@@ -263,8 +267,127 @@ sspa_t(!is_wp_error($payload) && null === $payload['run']['change_cycle'], 'an u
 // ---------------------------------------------------------------------------
 
 $payload = sspa_state_run_with(array($sspa_good));
+
+// The label is read from the LIVE plugin, not from the payload, because the payload deliberately
+// carries no consent text. So the filter has to be registered while the disclosure is rendered -
+// which is exactly the real case, since the Share tab renders it on a site with the plugin
+// active.
+add_filter('sspa_component_state', $sspa_good, 10, 2);
+$described = SSPA_Submitter::describe_payload(SSPA_Community_Schema::encode($payload));
+remove_filter('sspa_component_state', $sspa_good, 10);
+sspa_t(
+    isset($described['state_components']) && in_array('State Fixture', $described['state_components'], true),
+    'the disclosure names the publisher by its own label, not by its slug'
+);
+
+// ...and with the plugin gone, the slug is all there is to go on. A historical payload whose
+// publisher has since been deactivated still has to be describable.
 $described = SSPA_Submitter::describe_payload(SSPA_Community_Schema::encode($payload));
 sspa_t(
     isset($described['state_components']) && in_array('sspa-state-fixture', $described['state_components'], true),
-    'the plain-English disclosure names the plugin that published its settings'
+    'a payload whose publisher is no longer active falls back to the slug'
 );
+
+// ---------------------------------------------------------------------------
+// 7. The plain-English declaration, and the site owner's per-plugin switch.
+//
+// The switch is the reason this section exists: it has to be honoured at CAPTURE time, so that a
+// switched-off plugin leaves nothing on the run at all. Filtering it out at export would leave
+// the configuration sitting in the database of a site whose owner had declined to publish it.
+// ---------------------------------------------------------------------------
+
+add_filter('sspa_component_state', $sspa_good, 10, 2);
+
+$publishers = SSPA_Community_State::publishers();
+$fixture = null;
+foreach ($publishers as $entry) {
+    if ('sspa-state-fixture' === $entry['slug']) {
+        $fixture = $entry;
+    }
+}
+sspa_t(is_array($fixture), 'a registered publisher is listed for the consent screen');
+sspa_t(is_array($fixture) && 'State Fixture' === $fixture['label'], 'the listing carries the label the plugin gave itself');
+sspa_t(is_array($fixture) && !empty($fixture['declared']), 'the listing knows the plugin declared what it publishes');
+sspa_t(
+    is_array($fixture) && in_array('which of its optimisations are switched on', $fixture['publishes'], true),
+    'the listing carries the plain-English lines'
+);
+sspa_t(is_array($fixture) && !empty($fixture['enabled']), 'a publisher is on by default - the plugin author already opted in');
+
+// An undeclared publisher must still be listed, and must be visibly undeclared. Refusing to
+// publish it would mean a plugin author's omission silently removes configuration from a payload
+// the owner already agreed to.
+$sspa_silent = function ($records) {
+    $records[] = array(
+        'component' => array('type' => 'plugin', 'slug' => 'sspa-silent-fixture'),
+        'state_schema_version' => 1,
+        'options' => array('setting' => 'enabled'),
+    );
+    return $records;
+};
+add_filter('sspa_component_state', $sspa_silent, 10, 2);
+
+$silent = null;
+foreach (SSPA_Community_State::publishers() as $entry) {
+    if ('sspa-silent-fixture' === $entry['slug']) {
+        $silent = $entry;
+    }
+}
+sspa_t(is_array($silent), 'a publisher that declared nothing is still listed');
+sspa_t(is_array($silent) && empty($silent['declared']), 'and is marked as having declared nothing');
+sspa_t(is_array($silent) && 'sspa-silent-fixture' === $silent['label'], 'and falls back to its slug so the row can still be identified');
+
+remove_filter('sspa_component_state', $sspa_silent, 10);
+
+// Now switch the fixture off and run.
+SSPA_Community_State::set_enabled('sspa-state-fixture', false);
+sspa_t(in_array('sspa-state-fixture', SSPA_Community_State::disabled(), true), 'switching a publisher off records the decision');
+
+$off = null;
+foreach (SSPA_Community_State::publishers() as $entry) {
+    if ('sspa-state-fixture' === $entry['slug']) {
+        $off = $entry;
+    }
+}
+sspa_t(is_array($off) && empty($off['enabled']), 'a switched-off publisher is still listed, so the decision can be reversed');
+
+$run_id = SSPA_Run_Controller::start(array('type' => 'adhoc', 'url' => home_url('/'), 'trigger' => 'cli', 'user_id' => 1));
+$deadline = time() + 180;
+do {
+    SSPA_Run_Controller::process_batch($run_id);
+    $status = SSPA_Run_Controller::status($run_id);
+} while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
+
+// Captured, not exported: the run's own stored context must not mention it either.
+global $wpdb;
+$stored = (string) $wpdb->get_var($wpdb->prepare(
+    'SELECT share_context FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+    (int) $run_id
+));
+sspa_t(false === strpos($stored, 'sspa-state-fixture'), 'a switched-off publisher is never even stored on the run');
+
+$payload = SSPA_Community_Exporter::build($run_id);
+sspa_t(null === sspa_state_record($payload, 'sspa-state-fixture'), 'and never reaches the payload');
+sspa_t(!is_wp_error($payload), 'the payload still builds with a publisher switched off');
+
+// Switching it back on restores it, or the control is a one-way door.
+SSPA_Community_State::set_enabled('sspa-state-fixture', true);
+sspa_t(!in_array('sspa-state-fixture', SSPA_Community_State::disabled(), true), 'switching it back on clears the decision');
+
+$run_id = SSPA_Run_Controller::start(array('type' => 'adhoc', 'url' => home_url('/'), 'trigger' => 'cli', 'user_id' => 1));
+$deadline = time() + 180;
+do {
+    SSPA_Run_Controller::process_batch($run_id);
+    $status = SSPA_Run_Controller::status($run_id);
+} while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
+
+$payload = SSPA_Community_Exporter::build($run_id);
+sspa_t(is_array(sspa_state_record($payload, 'sspa-state-fixture')), 'and the publisher is captured again on the next run');
+
+// The consent text is not payload data and must not travel.
+$json = is_wp_error($payload) ? '' : SSPA_Community_Schema::encode($payload);
+sspa_t(is_string($json) && false === strpos($json, 'which of its optimisations'), 'the plain-English declaration is never submitted');
+sspa_t(is_string($json) && false === strpos($json, 'disclosure'), 'and the disclosure block is stripped from the record entirely');
+
+remove_filter('sspa_component_state', $sspa_good, 10);
+delete_option('sspa_component_state_disabled');

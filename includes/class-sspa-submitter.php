@@ -119,10 +119,19 @@ class SSPA_Submitter {
         }
         // Which plugins chose to publish their own settings, named, so the answer to "whose
         // settings are in here" does not require reading the JSON.
+        // Named by the label the plugin gave itself where there is one, because "scalability-pro"
+        // is our vocabulary and "Scalability Pro" is the customer's.
+        $labels = array();
+        if (class_exists('SSPA_Community_State')) {
+            foreach (SSPA_Community_State::publishers() as $publisher) {
+                $labels[$publisher['slug']] = $publisher['label'];
+            }
+        }
         $state_components = array();
         foreach ((array) (isset($payload['evidence']) ? $payload['evidence'] : array()) as $item) {
             if (isset($item['type']) && 'sspa/component-state' === $item['type'] && !empty($item['data']['component']['slug'])) {
-                $state_components[] = (string) $item['data']['component']['slug'];
+                $slug = (string) $item['data']['component']['slug'];
+                $state_components[] = isset($labels[$slug]) ? $labels[$slug] : $slug;
             }
         }
         $state_components = array_values(array_unique($state_components));

@@ -16,7 +16,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <p><?php esc_html_e('Each completed baseline, page profile, plugin impact analysis, checkout flow, cache analysis and plugin-toggle spot-check is saved as its own versioned payload. This includes generic page classifications, aggregate timings, safe component identifiers and versions, measured deltas, findings, normalised query fingerprints and Excimer summaries when those records exist.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Site characteristics travel as size bands, never exact counts: what kind of site this is (for example an online shop that also publishes), and roughly how much of everything it holds - posts, pages, products, orders in total and in the last 30 days, users, comments, database size and how many plugins are active. Bands are ranges such as "under 10,000", so a payload cannot say how many orders you took.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('A checkout analysis sends two separate records. The customer flow holds the ordered steps a shopper waits through, split at the payment; the order-management flow holds what you as the shop owner then wait through - opening the order and marking it completed - with its own total, so admin time is never mixed into the customer figure. Both carry step timings and status names only, never an order, product, customer or address.', 'super-speedy-performance-analysis'); ?></p>
-    <p><?php esc_html_e('A plugin can also publish its own performance settings so a measurement can be told apart from the same site measured with different settings - which of Scalability Pro\'s optimisations were on, whether Super Speedy Archives had built its table. Only plugins that have deliberately opted in do this, and each one chooses exactly which of its settings to publish; this plugin never reads another plugin\'s options itself. Licence keys, credentials and anything you typed in free text are not published, and the preview below names every plugin that contributed.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('A plugin can also publish its own performance settings, so a measurement can be told apart from the same site measured with different settings. Only plugins that have deliberately opted in do this, and each one chooses exactly which of its settings to publish; this plugin never reads another plugin\'s options itself. Licence keys, credentials and anything you typed in free text are not published.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Anonymisation happens in this plugin before the payload enters the local queue. Your domain, URLs, filesystem paths, raw SQL, credentials, emails, customer/order data and request contents are forbidden. A privacy validation failure prevents the payload from being queued or sent.', 'super-speedy-performance-analysis'); ?></p>
 
     <h3><?php esc_html_e('1. Share every analysis automatically', 'super-speedy-performance-analysis'); ?></h3>
@@ -36,6 +36,41 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         );
         ?>
     </p>
+
+    <?php
+    // Every plugin publishing its own settings, in its own words, each with its own switch.
+    // Generated rather than written here: naming plugins in prose in this file meant the consent
+    // text was only true for the two plugins that happened to exist when it was written, and
+    // said nothing at all on a site running a third.
+    $sspa_publishers = class_exists('SSPA_Community_State') ? SSPA_Community_State::publishers() : array();
+    if ($sspa_publishers) : ?>
+        <h4><?php esc_html_e('Plugins publishing their own settings', 'super-speedy-performance-analysis'); ?></h4>
+        <p class="description">
+            <?php esc_html_e('Each of these has opted in to describing how it was configured when an analysis ran, so a before measurement can be told apart from an after one. Switch any of them off and it publishes nothing at all; the rest of your analysis is shared exactly as before. Changes apply to your next analysis.', 'super-speedy-performance-analysis'); ?>
+        </p>
+        <ul class="sspa-publisher-list">
+            <?php foreach ($sspa_publishers as $sspa_publisher) : ?>
+                <li>
+                    <label>
+                        <input type="checkbox" class="sspa-publisher-toggle" value="<?php echo esc_attr($sspa_publisher['slug']); ?>" <?php checked($sspa_publisher['enabled']); ?>>
+                        <strong><?php echo esc_html($sspa_publisher['label']); ?></strong>
+                        <code><?php echo esc_html($sspa_publisher['slug']); ?></code>
+                    </label>
+                    <?php if ($sspa_publisher['publishes']) : ?>
+                        <ul class="sspa-publisher-detail">
+                            <?php foreach ($sspa_publisher['publishes'] as $sspa_line) : ?>
+                                <li><?php echo esc_html($sspa_line); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else : ?>
+                        <p class="description sspa-publisher-undeclared">
+                            <?php esc_html_e('This plugin has not described what it publishes. Nothing is hidden - the full contents are in the preview below - but a plugin that publishes without saying what it publishes is worth asking its author about.', 'super-speedy-performance-analysis'); ?>
+                        </p>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
 
     <?php
     $sspa_build_errors = get_option('sspa_submission_build_errors', array());
