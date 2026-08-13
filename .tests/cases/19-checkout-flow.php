@@ -642,6 +642,8 @@ if (is_wp_error($classic_run)) {
         'classic purchase completed (' . $classic_row['status'] . '/' . $classic_notes['outcome']
         . (isset($classic_notes['flow']['error']) ? ' - ' . $classic_notes['flow']['error'] : '') . ')');
     sspa_t('classic' === $classic_notes['flow']['checkout_type'], 'run recorded as a classic checkout');
+    sspa_t(in_array($classic_notes['flow']['checkout_nonce_source'], array('checkout_page', 'order_review'), true),
+        'classic checkout used the nonce rendered for its guest session (' . $classic_notes['flow']['checkout_nonce_source'] . ')');
     sspa_t(!empty($classic_notes['flow']['session_customer_id']),
         'the cart session id was read back from the add-to-cart cookie');
 

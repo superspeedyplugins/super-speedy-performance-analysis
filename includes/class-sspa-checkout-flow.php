@@ -802,11 +802,11 @@ class SSPA_Checkout_Flow {
             'has_full_address' => 'true',
             'post_data' => http_build_query(self::classic_checkout_fields($billing, $shipping, '')),
         );
-        $step = self::jar_request($crawler, 'flow-update-order-review', 'POST', home_url('/?wc-ajax=update_order_review'), $flags, $jar, array('body' => $review_body));
-        $result['steps'][] = $step;
-        if (!self::step_ok($step)) {
+        $review_step = self::jar_request($crawler, 'flow-update-order-review', 'POST', home_url('/?wc-ajax=update_order_review'), $flags, $jar, array('body' => $review_body));
+        $result['steps'][] = $review_step;
+        if (!self::step_ok($review_step)) {
             $result['outcome'] = 'update_customer_failed';
-            $result['notes']['error'] = self::classic_error($step);
+            $result['notes']['error'] = self::classic_error($review_step);
             return;
         }
 
@@ -814,16 +814,35 @@ class SSPA_Checkout_Flow {
         // the session while rendering the review (wc_get_chosen_shipping_method_for_package),
         // so an unparsed fragment is not fatal - it just means we post nothing and let that
         // default stand, exactly as an untouched radio group would.
-        $rate_id = self::classic_chosen_rate($step);
+        $rate_id = self::classic_chosen_rate($review_step);
         if ($rate_id) {
             $result['notes']['shipping_rate'] = $rate_id;
         }
 
         // --- 5. the checkout page ---
-        $result['steps'][] = self::page_request($crawler, 'flow-view-checkout', wc_get_checkout_url(), $flags, '', $jar);
+        $checkout_step = self::page_request($crawler, 'flow-view-checkout', wc_get_checkout_url(), $flags, '', $jar);
+        $result['steps'][] = $checkout_step;
 
         // --- 6. place the order ---
-        $nonce = self::guest_nonce('woocommerce-process_checkout', $customer_id);
+        // Use the nonce WooCommerce rendered for this exact guest cart session, as a real
+        // browser does. Manufacturing it in the parent admin request only works when every
+        // site uses WooCommerce's default nonce/session binding; a custom session handler or
+        // later nonce_user_logged_out filter can legitimately bind it differently.
+        $nonce = self::classic_checkout_nonce($checkout_step);
+        $nonce_source = 'checkout_page';
+        if (!$nonce) {
+            // The AJAX order-review response also contains the payment fragment and nonce on
+            // standard classic checkout. This covers themes that omit it from the full page.
+            $nonce = self::classic_checkout_nonce($review_step);
+            $nonce_source = 'order_review';
+        }
+        if (!$nonce) {
+            // Compatibility fallback for a heavily customised classic template that renders
+            // no nonce at all. Keep the existing behaviour, but expose that it was needed.
+            $nonce = self::guest_nonce('woocommerce-process_checkout', $customer_id);
+            $nonce_source = 'generated_fallback';
+        }
+        $result['notes']['checkout_nonce_source'] = $nonce_source;
         $order_body = self::classic_checkout_fields($billing, $shipping, $nonce);
         if ($rate_id) {
             $order_body['shipping_method'] = array($rate_id);
@@ -1029,6 +1048,37 @@ class SSPA_Checkout_Flow {
         if (preg_match('/name=[\'"]shipping_method\[0\][\'"][^>]*value=[\'"]([^\'"]+)[\'"][^>]*checked/i', $body, $m)
             || preg_match('/name=[\'"]shipping_method\[0\][\'"][^>]*value=[\'"]([^\'"]+)[\'"]/i', $body, $m)) {
             return html_entity_decode($m[1]);
+        }
+        return '';
+    }
+
+    /**
+     * Read the classic checkout nonce from HTML rendered inside this visitor's real session.
+     * Only the source is recorded in run notes; the nonce itself is never persisted.
+     */
+    private static function classic_checkout_nonce($step) {
+        $sample = isset($step['sample']) ? $step['sample'] : null;
+        if (!$sample) {
+            return '';
+        }
+
+        $html = isset($sample['body']) ? (string) $sample['body'] : '';
+        if (!empty($sample['json']['fragments'])) {
+            // update_order_review's raw body is the JSON envelope. Append the decoded HTML
+            // fragments rather than only consulting them when that non-empty envelope is absent.
+            $html .= ' ' . implode(' ', (array) $sample['json']['fragments']);
+        }
+        if (!$html || !preg_match_all('/<input\b[^>]*>/i', $html, $inputs)) {
+            return '';
+        }
+
+        foreach ($inputs[0] as $input) {
+            if (!preg_match('/\bname\s*=\s*(["\'])woocommerce-process-checkout-nonce\1/i', $input)) {
+                continue;
+            }
+            if (preg_match('/\bvalue\s*=\s*(["\'])(.*?)\1/is', $input, $value)) {
+                return sanitize_text_field(wp_specialchars_decode(html_entity_decode($value[2], ENT_QUOTES, 'UTF-8'), ENT_QUOTES));
+            }
         }
         return '';
     }

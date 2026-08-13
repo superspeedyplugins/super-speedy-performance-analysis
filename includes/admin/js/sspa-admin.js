@@ -617,32 +617,69 @@ function sspa_fmt_duration(seconds) {
 	return seconds + 's';
 }
 
-// Highest job index already in the feed, so a poll only appends what is new.
+// Highest job index already accepted into the feed, so a poll only queues what is new.
+// A fast site can still finish two measurements between status polls; reveal those in order
+// instead of making the monitor appear frozen and then dumping several lines at once.
 var sspa_feed_seen = -1;
+var sspa_feed_queue = [];
+var sspa_feed_timer = null;
+var sspa_feed_current = null;
+
+function sspa_runner_feed_tail(feed, current) {
+	var el = feed.get(0);
+	var following = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+	feed.find('.sspa-feed-now').remove();
+	if (current) {
+		feed.append(jQuery('<li class="sspa-feed-now">').text(current + ' …'));
+	}
+	if (following) {
+		el.scrollTop = el.scrollHeight;
+	}
+}
+
+function sspa_runner_feed_drain() {
+	var feed = jQuery('#sspa-runner .sspa-runner-feed');
+	if (!feed.length || !sspa_feed_queue.length) {
+		sspa_feed_timer = null;
+		if (feed.length) {
+			sspa_runner_feed_tail(feed, sspa_feed_current);
+		}
+		return;
+	}
+
+	var el = feed.get(0);
+	var following = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+	feed.find('.sspa-feed-now').remove();
+	feed.append(jQuery('<li>').text(sspa_feed_queue.shift().label));
+	if (sspa_feed_current) {
+		feed.append(jQuery('<li class="sspa-feed-now">').text(sspa_feed_current + ' …'));
+	}
+	if (following) {
+		el.scrollTop = el.scrollHeight;
+	}
+
+	sspa_feed_timer = setTimeout(sspa_runner_feed_drain, 140);
+}
 
 function sspa_runner_feed(s) {
 	var feed = jQuery('#sspa-runner .sspa-runner-feed');
 	if (!feed.length) {
 		return;
 	}
-	var el = feed.get(0);
-	// Was the user reading the tail before this batch arrived? Decided first: after appending,
-	// a batch of new lines is indistinguishable from the user having scrolled up.
-	var following = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-	feed.find('.sspa-feed-now').remove();
+	sspa_feed_current = s.current || null;
 
 	(s.recent || []).forEach(function (item) {
 		if (item.i > sspa_feed_seen) {
 			sspa_feed_seen = item.i;
-			feed.append(jQuery('<li>').text(item.label));
+			sspa_feed_queue.push(item);
 		}
 	});
-	// The in-flight measurement sits at the bottom until it completes and arrives in recent.
-	if (s.current) {
-		feed.append(jQuery('<li class="sspa-feed-now">').text(s.current + ' …'));
-	}
-	if (following) {
-		el.scrollTop = el.scrollHeight;
+
+	if (!sspa_feed_timer && sspa_feed_queue.length) {
+		sspa_runner_feed_drain();
+	} else {
+		// The in-flight measurement sits at the bottom until it completes and arrives in recent.
+		sspa_runner_feed_tail(feed, sspa_feed_current);
 	}
 }
 
@@ -684,6 +721,12 @@ function sspa_runner_dismiss() {
 	runner.find('.sspa-runner-current, .sspa-runner-eta, .sspa-runner-actions').show();
 	runner.find('.sspa-runner-feed').empty();
 	sspa_feed_seen = -1;
+	sspa_feed_queue = [];
+	sspa_feed_current = null;
+	if (sspa_feed_timer) {
+		clearTimeout(sspa_feed_timer);
+		sspa_feed_timer = null;
+	}
 	sspa_runner_backdrop(runner);
 }
 
@@ -706,8 +749,8 @@ function sspa_runner_finish(status) {
 // and the hourly janitor re-kicks a run whose driver disappeared.
 //
 // Browser-transport runs (loopbacks blocked at preflight - basic auth, WAF, CDN): the
-// server-side pump no-ops, and this loop doubles as the status poll while
-// SSPATransport.drive() fetches the pages from THIS browser one request at a time.
+// server-side pump no-ops while SSPATransport.drive() fetches pages from THIS browser one
+// request at a time; the independent status poll below monitors both transport modes.
 function sspa_drive_run(runId) {
 	sspa_runner_show();
 	jQuery('#sspa-run-analysis, #sspa-run-deep, #sspa-run-cache, .sspa-measure-plugin').prop('disabled', true);
@@ -715,12 +758,66 @@ function sspa_drive_run(runId) {
 
 	var failures = 0;
 	var browserDriver = null;
+	var stopped = false;
+	var batchTimer = null;
+	var statusTimer = null;
+	var statusRequest = null;
+
+	function finish(status) {
+		if (stopped) {
+			return;
+		}
+		stopped = true;
+		if (batchTimer) {
+			clearTimeout(batchTimer);
+		}
+		if (statusTimer) {
+			clearTimeout(statusTimer);
+		}
+		if (statusRequest) {
+			statusRequest.abort();
+		}
+		if (browserDriver) {
+			browserDriver.stop();
+		}
+		sspa_runner_finish(status);
+	}
+
+	// process_batch deliberately keeps one request busy for up to 15 seconds. Poll the
+	// read-only status endpoint alongside it so every saved measurement reaches the monitor
+	// as it completes instead of all completed measurements arriving with the batch response.
+	function pollStatus() {
+		if (stopped) {
+			return;
+		}
+		statusRequest = jQuery.post(ajaxurl, { action: 'sspa_run_status', nonce: sspa_admin.nonce, run_id: runId }, function (resp) {
+			if (stopped || !resp.success || !resp.data) {
+				return;
+			}
+			var s = resp.data;
+			sspa_runner_update(s);
+			if (s.status !== 'crawling' && s.status !== 'analysing') {
+				finish(s.status);
+			}
+		}).always(function () {
+			statusRequest = null;
+			if (!stopped) {
+				statusTimer = setTimeout(pollStatus, 350);
+			}
+		});
+	}
+
 	function step() {
+		if (stopped) {
+			return;
+		}
 		jQuery.post(ajaxurl, { action: 'sspa_process_batch', nonce: sspa_admin.nonce, run_id: runId }, function (resp) {
+			if (stopped) {
+				return;
+			}
 			failures = 0;
 			if (!resp.success || !resp.data) {
-				if (browserDriver) { browserDriver.stop(); }
-				sspa_runner_finish('finished');
+				finish('finished');
 				return;
 			}
 			var s = resp.data;
@@ -737,18 +834,22 @@ function sspa_drive_run(runId) {
 						}
 					});
 				}
-				setTimeout(step, 400);
+				batchTimer = setTimeout(step, 400);
 			} else {
-				if (browserDriver) { browserDriver.stop(); }
-				sspa_runner_finish(s.status);
+				finish(s.status);
 			}
 		}).fail(function () {
+			if (stopped) {
+				return;
+			}
 			// Transient network/server hiccups must not kill an hours-long run.
 			failures++;
 			jQuery('#sspa-runner .sspa-runner-current').text(failures > 1 ? 'Connection hiccup, retrying… (' + failures + ')' : '');
-			setTimeout(step, Math.min(30000, 3000 * failures));
+			batchTimer = setTimeout(step, Math.min(30000, 3000 * failures));
 		});
 	}
+
+	pollStatus();
 	step();
 }
 
