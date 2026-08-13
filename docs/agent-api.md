@@ -4,10 +4,10 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 ## Surfaces (identical data)
 
-- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|report` (report/findings/impacts
+- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|cache-scan|report` (report/findings/impacts
   take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
-  `get-status`, `get-report`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
+  `get-status`, `get-report`, `get-cache-personalisation`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
   `get-checkout-flow`, `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
@@ -31,6 +31,7 @@ Runs started via abilities are asynchronous: poll `get-status` until `active` is
   "summary": {"pages_profiled": 27, "findings": {"critical": 2, "warn": 5, "info": 1}},
   "insights": [ /* first 10 findings, most severe first */ ],
   "findings": [ /* all findings, shape below */ ],
+  "cache_personalisation": {"headline": "...", "detail": "...", "assessment": {"qualification": "strong_candidate", "difficulty": "moderate", "hazards": [], "candidate_components": []}},
   "pages": [ /* per-page medians, shape below */ ],
   "impacts": [ /* measured isolation deltas, shape below */ ]
 }
@@ -42,7 +43,7 @@ Runs started via abilities are asynchronous: poll `get-status` until `active` is
 {
   "type": "slow_query | big_result_set | query_loop | dupe_queries | slow_http |
            blocking_mail | cache_blind | cache_friendly | autoload_bloat | environment |
-           duplicate_functionality | security_block",
+           duplicate_functionality | security_block | cache_personalisation",
   "severity": "critical | warn | info",
   "component": "plugin-slug | theme-slug | core | null (site-level)",
   "page_key": "home | shop | ... | null",
@@ -53,6 +54,20 @@ Runs started via abilities are asynchronous: poll `get-status` until `active` is
   "recommendation": {"key": "slow_query_postmeta", "title": "...", "body": "...", "link": "https://... or empty"}
 }
 ```
+
+### Cache personalisation assessment
+
+`get-cache-personalisation`, `wp sspa cache-scan` and the report's
+`cache_personalisation` member expose the same local-only assessment. It is produced from
+one anonymous response per shared-cache page candidate plus a bounded active-source scan.
+`qualification` is `strong_candidate`, `possible_candidate` or
+`outside_woocommerce_service`; `difficulty` is `low`, `moderate` or `high`.
+
+The assessment includes potential `hazards`, existing Type A/Type B/fragment `coverage`,
+per-page signal names and ranked `candidate_components` with component-relative file/line
+evidence. It never includes HTML, cookie values, nonce values or customer text. Treat
+candidate components as the place to inspect first, not as proven owners. A controlled
+guest/customer/basket comparison is still required before enabling shared caching.
 
 ### Page
 

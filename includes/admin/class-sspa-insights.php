@@ -19,7 +19,7 @@ class SSPA_Insights {
      * so the within-severity ranking (biggest delta first) puts it last among the warns and it
      * drops off the list - when what it says is that a plugin tried to change the live site.
      */
-    const STANDALONE = array('autoload_coverage', 'isolation_reaction');
+    const STANDALONE = array('autoload_coverage', 'isolation_reaction', 'cache_personalisation');
 
     /**
      * Every finding of one type for a run - one reaction per reacting pair.
@@ -256,6 +256,24 @@ class SSPA_Insights {
             case 'security_block':
                 $headline = sprintf(__('%1$s blocked profiling of %2$d page(s)', 'super-speedy-performance-analysis'), $e['layer'], count((array) $e['pages']));
                 $detail = implode(', ', (array) $e['pages']);
+                break;
+            case 'cache_personalisation':
+                $qualification = isset($e['qualification']) ? $e['qualification'] : 'not_assessed';
+                if ('strong_candidate' === $qualification) {
+                    $headline = __('This WooCommerce store is a strong candidate for full-page cache consultancy', 'super-speedy-performance-analysis');
+                } elseif ('possible_candidate' === $qualification) {
+                    $headline = __('This WooCommerce store may qualify for full-page caching of logged-in and basket traffic', 'super-speedy-performance-analysis');
+                } else {
+                    $headline = __('Cache personalisation was surveyed, but this site is outside the WooCommerce consultancy scope', 'super-speedy-performance-analysis');
+                }
+                $detail = sprintf(
+                    /* translators: 1: pages scanned, 2: difficulty, 3: hazards, 4: candidate components */
+                    __('%1$d shared-cache page type(s) scanned. Estimated implementation difficulty: %2$s. %3$d hazard class(es) and %4$d component candidate(s) need review.', 'super-speedy-performance-analysis'),
+                    (int) ($e['pages_scanned'] ?? 0),
+                    isset($e['difficulty']) ? $e['difficulty'] : __('unknown', 'super-speedy-performance-analysis'),
+                    count((array) ($e['hazards'] ?? array())),
+                    count((array) ($e['candidate_components'] ?? array()))
+                );
                 break;
             default:
                 $headline = $finding['finding_type'] . ($component ? ' - ' . $component : '');

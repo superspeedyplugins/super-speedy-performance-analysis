@@ -106,6 +106,7 @@ class SSPA_Browser_Transport {
      */
     private static function job_flags($job, $bt, $purpose) {
         $flags = array('v' => $job['variant']);
+        $flags['bt'] = '1'; // response body is a 20KB prefix and Set-Cookie is browser-hidden
         if ('baseline' === $job['page_key']) {
             $flags['bl'] = '1';
         }
@@ -120,6 +121,9 @@ class SSPA_Browser_Transport {
         }
         if (!empty($bt['write_flags']) && is_array($bt['write_flags'])) {
             $flags = array_merge($flags, $bt['write_flags']);
+        }
+        if ('sample' === $purpose && empty($bt['samples']) && SSPA_Cache_Recon::eligible_job($job)) {
+            $flags['cr'] = '1';
         }
         return $flags;
     }

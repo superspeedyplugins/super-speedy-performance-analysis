@@ -32,6 +32,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.22 (13th August 2026) =
+* Performance analyses now include privacy-safe cache-personalisation reconnaissance, showing WooCommerce consultancy fit, likely difficulty, hazards, existing SSAP coverage and the plugin/theme components worth inspecting first; the assessment is also available through MCP and `wp sspa cache-scan`
 * Classic checkout analysis now uses the nonce rendered for its actual guest cart session, fixing order placement on sites with customised WooCommerce session or nonce handling
 * Analysis progress now updates as each measurement finishes instead of appearing idle and then showing a batch of completed pages at once
 * Checkout and order-management waterfall rows now expand into their measured component, query, HTTP, mail and function-level evidence

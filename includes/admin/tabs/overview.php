@@ -57,6 +57,134 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     </div>
 
     <?php
+    $sspa_cache_recon = SSPA_Insights::standalone($sspa_last_run['id'], 'cache_personalisation');
+    if ($sspa_cache_recon) :
+        $sspa_cache_rendered = SSPA_Insights::render($sspa_cache_recon);
+        $sspa_cache_evidence = json_decode((string) $sspa_cache_recon['evidence'], true);
+        $sspa_cache_evidence = is_array($sspa_cache_evidence) ? $sspa_cache_evidence : array();
+        $sspa_qualification_labels = array(
+            'strong_candidate' => __('Strong consultancy candidate', 'super-speedy-performance-analysis'),
+            'possible_candidate' => __('Possible consultancy candidate', 'super-speedy-performance-analysis'),
+            'outside_woocommerce_service' => __('Outside the WooCommerce service scope', 'super-speedy-performance-analysis'),
+        );
+        $sspa_hazard_labels = array(
+            'set_cookie_on_cache_candidate' => __('A shared-cache candidate sets cookies', 'super-speedy-performance-analysis'),
+            'nonces_in_shared_html' => __('Nonce fields or keys occur in shared HTML', 'super-speedy-performance-analysis'),
+            'hard_coded_cookie_reads' => __('Front-end code reads legacy cache-sensitive cookies', 'super-speedy-performance-analysis'),
+            'browser_state_driven_output' => __('A private feature also reads browser storage', 'super-speedy-performance-analysis'),
+            'private_features_need_route_review' => __('Private-feature surfaces need route and region review', 'super-speedy-performance-analysis'),
+            'partial_browser_scan' => __('Browser transport could inspect only a response prefix', 'super-speedy-performance-analysis'),
+            'stored_php_needs_manual_review' => __('Database-stored PHP snippets need manual review', 'super-speedy-performance-analysis'),
+        );
+        $sspa_qualification = isset($sspa_cache_evidence['qualification']) ? $sspa_cache_evidence['qualification'] : '';
+        $sspa_cache_totals = isset($sspa_cache_evidence['totals']) ? (array) $sspa_cache_evidence['totals'] : array();
+        ?>
+        <div class="sspa-placeholder sspa-cache-recon">
+            <h2><?php esc_html_e('Cache personalisation reconnaissance', 'super-speedy-performance-analysis'); ?></h2>
+            <p><strong><?php echo esc_html($sspa_cache_rendered['headline']); ?></strong></p>
+            <p>
+                <span class="sspa-badge"><?php echo esc_html(isset($sspa_qualification_labels[$sspa_qualification]) ? $sspa_qualification_labels[$sspa_qualification] : __('Not assessed', 'super-speedy-performance-analysis')); ?></span>
+                <span class="sspa-badge"><?php printf(esc_html__('Difficulty: %s', 'super-speedy-performance-analysis'), esc_html(isset($sspa_cache_evidence['difficulty']) ? $sspa_cache_evidence['difficulty'] : __('unknown', 'super-speedy-performance-analysis'))); ?></span>
+            </p>
+            <p class="description"><?php echo esc_html($sspa_cache_rendered['detail']); ?></p>
+            <p class="description">
+                <?php printf(
+                    esc_html__('Existing coverage found: %1$d Type A marker(s), %2$d Type B region(s), %3$d cart-fragment marker(s). The bounded source scan inspected %4$d file(s).', 'super-speedy-performance-analysis'),
+                    (int) ($sspa_cache_totals['type_a_markers'] ?? 0),
+                    (int) ($sspa_cache_totals['type_b_regions'] ?? 0),
+                    (int) ($sspa_cache_totals['cart_fragment_markers'] ?? 0),
+                    (int) ($sspa_cache_evidence['source_scan']['files_scanned'] ?? 0)
+                ); ?>
+            </p>
+
+            <?php if (!empty($sspa_cache_evidence['hazards'])) : ?>
+                <h3><?php esc_html_e('Potential hazards', 'super-speedy-performance-analysis'); ?></h3>
+                <ul class="sspa-health">
+                    <?php foreach ((array) $sspa_cache_evidence['hazards'] as $sspa_hazard) : ?>
+                        <li>
+                            <?php
+                            $sspa_hazard_type = isset($sspa_hazard['type']) ? $sspa_hazard['type'] : '';
+                            echo esc_html(isset($sspa_hazard_labels[$sspa_hazard_type]) ? $sspa_hazard_labels[$sspa_hazard_type] : str_replace('_', ' ', $sspa_hazard_type));
+                            ?>
+                            <?php if (!empty($sspa_hazard['pages'])) : ?>
+                                <?php printf(esc_html__('%d page type(s)', 'super-speedy-performance-analysis'), (int) $sspa_hazard['pages']); ?>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else : ?>
+                <p><strong><?php esc_html_e('No passive hazards were detected in the responses scanned.', 'super-speedy-performance-analysis'); ?></strong></p>
+            <?php endif; ?>
+
+            <?php if (!empty($sspa_cache_evidence['pages'])) : ?>
+                <details>
+                    <summary><?php printf(esc_html__('%d page type(s) scanned', 'super-speedy-performance-analysis'), count((array) $sspa_cache_evidence['pages'])); ?></summary>
+                    <table class="widefat striped">
+                        <thead><tr>
+                            <th><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?></th>
+                            <th><?php esc_html_e('Passive signals', 'super-speedy-performance-analysis'); ?></th>
+                            <th><?php esc_html_e('Existing coverage', 'super-speedy-performance-analysis'); ?></th>
+                        </tr></thead>
+                        <tbody>
+                        <?php foreach ((array) $sspa_cache_evidence['pages'] as $sspa_cache_page) :
+                            $sspa_page_signals = array_merge(
+                                (array) ($sspa_cache_page['set_cookie_names'] ?? array()),
+                                (array) ($sspa_cache_page['nonce_names'] ?? array()),
+                                (array) ($sspa_cache_page['legacy_cookie_reads'] ?? array()),
+                                (array) ($sspa_cache_page['private_surface_hints'] ?? array())
+                            );
+                            $sspa_page_coverage = isset($sspa_cache_page['coverage']) ? (array) $sspa_cache_page['coverage'] : array();
+                            $sspa_page_coverage_count = (int) ($sspa_page_coverage['type_a_in'] ?? 0)
+                                + (int) ($sspa_page_coverage['type_a_out'] ?? 0)
+                                + count((array) ($sspa_page_coverage['type_b_regions'] ?? array()))
+                                + (int) ($sspa_page_coverage['cart_fragment_markers'] ?? 0);
+                            ?>
+                            <tr>
+                                <td>
+                                    <code><?php echo esc_html($sspa_cache_page['page_key']); ?></code>
+                                    <?php if (!empty($sspa_cache_page['url'])) : ?><br><a href="<?php echo esc_url($sspa_cache_page['url']); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Open page', 'super-speedy-performance-analysis'); ?></a><?php endif; ?>
+                                </td>
+                                <td><?php echo $sspa_page_signals ? esc_html(implode(', ', array_unique($sspa_page_signals))) : esc_html__('None found', 'super-speedy-performance-analysis'); ?></td>
+                                <td><?php echo esc_html((string) $sspa_page_coverage_count); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </details>
+            <?php endif; ?>
+
+            <?php if (!empty($sspa_cache_evidence['candidate_components'])) : ?>
+                <details>
+                    <summary><?php printf(esc_html__('%d component(s) worth inspecting first', 'super-speedy-performance-analysis'), count((array) $sspa_cache_evidence['candidate_components'])); ?></summary>
+                    <ol class="sspa-insights">
+                        <?php foreach (array_slice((array) $sspa_cache_evidence['candidate_components'], 0, 15) as $sspa_candidate) : ?>
+                            <li>
+                                <strong><?php echo esc_html($sspa_candidate['component']); ?></strong>
+                                <span class="sspa-badge"><?php echo esc_html($sspa_candidate['risk']); ?></span>
+                                <span class="description"><?php echo esc_html(implode(', ', array_map(function ($signal) { return str_replace('_', ' ', $signal); }, (array) $sspa_candidate['signals']))); ?></span>
+                                <?php if (!empty($sspa_candidate['evidence'])) : ?>
+                                    <ul>
+                                        <?php foreach (array_slice((array) $sspa_candidate['evidence'], 0, 5) as $sspa_source) : ?>
+                                            <li><code><?php echo esc_html($sspa_source['file'] . ':' . (int) $sspa_source['line']); ?></code></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ol>
+                </details>
+            <?php endif; ?>
+
+            <p class="description">
+                <?php esc_html_e('This scan uses anonymous responses and source indicators. It identifies where a controlled guest, customer and basket comparison should begin; it does not prove a leak or prove that a candidate component owns a changed region.', 'super-speedy-performance-analysis'); ?>
+                <?php if ($sspa_cache_rendered['rec_link']) : ?>
+                    <a href="<?php echo esc_url($sspa_cache_rendered['rec_link']); ?>" target="_blank"><?php esc_html_e('View the implementation service', 'super-speedy-performance-analysis'); ?> &rarr;</a>
+                <?php endif; ?>
+            </p>
+        </div>
+    <?php endif; ?>
+
+    <?php
     // Autoload sits in its own block, not the top-5 list. It is one site-wide setting rather
     // than a per-page problem, it competes badly against critical query findings, and its
     // copy-and-paste SQL needs more room than a list item.

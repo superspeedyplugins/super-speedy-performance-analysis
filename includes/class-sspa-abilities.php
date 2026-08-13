@@ -24,6 +24,7 @@ class SSPA_Abilities {
         return array(
             self::CATEGORY . '/get-status',
             self::CATEGORY . '/get-report',
+            self::CATEGORY . '/get-cache-personalisation',
             self::CATEGORY . '/get-findings',
             self::CATEGORY . '/get-plugin-impacts',
             self::CATEGORY . '/get-site-metrics',
@@ -114,6 +115,24 @@ class SSPA_Abilities {
             'output_schema' => array('type' => 'object'),
             'permission_callback' => array(__CLASS__, 'can_manage'),
             'execute_callback' => array(__CLASS__, 'exec_get_archive_profile'),
+            'meta' => $readonly,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-cache-personalisation', array(
+            'label' => __('Get cache personalisation assessment', 'super-speedy-performance-analysis'),
+            'description' => __('Read the latest passive cache-consultancy qualification: estimated difficulty, potential hazards, existing SSAP coverage and the plugin/theme candidates worth inspecting first. Candidate components are leads, not proven causes.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'run_id' => array('type' => 'integer', 'description' => __('Specific run id; defaults to the latest completed run.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_cache_personalisation'),
             'meta' => $readonly,
         ));
 
@@ -301,6 +320,10 @@ class SSPA_Abilities {
 
     public static function exec_get_archive_profile($input) {
         return SSPA_Report::archive_profile(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
+    }
+
+    public static function exec_get_cache_personalisation($input) {
+        return SSPA_Report::cache_personalisation(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_findings($input) {

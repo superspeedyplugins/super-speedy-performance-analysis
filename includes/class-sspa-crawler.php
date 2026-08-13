@@ -86,6 +86,11 @@ class SSPA_Crawler {
             if (!empty($job['flags']) && is_array($job['flags'])) {
                 $flags = array_merge($flags, $job['flags']);
             }
+            // Scan one successful response per shared-cache candidate. This happens in the
+            // controller after the timed request, so it cannot inflate the page measurement.
+            if (!$samples && SSPA_Cache_Recon::eligible_job($job)) {
+                $flags['cr'] = '1';
+            }
             $sample = $this->profiled_request($job['url'], $cookies, $flags);
             if ($sample['cached']) {
                 continue; // page cache served it - tells us nothing about PHP
@@ -181,6 +186,14 @@ class SSPA_Crawler {
 
         $capture = self::fetch_capture($token_id);
         if ($capture) {
+            if (!empty($flags['cr'])) {
+                $capture['cache_recon'] = SSPA_Cache_Recon::scan_response(
+                    (string) $norm['body'],
+                    $headers,
+                    $capture,
+                    !empty($flags['bt'])
+                );
+            }
             $sample['capture'] = $capture;
         } elseif (empty($flags['bl'])) {
             $sample['error'] = 'capture_missing';

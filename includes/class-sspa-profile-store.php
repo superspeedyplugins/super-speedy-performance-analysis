@@ -24,6 +24,17 @@ class SSPA_Profile_Store {
                 return $ga <=> $gb;
             });
             $median_capture = $with_capture[(int) floor((count($with_capture) - 1) / 2)]['capture'];
+            // Reconnaissance intentionally runs on the first successful sample only. The
+            // median performance capture may be another sample, so carry the privacy-safe
+            // summary across without carrying the HTML it was derived from.
+            if (empty($median_capture['cache_recon'])) {
+                foreach ($with_capture as $sample) {
+                    if (!empty($sample['capture']['cache_recon'])) {
+                        $median_capture['cache_recon'] = $sample['capture']['cache_recon'];
+                        break;
+                    }
+                }
+            }
         }
 
         $metric = function ($path) use ($with_capture) {

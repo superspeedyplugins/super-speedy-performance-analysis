@@ -100,6 +100,11 @@
       "title": "Profiling requests blocked",
       "body": "A security layer blocked this plugin's self-profiling requests, so some pages could not be measured. Whitelist your own server's IP in the named security plugin and re-run the analysis."
     },
+    "cache_personalisation_review": {
+      "title": "Review cache personalisation",
+      "body": "This is a passive reconnaissance result, not proof that content leaks or that a named component caused it. Review the hazards and candidate components, then compare controlled guest, customer and basket renders before enabling shared caching for those states.",
+      "link": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/"
+    },
     "unindexed_query": {
       "title": "Query with no usable index",
       "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape.",

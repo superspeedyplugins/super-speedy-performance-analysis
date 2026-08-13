@@ -272,6 +272,38 @@ class SSPA_CLI {
     }
 
     /**
+     * Show the cache-personalisation qualification produced by a normal analysis.
+     *
+     * [--run=<id>]
+     * : Specific completed run; defaults to latest.
+     *
+     * [--format=<format>]
+     * : summary (default) or json.
+     *
+     * @subcommand cache-scan
+     */
+    public function cache_scan($args, $assoc_args) {
+        $assessment = SSPA_Report::cache_personalisation(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        if (is_wp_error($assessment)) {
+            WP_CLI::error($assessment->get_error_message());
+        }
+        if (isset($assoc_args['format']) && 'json' === $assoc_args['format']) {
+            WP_CLI::line(wp_json_encode($assessment));
+            return;
+        }
+        $a = $assessment['assessment'];
+        WP_CLI::log($assessment['headline']);
+        WP_CLI::log($assessment['detail']);
+        WP_CLI::log(sprintf(
+            'Qualification: %s | Difficulty: %s | Hazards: %d | Candidate components: %d',
+            $a['qualification'],
+            $a['difficulty'],
+            count((array) $a['hazards']),
+            count((array) $a['candidate_components'])
+        ));
+    }
+
+    /**
      * List measured per-plugin impacts from deep-analysis runs.
      *
      * [--format=<format>]
