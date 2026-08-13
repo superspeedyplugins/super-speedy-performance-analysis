@@ -542,6 +542,56 @@
 	vertical-align: middle;
 }
 
+#sspa-adhoc-pop .sspa-ck-step-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 2px 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+#sspa-adhoc-pop .sspa-ck-step-toggle:hover,
+#sspa-adhoc-pop .sspa-ck-step-toggle:focus-visible {
+	color: var(--sspa-primary-dark);
+}
+
+#sspa-adhoc-pop .sspa-ck-step-toggle.is-open .sspa-adhoc-caret {
+	transform: rotate(90deg);
+}
+
+#sspa-adhoc-pop .sspa-ck-step-detail > td {
+	padding: 0 12px 15px 24px;
+	background: var(--sspa-surface);
+	white-space: normal;
+}
+
+#sspa-adhoc-pop .sspa-ck-step-detail h5 {
+	margin: 14px 0 5px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: var(--sspa-primary-dark);
+}
+
+#sspa-adhoc-pop .sspa-ck-detail-table {
+	margin: 0 0 10px;
+}
+
+#sspa-adhoc-pop .sspa-ck-detail-table td {
+	vertical-align: top;
+	white-space: normal;
+}
+
+#sspa-adhoc-pop .sspa-ck-detail-table code {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
 /* The bar column takes whatever is left, so the numbers stay aligned. */
 #sspa-adhoc-pop .sspa-ck-barcell {
 	width: 45%;

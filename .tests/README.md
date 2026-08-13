@@ -121,7 +121,8 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   deep sweep and a full checkout purchase.
 - `28-profile-panel.php` - the one profile panel: every section it must carry, both attribution
   modes in the markup, a URL and a profile id rendering byte-identical HTML, a pruned profile
-  degrading rather than fatalling, catalogue-matched ad-hoc results merging into the Pages tab
+  degrading rather than fatalling, its versioned private diagnostic JSON export carrying the
+  raw capture without the compressed database blob, catalogue-matched ad-hoc results merging into the Pages tab
   while one-off URLs stay out and the site score stays on baseline/spot. Then plugin impact
   scoped to one page: a sweep pointed at a URL no analysis ever profiled, the measurement count
   it queues matching the estimate the panel promised (1 plugin = 2, 2 plugins = 3), and
@@ -168,6 +169,7 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   path; asserts both steps measured, the view ran as admin and rendered, a fixture hooking
   `woocommerce_order_status_completed` fired inside the measured step, the transition was
   processing -> completed, the waterfall's `management` bucket holds both steps with real time
+  and expandable per-step component diagnostics, management findings never use customer-checkout wording,
   while the customer `total_ms` excludes them, and the completed order was still deleted. Gotcha:
   the transition runs in the loopback, so the flow must bust its order cache (`wp_cache_delete($id,
   'orders')` + `clean_post_cache`) before reading the resulting status or it reads back stale.

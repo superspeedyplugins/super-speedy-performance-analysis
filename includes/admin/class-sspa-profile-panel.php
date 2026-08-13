@@ -28,6 +28,7 @@ class SSPA_Profile_Panel {
 
     public static function register() {
         add_action('wp_ajax_sspa_profile_panel', array(__CLASS__, 'ajax_panel'));
+        add_action('wp_ajax_sspa_profile_export', array(__CLASS__, 'ajax_export'));
         add_action('wp_ajax_sspa_impact_plan', array(__CLASS__, 'ajax_impact_plan'));
     }
 
@@ -50,6 +51,21 @@ class SSPA_Profile_Panel {
             wp_send_json_error($html->get_error_message());
         }
         wp_send_json_success(array('profile_id' => $profile_id, 'html' => $html));
+    }
+
+    /** Download one page measurement as a self-contained diagnostic JSON document. */
+    public static function ajax_export() {
+        self::guard();
+        $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
+        $payload = self::export_data($profile_id);
+        if (is_wp_error($payload)) {
+            wp_send_json_error($payload->get_error_message());
+        }
+        $page_key = sanitize_file_name($payload['profile']['page_key']);
+        wp_send_json_success(array(
+            'filename' => 'sspa-page-' . ($page_key ? $page_key : $profile_id) . '-' . gmdate('Ymd-His') . '.json',
+            'payload' => $payload,
+        ));
     }
 
     // ---------------- data ----------------
@@ -89,6 +105,76 @@ class SSPA_Profile_Panel {
         }
         $capture = json_decode((string) $json, true);
         return is_array($capture) ? $capture : null;
+    }
+
+    /**
+     * Everything needed to hand one measured page to a performance or cache-optimisation
+     * job. This is deliberately the LOCAL diagnostic capture, not the anonymised community
+     * payload: retained SQL and the exact URL are useful when fixing the site, and the
+     * document says plainly that they may contain private values before it is shared.
+     *
+     * @return array|WP_Error
+     */
+    public static function export_data($profile_id) {
+        global $wpdb;
+
+        $row = self::profile_row($profile_id);
+        if (!$row) {
+            return new WP_Error('sspa_no_profile', __('That page profile no longer exists.', 'super-speedy-performance-analysis'));
+        }
+        $capture = self::capture($row);
+        $run = SSPA_Run_Controller::run_row((int) $row['run_id']);
+
+        $profile = $row;
+        unset($profile['profile_blob']);
+        $samples = json_decode((string) $profile['samples'], true);
+        $profile['samples'] = is_array($samples) ? $samples : array();
+
+        $run_data = null;
+        if ($run) {
+            $plugin_set = json_decode((string) $run['plugin_set'], true);
+            $notes = json_decode((string) $run['notes'], true);
+            $share_context = json_decode((string) $run['share_context'], true);
+            $run_data = array(
+                'id' => (int) $run['id'],
+                'uuid' => (string) $run['run_uuid'],
+                'type' => (string) $run['run_type'],
+                'status' => (string) $run['status'],
+                'trigger' => (string) $run['trigger_source'],
+                'measurement_version' => (int) $run['measurement_version'],
+                'started' => $run['started'],
+                'finished' => $run['finished'],
+                'components' => is_array($plugin_set) && isset($plugin_set['components']) ? $plugin_set['components'] : array(),
+                'configuration' => is_array($share_context) ? $share_context : array(),
+                'notes' => is_array($notes) ? $notes : array(),
+            );
+        }
+
+        $findings = array_values(array_filter(SSPA_Report::findings((int) $row['run_id']), function ($finding) use ($row) {
+            return empty($finding['page_key']) || $finding['page_key'] === $row['page_key'];
+        }));
+        $impacts = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('', (string) $row['page_key']), ARRAY_A);
+
+        return array(
+            'schema' => 'sspa/page-diagnostic-export@1',
+            'generated_at' => gmdate('c'),
+            'generated_by' => array(
+                'plugin' => 'super-speedy-performance-analysis',
+                'version' => SSPA_VERSION,
+                'wordpress' => get_bloginfo('version'),
+                'php' => PHP_VERSION,
+                'site_url' => home_url('/'),
+            ),
+            'sensitivity' => array(
+                'classification' => 'private-site-diagnostic',
+                'warning' => __('This file contains the exact measured URL and may contain retained SQL literals, option names, callback names and outbound hosts. Review it before sharing outside a trusted performance or cache-optimisation job.', 'super-speedy-performance-analysis'),
+            ),
+            'run' => $run_data,
+            'profile' => $profile,
+            'capture' => $capture,
+            'findings' => $findings,
+            'measured_plugin_impacts' => $impacts,
+        );
     }
 
     /**
@@ -159,6 +245,9 @@ class SSPA_Profile_Panel {
             $html .= '<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun" data-url="' . esc_attr($row['url']) . '">'
                 . esc_html__('Re-run', 'super-speedy-performance-analysis') . '</button>';
         }
+        $html .= '<button type="button" class="sspa-adhoc-btn sspa-adhoc-export" data-profile-id="' . (int) $row['id'] . '" title="'
+            . esc_attr__('Downloads the exact local diagnostic capture. It may contain URLs and SQL literals.', 'super-speedy-performance-analysis') . '">'
+            . esc_html__('Export JSON', 'super-speedy-performance-analysis') . '</button>';
         $html .= '<span class="sspa-adhoc-badge ' . ($cached ? 'is-cached' : 'is-fresh') . '">'
             . esc_html($cached ? __('Stored result', 'super-speedy-performance-analysis') : __('Fresh result', 'super-speedy-performance-analysis'))
             . '</span>';

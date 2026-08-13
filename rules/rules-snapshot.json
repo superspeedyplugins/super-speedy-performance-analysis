@@ -112,7 +112,11 @@
     },
     "checkout_slow_step": {
       "title": "A checkout step is making your customer wait",
-      "body": "This step of the purchase took longer than it should on the server alone, before any browser work. Open the step to see which plugin dominated it, then decide whether that work has to happen while the customer is waiting or can be deferred to a background job. Time spent before the payment is taken is the expensive kind: the customer can still abandon during it."
+      "body": "This step of the purchase took longer than it should on the server alone, before any browser work. Expand the step to see which component dominated it, then decide whether that work has to happen while the customer is waiting or can be deferred to a background job. Time spent before the payment is taken is the expensive kind: the customer can still abandon during it."
+    },
+    "order_management_slow_step": {
+      "title": "An order-management step is slowing your staff down",
+      "body": "This wp-admin step took longer than it should on the server alone. It happens after the purchase, so it does not delay the customer or risk the sale, but your staff pays the cost on every order they handle. Expand the step to see the component, queries, outbound calls, mail and sampled functions responsible, then decide what can be cached, removed or deferred."
     },
     "checkout_component_cost": {
       "title": "One plugin owns a large share of your checkout",
@@ -129,6 +133,10 @@
     "checkout_dupe_queries": {
       "title": "A checkout step repeats the same query",
       "body": "Byte-identical queries ran several times inside one step, so the same rows were fetched more than once. That is normally a missing cache or a lookup inside a loop in the component named. On checkout it is worth fixing even when each query is fast, because it happens at the moment the customer is most likely to leave."
+    },
+    "order_management_dupe_queries": {
+      "title": "An order-management step repeats the same query",
+      "body": "Byte-identical queries ran several times while an administrator handled the order, so the same rows were fetched more than once. That is normally a missing cache or a lookup inside a loop in the component named. It does not delay checkout, but it adds avoidable staff time to every order handled."
     },
     "checkout_purge_order_pages": {
       "title": "Your cache plugin purges the order itself on every checkout",

@@ -89,6 +89,34 @@ sspa_panel_t(false !== strpos($sspa_html, 'Object cache hits'), 'panel shows the
 sspa_panel_t(false === strpos($sspa_html, 'Open in Performance Analysis'), 'no "open in Performance Analysis" link');
 // The control that starts a page-scoped sweep.
 sspa_panel_t(false !== strpos($sspa_html, 'sspa-adhoc-measure'), 'panel offers to measure plugin impact here');
+sspa_panel_t(
+    false !== strpos($sspa_html, 'sspa-adhoc-export') && false !== strpos($sspa_html, 'Export JSON'),
+    'panel offers the same JSON export from either entry point'
+);
+
+// The export is a diagnostic hand-off, not a second renderer: exact profile metrics and the
+// raw local capture in one versioned document, with no compressed database blob leaking into
+// the JSON shape and an explicit warning before somebody shares it outside the job.
+$sspa_export = SSPA_Profile_Panel::export_data($sspa_profile_id);
+sspa_panel_t(!is_wp_error($sspa_export), 'the page diagnostic export builds');
+if (!is_wp_error($sspa_export)) {
+    sspa_panel_t('sspa/page-diagnostic-export@1' === $sspa_export['schema'], 'the export schema is versioned');
+    sspa_panel_t(
+        $sspa_profile_id === (int) $sspa_export['profile']['id']
+        && !array_key_exists('profile_blob', $sspa_export['profile']),
+        'the export identifies the profile without embedding its compressed database blob'
+    );
+    sspa_panel_t(
+        is_array($sspa_export['capture']) && !empty($sspa_export['capture']['components']),
+        'the export carries the component, SQL, HTTP, cache and profiler diagnostic capture'
+    );
+    sspa_panel_t(
+        'private-site-diagnostic' === $sspa_export['sensitivity']['classification']
+        && false !== stripos($sspa_export['sensitivity']['warning'], 'SQL literals'),
+        'the export warns that retained SQL and URLs may be sensitive'
+    );
+    sspa_panel_t(false !== wp_json_encode($sspa_export), 'the complete export serialises as JSON');
+}
 
 // --- One renderer, both entry points ---
 // The admin bar resolves a URL to the newest profile of the page it addresses; the Pages tab

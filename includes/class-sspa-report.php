@@ -105,6 +105,12 @@ class SSPA_Report {
         $rows = SSPA_Insights::top($run_id, 1000);
         $out = array();
         foreach ($rows as $row) {
+            if (class_exists('SSPA_Checkout_Flow')) {
+                $row['recommendation_key'] = SSPA_Checkout_Flow::contextual_recommendation_key(
+                    $row['page_key'],
+                    $row['recommendation_key']
+                );
+            }
             $rendered = SSPA_Insights::render($row);
             $evidence = json_decode((string) $row['evidence'], true);
             $out[] = array(

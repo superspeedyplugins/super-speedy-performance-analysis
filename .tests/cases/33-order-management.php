@@ -103,6 +103,16 @@ if ('ok' === $sspa_outcome) {
     $sspa_wf = SSPA_Checkout_Flow::waterfall($sspa_run);
     sspa_om_t(!empty($sspa_wf['management']) && count($sspa_wf['management']) >= 2, 'the waterfall has a management bucket with both steps');
     sspa_om_t($sspa_wf['management_ms'] > 0, 'the management bucket has measured time (' . $sspa_wf['management_ms'] . 'ms)');
+    $sspa_detail_steps = array();
+    foreach ((array) $sspa_wf['management'] as $sspa_management_step) {
+        if (!empty($sspa_management_step['details']['components'])) {
+            $sspa_detail_steps[] = $sspa_management_step['page_key'];
+        }
+    }
+    sspa_om_t(
+        in_array('flow-view-order', $sspa_detail_steps, true) && in_array('flow-complete-order', $sspa_detail_steps, true),
+        'both order-management rows expose expandable per-step component diagnostics'
+    );
     // The panel labels the transition from these - they must be populated, not null (the flow
     // notes are nested under 'flow', an easy path to get wrong).
     sspa_om_t(
@@ -119,6 +129,29 @@ if ('ok' === $sspa_outcome) {
         !in_array('flow-view-order', array_map(function ($r) { return $r['page_key']; }, $sspa_wf['at_risk']), true)
         && in_array('flow-view-order', $sspa_mgmt_keys, true),
         'the order-view step is in management, never in the at-risk (customer) bucket'
+    );
+
+    // Findings on these rows must use staff/order-management language. The old generic
+    // checkout types told the owner their customer was waiting at "mark order completed".
+    $sspa_management_finding_types = $wpdb->get_col($wpdb->prepare(
+        'SELECT finding_type FROM ' . SSPA_Schema::table('findings') . "
+         WHERE run_id = %d AND page_key IN ('flow-view-order','flow-complete-order')",
+        $sspa_run
+    ));
+    sspa_om_t(
+        !array_intersect(array('checkout_slow_step', 'checkout_dupe_queries'), $sspa_management_finding_types),
+        'management rows never receive customer-checkout finding types'
+    );
+    $sspa_management_copy = SSPA_Rules::recommendation('order_management_slow_step');
+    sspa_om_t(
+        false !== stripos($sspa_management_copy['title'], 'order-management')
+        && false !== stripos($sspa_management_copy['body'], 'staff'),
+        'the slow management recommendation is explicitly about staff time'
+    );
+    sspa_om_t(
+        'order_management_slow_step' === SSPA_Checkout_Flow::contextual_recommendation_key('flow-complete-order', 'checkout_slow_step')
+        && 'checkout_slow_step' === SSPA_Checkout_Flow::contextual_recommendation_key('flow-place-order', 'checkout_slow_step'),
+        'old saved findings are corrected on read without changing real checkout findings'
     );
 
     // --- What the community receives: two records, from this real run ---

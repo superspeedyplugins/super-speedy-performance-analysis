@@ -102,6 +102,8 @@ class SSPA_Adhoc {
                 'close' => __('Close', 'super-speedy-performance-analysis'),
                 'copied' => __('Copied', 'super-speedy-performance-analysis'),
                 'loading' => __('Loading…', 'super-speedy-performance-analysis'),
+                'exporting' => __('Preparing export…', 'super-speedy-performance-analysis'),
+                'export_failed' => __('The page diagnostic could not be exported.', 'super-speedy-performance-analysis'),
                 // The plugin-impact picker. Built client-side from the plan endpoint so the
                 // estimate can update as boxes are ticked, rather than after a round trip.
                 // NOTHING is preselected: choosing which plugins get excluded from test

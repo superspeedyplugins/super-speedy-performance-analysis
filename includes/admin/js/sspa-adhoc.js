@@ -260,6 +260,40 @@
 		start($(this).data('url') || current.url || pageUrl());
 	});
 
+	// Export the exact stored one-page diagnostic already represented by this panel. The
+	// server builds the document so Pages-tab and admin-bar entry points download the same
+	// schema, then the browser saves it without creating a public file on the web server.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-export', function () {
+		var button = $(this);
+		var profileId = Number(button.data('profile-id')) || current.profileId;
+		var original = button.text();
+		button.prop('disabled', true).text(sspa_adhoc.i18n.exporting);
+		$.post(sspa_adhoc.ajaxurl, {
+			action: 'sspa_profile_export',
+			nonce: sspa_adhoc.nonce,
+			profile_id: profileId
+		}, function (resp) {
+			if (!resp.success || !resp.data || !resp.data.payload) {
+				button.prop('disabled', false).text(original);
+				window.alert(resp.data || sspa_adhoc.i18n.export_failed);
+				return;
+			}
+			var blob = new Blob([JSON.stringify(resp.data.payload, null, 2) + '\n'], { type: 'application/json' });
+			var url = window.URL.createObjectURL(blob);
+			var link = document.createElement('a');
+			link.href = url;
+			link.download = resp.data.filename || ('sspa-page-' + profileId + '.json');
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			window.URL.revokeObjectURL(url);
+			button.prop('disabled', false).text(original);
+		}).fail(function () {
+			button.prop('disabled', false).text(original);
+			window.alert(sspa_adhoc.i18n.export_failed);
+		});
+	});
+
 	// ---- interactions on the server-rendered panel ----
 
 	// Untimed-remainder rows with no phase-scoped profiler data: jump to the By-function

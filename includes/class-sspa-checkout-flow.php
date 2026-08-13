@@ -156,6 +156,10 @@ class SSPA_Checkout_Flow {
             'info'
         ), ARRAY_A);
         foreach ($waterfall['findings'] as &$finding) {
+            $finding['recommendation_key'] = self::contextual_recommendation_key(
+                $finding['page_key'],
+                $finding['recommendation_key']
+            );
             $finding['recommendation'] = SSPA_Rules::recommendation($finding['recommendation_key']);
             $finding['evidence'] = json_decode((string) $finding['evidence'], true);
         }
@@ -1518,6 +1522,106 @@ class SSPA_Checkout_Flow {
     }
 
     /**
+     * The bounded evidence shown when one waterfall row is expanded.
+     *
+     * The full capture stays stored locally. The panel needs enough to answer "what made
+     * this step slow?" without returning hundreds of queries for every row up front.
+     */
+    private static function step_details($capture) {
+        if (!is_array($capture)) {
+            return null;
+        }
+
+        $components = array();
+        foreach ((array) (isset($capture['components']) ? $capture['components'] : array()) as $name => $stats) {
+            $components[] = array(
+                'component' => (string) $name,
+                'queries' => isset($stats['query_count']) ? (int) $stats['query_count'] : 0,
+                'sql_ms' => isset($stats['sql_ms']) ? round((float) $stats['sql_ms'], 1) : 0.0,
+                'http_ms' => isset($stats['http_ms']) ? round((float) $stats['http_ms'], 1) : 0.0,
+                'rows' => isset($stats['rows']) ? (int) $stats['rows'] : 0,
+                'mail_count' => isset($stats['mail_count']) ? (int) $stats['mail_count'] : 0,
+            );
+        }
+        usort($components, function ($a, $b) {
+            return ($b['sql_ms'] + $b['http_ms']) <=> ($a['sql_ms'] + $a['http_ms']);
+        });
+
+        $queries = (array) (isset($capture['sql']['queries']) ? $capture['sql']['queries'] : array());
+        usort($queries, function ($a, $b) {
+            return (float) $b['ms'] <=> (float) $a['ms'];
+        });
+        $query_rows = array();
+        foreach (array_slice($queries, 0, 10) as $query) {
+            $query_rows[] = array(
+                'sql' => null !== $query['sql'] ? (string) $query['sql'] : (string) $query['fp'],
+                'fingerprint_only' => null === $query['sql'],
+                'component' => (string) $query['component'],
+                'caller' => !empty($query['caller']) ? (string) $query['caller'] : null,
+                'ms' => round((float) $query['ms'], 1),
+                'rows' => isset($query['rows']) ? (int) $query['rows'] : null,
+                'error' => !empty($query['err']) ? (string) $query['err'] : null,
+            );
+        }
+
+        $duplicates = array();
+        foreach (array_slice((array) (isset($capture['sql']['dupe_details']) ? $capture['sql']['dupe_details'] : array()), 0, 10) as $dupe) {
+            $duplicates[] = array(
+                'component' => (string) $dupe['component'],
+                'count' => (int) $dupe['count'],
+                'ms' => round((float) $dupe['ms'], 1),
+                'sql' => (string) $dupe['sql'],
+            );
+        }
+
+        $http = (array) (isset($capture['http']['calls']) ? $capture['http']['calls'] : array());
+        usort($http, function ($a, $b) {
+            return (float) $b['ms'] <=> (float) $a['ms'];
+        });
+        $http_rows = array();
+        foreach (array_slice($http, 0, 10) as $call) {
+            $http_rows[] = array(
+                'method' => !empty($call['method']) ? (string) $call['method'] : 'GET',
+                'url' => (string) $call['url'] . (!empty($call['q']) ? '?' . $call['q'] . '=…' : ''),
+                'component' => (string) $call['component'],
+                'caller' => !empty($call['trace']) ? (string) $call['trace'] : (!empty($call['caller']) ? (string) $call['caller'] : null),
+                'ms' => null !== $call['ms'] ? round((float) $call['ms'], 1) : null,
+                'blocking' => !empty($call['blocking']),
+                'code' => isset($call['code']) ? $call['code'] : null,
+            );
+        }
+
+        $functions = (array) (isset($capture['profile']['functions']) ? $capture['profile']['functions'] : array());
+        usort($functions, function ($a, $b) {
+            return (float) $b['self_ms'] <=> (float) $a['self_ms'];
+        });
+        $function_rows = array();
+        foreach (array_slice($functions, 0, 10) as $function) {
+            $function_rows[] = array(
+                'function' => (string) $function['fn'],
+                'component' => (string) $function['component'],
+                'self_ms' => round((float) $function['self_ms'], 1),
+                'inclusive_ms' => round((float) $function['incl_ms'], 1),
+            );
+        }
+
+        return array(
+            'components' => array_slice($components, 0, 15),
+            'queries' => $query_rows,
+            'duplicates' => $duplicates,
+            'http' => $http_rows,
+            'mail' => array(
+                'count' => isset($capture['mail']['count']) ? (int) $capture['mail']['count'] : 0,
+                'ms' => isset($capture['mail']['total_construct_ms']) ? round((float) $capture['mail']['total_construct_ms'], 1) : 0.0,
+                'mode' => isset($capture['mail']['mode']) ? (string) $capture['mail']['mode'] : null,
+                'by_component' => isset($capture['mail']['by_component']) ? (array) $capture['mail']['by_component'] : array(),
+            ),
+            'functions' => $function_rows,
+            'sampling_available' => !empty($capture['profile']),
+        );
+    }
+
+    /**
      * The result panel's data: the waterfall, split at the payment boundary (doc A6.4).
      * Slowness BEFORE the money is captured risks the sale; slowness after it is a bad
      * impression but the money is in. A single total hides that distinction.
@@ -1589,6 +1693,7 @@ class SSPA_Checkout_Flow {
                 'http_ms' => (null !== $row['http_ms']) ? round((float) $row['http_ms'], 1) : null,
                 'code' => (int) $row['response_code'],
                 'blocked_by' => $row['blocked_by'],
+                'details' => self::step_details($capture),
             );
 
             // Nobody waits for the cleanup, so it sits below the total and is excluded
@@ -1703,5 +1808,17 @@ class SSPA_Checkout_Flow {
             'flow-delete-order' => __('delete order (admin cleanup)', 'super-speedy-performance-analysis'),
         );
         return isset($labels[$page_key]) ? $labels[$page_key] : $page_key;
+    }
+
+    /** Correct old saved management findings when they are read after an upgrade. */
+    public static function contextual_recommendation_key($page_key, $key) {
+        if (!in_array($page_key, array('flow-view-order', 'flow-complete-order'), true)) {
+            return $key;
+        }
+        $map = array(
+            'checkout_slow_step' => 'order_management_slow_step',
+            'checkout_dupe_queries' => 'order_management_dupe_queries',
+        );
+        return isset($map[$key]) ? $map[$key] : $key;
     }
 }

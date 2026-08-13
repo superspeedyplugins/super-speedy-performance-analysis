@@ -166,16 +166,99 @@
 	// `slowest` is matched on the row's own label, not its page key: the place-order step
 	// contributes two rows (before and after the payment boundary) that share a key, and
 	// tagging both of them as the slowest step would be wrong on the face of it.
-	function rows(list, max, slowest) {
+	function detailTable(title, headings, body) {
+		if (!body) {
+			return '';
+		}
+		return '<h5>' + esc(title) + '</h5><table class="sspa-adhoc-table sspa-ck-detail-table">' +
+			'<tr class="sspa-adhoc-hrow">' + headings.map(function (heading) {
+				return '<td>' + esc(heading) + '</td>';
+			}).join('') + '</tr>' + body + '</table>';
+	}
+
+	function stepDetails(row) {
+		var d = row.details;
+		if (!d) {
+			return '<p class="sspa-adhoc-note">No detailed capture is stored for this step.</p>';
+		}
 		var html = '';
-		list.forEach(function (row) {
+		if ('flow-place-order' === row.page_key) {
+			html += '<p class="sspa-adhoc-note">The payment boundary splits the elapsed time, but SQL, HTTP, mail and component attribution belong to the complete place-order request and cannot be divided honestly between its two halves.</p>';
+		}
+
+		var componentRows = (d.components || []).map(function (component, index) {
+			return '<tr><td><code>' + esc(component.component) + '</code>' +
+				(0 === index ? ' <span class="sspa-ck-tag">dominant measured component</span>' : '') +
+				'</td><td>' + esc(component.queries) + '</td><td>' + ms(component.sql_ms) +
+				'</td><td>' + ms(component.http_ms) + '</td><td>' + esc(component.rows) + '</td></tr>';
+		}).join('');
+		html += detailTable('Component attribution', ['Component', 'Queries', 'SQL', 'HTTP', 'Rows'], componentRows);
+
+		var duplicateRows = (d.duplicates || []).map(function (query) {
+			return '<tr><td><code>' + esc(query.component) + '</code><br><small><code>' + esc(query.sql) +
+				'</code></small></td><td>' + esc(query.count) + ' times</td><td>' + ms(query.ms) + '</td></tr>';
+		}).join('');
+		html += detailTable('Repeated queries', ['Component and query', 'Executions', 'Total'], duplicateRows);
+
+		var queryRows = (d.queries || []).map(function (query) {
+			var meta = query.component + (query.caller ? ' · ' + query.caller : '') +
+				(null === query.rows ? '' : ' · ' + query.rows + ' rows') +
+				(query.fingerprint_only ? ' · normalised fingerprint' : '') +
+				(query.error ? ' · ERROR: ' + query.error : '');
+			return '<tr><td><code>' + esc(query.sql) + '</code><br><small>' + esc(meta) +
+				'</small></td><td>' + ms(query.ms) + '</td></tr>';
+		}).join('');
+		html += detailTable('Slowest queries', ['Query', 'Time'], queryRows);
+
+		var httpRows = (d.http || []).map(function (call) {
+			var meta = call.component + (call.caller ? ' · ' + call.caller : '') +
+				(call.blocking ? ' · blocking' : ' · non-blocking') +
+				(call.code ? ' · ' + call.code : '');
+			return '<tr><td><code>' + esc(call.method + ' ' + call.url) + '</code><br><small>' +
+				esc(meta) + '</small></td><td>' + ms(call.ms) + '</td></tr>';
+		}).join('');
+		html += detailTable('Outbound HTTP calls', ['Call', 'Time'], httpRows);
+
+		if (d.mail && d.mail.count) {
+			var senders = Object.keys(d.mail.by_component || {}).map(function (component) {
+				return component + ' (' + d.mail.by_component[component] + ')';
+			}).join(', ');
+			html += '<p class="sspa-adhoc-note"><strong>Mail:</strong> ' + esc(d.mail.count) +
+				' message' + (1 === d.mail.count ? '' : 's') + ' constructed in ' + ms(d.mail.ms) +
+				(senders ? ' by ' + esc(senders) : '') +
+				(d.mail.mode ? ' · mode: ' + esc(d.mail.mode) : '') + '.</p>';
+		}
+
+		var functionRows = (d.functions || []).map(function (fn) {
+			return '<tr><td><code>' + esc(fn.function) + '</code><br><small><code>' + esc(fn.component) +
+				'</code></small></td><td>' + ms(fn.self_ms) + '</td><td>' + ms(fn.inclusive_ms) + '</td></tr>';
+		}).join('');
+		html += detailTable('Sampled functions', ['Function', 'Self', 'Inclusive'], functionRows);
+		if (!d.sampling_available) {
+			html += '<p class="sspa-adhoc-note">No function-level sampling is available for this step because the Excimer extension is not installed. SQL, HTTP, mail and component attribution above are still measured.</p>';
+		}
+		return html || '<p class="sspa-adhoc-note">This step recorded no attributable SQL, HTTP, mail or sampled function work.</p>';
+	}
+
+	function rows(list, max, slowest, prefix) {
+		var html = '';
+		list.forEach(function (row, index) {
 			var isSlowest = row.label === slowest;
+			var detailId = 'sspa-ck-detail-' + prefix + '-' + index;
+			var toggle = row.details
+				? '<button type="button" class="sspa-ck-step-toggle" aria-expanded="false" aria-controls="' + detailId + '">' +
+					'<span class="sspa-adhoc-caret">&#9656;</span><span>' + esc(row.label) + '</span></button>'
+				: esc(row.label);
 			html += '<tr' + (isSlowest ? ' class="is-slowest"' : '') + '>' +
-				'<td>' + esc(row.label) + (isSlowest ? ' <span class="sspa-ck-tag">slowest step</span>' : '') + '</td>' +
+				'<td>' + toggle + (isSlowest ? ' <span class="sspa-ck-tag">slowest step</span>' : '') + '</td>' +
 				'<td class="sspa-ck-num">' + ms(row.gen_ms) + '</td>' +
 				'<td class="sspa-ck-barcell">' + bar(row.gen_ms, max) + '</td>' +
 				'<td class="sspa-ck-num">' + (row.sql_count == null ? '&mdash;' : esc(row.sql_count) + ' q') + '</td>' +
 				'</tr>';
+			if (row.details) {
+				html += '<tr id="' + detailId + '" class="sspa-ck-step-detail" style="display:none"><td colspan="4"><div>' +
+					stepDetails(row) + '</div></td></tr>';
+			}
 		});
 		return html;
 	}
@@ -199,13 +282,13 @@
 		}
 
 		html += '<div class="sspa-adhoc-span"><h3 class="sspa-ck-h sspa-ck-atrisk">At risk &mdash; your customer can still walk away during this</h3>' +
-			'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.at_risk, max, d.slowest) +
+			'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.at_risk, max, d.slowest, 'risk') +
 			'<tr class="sspa-ck-total"><td>At-risk total</td><td class="sspa-ck-num">' + ms(d.at_risk_ms) +
 			'</td><td colspan="2" class="sspa-ck-wide">every second here can cost you the sale</td></tr></table>';
 
 		if (d.secured.length) {
 			html += '<h3 class="sspa-ck-h sspa-ck-secured">Secured &mdash; the money is taken, they are waiting on a confirmation</h3>' +
-				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.secured, max, d.slowest) +
+				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.secured, max, d.slowest, 'secured') +
 				'<tr class="sspa-ck-total"><td>Post-capture</td><td class="sspa-ck-num">' + ms(d.secured_ms) +
 				'</td><td colspan="2" class="sspa-ck-wide">a bad impression, not a lost sale</td></tr></table>';
 		} else if ('failed' === d.status) {
@@ -225,7 +308,7 @@
 				? ' (' + esc(d.complete_from_status) + ' &rarr; ' + esc(d.complete_to_status) + ')'
 				: '';
 			html += '<h3 class="sspa-ck-h">Order management &mdash; what YOU wait through handling the order' + transition + '</h3>' +
-				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(management, max, d.slowest) +
+				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(management, max, d.slowest, 'management') +
 				'<tr class="sspa-ck-total"><td>Order-management total</td><td class="sspa-ck-num">' + ms(d.management_ms) +
 				'</td><td colspan="2" class="sspa-ck-wide">your staff time per order, not the customer\'s</td></tr></table>';
 		}
@@ -264,11 +347,11 @@
 			} else {
 				mailLine += ' in ' + ms(d.mail.ms);
 			}
-			mailLine += deferred ? '. Deferred to the background.' : '. Sent inside the customer\'s wait.';
+			mailLine += deferred ? '. Deferred to the background.' : '. Handled synchronously inside the measured flow; expand a step to see where.';
 			html += '<p class="sspa-adhoc-note">' + mailLine + '</p>';
 		}
 		if ((d.http || []).length) {
-			html += '<h4 class="sspa-ck-h4">Outbound calls during the purchase</h4><table class="sspa-adhoc-table sspa-ck-table">';
+			html += '<h4 class="sspa-ck-h4">Outbound calls across the measured flow</h4><table class="sspa-adhoc-table sspa-ck-table">';
 			d.http.forEach(function (c) {
 				// The query keys matter: "GET /?p=…" is an order-permalink purge, and
 				// without them it displays as a fetch of the bare homepage.
@@ -284,7 +367,7 @@
 		}
 
 		if (d.profile && d.profile.components && d.profile.components.length) {
-			html += '<h4 class="sspa-ck-h4">Where the PHP time went across the whole purchase</h4><table class="sspa-adhoc-table sspa-ck-table">';
+			html += '<h4 class="sspa-ck-h4">Where the PHP time went across the whole measured flow</h4><table class="sspa-adhoc-table sspa-ck-table">';
 			d.profile.components.slice(0, 10).forEach(function (c) {
 				html += '<tr><td><code>' + esc(c.component) + '</code></td><td class="sspa-ck-num">' + ms(c.ms) + '</td></tr>';
 			});
@@ -322,6 +405,14 @@
 		html += '</div>';
 		body(html);
 	}
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-ck-step-toggle', function () {
+		var button = $(this);
+		var detail = $('#' + button.attr('aria-controls'));
+		var opening = 'true' !== button.attr('aria-expanded');
+		button.attr('aria-expanded', opening ? 'true' : 'false').toggleClass('is-open', opening);
+		detail.toggle(opening);
+	});
 
 	// ---------------- driving a run ----------------
 

@@ -225,9 +225,16 @@ class SSPA_Analysis_Engine {
     private function checkout_total_ms() {
         $total = 0.0;
         foreach ($this->profiles as $p) {
+            if ($this->is_order_management_step($p['page_key'])) {
+                continue;
+            }
             $total += (float) $p['page_gen_ms'];
         }
         return $total;
+    }
+
+    private function is_order_management_step($page_key) {
+        return in_array($page_key, array('flow-view-order', 'flow-complete-order'), true);
     }
 
     /** The component that spent most SQL+HTTP time in one step, so a finding can name it. */
@@ -258,10 +265,11 @@ class SSPA_Analysis_Engine {
             if (null === $p['page_gen_ms'] || (float) $p['page_gen_ms'] < $threshold) {
                 continue;
             }
+            $management = $this->is_order_management_step($p['page_key']);
             $dominant = $this->checkout_dominant_component((int) $p['id']);
             $this->add(
                 (float) $p['page_gen_ms'] >= $threshold * 2 ? 'critical' : 'warn',
-                'checkout_slow_step',
+                $management ? 'order_management_slow_step' : 'checkout_slow_step',
                 $dominant ? $dominant['component'] : null,
                 $p['page_key'],
                 array(
@@ -272,7 +280,7 @@ class SSPA_Analysis_Engine {
                     'http_ms' => (null !== $p['http_ms']) ? round((float) $p['http_ms'], 1) : null,
                     'dominant_ms' => $dominant ? $dominant['ms'] : null,
                 ),
-                'checkout_slow_step',
+                $management ? 'order_management_slow_step' : 'checkout_slow_step',
                 'measured'
             );
         }
@@ -290,6 +298,9 @@ class SSPA_Analysis_Engine {
 
         $by_component = array();
         foreach ($this->profiles as $p) {
+            if ($this->is_order_management_step($p['page_key'])) {
+                continue;
+            }
             $capture = isset($this->captures[(int) $p['id']]) ? $this->captures[(int) $p['id']] : null;
             if (!$capture || empty($capture['components'])) {
                 continue;
@@ -410,6 +421,9 @@ class SSPA_Analysis_Engine {
         $ms = 0.0;
         $steps = array();
         foreach ($this->profiles as $p) {
+            if ($this->is_order_management_step($p['page_key'])) {
+                continue;
+            }
             if (!$p['mail_count']) {
                 continue;
             }
@@ -460,9 +474,10 @@ class SSPA_Analysis_Engine {
                 }
             }
             foreach ($by_component as $component => $agg) {
+                $management = $this->is_order_management_step($p['page_key']);
                 $this->add(
                     'warn',
-                    'checkout_dupe_queries',
+                    $management ? 'order_management_dupe_queries' : 'checkout_dupe_queries',
                     $component,
                     $p['page_key'],
                     array(
@@ -474,7 +489,7 @@ class SSPA_Analysis_Engine {
                         'count' => (int) $agg['worst']['count'],
                         'sql' => $agg['worst']['sql'],
                     ),
-                    'checkout_dupe_queries',
+                    $management ? 'order_management_dupe_queries' : 'checkout_dupe_queries',
                     'measured'
                 );
             }
