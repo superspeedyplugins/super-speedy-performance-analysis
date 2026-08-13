@@ -50,6 +50,45 @@ class SSPA_Archive_Profile {
      */
     private static $probe_page_keys = array('baseline', 'mail-probe');
 
+    /**
+     * Page keys that can hold a front-end archive - a listing filtered by taxonomy or post type,
+     * which is the only thing the mirror table optimises.
+     *
+     * Everything absent from this list is absent on purpose. A 404, a cart, a checkout, a single
+     * post, a post editor: none of them can contain the kind of query this profile exists to
+     * describe, so failing to profile one says nothing whatever about a site's archives. Search
+     * is excluded too - it is already reported as unsupported for archive optimisation.
+     *
+     * Custom post type and custom taxonomy archives are matched by prefix, since their keys carry
+     * the site's own slugs (`cpt-<type>-archive`, `tax-<taxonomy>`).
+     */
+    private static $archive_page_keys = array(
+        'blog', 'post-cat', 'post-tag', 'shop', 'product-cat',
+        'admin-products', 'admin-orders', 'admin-posts',
+    );
+
+    /**
+     * Could this page have held an archive? See $archive_page_keys.
+     */
+    private static function is_archive_page($page_key) {
+        $key = strtolower((string) $page_key);
+        if (in_array($key, self::$archive_page_keys, true)) {
+            return true;
+        }
+        return (0 === strpos($key, 'tax-'))
+            || (0 === strpos($key, 'cpt-') && false !== strpos($key, '-archive'));
+    }
+
+    /**
+     * A page key reduced to something safe to report. The raw key can carry a bespoke post type
+     * or taxonomy slug, which is the site's own vocabulary and often a client's name.
+     */
+    private static function page_class_for($page_key) {
+        return class_exists('SSPA_Community_Privacy')
+            ? SSPA_Community_Privacy::page_class($page_key)
+            : 'other';
+    }
+
     public static function build($run_id) {
         global $wpdb;
 
@@ -82,6 +121,8 @@ class SSPA_Archive_Profile {
         $pages_seen = 0;
         $complete = true;
         $predates = 0;
+        $incomplete = array();
+        $archive_evidence_complete = true;
 
         foreach ($profiles as $profile) {
             if (self::is_probe($profile['page_key'])) {
@@ -111,6 +152,17 @@ class SSPA_Archive_Profile {
                 && (int) $profile['response_code'] < 500;
             if (!$usable) {
                 $complete = false;
+                // WHICH page was missed decides whether it matters. `complete` answers "did every
+                // page in the catalogue succeed", which is a fair thing to report and the wrong
+                // thing to gate archive configuration on: a security plugin blocking the 404 page
+                // made Super Speedy Archives refuse to configure itself from a run in which every
+                // archive it needed was profiled perfectly. A 404, a cart, a post editor - none of
+                // them can hold a front-end archive, so their absence proves nothing about
+                // archives either way.
+                $incomplete[] = self::page_class_for($profile['page_key']);
+                if (self::is_archive_page($profile['page_key'])) {
+                    $archive_evidence_complete = false;
+                }
                 continue;
             }
 
@@ -120,13 +172,21 @@ class SSPA_Archive_Profile {
             if (!array_key_exists('archives', $capture) || null === $capture['archives']) {
                 $predates++;
                 $complete = false;
+                $incomplete[] = self::page_class_for($profile['page_key']);
+                if (self::is_archive_page($profile['page_key'])) {
+                    $archive_evidence_complete = false;
+                }
                 continue;
             }
 
             $pages_seen++;
             $section = $capture['archives'];
             if (!empty($section['truncated'])) {
+                // Truncated means this page's own archive list was cut short, so it IS an archive
+                // gap whatever the page is.
                 $complete = false;
+                $incomplete[] = self::page_class_for($profile['page_key']);
+                $archive_evidence_complete = false;
             }
 
             $sql_queries = (isset($capture['sql']['queries']) && is_array($capture['sql']['queries']))
@@ -173,6 +233,12 @@ class SSPA_Archive_Profile {
             'run_id' => $run_id,
             'schema' => self::SCHEMA,
             'complete' => $complete,
+            // Whether the pages that could actually HOLD an archive were all profiled. This is
+            // what a consumer configuring archive optimisation should gate on; `complete` answers
+            // the broader "did every page in the catalogue succeed", which a blocked 404 or a
+            // flaky post editor can falsify without saying anything about archives.
+            'archive_evidence_complete' => $archive_evidence_complete,
+            'incomplete_pages' => array_values(array_unique($incomplete)),
             'pages_seen' => $pages_seen,
             'predates_contract' => $predates,
             'archives' => $archives,

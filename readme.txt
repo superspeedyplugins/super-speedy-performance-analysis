@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.21.1
+Stable tag: 0.21.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,10 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.21.2 (13th August 2026) =
+* An archive page that could not be profiled no longer stops Super Speedy Archives configuring itself when the pages it needed were measured. A blocked 404 page used to be enough to refuse the whole run.
+* When archive pages genuinely were missed, the reason now names them and suggests checking whether a security plugin is blocking them.
 
 = 0.21.1 (13th August 2026) =
 * An analysis now starts even when collecting another plugin's published settings fails, instead of the analysis failing with it. The reason is recorded and shown on the Share tab.
