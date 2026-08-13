@@ -83,7 +83,7 @@ class SSPA_Adhoc {
             return;
         }
         wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
-        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
+        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery', 'sspa-transport'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
         // The CURRENT white wordmark (text only, per Dave - no icon), bundled with the
         // plugin - the settings submodule's copy is an older mark and submodules are
         // absent from some zips anyway. Source of truth:

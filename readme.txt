@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.21.2
+Stable tag: 0.22
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.22 (13th August 2026) =
+* Added browser-driven profiling when Basic Auth, a WAF, CDN or other security layer blocks the server from fetching its own pages
+* Checkout-flow requests now use Cloudflare Turnstile's documented programmatic bypass, limited to SSPA's signed synthetic checkout, so human verification no longer prevents the test order being created
+* Failed checkout reports no longer show a fictitious `Post-capture: 0 ms` section or imply that unmanaged stock prevented order creation
 
 = 0.21.2 (13th August 2026) =
 * An archive page that could not be profiled no longer stops Super Speedy Archives configuring itself when the pages it needed were measured. A blocked 404 page used to be enough to refuse the whole run.

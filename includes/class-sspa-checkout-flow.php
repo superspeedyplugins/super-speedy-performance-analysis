@@ -177,6 +177,13 @@ class SSPA_Checkout_Flow {
             return;
         }
 
+        // A synthetic loopback cannot solve an interactive CAPTCHA. Simple Cloudflare
+        // Turnstile provides this filter specifically for trusted programmatic requests:
+        // skip its widget and validation for this one HMAC-signed, URL-bound, single-use
+        // flow request. The plugin remains active for every real checkout, and every other
+        // integration remains hooked so the measurement still represents the store.
+        add_filter('cfturnstile_widget_disable', '__return_true', PHP_INT_MAX);
+
         // One purchase per run sits inside Woo's 3-per-60s checkout rate limit, but a CLI
         // --repeats run does not, and a rate-limited step would be recorded as a failure
         // rather than a measurement. Signed single-use loopback requests only.
@@ -539,6 +546,9 @@ class SSPA_Checkout_Flow {
             'stock_before' => $product->managing_stock() ? $product->get_stock_quantity() : null,
             'stock_after' => null,
             'stock_restored_manually' => false,
+            // Report the exception rather than pretending the synthetic request solved an
+            // interactive challenge. The filter is supplied by Simple Cloudflare Turnstile.
+            'human_verification_bypassed' => function_exists('cfturnstile_field_show'),
         );
 
         $crawler = new SSPA_Crawler();

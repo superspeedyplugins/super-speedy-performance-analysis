@@ -77,6 +77,16 @@ class SSPA_Run_Controller {
 
         $type = !empty($args['type']) ? $args['type'] : 'baseline';
 
+        // Which transport fetches the pages. Loopback when the site can reach itself
+        // (unchanged, works headless); the admin's browser when loopbacks are provably
+        // blocked and a browser is driving; a hard, MECHANISM-NAMING error otherwise.
+        // Decided once, here - an in-flight run never switches transport.
+        $transport = self::decide_transport($type);
+        if (is_wp_error($transport)) {
+            SSPA_Helper_Files::restore_held_dropin();
+            return $transport;
+        }
+
         if ('deep' === $type) {
             $jobs = self::build_sweep_jobs($args, $sweep);
             if (is_wp_error($jobs)) {
@@ -210,6 +220,7 @@ class SSPA_Run_Controller {
             'user_id' => $user_id,
             'started_at' => time(),
             'last_progress' => time(),
+            'transport' => $transport,
         );
         if ('cache_impact' === $type) {
             $queue['oc_mode'] = $oc_mode;
@@ -996,6 +1007,117 @@ class SSPA_Run_Controller {
     }
 
     /**
+     * Can this server fetch its own pages? One loopback GET of the home page with a
+     * freshly minted baseline token: the mu-loader's baseline path answers before
+     * single-use marking and writes nothing, so the probe is cheap and side-effect
+     * free. Healthy means HTTP 200 AND the canary echoed - a 200 without the canary
+     * is a cache, a WAF interstitial or a different vhost answering, all of which
+     * previously produced a full sheet of blind rows.
+     *
+     * @return array {healthy:bool, reason:string}
+     */
+    public static function loopback_preflight() {
+        $url = home_url('/');
+        $url .= (strpos($url, '?') === false ? '?' : '&') . 'sspa_nc=' . bin2hex(random_bytes(6));
+        $token = SSPA_Token::mint($url, array('bl' => '1', 'v' => 'anon'));
+        $response = wp_remote_get($url, array(
+            'timeout' => 15,
+            'redirection' => 0,
+            'sslverify' => false,
+            'headers' => array('Cache-Control' => 'no-cache', SSPA_Token::HEADER => $token['header']),
+        ));
+
+        if (is_wp_error($response)) {
+            return array('healthy' => false, 'reason' => sprintf(
+                /* translators: %s: transport error */
+                __('the request failed before reaching the site (%s)', 'super-speedy-performance-analysis'),
+                $response->get_error_message()
+            ));
+        }
+        $code = (int) wp_remote_retrieve_response_code($response);
+        $canary = wp_remote_retrieve_header($response, 'x-sspa-profiled');
+        if (200 === $code && $canary === $token['id']) {
+            return array('healthy' => true, 'reason' => '');
+        }
+        if (401 === $code) {
+            return array('healthy' => false, 'reason' => __('the site is behind HTTP authentication (401) at the server level', 'super-speedy-performance-analysis'));
+        }
+        if (403 === $code) {
+            return array('healthy' => false, 'reason' => __('a firewall or security layer refused the request (403)', 'super-speedy-performance-analysis'));
+        }
+        if (429 === $code || 503 === $code) {
+            /* translators: %d: HTTP status */
+            return array('healthy' => false, 'reason' => sprintf(__('the host is rate limiting the site\'s own requests (HTTP %d)', 'super-speedy-performance-analysis'), $code));
+        }
+        if ($code >= 300 && $code < 400) {
+            $location = (string) wp_remote_retrieve_header($response, 'location');
+            /* translators: 1: HTTP status, 2: redirect target */
+            return array('healthy' => false, 'reason' => sprintf(__('a server-level redirect (HTTP %1$d to %2$s) intercepts the request', 'super-speedy-performance-analysis'), $code, $location ? $location : __('an unknown target', 'super-speedy-performance-analysis')));
+        }
+        if (200 === $code) {
+            return array('healthy' => false, 'reason' => __('the response came back HTTP 200 but WordPress never ran (no profiler canary) - a page cache, CDN or firewall answered instead of PHP', 'super-speedy-performance-analysis'));
+        }
+        /* translators: %d: HTTP status */
+        return array('healthy' => false, 'reason' => sprintf(__('the home page returned HTTP %d', 'super-speedy-performance-analysis'), $code));
+    }
+
+    /**
+     * @param string $type Run type.
+     * @return string|WP_Error 'loopback' | 'browser', or the reason nothing can run.
+     */
+    private static function decide_transport($type) {
+        $probe = self::loopback_preflight();
+
+        // Testing/override hook. '' means decide normally.
+        $forced = apply_filters('sspa_transport', '', $type, $probe);
+        if (in_array($forced, array('loopback', 'browser'), true)) {
+            return $forced;
+        }
+
+        if ($probe['healthy']) {
+            return 'loopback';
+        }
+
+        // The checkout flow needs an isolated guest cookie jar (impossible from a
+        // browser - Cookie is a forbidden fetch header) and the sweep types hold
+        // site-wide cache state between requests; both stay loopback-only for now.
+        $eligible = !in_array($type, array('deep', 'cache_impact', 'checkout'), true);
+        if ($eligible && wp_doing_ajax() && get_current_user_id()) {
+            return 'browser';
+        }
+
+        return new WP_Error('sspa_loopback_blocked', sprintf(
+            $eligible
+                /* translators: %s: preflight failure reason */
+                ? __('This site cannot fetch its own pages: %s. Start the analysis from the Performance Analysis screen (or the Scalability Pro popover) - your browser will make the page requests itself.', 'super-speedy-performance-analysis')
+                /* translators: %s: preflight failure reason */
+                : __('This site cannot fetch its own pages: %s. This analysis type needs working loopback requests - fix the block, then run it again.', 'super-speedy-performance-analysis'),
+            $probe['reason']
+        ));
+    }
+
+    /**
+     * The end-of-queue switch, shared by process_batch() (loopback transport) and
+     * SSPA_Browser_Transport (which exhausts the same queue one request at a time).
+     */
+    public static function complete_run($run_id, $run_type) {
+        if ('cache_impact' === $run_type) {
+            self::finish_cache($run_id);
+        } elseif ('checkout' === $run_type) {
+            self::finish_checkout($run_id);
+        } elseif ('deep' === $run_type) {
+            // Phase boundary: impacted plugins graduate to the full treatment.
+            if (self::sweep_extend_phase2($run_id)) {
+                wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
+            } else {
+                self::finish_sweep($run_id);
+            }
+        } else {
+            self::finish($run_id);
+        }
+    }
+
+    /**
      * Time-boxed batch. Safe to call concurrently (lock) and repeatedly (idempotent).
      */
     public static function process_batch($run_id) {
@@ -1017,6 +1139,14 @@ class SSPA_Run_Controller {
             $queue = get_option('sspa_queue_' . $run_id);
             if (!is_array($queue)) {
                 self::fail($run_id, 'queue missing');
+                return;
+            }
+
+            // Browser-transport runs are driven one request at a time by the admin's
+            // browser (SSPA_Browser_Transport); this server-side pump - including the
+            // belt-and-braces cron event that also lands here - must not loopback-crawl
+            // a queue whose whole point is that loopbacks are blocked.
+            if (!empty($queue['transport']) && 'browser' === $queue['transport']) {
                 return;
             }
 
@@ -1080,20 +1210,7 @@ class SSPA_Run_Controller {
             }
 
             if ($queue['idx'] >= count($queue['jobs'])) {
-                if ('cache_impact' === $run['run_type']) {
-                    self::finish_cache($run_id);
-                } elseif ('checkout' === $run['run_type']) {
-                    self::finish_checkout($run_id);
-                } elseif ('deep' === $run['run_type']) {
-                    // Phase boundary: impacted plugins graduate to the full treatment.
-                    if (self::sweep_extend_phase2($run_id)) {
-                        wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
-                    } else {
-                        self::finish_sweep($run_id);
-                    }
-                } else {
-                    self::finish($run_id);
-                }
+                self::complete_run($run_id, $run['run_type']);
             } else {
                 wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
             }
@@ -1559,6 +1676,11 @@ class SSPA_Run_Controller {
                 delete_option('sspa_isolation_' . $hash);
             }
         }
+        // A browser-transport run cancelled mid write-probe leaves its temp duplicate
+        // behind (the loopback pump deletes temps in its own finally block).
+        if (is_array($queue) && !empty($queue['bt']['temp_id'])) {
+            SSPA_Probes::delete_temp((int) $queue['bt']['temp_id'], !empty($queue['bt']['temp_is_order']));
+        }
         delete_option('sspa_queue_' . $run_id);
         delete_option('sspa_deep_' . $run_id); // legacy pre-0.8 deep plans
     }
@@ -1643,6 +1765,9 @@ class SSPA_Run_Controller {
             'phase' => (is_array($queue) && isset($queue['sweep']['phase'])) ? (int) $queue['sweep']['phase'] : null,
             'elapsed_seconds' => $elapsed,
             'eta_seconds' => $eta,
+            // Who fetches the pages: 'loopback' (server, the default) or 'browser'
+            // (the admin's browser drives, via SSPA_Browser_Transport).
+            'transport' => (is_array($queue) && !empty($queue['transport'])) ? $queue['transport'] : 'loopback',
         );
     }
 

@@ -126,6 +126,10 @@
 			html += '<li class="sspa-ck-warn">Another plugin already filters WooCommerce\'s "needs payment" checks. ' +
 				'This run uses those same filters to skip the gateway, so the two may interact.</li>';
 		}
+		if (inv.human_verification_bypassed) {
+			html += '<li><strong>Cloudflare Turnstile stays active for real customers.</strong> ' +
+				'This signed synthetic checkout cannot solve an interactive challenge, so Turnstile\'s documented programmatic bypass is used for the measured place-order request only.</li>';
+		}
 		html += '</ul>';
 
 		// Payment mode. no_payment is always offered and preselected.
@@ -199,10 +203,14 @@
 			'<tr class="sspa-ck-total"><td>At-risk total</td><td class="sspa-ck-num">' + ms(d.at_risk_ms) +
 			'</td><td colspan="2" class="sspa-ck-wide">every second here can cost you the sale</td></tr></table>';
 
-		html += '<h3 class="sspa-ck-h sspa-ck-secured">Secured &mdash; the money is taken, they are waiting on a confirmation</h3>' +
-			'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.secured, max, d.slowest) +
-			'<tr class="sspa-ck-total"><td>Post-capture</td><td class="sspa-ck-num">' + ms(d.secured_ms) +
-			'</td><td colspan="2" class="sspa-ck-wide">a bad impression, not a lost sale</td></tr></table>';
+		if (d.secured.length) {
+			html += '<h3 class="sspa-ck-h sspa-ck-secured">Secured &mdash; the money is taken, they are waiting on a confirmation</h3>' +
+				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.secured, max, d.slowest) +
+				'<tr class="sspa-ck-total"><td>Post-capture</td><td class="sspa-ck-num">' + ms(d.secured_ms) +
+				'</td><td colspan="2" class="sspa-ck-wide">a bad impression, not a lost sale</td></tr></table>';
+		} else if ('failed' === d.status) {
+			html += '<p class="sspa-adhoc-error">No post-capture or order-management steps ran because the purchase failed before an order was created.</p>';
+		}
 
 		html += '<table class="sspa-adhoc-table sspa-ck-table sspa-ck-grand"><tr><td>Your customer waited</td>' +
 			'<td class="sspa-ck-num">' + ms(d.total_ms) + '</td>' +
@@ -288,18 +296,25 @@
 		// The safety report, stated rather than assumed.
 		var safety = d.notes && d.notes.safety;
 		if (safety) {
-			html += '<p class="sspa-adhoc-note"><strong>Cleanup:</strong> ' +
-				esc(safety.orders_deleted) + ' order' + (1 === safety.orders_deleted ? '' : 's') + ' deleted, ' +
-				(safety.orders_left ? '<strong class="sspa-ck-warn">' + esc(safety.orders_left) + ' still present</strong>' : 'none left behind') +
-				(null === safety.stock_before
-					? ', stock is not managed for this product'
-					: ', stock ' + esc(safety.stock_before) + ' &rarr; ' + esc(safety.stock_after) +
-					  (safety.stock_restored_manually ? ' (put back explicitly - cancelling the order did not restore it)' : '')) +
-				(safety.users_deleted
-					? ', ' + esc(safety.users_deleted) + ' auto-created customer account' + (1 === safety.users_deleted ? '' : 's') + ' deleted' +
-					  (safety.users_left ? ' (<strong class="sspa-ck-warn">' + esc(safety.users_left) + ' could not be removed</strong>)' : '')
-					: '') +
-				'.</p>';
+			if ('failed' === d.status && 0 === Number(safety.orders_deleted) && 0 === Number(safety.orders_left)) {
+				html += '<p class="sspa-adhoc-note"><strong>Cleanup:</strong> No order was created, so there was no order, customer account or stock change to clean up.</p>';
+			} else {
+				html += '<p class="sspa-adhoc-note"><strong>Cleanup:</strong> ' +
+					esc(safety.orders_deleted) + ' order' + (1 === safety.orders_deleted ? '' : 's') + ' deleted, ' +
+					(safety.orders_left ? '<strong class="sspa-ck-warn">' + esc(safety.orders_left) + ' still present</strong>' : 'none left behind') +
+					(null === safety.stock_before
+						? '. This product does not use managed stock, so there was no stock level to restore'
+						: ', stock ' + esc(safety.stock_before) + ' &rarr; ' + esc(safety.stock_after) +
+						  (safety.stock_restored_manually ? ' (put back explicitly - cancelling the order did not restore it)' : '')) +
+					(safety.users_deleted
+						? ', ' + esc(safety.users_deleted) + ' auto-created customer account' + (1 === safety.users_deleted ? '' : 's') + ' deleted' +
+						  (safety.users_left ? ' (<strong class="sspa-ck-warn">' + esc(safety.users_left) + ' could not be removed</strong>)' : '')
+						: '') +
+					'.</p>';
+			}
+		}
+		if (d.notes && d.notes.flow && d.notes.flow.human_verification_bypassed) {
+			html += '<p class="sspa-adhoc-note"><strong>Human verification:</strong> Cloudflare Turnstile was bypassed only for SSPA\'s signed synthetic checkout request. It remained active for real visitors.</p>';
 		}
 		(d.notes && d.notes.skipped ? d.notes.skipped : []).forEach(function (s) {
 			html += '<p class="sspa-adhoc-note">Skipped <code>' + esc(s.step) + '</code>: ' + esc(s.why) + '</p>';

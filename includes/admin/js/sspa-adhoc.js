@@ -151,16 +151,30 @@
 		}
 		driving = true;
 		var failures = 0;
+		// Browser-transport run (loopbacks blocked at preflight): process_batch no-ops
+		// server-side, this loop becomes the status poll, and SSPATransport fetches the
+		// pages from THIS browser - carrying the basic auth / clearance the server lacks.
+		var browserDriver = null;
 		function step() {
 			$.post(sspa_adhoc.ajaxurl, { action: 'sspa_process_batch', nonce: sspa_adhoc.nonce, run_id: runId }, function (resp) {
 				failures = 0;
 				var s = resp.success ? resp.data : null;
 				if (s && (s.status === 'crawling' || s.status === 'analysing')) {
+					if (s.transport === 'browser' && s.status === 'crawling' && !browserDriver && window.SSPATransport) {
+						console.info('[SSPA] loopbacks are blocked on this site - this browser is fetching the pages itself');
+						browserDriver = window.SSPATransport.drive({
+							ajaxurl: sspa_adhoc.ajaxurl,
+							nonce: sspa_adhoc.nonce,
+							runId: runId,
+							onFail: function (m) { console.error('[SSPA] browser transport stopped: ' + m); }
+						});
+					}
 					renderProgress(s, message);
 					window.setTimeout(step, 400);
 					return;
 				}
 				driving = false;
+				if (browserDriver) { browserDriver.stop(); }
 				if (s && s.status === 'done') {
 					onDone();
 				} else {
@@ -172,6 +186,7 @@
 					return;
 				}
 				driving = false;
+				if (browserDriver) { browserDriver.stop(); }
 				renderError('Request failed.');
 			});
 		}

@@ -60,10 +60,10 @@ class SSPA_Crawler {
                 if (!empty($job['oc_off'])) {
                     $wflags['oc'] = '0';
                 }
-                $wurl = $this->bust_url($job['url']);
+                $wurl = self::bust_url($job['url']);
                 $token = SSPA_Token::mint($wurl, $wflags);
                 $this->send($wurl, $cookies, $token['header']);
-                $this->discard_capture($token['id']);
+                self::discard_capture($token['id']);
             } else {
                 $this->send($job['url'], $cookies, null); // unsigned: warms caches, not profiled
             }
@@ -110,6 +110,84 @@ class SSPA_Crawler {
         );
     }
 
+    /**
+     * Evaluate ONE profiled response into a sample, whichever transport made
+     * the request. The loopback path builds $norm from wp_remote_*; the
+     * browser transport (SSPA_Browser_Transport) builds it from what the
+     * admin's fetch() observed. One classifier - both transports fail in the
+     * same words.
+     *
+     * @param array  $norm {
+     *     @type float       $wall_ms Wall time around the request.
+     *     @type int         $code    HTTP status (0 on transport error).
+     *     @type array       $headers Response headers, LOWERCASE keys.
+     *     @type string      $body    Body, first 20KB is enough.
+     *     @type string|null $error   Transport error code, or null.
+     *     @type bool        $cookies_present Whether auth cookies rode along.
+     * }
+     * @param string $token_id The minted token id this request carried.
+     * @param array  $flags    The token flags (ps echo is verified when set).
+     * @return array Sample: {wall_ms, code, cached, blocked_by, error, capture}
+     */
+    public static function evaluate_sample($norm, $token_id, $flags) {
+        $sample = array(
+            'wall_ms' => round((float) $norm['wall_ms'], 1),
+            'code' => 0,
+            'cached' => false,
+            'blocked_by' => null,
+            'error' => null,
+            'capture' => null,
+        );
+
+        if (!empty($norm['error'])) {
+            $sample['error'] = $norm['error'];
+            return $sample;
+        }
+
+        $headers = $norm['headers'];
+        $sample['code'] = (int) $norm['code'];
+
+        $sample['blocked_by'] = SSPA_Security_Detect::classify(
+            $sample['code'],
+            $headers,
+            substr((string) $norm['body'], 0, 20000),
+            !empty($norm['cookies_present'])
+        );
+        if ($sample['blocked_by']) {
+            return $sample;
+        }
+
+        // Canary: the mu-loader echoes our token id in a header. A missing or mismatched
+        // canary on a 200 means a cache answered (or the mu-loader is not installed).
+        $canary = isset($headers['x-sspa-profiled']) ? $headers['x-sspa-profiled'] : null;
+        if ($canary !== $token_id) {
+            if (self::looks_cached($headers)) {
+                $sample['cached'] = true;
+                return $sample;
+            }
+            $sample['error'] = 'no_canary';
+            return $sample;
+        }
+
+        // Isolation runs must prove the override applied - a measurement of the wrong
+        // plugin set is worse than no measurement.
+        if (!empty($flags['ps'])) {
+            $ps_header = isset($headers['x-sspa-ps']) ? $headers['x-sspa-ps'] : null;
+            if ($ps_header !== $flags['ps']) {
+                $sample['error'] = 'ps_not_applied';
+                return $sample;
+            }
+        }
+
+        $capture = self::fetch_capture($token_id);
+        if ($capture) {
+            $sample['capture'] = $capture;
+        } elseif (empty($flags['bl'])) {
+            $sample['error'] = 'capture_missing';
+        }
+        return $sample;
+    }
+
     private function profiled_request($url, $cookies, $flags) {
         // Follow up to 2 non-login redirects, re-minting the token per hop (the signature
         // binds to the exact path). The redirecting response itself runs WordPress and
@@ -120,7 +198,7 @@ class SSPA_Crawler {
             // Unique query arg per request: page caches and CDNs key on the URL, so a
             // fresh arg guarantees a cache MISS and the request actually reaches PHP.
             // The token signature binds to path+query, so the arg cannot be stripped.
-            $hop_url = $this->bust_url($current_url);
+            $hop_url = self::bust_url($current_url);
             $token = SSPA_Token::mint($hop_url, $flags);
             $chain[] = $token['id'];
             $start = microtime(true);
@@ -144,66 +222,17 @@ class SSPA_Crawler {
         // Remove captures/markers written by redirecting hops - only the final hop counts.
         array_pop($chain);
         foreach ($chain as $stale_id) {
-            $this->discard_capture($stale_id);
+            self::discard_capture($stale_id);
         }
 
-        $sample = array(
-            'wall_ms' => round($wall_ms, 1),
-            'code' => 0,
-            'cached' => false,
-            'blocked_by' => null,
-            'error' => null,
-            'capture' => null,
-        );
-
-        if (is_wp_error($response)) {
-            $sample['error'] = $response->get_error_code();
-            return $sample;
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-        $headers = $this->lower_headers($response);
-        $sample['code'] = (int) $code;
-
-        $sample['blocked_by'] = SSPA_Security_Detect::classify(
-            (int) $code,
-            $headers,
-            substr((string) wp_remote_retrieve_body($response), 0, 20000),
-            !empty($cookies)
-        );
-        if ($sample['blocked_by']) {
-            return $sample;
-        }
-
-        // Canary: the mu-loader echoes our token id in a header. A missing or mismatched
-        // canary on a 200 means a cache answered (or the mu-loader is not installed).
-        $canary = isset($headers['x-sspa-profiled']) ? $headers['x-sspa-profiled'] : null;
-        if ($canary !== $token['id']) {
-            if ($this->looks_cached($headers)) {
-                $sample['cached'] = true;
-                return $sample;
-            }
-            $sample['error'] = 'no_canary';
-            return $sample;
-        }
-
-        // Isolation runs must prove the override applied - a measurement of the wrong
-        // plugin set is worse than no measurement.
-        if (!empty($flags['ps'])) {
-            $ps_header = isset($headers['x-sspa-ps']) ? $headers['x-sspa-ps'] : null;
-            if ($ps_header !== $flags['ps']) {
-                $sample['error'] = 'ps_not_applied';
-                return $sample;
-            }
-        }
-
-        $capture = $this->fetch_capture($token['id']);
-        if ($capture) {
-            $sample['capture'] = $capture;
-        } elseif (empty($flags['bl'])) {
-            $sample['error'] = 'capture_missing';
-        }
-        return $sample;
+        return self::evaluate_sample(array(
+            'wall_ms' => $wall_ms,
+            'code' => is_wp_error($response) ? 0 : (int) wp_remote_retrieve_response_code($response),
+            'headers' => is_wp_error($response) ? array() : $this->lower_headers($response),
+            'body' => is_wp_error($response) ? '' : (string) wp_remote_retrieve_body($response),
+            'error' => is_wp_error($response) ? $response->get_error_code() : null,
+            'cookies_present' => !empty($cookies),
+        ), $token['id'], $flags);
     }
 
     /**
@@ -232,7 +261,7 @@ class SSPA_Crawler {
         $flags = isset($args['flags']) ? $args['flags'] : array();
         // Guarantees a cache MISS; the token signature binds path+query so it cannot be
         // stripped in transit.
-        $hop_url = $this->bust_url($url);
+        $hop_url = self::bust_url($url);
         $token = SSPA_Token::mint($hop_url, $flags);
 
         $headers = array('Cache-Control' => 'no-cache', SSPA_Token::HEADER => $token['header']);
@@ -257,54 +286,30 @@ class SSPA_Crawler {
         ));
         $wall_ms = (microtime(true) - $start) * 1000;
 
-        $sample = array(
-            'wall_ms' => round($wall_ms, 1),
-            'code' => 0,
-            'cached' => false,
-            'blocked_by' => null,
-            'error' => null,
-            'capture' => null,
-            'body' => '',
-            'json' => null,
-            'cookies' => array(),
-        );
+        $body_out = is_wp_error($response) ? '' : (string) wp_remote_retrieve_body($response);
+        $sample = self::evaluate_sample(array(
+            'wall_ms' => $wall_ms,
+            'code' => is_wp_error($response) ? 0 : (int) wp_remote_retrieve_response_code($response),
+            'headers' => is_wp_error($response) ? array() : $this->lower_headers($response),
+            'body' => $body_out,
+            'error' => is_wp_error($response) ? $response->get_error_code() : null,
+            'cookies_present' => !empty($args['cookies']),
+        ), $token['id'], $flags);
 
-        if (is_wp_error($response)) {
-            $sample['error'] = $response->get_error_code();
-            $this->discard_capture($token['id']);
-            return $sample;
-        }
-
-        $sample['code'] = (int) wp_remote_retrieve_response_code($response);
-        $sample['body'] = (string) wp_remote_retrieve_body($response);
-        $decoded = json_decode($sample['body'], true);
-        $sample['json'] = is_array($decoded) ? $decoded : null;
-        $sample['cookies'] = wp_remote_retrieve_cookies($response);
-        $headers_lc = $this->lower_headers($response);
-
-        $sample['blocked_by'] = SSPA_Security_Detect::classify(
-            $sample['code'],
-            $headers_lc,
-            substr($sample['body'], 0, 20000),
-            !empty($args['cookies'])
-        );
-        if ($sample['blocked_by']) {
-            $this->discard_capture($token['id']);
-            return $sample;
-        }
-
-        // Canary: the mu-loader echoes our token id. Missing means a cache answered, the
-        // mu-loader is not installed, or (on a POST) a redirect swallowed the request.
-        $canary = isset($headers_lc['x-sspa-profiled']) ? $headers_lc['x-sspa-profiled'] : null;
-        if ($canary !== $token['id']) {
+        // No cached-retry concept here (a repeat would be another real order): a
+        // cache-shaped canary miss is a failure, exactly as it always was.
+        if ($sample['cached']) {
+            $sample['cached'] = false;
             $sample['error'] = 'no_canary';
-            $this->discard_capture($token['id']);
-            return $sample;
         }
 
-        $sample['capture'] = $this->fetch_capture($token['id']);
-        if (!$sample['capture']) {
-            $sample['error'] = 'capture_missing';
+        $decoded = json_decode($body_out, true);
+        $sample['body'] = $body_out;
+        $sample['json'] = is_array($decoded) ? $decoded : null;
+        $sample['cookies'] = is_wp_error($response) ? array() : wp_remote_retrieve_cookies($response);
+
+        if (is_wp_error($response) || $sample['blocked_by'] || 'no_canary' === $sample['error']) {
+            self::discard_capture($token['id']);
         }
         return $sample;
     }
@@ -326,7 +331,7 @@ class SSPA_Crawler {
         return wp_remote_get($url, $args);
     }
 
-    private function discard_capture($token_id) {
+    public static function discard_capture($token_id) {
         global $wpdb;
         $table = SSPA_Schema::table('captures');
         $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE token_id = %s", $token_id));
@@ -349,12 +354,12 @@ class SSPA_Crawler {
      * which decodes and does NOT re-encode the existing query string (a %20 in the
      * catalogue's search URL would come back as a literal space).
      */
-    private function bust_url($url) {
+    public static function bust_url($url) {
         $url = rtrim(preg_replace('/([?&])sspa_nc=[a-f0-9]*(&|$)/', '$1', $url), '?&');
         return $url . ((strpos($url, '?') === false) ? '?' : '&') . 'sspa_nc=' . bin2hex(random_bytes(6));
     }
 
-    private function looks_cached($headers) {
+    private static function looks_cached($headers) {
         foreach (array('x-cache', 'cf-cache-status', 'x-litespeed-cache', 'x-cache-status', 'x-proxy-cache', 'x-srcache-fetch-status', 'x-fastcgi-cache', 'x-vercel-cache', 'x-qc-cache') as $h) {
             if (isset($headers[$h]) && stripos((string) (is_array($headers[$h]) ? end($headers[$h]) : $headers[$h]), 'hit') !== false) {
                 return true;
@@ -367,7 +372,7 @@ class SSPA_Crawler {
         return false;
     }
 
-    private function fetch_capture($token_id) {
+    private static function fetch_capture($token_id) {
         global $wpdb;
         $table = SSPA_Schema::table('captures');
         $blob = $wpdb->get_var($wpdb->prepare("SELECT capture FROM $table WHERE token_id = %s", $token_id));

@@ -172,6 +172,10 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   the transition runs in the loopback, so the flow must bust its order cache (`wp_cache_delete($id,
   'orders')` + `clean_post_cache`) before reading the resulting status or it reads back stale.
 
+- `38-turnstile-checkout.php` - plants Cloudflare Turnstile's documented bypass contract
+  and both WooCommerce checkout validation surfaces, then proves the real synthetic checkout
+  completes, records the scoped bypass and removes its temporary order.
+
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the
 value cache (`wp_cache_delete('key', 'options')`) AND the `notoptions` array

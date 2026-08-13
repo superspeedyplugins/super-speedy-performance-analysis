@@ -93,6 +93,33 @@ if (!defined('SSPA_PROFILED_REQUEST')) {
 if (!defined('DONOTCACHEPAGE')) {
     define('DONOTCACHEPAGE', true);
 }
+
+// Identity is decided by the signed token, not by whatever cookies came along.
+// Browser-transport requests are fetched by the run-driving ADMIN's browser with
+// credentials included - that is what carries HTTP basic auth and CDN clearance
+// through a server-level auth wall - so an anon-variant measurement must
+// explicitly ignore those cookies, and a customer-variant one must run as the
+// flagged test account. Only ever a privilege DECREASE: anon forces logged-out,
+// and customer resolves ONLY to the meta-flagged sspa test account, server-side -
+// no user id travels in the token. Loopback requests carry no browser cookies,
+// so both are no-ops there. 'admin' and the checkout flow's 'guest' are left
+// alone: admin should be the driving admin's real session, and guest manages its
+// own synthetic session cookies.
+$sspa_variant = isset($sspa_tok['flags']['v']) ? $sspa_tok['flags']['v'] : '';
+if ('anon' === $sspa_variant) {
+    add_filter('determine_current_user', '__return_zero', PHP_INT_MAX);
+} elseif ('customer' === $sspa_variant) {
+    add_filter('determine_current_user', function () {
+        $sspa_test = get_users(array(
+            'meta_key' => 'sspa_test_account',
+            'meta_value' => '1',
+            'number' => 1,
+            'fields' => 'ID',
+        ));
+        return $sspa_test ? (int) $sspa_test[0] : 0;
+    }, PHP_INT_MAX);
+}
+unset($sspa_variant);
 // Degraded fallback when the db.php shim is not in place: core SAVEQUERIES still gives
 // SQL + time + caller summary (no row counts). The shim defines this earlier when active.
 if (!defined('SAVEQUERIES')) {

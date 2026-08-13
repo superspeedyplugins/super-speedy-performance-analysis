@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.21.2
+ * Version: 0.22.0
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -91,6 +91,7 @@ require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-worker.p
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-submitter.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules-feed.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-browser-transport.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-preflight.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-flow.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-adhoc.php';
@@ -115,6 +116,9 @@ register_deactivation_hook(__FILE__, array('SSPA_Install', 'deactivate'));
 add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));
 
 SSPA_Run_Controller::register();
+// Browser transport for runs whose preflight found loopbacks blocked (basic auth,
+// WAF, CDN): the driving admin's browser fetches the pages one request at a time.
+SSPA_Browser_Transport::init();
 SSPA_Community_Worker::register();
 SSPA_Probes::register();
 // Admin-bar "Analyse this page" runner: front end AND wp-admin, so registered outside

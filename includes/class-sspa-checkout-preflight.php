@@ -50,6 +50,7 @@ class SSPA_Checkout_Preflight {
             'address' => null,
             'email_to' => null,
             'stock_managed' => null,
+            'human_verification_bypassed' => false,
         );
         if (!$out['woocommerce']) {
             return $out;
@@ -72,6 +73,10 @@ class SSPA_Checkout_Preflight {
         // purchase. The run marks it at creation and deletes it with the order, but it is
         // one more thing the run sets off, so the admin is told beforehand.
         $out['creates_account'] = 'yes' !== get_option('woocommerce_enable_guest_checkout');
+        // Simple Cloudflare Turnstile exposes this documented filter for trusted
+        // programmatic requests. The flow uses it only inside its signed synthetic
+        // checkout, which cannot complete an interactive browser challenge.
+        $out['human_verification_bypassed'] = function_exists('cfturnstile_field_show');
 
         $product = SSPA_Checkout_Flow::default_product();
         if ($product) {

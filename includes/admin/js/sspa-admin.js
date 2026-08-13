@@ -704,24 +704,42 @@ function sspa_runner_finish(status) {
 
 // The browser drives batches sequentially; WP-Cron is the backup for headless progress,
 // and the hourly janitor re-kicks a run whose driver disappeared.
+//
+// Browser-transport runs (loopbacks blocked at preflight - basic auth, WAF, CDN): the
+// server-side pump no-ops, and this loop doubles as the status poll while
+// SSPATransport.drive() fetches the pages from THIS browser one request at a time.
 function sspa_drive_run(runId) {
 	sspa_runner_show();
 	jQuery('#sspa-run-analysis, #sspa-run-deep, #sspa-run-cache, .sspa-measure-plugin').prop('disabled', true);
 	jQuery('#sspa-cancel-run').show();
 
 	var failures = 0;
+	var browserDriver = null;
 	function step() {
 		jQuery.post(ajaxurl, { action: 'sspa_process_batch', nonce: sspa_admin.nonce, run_id: runId }, function (resp) {
 			failures = 0;
 			if (!resp.success || !resp.data) {
+				if (browserDriver) { browserDriver.stop(); }
 				sspa_runner_finish('finished');
 				return;
 			}
 			var s = resp.data;
 			sspa_runner_update(s);
 			if (s.status === 'crawling' || s.status === 'analysing') {
+				if (s.transport === 'browser' && s.status === 'crawling' && !browserDriver && window.SSPATransport) {
+					console.info('[SSPA] loopbacks are blocked on this site - this browser is fetching the pages itself');
+					browserDriver = SSPATransport.drive({
+						ajaxurl: ajaxurl,
+						nonce: sspa_admin.nonce,
+						runId: runId,
+						onFail: function (message) {
+							console.error('[SSPA] browser transport stopped: ' + message);
+						}
+					});
+				}
 				setTimeout(step, 400);
 			} else {
+				if (browserDriver) { browserDriver.stop(); }
 				sspa_runner_finish(s.status);
 			}
 		}).fail(function () {
