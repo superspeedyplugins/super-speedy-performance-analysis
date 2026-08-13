@@ -30,3 +30,28 @@ server-to-itself path.
 Some hosts route loopbacks through the CDN. If whitelisting the server IP does not help,
 check whether your host offers a "direct" hostname that bypasses the proxy layer, and ask
 in the Super Speedy Discord - detection improves with every report.
+
+## Checkout-flow verification failures
+
+Checkout security can stop the synthetic purchase before WooCommerce creates an order.
+The result will show `place_order_failed` together with the validation message returned by
+the site, such as a CAPTCHA or human-verification error. No order-management timings can be
+collected until that validation succeeds.
+
+When this happens, identify the security plugin responsible for the current message and
+handle plugins one at a time. Super Speedy Performance Analysis should use that plugin's
+documented, request-scoped bypass or test hook only for its signed synthetic checkout.
+It should not disable every plugin whose name contains words such as `captcha` or
+`security`: that could change unrelated store behaviour, disable the wrong plugin, and miss
+security products whose names do not contain those words.
+
+After adding or configuring one explicit integration, re-run the checkout flow. If another
+security layer then blocks the request, the new error identifies the next integration to
+handle. Continue until WooCommerce creates the temporary order and the order-management
+steps can run. Each integration must leave protection enabled for normal customer requests.
+
+For example, Simple CAPTCHA with Cloudflare Turnstile provides a documented disable filter.
+SSPA applies it only to the signed synthetic checkout request, so Turnstile remains active
+for real customers. If a security plugin provides no suitably narrow bypass, follow its
+allowlisting guidance or temporarily configure it yourself for the test rather than having
+SSPA silently deactivate the whole plugin.
