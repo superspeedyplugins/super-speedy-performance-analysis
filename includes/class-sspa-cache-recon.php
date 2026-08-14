@@ -10,8 +10,9 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Cache_Recon {
 
-    const SCHEMA = 1;
+    const SCHEMA = 2;
     const MAX_SOURCE_FILES = 1200;
+    const MAX_SOURCE_FILES_PER_COMPONENT = 160;
     const MAX_SOURCE_BYTES = 67108864; // 64 MB across the whole active stack.
     const MAX_FILE_BYTES = 1048576;
     const MAX_CANDIDATES = 40;
@@ -44,7 +45,7 @@ class SSPA_Cache_Recon {
             return $report;
         }
         return array(
-            'schema' => 'sspa/shared-cache-safety-report@1',
+            'schema' => 'sspa/shared-cache-safety-report@2',
             'generated_at' => gmdate('c'),
             'generated_by' => array(
                 'plugin' => 'super-speedy-performance-analysis',
@@ -76,6 +77,15 @@ class SSPA_Cache_Recon {
             'baseline', 'mail-probe', '404', 'feed', 'rest-posts', 'search-many', 'search-zero',
             'wc-cart', 'wc-checkout', 'wc-myaccount',
         );
+        $internal_prefixes = array(
+            'cpt-kadence_element-', 'cpt-fl-builder-template-', 'cpt-elementor_library-',
+            'cpt-wp_block-', 'cpt-wp_template-', 'cpt-oxy_user_library-',
+        );
+        foreach ($internal_prefixes as $prefix) {
+            if (0 === strpos($job['page_key'], $prefix)) {
+                return false;
+            }
+        }
         return !in_array($job['page_key'], $excluded, true)
             && 0 !== strpos($job['page_key'], 'admin-')
             && 0 !== strpos($job['page_key'], 'write-')
@@ -98,23 +108,46 @@ class SSPA_Cache_Recon {
             $partial = true;
         }
 
-        $nonce_names = array();
+        $nonce_evidence = array();
         $nonce_patterns = array(
-            '/<input[^>]+name=["\']([^"\']*nonce[^"\']*)["\']/i',
-            '/[?&;]((?:_wp)?[a-z0-9_\-]*nonce[a-z0-9_\-]*)=[a-f0-9]{8,12}\b/i',
-            '/["\']([a-z0-9_\-]*nonce[a-z0-9_\-]*)["\']\s*[:=]\s*["\'][a-f0-9]{8,12}["\']/i',
-            '/data-([a-z0-9_\-]*nonce[a-z0-9_\-]*)=/i',
+            'input_field' => '/<input[^>]+name=["\']([^"\']*nonce[^"\']*)["\']/i',
+            'url_parameter' => '/[?&;]((?:_wp)?[a-z0-9_\-]*nonce[a-z0-9_\-]*)=[a-f0-9]{8,12}\b/i',
+            'data_attribute' => '/data-([a-z0-9_\-]*nonce[a-z0-9_\-]*)=/i',
         );
-        foreach ($nonce_patterns as $pattern) {
+        foreach ($nonce_patterns as $context => $pattern) {
             if (preg_match_all($pattern, $body, $matches)) {
                 foreach ($matches[1] as $name) {
                     $name = strtolower(sanitize_key($name));
                     if ($name) {
-                        $nonce_names[$name] = isset($nonce_names[$name]) ? $nonce_names[$name] + 1 : 1;
+                        self::add_nonce_evidence($nonce_evidence, $name, $context, $context);
                     }
                 }
             }
         }
+        // Script ids make a generic key such as "nonce" actionable without retaining the
+        // script body or nonce value. Cap the number of tags so malformed pages stay bounded.
+        if (preg_match_all('/<script\b([^>]*)>(.*?)<\/script>/is', $body, $scripts, PREG_SET_ORDER)) {
+            foreach (array_slice($scripts, 0, 500) as $script) {
+                if (!preg_match_all('/["\']([a-z0-9_\-]*nonce[a-z0-9_\-]*)["\']\s*[:=]\s*["\'][a-f0-9]{8,12}["\']/i', $script[2], $names)) {
+                    continue;
+                }
+                $container = 'inline_script';
+                if (preg_match('/\bid=["\']([^"\']+)["\']/i', $script[1], $id)) {
+                    $container = 'script#' . sanitize_html_class($id[1]);
+                }
+                foreach ($names[1] as $name) {
+                    $name = strtolower(sanitize_key($name));
+                    if ($name) {
+                        self::add_nonce_evidence($nonce_evidence, $name, 'script_data', $container);
+                    }
+                }
+            }
+        }
+        foreach ($nonce_evidence as &$nonce_item) {
+            $nonce_item['contexts'] = array_keys($nonce_item['contexts']);
+            $nonce_item['containers'] = array_slice(array_keys($nonce_item['containers']), 0, 10);
+        }
+        unset($nonce_item);
 
         $regions = array();
         if (preg_match_all('/data-ssap-visitor\s*=\s*["\']([a-z0-9_-]+)["\']/i', $body, $matches)) {
@@ -164,7 +197,15 @@ class SSPA_Cache_Recon {
             }
         }
 
-        $set_cookie = self::set_cookie_names(isset($headers['set-cookie']) ? $headers['set-cookie'] : array());
+        $set_cookie = array();
+        $infrastructure_cookie = array();
+        foreach (self::set_cookie_names(isset($headers['set-cookie']) ? $headers['set-cookie'] : array()) as $cookie_name) {
+            if (self::is_infrastructure_cookie($cookie_name)) {
+                $infrastructure_cookie[] = $cookie_name;
+            } else {
+                $set_cookie[] = $cookie_name;
+            }
+        }
         $cache_headers = array();
         foreach (array('cache-control', 'vary', 'age', 'x-cache', 'x-cache-status', 'x-litespeed-cache', 'cf-cache-status', 'x-fastcgi-cache') as $name) {
             if (!isset($headers[$name])) {
@@ -189,7 +230,9 @@ class SSPA_Cache_Recon {
             'bytes_scanned' => strlen($body),
             'partial' => (bool) $partial,
             'set_cookie_names' => array_slice($set_cookie, 0, 30),
-            'nonce_names' => array_slice($nonce_names, 0, 30, true),
+            'infrastructure_cookie_names' => array_slice($infrastructure_cookie, 0, 30),
+            'nonce_names' => array_map(function ($evidence) { return (int) $evidence['occurrences']; }, array_slice($nonce_evidence, 0, 30, true)),
+            'nonce_evidence' => array_slice($nonce_evidence, 0, 30, true),
             'legacy_cookie_reads' => array_values(array_unique($legacy)),
             'client_state_reads' => array(
                 'cookie' => preg_match_all('/document\.cookie|Cookies\.get\s*\(|getCookie\s*\(/i', $body),
@@ -207,6 +250,22 @@ class SSPA_Cache_Recon {
             'cache_headers' => $cache_headers,
             'render_components' => array_slice(array_keys($components), 0, 30),
         );
+    }
+
+    private static function add_nonce_evidence(&$evidence, $name, $context, $container) {
+        if (!isset($evidence[$name])) {
+            $evidence[$name] = array('occurrences' => 0, 'contexts' => array(), 'containers' => array());
+        }
+        $evidence[$name]['occurrences']++;
+        $evidence[$name]['contexts'][$context] = true;
+        if ($container) {
+            $evidence[$name]['containers'][$container] = true;
+        }
+    }
+
+    /** Edge/security cookies do not establish that WordPress varied the cached document. */
+    private static function is_infrastructure_cookie($name) {
+        return (bool) preg_match('/^(?:__cf_bm|_cfuvid|cf_clearance|__cflb|__cfwaitingroom|cf_ob_info|cf_use_ob|cf_chl_[a-z0-9_]+|ak_bmsc|bm_sz|bm_sv|_abck)$/i', (string) $name);
     }
 
     private static function set_cookie_names($raw) {
@@ -229,8 +288,14 @@ class SSPA_Cache_Recon {
     public static function build_assessment($profiles, $captures, $source = null) {
         $pages = array();
         $observed = array();
+        $unique_application_cookies = array();
+        $unique_infrastructure_cookies = array();
+        $unique_nonces = array();
+        $unique_legacy_cookies = array();
+        $unique_private_surfaces = array();
         $totals = array(
             'set_cookie_pages' => 0,
+            'infrastructure_cookie_pages' => 0,
             'nonce_pages' => 0,
             'legacy_cookie_pages' => 0,
             'client_state_pages' => 0,
@@ -252,7 +317,9 @@ class SSPA_Cache_Recon {
                 'page_key' => sanitize_key($profile['page_key']),
                 'url' => esc_url_raw(isset($profile['url']) ? $profile['url'] : ''),
                 'set_cookie_names' => array_values((array) $scan['set_cookie_names']),
+                'infrastructure_cookie_names' => array_values((array) ($scan['infrastructure_cookie_names'] ?? array())),
                 'nonce_names' => array_keys((array) $scan['nonce_names']),
+                'nonce_evidence' => isset($scan['nonce_evidence']) ? (array) $scan['nonce_evidence'] : array(),
                 'legacy_cookie_reads' => array_values((array) $scan['legacy_cookie_reads']),
                 'private_surface_hints' => array_values((array) $scan['private_surface_hints']),
                 'partial' => !empty($scan['partial']),
@@ -261,6 +328,7 @@ class SSPA_Cache_Recon {
             $pages[] = $page;
 
             $totals['set_cookie_pages'] += $page['set_cookie_names'] ? 1 : 0;
+            $totals['infrastructure_cookie_pages'] += $page['infrastructure_cookie_names'] ? 1 : 0;
             $totals['nonce_pages'] += $page['nonce_names'] ? 1 : 0;
             $totals['legacy_cookie_pages'] += $page['legacy_cookie_reads'] ? 1 : 0;
             $state_reads = array_sum(array_map('intval', (array) $scan['client_state_reads']));
@@ -274,8 +342,32 @@ class SSPA_Cache_Recon {
             $totals['type_b_regions'] += count((array) ($page['coverage']['type_b_regions'] ?? array()));
             $totals['cart_fragment_markers'] += (int) ($page['coverage']['cart_fragment_markers'] ?? 0);
             $totals['partial_pages'] += $page['partial'] ? 1 : 0;
+            foreach ($page['set_cookie_names'] as $name) {
+                $unique_application_cookies[$name] = true;
+            }
+            foreach ($page['infrastructure_cookie_names'] as $name) {
+                $unique_infrastructure_cookies[$name] = true;
+            }
+            foreach ($page['nonce_names'] as $name) {
+                if (!isset($unique_nonces[$name])) {
+                    $unique_nonces[$name] = array();
+                }
+                $evidence = isset($page['nonce_evidence'][$name]) ? $page['nonce_evidence'][$name] : array();
+                foreach ((array) ($evidence['contexts'] ?? array()) as $context) {
+                    $unique_nonces[$name][$context] = true;
+                }
+            }
+            foreach ($page['legacy_cookie_reads'] as $name) {
+                $unique_legacy_cookies[$name] = true;
+            }
+            foreach ($page['private_surface_hints'] as $name) {
+                $unique_private_surfaces[$name] = true;
+            }
             foreach ((array) $scan['render_components'] as $component) {
-                $observed[sanitize_key($component)] = true;
+                $component = sanitize_key($component);
+                if ($component) {
+                    $observed[$component][$page['page_key']] = true;
+                }
             }
         }
 
@@ -284,11 +376,12 @@ class SSPA_Cache_Recon {
         }
 
         if (null === $source) {
-            $source = self::source_inventory(array_keys($observed));
+            $source = self::source_inventory($observed);
         }
         $candidates = isset($source['candidates']) ? (array) $source['candidates'] : array();
         $high = count(array_filter($candidates, function ($candidate) {
-            return isset($candidate['risk']) && 'high' === $candidate['risk'];
+            $priority = isset($candidate['review_priority']) ? $candidate['review_priority'] : ($candidate['risk'] ?? '');
+            return 'high' === $priority;
         }));
 
         $active = array_map('strtolower', (array) get_option('active_plugins', array()));
@@ -301,20 +394,25 @@ class SSPA_Cache_Recon {
             }
         }
 
-        $hazard_count = $totals['set_cookie_pages'] + $totals['nonce_pages']
-            + $totals['legacy_cookie_pages'] + $totals['private_surface_pages'] + $high;
+        $hazard_count = count($unique_application_cookies) + count($unique_nonces)
+            + count($unique_legacy_cookies) + count($unique_private_surfaces) + $high;
         $shared_cache_status = ($hazard_count > 0 || !empty($candidates))
             ? 'visitor_specific_content_review_recommended'
             : 'no_visitor_specific_content_hazards_detected';
 
-        $difficulty_points = $totals['set_cookie_pages'] * 3
-            + $totals['nonce_pages']
-            + $totals['legacy_cookie_pages']
-            + $totals['private_surface_pages']
+        $nonce_points = 0;
+        foreach ($unique_nonces as $contexts) {
+            $strong = array_intersect(array('input_field', 'url_parameter', 'data_attribute'), array_keys($contexts));
+            $nonce_points += $strong ? 2 : 1;
+        }
+        $difficulty_points = min(9, count($unique_application_cookies) * 3)
+            + min(5, $nonce_points)
+            + min(4, count($unique_legacy_cookies) * 2)
+            + min(4, count($unique_private_surfaces) * 2)
             + min(5, $high)
             + (!empty($source['stored_code_not_scanned']) ? 2 : 0)
             + (!empty($source['truncated']) || $totals['partial_pages'] ? 1 : 0);
-        $difficulty = ($difficulty_points >= 8) ? 'high' : (($difficulty_points >= 3) ? 'moderate' : 'low');
+        $difficulty = ($difficulty_points >= 10) ? 'high' : (($difficulty_points >= 4) ? 'moderate' : 'low');
 
         $hazards = array();
         $hazard_map = array(
@@ -325,9 +423,19 @@ class SSPA_Cache_Recon {
             'private_surface_pages' => 'private_features_need_route_review',
             'partial_pages' => 'partial_browser_scan',
         );
+        $hazard_names = array(
+            'set_cookie_pages' => array_keys($unique_application_cookies),
+            'nonce_pages' => array_keys($unique_nonces),
+            'legacy_cookie_pages' => array_keys($unique_legacy_cookies),
+            'private_surface_pages' => array_keys($unique_private_surfaces),
+        );
         foreach ($hazard_map as $count_key => $hazard) {
             if ($totals[$count_key]) {
-                $hazards[] = array('type' => $hazard, 'pages' => (int) $totals[$count_key]);
+                $entry = array('type' => $hazard, 'pages' => (int) $totals[$count_key]);
+                if (!empty($hazard_names[$count_key])) {
+                    $entry['names'] = $hazard_names[$count_key];
+                }
+                $hazards[] = $entry;
             }
         }
         if (!empty($source['stored_code_not_scanned'])) {
@@ -343,6 +451,13 @@ class SSPA_Cache_Recon {
             'page_cache_plugin_detected' => $cache_plugin,
             'pages_scanned' => count($pages),
             'totals' => $totals,
+            'unique_signals' => array(
+                'application_cookie_names' => array_keys($unique_application_cookies),
+                'infrastructure_cookie_names' => array_keys($unique_infrastructure_cookies),
+                'nonce_names' => array_keys($unique_nonces),
+                'legacy_cookie_names' => array_keys($unique_legacy_cookies),
+                'private_surface_types' => array_keys($unique_private_surfaces),
+            ),
             'hazards' => $hazards,
             'pages' => array_slice($pages, 0, 40),
             'candidate_components' => array_slice($candidates, 0, self::MAX_CANDIDATES),
@@ -350,6 +465,8 @@ class SSPA_Cache_Recon {
                 'files_scanned' => (int) ($source['files_scanned'] ?? 0),
                 'bytes_scanned' => (int) ($source['bytes_scanned'] ?? 0),
                 'truncated' => !empty($source['truncated']),
+                'components_scanned' => (int) ($source['components_scanned'] ?? 0),
+                'components_truncated' => array_values((array) ($source['components_truncated'] ?? array())),
                 'stored_code_not_scanned' => !empty($source['stored_code_not_scanned']),
             ),
             'limitations' => array(
@@ -366,19 +483,53 @@ class SSPA_Cache_Recon {
      * Paths in evidence are component-relative. Source and snippets never leave this site.
      */
     public static function source_inventory($observed_components = array()) {
-        $observed = array_fill_keys(array_map('sanitize_key', (array) $observed_components), true);
+        $observed = array();
+        foreach ((array) $observed_components as $component => $pages) {
+            if (is_int($component)) {
+                $component = $pages;
+                $pages = array();
+            }
+            $component = sanitize_key($component);
+            if ($component) {
+                $observed[$component] = array_values(array_unique(is_array($pages) ? array_keys($pages) : array()));
+            }
+        }
         $targets = self::source_targets();
         $candidates = array();
         $files_scanned = 0;
         $bytes_scanned = 0;
         $truncated = false;
+        $components_truncated = array();
+        $states = array();
 
         foreach ($targets as $target) {
-            foreach (self::source_files($target['path']) as $file) {
+            $files = self::source_files($target['path']);
+            if (count($files) > self::MAX_SOURCE_FILES_PER_COMPONENT) {
+                $components_truncated[$target['component']] = true;
+            }
+            $states[] = array(
+                'target' => $target,
+                'files' => $files,
+                'cursor' => 0,
+                'limit' => min(count($files), self::MAX_SOURCE_FILES_PER_COMPONENT),
+            );
+        }
+
+        // Round-robin prevents one large alphabetically-early plugin consuming the global
+        // ceiling before the theme and later plugins receive any inspection at all.
+        do {
+            $progress = false;
+            foreach ($states as &$state) {
+                if ($state['cursor'] >= $state['limit']) {
+                    continue;
+                }
                 if ($files_scanned >= self::MAX_SOURCE_FILES || $bytes_scanned >= self::MAX_SOURCE_BYTES) {
                     $truncated = true;
                     break 2;
                 }
+                $progress = true;
+                $file = $state['files'][$state['cursor']++];
+                $target = $state['target'];
                 $size = @filesize($file);
                 if (!$size || $size > self::MAX_FILE_BYTES || $bytes_scanned + $size > self::MAX_SOURCE_BYTES) {
                     continue;
@@ -398,9 +549,10 @@ class SSPA_Cache_Recon {
                 if (!isset($candidates[$component])) {
                     $candidates[$component] = array(
                         'component' => $component,
-                        'risk' => 'low',
+                        'review_priority' => 'low',
                         'score' => 0,
                         'observed_rendering' => isset($observed[$component]),
+                        'observed_pages' => isset($observed[$component]) ? $observed[$component] : array(),
                         'always_relevant' => !empty($target['always_relevant']),
                         'signals' => array(),
                         'evidence' => array(),
@@ -422,13 +574,24 @@ class SSPA_Cache_Recon {
                     );
                 }
             }
+            unset($state);
+        } while ($progress);
+
+        if ($truncated) {
+            foreach ($states as $state) {
+                if ($state['cursor'] < $state['limit']) {
+                    $components_truncated[$state['target']['component']] = true;
+                }
+            }
         }
 
         foreach ($candidates as &$candidate) {
             $signals = array_keys($candidate['signals']);
-            $score = $candidate['score'] + ($candidate['observed_rendering'] ? 2 : 0);
+            $score = $candidate['score']
+                + ($candidate['observed_rendering'] ? 2 : 0)
+                + (count($candidate['evidence']) > 1 ? 1 : 0);
             $candidate['score'] = $score;
-            $candidate['risk'] = ($score >= 7) ? 'high' : (($score >= 4) ? 'medium' : 'low');
+            $candidate['review_priority'] = ($score >= 8) ? 'high' : (($score >= 5) ? 'medium' : 'low');
             $candidate['signals'] = $signals;
         }
         unset($candidate);
@@ -467,7 +630,9 @@ class SSPA_Cache_Recon {
         return array(
             'files_scanned' => $files_scanned,
             'bytes_scanned' => $bytes_scanned,
-            'truncated' => $truncated,
+            'truncated' => $truncated || !empty($components_truncated),
+            'components_scanned' => count($targets),
+            'components_truncated' => array_keys($components_truncated),
             'stored_code_not_scanned' => $stored_code,
             'candidates' => array_values($candidates),
         );
@@ -508,7 +673,9 @@ class SSPA_Cache_Recon {
         $has_state = (bool) array_intersect(array('visitor_state', 'commerce_state', 'segmented_state'), $names);
         $has_sink = (bool) array_intersect(array('render_registration', 'html_output'), $names);
         $score = 0;
-        $score = max($score, in_array('cookie_setter', $names, true) ? 6 : 0);
+        $score = max($score, in_array('cookie_setter', $names, true)
+            ? (in_array('client_state', $names, true) || $has_state ? 4 : 3)
+            : 0);
         $score = max($score, ($has_state && $has_sink) ? 5 : 0);
         $score = max($score, (in_array('nonce_emitter', $names, true) && $has_sink) ? 4 : 0);
         $score = max($score, (in_array('client_state', $names, true) && in_array('segmented_state', $names, true)) ? 4 : 0);
@@ -572,9 +739,22 @@ class SSPA_Cache_Recon {
         return array_values($targets);
     }
 
+    /** Public pure path filter so false-positive fixtures can pin front-end source scope. */
+    public static function source_file_is_relevant($file) {
+        $file = str_replace('\\', '/', (string) $file);
+        $basename = basename($file);
+        return !preg_match('#/(?:vendor|dependencies|node_modules|\.git|\.tests?|tests?|languages)/#i', $file)
+            && !preg_match('#/(?:assets/client/admin|includes/admin|admin)/#i', $file)
+            && !preg_match('#/(?:patterns)/#i', $file)
+            && !preg_match('/(?:^|[-_.])(?:admin|dashboard|editor|export|import|settings|tools|debug|entry[-_]?(?:detail|list)|form[-_]?(?:detail|list)|alt[-_]?text|api[-_]?proxy|generate[-_]?block|review[-_]?code)(?:[-_.]|$)/i', $basename)
+            && 'sspa-loader.php' !== $basename
+            && !preg_match('/\.min\.js$/i', $file)
+            && (bool) preg_match('/\.(?:php|js)$/i', $file);
+    }
+
     private static function source_files($path) {
         if (is_file($path)) {
-            return preg_match('/\.(?:php|js)$/i', $path) ? array($path) : array();
+            return self::source_file_is_relevant($path) ? array($path) : array();
         }
         if (!is_dir($path)) {
             return array();
@@ -587,12 +767,7 @@ class SSPA_Cache_Recon {
                     continue;
                 }
                 $file = str_replace('\\', '/', $item->getPathname());
-                if (preg_match('#/(?:vendor|dependencies|node_modules|\.git|\.tests?|tests?|languages)/#i', $file)
-                    || preg_match('#/(?:assets/client/admin|includes/admin|admin)/#i', $file)
-                    || preg_match('#/(?:patterns)/#i', $file)
-                    || 'sspa-loader.php' === basename($file)
-                    || preg_match('/\.min\.js$/i', $file)
-                    || !preg_match('/\.(?:php|js)$/i', $file)) {
+                if (!self::source_file_is_relevant($file)) {
                     continue;
                 }
                 $files[] = $item->getPathname();

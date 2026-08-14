@@ -91,10 +91,11 @@ sspa_t(!in_array('woocommerce', $cache_candidates, true) && !in_array('redis-cac
 $cache_export = SSPA_Cache_Recon::export_data($run_id);
 sspa_t(
     is_array($cache_export)
-    && 'sspa/shared-cache-safety-report@1' === $cache_export['schema']
+    && 'sspa/shared-cache-safety-report@2' === $cache_export['schema']
     && isset($cache_export['assessment']['shared_cache_status']),
     'shared-cache safety evidence builds as a versioned download'
 );
+sspa_t(!empty($cache_export['assessment']['source_scan']['components_scanned']), 'source scan reports component coverage');
 
 // --- Bootstrap decomposition (the PHP-floor instrument) ---
 $boot = is_array($capture) && isset($capture['boot']) ? $capture['boot'] : null;

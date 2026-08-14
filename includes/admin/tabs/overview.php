@@ -88,13 +88,20 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <p class="description"><?php echo esc_html($sspa_cache_rendered['detail']); ?></p>
             <p class="description">
                 <?php printf(
-                    esc_html__('Existing coverage found: %1$d Type A marker(s), %2$d Type B region(s), %3$d cart-fragment marker(s). The bounded source scan inspected %4$d file(s).', 'super-speedy-performance-analysis'),
+                    esc_html__('Existing coverage found: %1$d Type A marker(s), %2$d Type B region(s), %3$d cart-fragment marker(s). The bounded source scan inspected %4$d file(s) across %5$d component(s).', 'super-speedy-performance-analysis'),
                     (int) ($sspa_cache_totals['type_a_markers'] ?? 0),
                     (int) ($sspa_cache_totals['type_b_regions'] ?? 0),
                     (int) ($sspa_cache_totals['cart_fragment_markers'] ?? 0),
-                    (int) ($sspa_cache_evidence['source_scan']['files_scanned'] ?? 0)
+                    (int) ($sspa_cache_evidence['source_scan']['files_scanned'] ?? 0),
+                    (int) ($sspa_cache_evidence['source_scan']['components_scanned'] ?? 0)
                 ); ?>
             </p>
+            <?php if (!empty($sspa_cache_evidence['source_scan']['truncated'])) : ?>
+                <p class="description"><?php printf(
+                    esc_html__('Source inspection reached a safety limit for %d component(s); those components are listed in the download rather than silently treated as fully scanned.', 'super-speedy-performance-analysis'),
+                    count((array) ($sspa_cache_evidence['source_scan']['components_truncated'] ?? array()))
+                ); ?></p>
+            <?php endif; ?>
 
             <?php if (!empty($sspa_cache_evidence['hazards'])) : ?>
                 <h3><?php esc_html_e('Potential hazards', 'super-speedy-performance-analysis'); ?></h3>
@@ -107,6 +114,9 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                             ?>
                             <?php if (!empty($sspa_hazard['pages'])) : ?>
                                 <?php printf(esc_html__('%d page type(s)', 'super-speedy-performance-analysis'), (int) $sspa_hazard['pages']); ?>
+                            <?php endif; ?>
+                            <?php if (!empty($sspa_hazard['names'])) : ?>
+                                <br><code><?php echo esc_html(implode(', ', (array) $sspa_hazard['names'])); ?></code>
                             <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
@@ -128,6 +138,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                         <?php foreach ((array) $sspa_cache_evidence['pages'] as $sspa_cache_page) :
                             $sspa_page_signals = array_merge(
                                 (array) ($sspa_cache_page['set_cookie_names'] ?? array()),
+                                array_map(function ($name) { return 'infrastructure cookie: ' . $name; }, (array) ($sspa_cache_page['infrastructure_cookie_names'] ?? array())),
                                 (array) ($sspa_cache_page['nonce_names'] ?? array()),
                                 (array) ($sspa_cache_page['legacy_cookie_reads'] ?? array()),
                                 (array) ($sspa_cache_page['private_surface_hints'] ?? array())
@@ -159,8 +170,11 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                         <?php foreach (array_slice((array) $sspa_cache_evidence['candidate_components'], 0, 15) as $sspa_candidate) : ?>
                             <li>
                                 <strong><?php echo esc_html($sspa_candidate['component']); ?></strong>
-                                <span class="sspa-badge"><?php echo esc_html($sspa_candidate['risk']); ?></span>
+                                <span class="sspa-badge"><?php echo esc_html(isset($sspa_candidate['review_priority']) ? $sspa_candidate['review_priority'] : ($sspa_candidate['risk'] ?? __('unknown', 'super-speedy-performance-analysis'))); ?></span>
                                 <span class="description"><?php echo esc_html(implode(', ', array_map(function ($signal) { return str_replace('_', ' ', $signal); }, (array) $sspa_candidate['signals']))); ?></span>
+                                <?php if (!empty($sspa_candidate['observed_pages'])) : ?>
+                                    <br><span class="description"><?php printf(esc_html__('Observed while rendering: %s', 'super-speedy-performance-analysis'), esc_html(implode(', ', (array) $sspa_candidate['observed_pages']))); ?></span>
+                                <?php endif; ?>
                                 <?php if (!empty($sspa_candidate['evidence'])) : ?>
                                     <ul>
                                         <?php foreach (array_slice((array) $sspa_candidate['evidence'], 0, 5) as $sspa_source) : ?>

@@ -179,9 +179,10 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   completes, records the scoped bypass and removes its temporary order.
 - `39-cache-safety.php` - the shared-cache safety scan keeps cookie/nonce names but
   never their values, recognises existing Type A/Type B coverage and private surfaces, ignores
-  source-code comments, ranks corroborated visitor-state/output evidence, produces stable
-  cache-safety status and review difficulty, and excludes checkout/wp-admin from shared-cache
-  candidates.
+  source-code comments, separates edge cookies, records nonce containers, scores repeated
+  site-wide signals once, filters admin-oriented source evidence, ranks corroborated
+  visitor-state/output evidence, produces stable cache-safety status and review difficulty,
+  and excludes checkout, wp-admin and builder template pseudo-pages from shared-cache candidates.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

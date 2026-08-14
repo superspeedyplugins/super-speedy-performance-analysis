@@ -64,10 +64,14 @@ one anonymous response per shared-cache page candidate plus a bounded active-sou
 `no_visitor_specific_content_hazards_detected`; `difficulty` is `low`, `moderate` or `high`.
 
 The assessment includes potential `hazards`, existing Type A/Type B/fragment `coverage`,
-per-page signal names and ranked `candidate_components` with component-relative file/line
+per-page application and infrastructure cookie names, nonce contexts, and ranked
+`candidate_components` with review priority, observed page keys and component-relative file/line
 evidence. It never includes HTML, cookie values, nonce values or customer text. Treat
 candidate components as the place to inspect first, not as proven owners. The Overview tab
-can download the same evidence as a versioned local JSON report. A controlled
+can download the same evidence as a versioned `sspa/shared-cache-safety-report@2` JSON report.
+Repeated site-wide signals are scored once, while their affected page count remains evidence.
+The `source_scan` block states component coverage and every component limited by the fair
+per-component scan ceiling. A controlled
 guest/customer/basket comparison is still required before enabling shared caching.
 
 ### Page
