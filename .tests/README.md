@@ -184,6 +184,21 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
   site-wide signals once, filters admin-oriented source evidence, ranks corroborated
   visitor-state/output evidence, produces stable cache-safety status and review difficulty,
   and excludes checkout, wp-admin and builder template pseudo-pages from shared-cache candidates.
+- `40-traffic-contracts.php` - freezes the cache optimisation, provisional/final traffic and
+  optional Cloudflare JSON contracts; every fixture passes the shared forbidden-property
+  validator, while planted customer identity fields fail closed. Also pins the clearer immediate
+  analysis GUI name and keeps the existing `sspa/shared-cache-safety-report@2` machine schema.
+- `41-traffic-schema-lifecycle.php` - all five additive traffic tables, database insert
+  pre-flight, collection HMAC key separation, generated active-only MU observer, duration
+  idempotency/conflict, normal outcome stop, emergency stop, plugin-update mismatch and proof
+  that an inactive collector performs no event write.
+- `42-traffic-hot-path.php` - a normal visitor request remains successful and appends one bounded
+  request event, keyed paths are fixed-width, the hard event-id ceiling retires the MU observer,
+  and the embedded timestamp prevents writes without WP-Cron.
+- `43-traffic-woocommerce.php` - real WooCommerce guest basket/cart and logged-in requests plus
+  classic order creation, delayed payment and an excluded admin-created order. It proves the
+  actor and commerce joins, minor-unit/currency fields, privacy-safe observations and prohibited
+  customer-data columns.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

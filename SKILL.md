@@ -80,7 +80,40 @@ hit the site while it runs.
 If the site has Redis/Memcached, `wp sspa run --type=cache_impact` additionally reveals
 which plugins ignore the object cache.
 
-## 5. WooCommerce: measure the checkout the customer actually experiences
+## 5. Cache optimisation and experimental traffic evidence
+
+The normal analysis immediately produces a cache optimisation analysis. It assesses hazards
+and likely implementation difficulty without running a traffic collector:
+
+```bash
+wp sspa cache-optimisation-report --format=json
+```
+
+The `get-cache-optimisation-analysis` ability returns the same versioned document. The older
+`wp sspa cache-scan` and `get-cache-safety-report` names remain compatibility aliases.
+
+On WooCommerce sites, an owner may explicitly start the experimental lightweight traffic
+collector for 24 hours, 72 hours or 7 days:
+
+```bash
+wp sspa traffic start --duration=24h
+wp sspa traffic status --format=json
+wp sspa traffic observations
+wp sspa traffic stop
+```
+
+The matching abilities are `start-traffic-collection`, `get-traffic-collection-status`,
+`get-traffic-observations` and `stop-traffic-collection`. Explain that this writes anonymous
+keyed event rows, observes logged-in and non-empty-basket origin requests exactly, samples broad
+anonymous origin traffic, and cannot see requests served entirely at the CDN/page-cache edge.
+The `sspa/traffic-collector-observations@1` output is experimental evidence, not the finished
+Traffic Performance Analysis. A normal stop ends request collection and keeps the bounded order
+outcome window; `emergency: true` removes the observer immediately.
+
+Raw deletion is deliberately not an MCP ability. After downloading the observations, the owner
+can use the Traffic tab or `wp sspa traffic delete <collection-id> --yes`.
+
+## 6. WooCommerce: measure the checkout the customer actually experiences
 
 Everything above profiles pages as GETs, which for the cart and checkout means an EMPTY
 cart. On a block checkout the real cost is in POSTs a crawler never sends. The checkout flow
@@ -117,7 +150,7 @@ step list differs slightly between them (the classic one has no separate cart-AP
 rate-selection call and no draft order). A checkout page that is neither - one rendered by a
 page builder - reports `unsupported_checkout` rather than guessing at the payload.
 
-## 6. Cautions
+## 7. Cautions
 
 - Do not enable community sharing yourself - only the site owner may opt in (Share tab).
 - If pages report `blocked_by`, a security plugin blocked the loopbacks: relay the

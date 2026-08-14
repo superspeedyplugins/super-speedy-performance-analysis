@@ -35,6 +35,9 @@ if (is_array($report)) {
 $cache_recon = wp_get_ability('super-speedy-performance/get-cache-safety-report')->execute(array());
 sspa_t(is_array($cache_recon) && isset($cache_recon['assessment']['difficulty']), 'get-cache-safety-report returns the dedicated assessment');
 
+$cache_optimisation = wp_get_ability('super-speedy-performance/get-cache-optimisation-analysis')->execute(array());
+sspa_t(is_array($cache_optimisation) && 'sspa/shared-cache-safety-report@2' === $cache_optimisation['schema'], 'get-cache-optimisation-analysis returns the complete versioned document');
+
 $findings = wp_get_ability('super-speedy-performance/get-findings')->execute(array());
 sspa_t(is_array($findings) && isset($findings['total'], $findings['findings']), 'get-findings shape');
 
@@ -43,6 +46,21 @@ sspa_t(is_array($impacts) && isset($impacts['total']) && $impacts['total'] >= 1,
 
 $metrics = wp_get_ability('super-speedy-performance/get-site-metrics')->execute(array());
 sspa_t(is_array($metrics) && 'e-commerce' === $metrics['sector'], 'get-site-metrics sector (' . (is_array($metrics) ? $metrics['sector'] : '?') . ')');
+
+$traffic_status_ability = wp_get_ability('super-speedy-performance/get-traffic-collection-status');
+$traffic_observations_ability = wp_get_ability('super-speedy-performance/get-traffic-observations');
+sspa_t(is_object($traffic_status_ability) && is_object($traffic_observations_ability), 'traffic status and observations abilities registered');
+$traffic_started = wp_get_ability('super-speedy-performance/start-traffic-collection')->execute(array('duration' => '24h'));
+sspa_t(is_array($traffic_started) && !empty($traffic_started['active']), 'start-traffic-collection executes through the full pipeline');
+if (is_array($traffic_started) && !empty($traffic_started['collection']['id'])) {
+    $traffic_id = (int) $traffic_started['collection']['id'];
+    $traffic_status = $traffic_status_ability->execute(array('collection_id' => $traffic_id));
+    sspa_t(is_array($traffic_status) && $traffic_id === $traffic_status['collection']['id'], 'get-traffic-collection-status returns typed collection state');
+    $traffic_observations = $traffic_observations_ability->execute(array('collection_id' => $traffic_id));
+    sspa_t(is_array($traffic_observations) && SSPA_Traffic_Privacy::SCHEMA === $traffic_observations['schema'], 'get-traffic-observations returns the privacy-safe Phase 3 schema');
+    $traffic_stopped = wp_get_ability('super-speedy-performance/stop-traffic-collection')->execute(array('collection_id' => $traffic_id, 'emergency' => true));
+    sspa_t(is_array($traffic_stopped) && 'stopped' === $traffic_stopped['collection']['status'], 'stop-traffic-collection emergency stop executes');
+}
 
 // --- Permission gate: a subscriber must be refused ---
 $subscriber_id = username_exists('sspa-perm-test');
@@ -89,6 +107,14 @@ if (class_exists('WP_CLI')) {
     $json = WP_CLI::runcommand('sspa cache-scan --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_cache = json_decode((string) $json, true);
     sspa_t(is_array($cli_cache) && isset($cli_cache['assessment']['shared_cache_status']), 'wp sspa cache-scan --format=json returns the assessment');
+
+    $json = WP_CLI::runcommand('sspa cache-optimisation-report --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
+    $cli_cache_named = json_decode((string) $json, true);
+    sspa_t(is_array($cli_cache_named) && 'sspa/shared-cache-safety-report@2' === $cli_cache_named['schema'], 'wp sspa cache-optimisation-report emits the complete versioned document');
+
+    $json = WP_CLI::runcommand('sspa traffic status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
+    $cli_traffic = json_decode((string) $json, true);
+    sspa_t(is_array($cli_traffic) && array_key_exists('active', $cli_traffic), 'wp sspa traffic status --format=json parses');
 
     $out = WP_CLI::runcommand('sspa status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_status = json_decode((string) $out, true);

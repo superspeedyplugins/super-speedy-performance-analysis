@@ -50,7 +50,7 @@ function sspa_fe_step($run_id, $page_key, $args = array()) {
         'page_key' => $page_key,
         // A real order screen URL carries the order id, and the customer's email is in the
         // order. If any of it can reach a payload, it reaches it from here.
-        'url' => admin_url('post.php?post=4242&action=edit&_wpnonce=abc123'),
+        'url' => admin_url('post.php?post=987654321234&action=edit&_wpnonce=abc123'),
         'method' => isset($args['method']) ? $args['method'] : 'GET',
         'variant' => in_array($page_key, array('flow-view-order', 'flow-complete-order'), true) ? 'admin' : 'anon',
         'plugin_set_hash' => md5('flow-evidence'),
@@ -230,7 +230,7 @@ foreach (array($sspa_old, $sspa_full, $sspa_blocked, $sspa_partial, $sspa_custom
 }
 $sspa_all_json = wp_json_encode($sspa_all);
 $sspa_leaks = array();
-foreach (array('4242', '_wpnonce', 'abc123', 'post.php', 'awaiting-pallet-collection') as $sspa_needle) {
+foreach (array('987654321234', '_wpnonce', 'abc123', 'post.php', 'awaiting-pallet-collection') as $sspa_needle) {
     if (false !== strpos($sspa_all_json, $sspa_needle)) {
         $sspa_leaks[] = $sspa_needle;
     }

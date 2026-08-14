@@ -1,0 +1,14 @@
+{
+  "schema": "sspa/shared-cache-safety-report@2",
+  "generated_at": "2026-08-14T00:00:00Z",
+  "run_id": 1,
+  "headline": "Cache optimisation analysis fixture",
+  "detail": "Immediate passive evidence only.",
+  "assessment": {
+    "shared_cache_status": "visitor_specific_content_review_recommended",
+    "difficulty": "moderate",
+    "hazards": [],
+    "candidate_components": [],
+    "limitations": ["no_traffic_collector_was_run"]
+  }
+}

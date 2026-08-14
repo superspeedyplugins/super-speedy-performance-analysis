@@ -272,7 +272,7 @@ class SSPA_CLI {
     }
 
     /**
-     * Show the shared-cache safety report produced by a normal analysis.
+     * Compatibility alias for the cache optimisation analysis produced by a normal analysis.
      *
      * [--run=<id>]
      * : Specific completed run; defaults to latest.
@@ -283,7 +283,7 @@ class SSPA_CLI {
      * @subcommand cache-scan
      */
     public function cache_scan($args, $assoc_args) {
-        $assessment = SSPA_Report::cache_safety(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        $assessment = SSPA_Cache_Recon::export_data(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
         if (is_wp_error($assessment)) {
             WP_CLI::error($assessment->get_error_message());
         }
@@ -294,6 +294,49 @@ class SSPA_CLI {
         $a = $assessment['assessment'];
         WP_CLI::log($assessment['headline']);
         WP_CLI::log($assessment['detail']);
+        WP_CLI::log(sprintf(
+            'Shared-cache status: %s | Review difficulty: %s | Hazards: %d | Candidate components: %d',
+            $a['shared_cache_status'],
+            $a['difficulty'],
+            count((array) $a['hazards']),
+            count((array) $a['candidate_components'])
+        ));
+    }
+
+    /**
+     * Download the immediate cache optimisation analysis produced by a normal run.
+     *
+     * [--run=<id>]
+     * : Specific completed run; defaults to latest.
+     *
+     * [--format=<format>]
+     * : summary (default) or json.
+     *
+     * [--output=<path>]
+     * : Write the complete JSON document to this path.
+     *
+     * @subcommand cache-optimisation-report
+     */
+    public function cache_optimisation_report($args, $assoc_args) {
+        $report = SSPA_Cache_Recon::export_data(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        if (is_wp_error($report)) {
+            WP_CLI::error($report->get_error_message());
+        }
+        if (!empty($assoc_args['output'])) {
+            $json = wp_json_encode($report, JSON_PRETTY_PRINT) . PHP_EOL;
+            if (false === file_put_contents($assoc_args['output'], $json)) {
+                WP_CLI::error('Could not write analysis to ' . $assoc_args['output']);
+            }
+            WP_CLI::success('Wrote ' . $assoc_args['output']);
+            return;
+        }
+        if (isset($assoc_args['format']) && 'json' === $assoc_args['format']) {
+            WP_CLI::line(wp_json_encode($report));
+            return;
+        }
+        $a = $report['assessment'];
+        WP_CLI::log($report['headline']);
+        WP_CLI::log($report['detail']);
         WP_CLI::log(sprintf(
             'Shared-cache status: %s | Review difficulty: %s | Hazards: %d | Candidate components: %d',
             $a['shared_cache_status'],

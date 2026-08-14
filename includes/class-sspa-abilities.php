@@ -24,6 +24,8 @@ class SSPA_Abilities {
         return array(
             self::CATEGORY . '/get-status',
             self::CATEGORY . '/get-report',
+            self::CATEGORY . '/get-archive-profile',
+            self::CATEGORY . '/get-cache-optimisation-analysis',
             self::CATEGORY . '/get-cache-safety-report',
             self::CATEGORY . '/get-findings',
             self::CATEGORY . '/get-plugin-impacts',
@@ -32,6 +34,10 @@ class SSPA_Abilities {
             self::CATEGORY . '/run-deep-analysis',
             self::CATEGORY . '/run-checkout-flow',
             self::CATEGORY . '/get-checkout-flow',
+            self::CATEGORY . '/start-traffic-collection',
+            self::CATEGORY . '/get-traffic-collection-status',
+            self::CATEGORY . '/stop-traffic-collection',
+            self::CATEGORY . '/get-traffic-observations',
             self::CATEGORY . '/submit-results',
         );
     }
@@ -62,6 +68,11 @@ class SSPA_Abilities {
             'properties' => new stdClass(),
             'additionalProperties' => false,
             'default' => array(),
+        );
+        $idempotent_control = array(
+            'annotations' => array('readonly' => false, 'destructive' => false, 'idempotent' => true),
+            'show_in_rest' => true,
+            'mcp' => array('public' => true),
         );
 
         wp_register_ability(self::CATEGORY . '/get-status', array(
@@ -133,6 +144,24 @@ class SSPA_Abilities {
             'output_schema' => array('type' => 'object'),
             'permission_callback' => array(__CLASS__, 'can_manage'),
             'execute_callback' => array(__CLASS__, 'exec_get_cache_safety_report'),
+            'meta' => $readonly,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-cache-optimisation-analysis', array(
+            'label' => __('Get cache optimisation analysis', 'super-speedy-performance-analysis'),
+            'description' => __('Read the immediate cache implementation difficulty and hazard analysis from a normal performance run. No traffic collector is required. The versioned document includes private-site diagnostic URLs and local component paths, but no response or customer content.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'run_id' => array('type' => 'integer', 'description' => __('Specific run id; defaults to the latest completed run.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_cache_optimisation_analysis'),
             'meta' => $readonly,
         ));
 
@@ -287,6 +316,75 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        wp_register_ability(self::CATEGORY . '/start-traffic-collection', array(
+            'label' => __('Start experimental traffic collection', 'super-speedy-performance-analysis'),
+            'description' => __('Start the lightweight WooCommerce traffic observer for 24 hours, 72 hours or 7 days. Exact origin requests are retained for logged-in visitors and visitors with non-empty baskets; broad anonymous origin traffic is sampled. Returns the existing collection unchanged when the same duration is already active.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'duration' => array('type' => 'string', 'enum' => array('24h', '72h', '7d'), 'default' => '24h'),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_start_traffic_collection'),
+            'meta' => $idempotent_control,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-traffic-collection-status', array(
+            'label' => __('Get experimental traffic collection status', 'super-speedy-performance-analysis'),
+            'description' => __('Read collector state, deadlines, event and disk limits, database pre-flight timing and measured observer preparation overhead.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array('collection_id' => array('type' => 'integer')),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_traffic_collection_status'),
+            'meta' => $readonly,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/stop-traffic-collection', array(
+            'label' => __('Stop experimental traffic collection', 'super-speedy-performance-analysis'),
+            'description' => __('Stop request collection while retaining the bounded 72-hour order-outcome observer. emergency=true removes the observer immediately. Collected data is retained.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'collection_id' => array('type' => 'integer'),
+                    'emergency' => array('type' => 'boolean', 'default' => false),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_stop_traffic_collection'),
+            'meta' => $idempotent_control,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-traffic-observations', array(
+            'label' => __('Get experimental traffic observations', 'super-speedy-performance-analysis'),
+            'description' => __('Return privacy-safe aggregate Phase 3 observations for design review. This is explicitly not the finished Traffic Performance Analysis report.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array('collection_id' => array('type' => 'integer')),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_traffic_observations'),
+            'meta' => $readonly,
+        ));
+
         wp_register_ability(self::CATEGORY . '/submit-results', array(
             'label' => __('Queue anonymised results for superspeedy.org', 'super-speedy-performance-analysis'),
             'description' => __('Save the latest run to the durable local submission queue. Background delivery retries automatically. Only works when the site owner has opted in on the Share tab - agents cannot enable sharing.', 'super-speedy-performance-analysis'),
@@ -323,7 +421,11 @@ class SSPA_Abilities {
     }
 
     public static function exec_get_cache_safety_report($input) {
-        return SSPA_Report::cache_safety(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
+        return SSPA_Cache_Recon::export_data(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
+    }
+
+    public static function exec_get_cache_optimisation_analysis($input) {
+        return SSPA_Cache_Recon::export_data(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_findings($input) {
@@ -438,6 +540,25 @@ class SSPA_Abilities {
         }
         $waterfall['findings'] = SSPA_Report::findings($run_id);
         return $waterfall;
+    }
+
+    public static function exec_start_traffic_collection($input) {
+        return SSPA_Traffic_Collection::start(!empty($input['duration']) ? (string) $input['duration'] : '24h', 'mcp');
+    }
+
+    public static function exec_get_traffic_collection_status($input) {
+        return SSPA_Traffic_Collection::status(!empty($input['collection_id']) ? (int) $input['collection_id'] : 0);
+    }
+
+    public static function exec_stop_traffic_collection($input) {
+        return SSPA_Traffic_Collection::stop(
+            !empty($input['collection_id']) ? (int) $input['collection_id'] : 0,
+            !empty($input['emergency'])
+        );
+    }
+
+    public static function exec_get_traffic_observations($input) {
+        return SSPA_Traffic_Collection::observations(!empty($input['collection_id']) ? (int) $input['collection_id'] : 0);
     }
 
     public static function exec_submit($input) {

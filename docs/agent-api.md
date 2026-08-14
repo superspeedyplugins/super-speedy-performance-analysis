@@ -4,12 +4,14 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 ## Surfaces (identical data)
 
-- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|cache-scan|report` (report/findings/impacts
+- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|cache-scan|cache-optimisation-report|report`
+  plus `wp sspa traffic start|status|stop|observations|delete` (report/findings/impacts
   take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
-  `get-status`, `get-report`, `get-cache-safety-report`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
+  `get-status`, `get-report`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
-  `get-checkout-flow`, `submit-results`. Readonly ones answer GET at
+  `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
+  `stop-traffic-collection`, `get-traffic-observations`, `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
 - **MCP**: when the MCP Adapter plugin is installed, a server is registered at
   `/wp-json/mcp/super-speedy-performance` exposing the same abilities as tools
@@ -73,6 +75,19 @@ Repeated site-wide signals are scored once, while their affected page count rema
 The `source_scan` block states component coverage and every component limited by the fair
 per-component scan ceiling. A controlled
 guest/customer/basket comparison is still required before enabling shared caching.
+
+### Experimental traffic observations
+
+`get-traffic-observations` and `wp sspa traffic observations` return
+`sspa/traffic-collector-observations@1`. This is a Phase 3 aggregate diagnostic, not the final
+`sspa/traffic-performance-analysis@1` report. It contains collection health, source quality,
+event/request distributions, exact observed logged-in and non-empty-basket origin cohorts,
+WooCommerce event/link counts and aggregate minor-unit values by currency.
+
+It never exposes actor, session, account, order or path join keys. The source ledger explicitly
+marks browser and Cloudflare evidence unavailable and anonymous WordPress-origin requests sampled.
+Early reads do not stop or shorten collection. Destructive raw-data deletion is only available
+in the Traffic tab and `wp sspa traffic delete`, not through MCP.
 
 ### Page
 

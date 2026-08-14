@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.22.8
+ * Version: 0.23.0
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -58,6 +58,11 @@ add_action('plugins_loaded', function () {
 }, -9998);
 
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-schema.php';
+require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-codes.php';
+require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-privacy.php';
+require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-helper.php';
+require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-collection.php';
+require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-ajax.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-install.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-token.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-helper-files.php';
@@ -109,7 +114,9 @@ if (function_exists('wp_register_ability')) {
 }
 if (defined('WP_CLI') && WP_CLI) {
     require_once SSPA_PLUGIN_DIR . 'includes/cli/class-sspa-cli.php';
+    require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-cli.php';
     WP_CLI::add_command('sspa', 'SSPA_CLI');
+    WP_CLI::add_command('sspa traffic', 'SSPA_Traffic_CLI');
 }
 
 register_activation_hook(__FILE__, array('SSPA_Install', 'activate'));
@@ -118,6 +125,8 @@ add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));
 
 SSPA_Run_Controller::register();
 SSPA_Cache_Recon::register();
+SSPA_Traffic_Collection::register();
+SSPA_Traffic_Ajax::register();
 // Browser transport for runs whose preflight found loopbacks blocked (basic auth,
 // WAF, CDN): the driving admin's browser fetches the pages one request at a time.
 SSPA_Browser_Transport::init();

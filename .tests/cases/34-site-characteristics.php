@@ -162,7 +162,14 @@ sspa_sc_t(
 // table while any order is out of sync, so the mode is passed in rather than flipped - the
 // counting code, and the information_schema row counts it works from, are the real ones.
 $sspa_tables = SSPA_Demographics::table_rows();
-$sspa_hpos_count = SSPA_Demographics::orders_total(true, $sspa_tables['rows']);
+$sspa_hpos_rows = $sspa_tables['rows'];
+// A legacy-mode fixture may not have created WooCommerce's HPOS table at all. The unit under
+// test consumes information_schema estimates, so provide a synthetic estimate when the table
+// is absent rather than making the assertion depend on WooCommerce's install history.
+if (!isset($sspa_hpos_rows[$wpdb->prefix . 'wc_orders'])) {
+    $sspa_hpos_rows[$wpdb->prefix . 'wc_orders'] = 5;
+}
+$sspa_hpos_count = SSPA_Demographics::orders_total(true, $sspa_hpos_rows);
 $sspa_legacy_count = SSPA_Demographics::orders_total(false, $sspa_tables['rows']);
 sspa_sc_t(
     'table_estimate' === $sspa_hpos_count['basis'] && is_int($sspa_hpos_count['count']),

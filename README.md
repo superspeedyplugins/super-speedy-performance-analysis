@@ -44,7 +44,8 @@ slow, and proves it.
 The whole plugin is drivable without the GUI:
 
 - **WP-CLI**: `wp sspa run`, `wp sspa status`, `wp sspa findings`, `wp sspa impacts`,
-  `wp sspa report` - JSON output throughout.
+  `wp sspa report`, `wp sspa cache-optimisation-report` and the experimental
+  `wp sspa traffic start|status|stop|observations|delete` commands - JSON output throughout.
 - **WordPress Abilities API** (WP 6.9+) with the same surface, and with the MCP Adapter
   plugin installed the abilities appear as MCP tools automatically.
 - **[SKILL.md](SKILL.md)** teaches Claude-based agents the install -> run -> interpret

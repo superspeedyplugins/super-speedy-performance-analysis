@@ -1,0 +1,23 @@
+{
+  "schema": "sspa/traffic-performance-analysis@1",
+  "report_state": "provisional",
+  "generated_at": "2026-08-14T00:00:00Z",
+  "collection": {
+    "status": "running",
+    "observed_seconds": 86400,
+    "snapshot_event_id": 12000,
+    "source_revision": 0
+  },
+  "sources": {
+    "wordpress_origin": "exact_target_and_sampled_anonymous",
+    "woocommerce": "exact_observed_events",
+    "browser": "unavailable",
+    "cloudflare": "unavailable"
+  },
+  "cohorts": {
+    "logged_in_customer_requests": {"count": 200, "quality": "exact"},
+    "non_empty_basket_requests": {"count": 80, "quality": "exact"},
+    "anonymous_origin_requests": {"count": 500, "quality": "sampled"}
+  },
+  "limitations": ["edge_cache_hits_are_not_visible", "open_baskets_are_still_open"]
+}

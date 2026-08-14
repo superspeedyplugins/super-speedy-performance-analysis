@@ -79,7 +79,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         $sspa_cache_totals = isset($sspa_cache_evidence['totals']) ? (array) $sspa_cache_evidence['totals'] : array();
         ?>
         <div class="sspa-placeholder sspa-cache-recon">
-            <h2><?php esc_html_e('Shared-cache safety scan', 'super-speedy-performance-analysis'); ?></h2>
+            <h2><?php esc_html_e('Cache optimisation analysis', 'super-speedy-performance-analysis'); ?></h2>
             <p><strong><?php echo esc_html($sspa_cache_rendered['headline']); ?></strong></p>
             <p>
                 <span class="sspa-badge"><?php echo esc_html(isset($sspa_shared_cache_labels[$sspa_shared_cache_status]) ? $sspa_shared_cache_labels[$sspa_shared_cache_status] : __('Not assessed', 'super-speedy-performance-analysis')); ?></span>
@@ -192,9 +192,10 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                 <?php esc_html_e('This scan uses anonymous responses and source indicators. It identifies where controlled guest, customer and basket testing should begin; it does not prove that shared caching is safe or that a candidate component owns a changed region.', 'super-speedy-performance-analysis'); ?>
             </p>
             <p>
-                <button type="button" class="button sspa-cache-safety-download" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Download shared-cache safety report', 'super-speedy-performance-analysis'); ?></button>
+                <button type="button" class="button sspa-cache-safety-download" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Download cache optimisation analysis', 'super-speedy-performance-analysis'); ?></button>
                 <span class="description sspa-cache-safety-download-status" aria-live="polite"></span>
             </p>
+            <p class="description"><?php esc_html_e('No traffic collector was used. This immediate report assesses implementation difficulty and hazards, not daily traffic or expected caching benefit.', 'super-speedy-performance-analysis'); ?></p>
         </div>
     <?php endif; ?>
 

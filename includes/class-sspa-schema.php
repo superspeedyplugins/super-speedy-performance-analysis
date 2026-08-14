@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '1.9';
+    const DB_VERSION = '2.0';
 
     const LOCK_OPTION = 'sspa_schema_lock';
 
@@ -57,6 +57,11 @@ class SSPA_Schema {
         $site_metrics = self::table('site_metrics');
         $submission_outbox = self::table('submission_outbox');
         $submission_events = self::table('submission_events');
+        $traffic_collections = self::table('traffic_collections');
+        $traffic_events = self::table('traffic_events');
+        $traffic_rollups = self::table('traffic_rollups');
+        $traffic_actor_work = self::table('traffic_actor_work');
+        $traffic_reports = self::table('traffic_reports');
 
         dbDelta("CREATE TABLE $runs (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -247,6 +252,109 @@ class SSPA_Schema {
             KEY outbox_created (outbox_id,created)
         ) $charset_collate;");
 
+        dbDelta("CREATE TABLE $traffic_collections (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            collection_uuid char(36) NOT NULL,
+            blog_id bigint(20) unsigned NOT NULL DEFAULT 1,
+            status_code tinyint(3) unsigned NOT NULL DEFAULT 1,
+            started_at datetime NULL,
+            collect_until datetime NULL,
+            outcomes_until datetime NULL,
+            finished_at datetime NULL,
+            origin_sample_modulus smallint(5) unsigned NOT NULL DEFAULT 100,
+            event_ceiling int(10) unsigned NOT NULL DEFAULT 250000,
+            event_id_stop bigint(20) unsigned NOT NULL DEFAULT 0,
+            disk_ceiling_bytes bigint(20) unsigned NOT NULL DEFAULT 33554432,
+            aggregate_cursor bigint(20) unsigned NOT NULL DEFAULT 0,
+            source_revision int(10) unsigned NOT NULL DEFAULT 0,
+            source_ledger longtext NULL,
+            stop_reason_code smallint(5) unsigned NULL,
+            observer_version smallint(5) unsigned NOT NULL DEFAULT 1,
+            preflight_insert_ms float NULL,
+            created_by varchar(16) NOT NULL DEFAULT 'admin',
+            created_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY collection_uuid (collection_uuid),
+            KEY blog_status (blog_id,status_code),
+            KEY collect_until (collect_until)
+        ) $charset_collate;");
+
+        dbDelta("CREATE TABLE $traffic_events (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            collection_id bigint(20) unsigned NOT NULL,
+            observed_at int(10) unsigned NOT NULL,
+            actor_key binary(12) NULL,
+            related_actor_key binary(12) NULL,
+            commerce_key binary(12) NULL,
+            path_key binary(8) NULL,
+            event_code tinyint(3) unsigned NOT NULL,
+            actor_state tinyint(3) unsigned NOT NULL DEFAULT 0,
+            surface_code tinyint(3) unsigned NOT NULL DEFAULT 0,
+            page_class tinyint(3) unsigned NOT NULL DEFAULT 0,
+            status_code smallint(5) unsigned NOT NULL DEFAULT 0,
+            wall_ms mediumint(8) unsigned NOT NULL DEFAULT 0,
+            cpu_us int(10) unsigned NULL,
+            query_count mediumint(8) unsigned NULL,
+            observer_us mediumint(8) unsigned NULL,
+            value_minor bigint(20) NULL,
+            currency binary(3) NULL,
+            flags int(10) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY collection_id (collection_id,id)
+        ) $charset_collate;");
+
+        dbDelta("CREATE TABLE $traffic_rollups (
+            collection_id bigint(20) unsigned NOT NULL,
+            rollup_code smallint(5) unsigned NOT NULL,
+            bucket_start int(10) unsigned NOT NULL DEFAULT 0,
+            dimension_key varbinary(32) NOT NULL DEFAULT '',
+            event_count bigint(20) unsigned NOT NULL DEFAULT 0,
+            wall_ms_sum bigint(20) unsigned NOT NULL DEFAULT 0,
+            cpu_us_sum bigint(20) unsigned NOT NULL DEFAULT 0,
+            query_count_sum bigint(20) unsigned NOT NULL DEFAULT 0,
+            value_minor_sum bigint(20) NOT NULL DEFAULT 0,
+            histogram_blob blob NULL,
+            quality_code tinyint(3) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (collection_id,rollup_code,bucket_start,dimension_key)
+        ) $charset_collate;");
+
+        dbDelta("CREATE TABLE $traffic_actor_work (
+            collection_id bigint(20) unsigned NOT NULL,
+            actor_key binary(12) NOT NULL,
+            first_seen int(10) unsigned NOT NULL DEFAULT 0,
+            last_seen int(10) unsigned NOT NULL DEFAULT 0,
+            state_flags int(10) unsigned NOT NULL DEFAULT 0,
+            eligible_views bigint(20) unsigned NOT NULL DEFAULT 0,
+            origin_wall_ms bigint(20) unsigned NOT NULL DEFAULT 0,
+            query_count bigint(20) unsigned NOT NULL DEFAULT 0,
+            funnel_flags int(10) unsigned NOT NULL DEFAULT 0,
+            last_value_minor bigint(20) NULL,
+            currency binary(3) NULL,
+            PRIMARY KEY  (collection_id,actor_key)
+        ) $charset_collate;");
+
+        dbDelta("CREATE TABLE $traffic_reports (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            collection_id bigint(20) unsigned NOT NULL,
+            report_uuid char(36) NOT NULL,
+            status_code tinyint(3) unsigned NOT NULL DEFAULT 1,
+            snapshot_event_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            observed_from datetime NULL,
+            observed_until datetime NULL,
+            aggregate_cursor bigint(20) unsigned NOT NULL DEFAULT 0,
+            source_revision int(10) unsigned NOT NULL DEFAULT 0,
+            source_ledger longtext NULL,
+            report_blob longblob NULL,
+            error_code varchar(64) NULL,
+            created_at datetime NOT NULL,
+            started_at datetime NULL,
+            finished_at datetime NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY report_uuid (report_uuid),
+            UNIQUE KEY report_boundary (collection_id,snapshot_event_id,source_revision),
+            KEY collection_status (collection_id,status_code)
+        ) $charset_collate;");
+
         self::ensure_run_uuids();
 
         update_option('sspa_db_version', self::DB_VERSION);
@@ -281,7 +389,7 @@ class SSPA_Schema {
 
     public static function drop_tables() {
         global $wpdb;
-        foreach (array('submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
+        foreach (array('traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_events', 'traffic_collections', 'submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
             $table = self::table($name);
             $wpdb->query("DROP TABLE IF EXISTS $table");
         }

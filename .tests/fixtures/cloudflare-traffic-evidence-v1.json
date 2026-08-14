@@ -1,0 +1,16 @@
+{
+  "schema": "sspa/cloudflare-traffic-evidence@1",
+  "observed_from": "2026-08-13T00:00:00Z",
+  "observed_until": "2026-08-14T00:00:00Z",
+  "quality": "sampled",
+  "totals": {
+    "requests": 10000,
+    "cache_hits": 8000,
+    "origin_requests": 2000
+  },
+  "capabilities": {
+    "verified_bots": false,
+    "referral_groups": false
+  },
+  "limitations": ["adaptive_analytics_sampled"]
+}

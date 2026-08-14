@@ -33,7 +33,7 @@ class SSPA_Cache_Recon {
             wp_send_json_error($payload->get_error_message());
         }
         wp_send_json_success(array(
-            'filename' => 'sspa-shared-cache-safety-' . (int) $payload['run_id'] . '-' . gmdate('Ymd-His') . '.json',
+            'filename' => 'sspa-cache-optimisation-analysis-' . (int) $payload['run_id'] . '-' . gmdate('Ymd-His') . '.json',
             'payload' => $payload,
         ));
     }

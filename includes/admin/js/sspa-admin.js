@@ -218,7 +218,7 @@ function sspa_esc(str) {
 	return jQuery('<span>').text(str == null ? '' : String(str)).html();
 }
 
-// Download the complete local shared-cache safety evidence shown on Overview. The server
+// Download the complete local cache optimisation evidence shown on Overview. The server
 // builds a versioned document; the browser saves it without sending it anywhere else.
 jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 	var btn = jQuery(this).prop('disabled', true);
@@ -236,7 +236,7 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 		var blob = new Blob([json], { type: 'application/json' });
 		var link = document.createElement('a');
 		link.href = URL.createObjectURL(blob);
-		link.download = resp.data.filename || 'sspa-shared-cache-safety.json';
+		link.download = resp.data.filename || 'sspa-cache-optimisation-analysis.json';
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
@@ -246,6 +246,127 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 		status.text(' The report could not be prepared.');
 	}).always(function () {
 		btn.prop('disabled', false);
+	});
+});
+
+// ---- Experimental traffic collector -----------------------------------
+
+var sspaTrafficPoll = null;
+
+function sspa_schedule_traffic_poll() {
+	window.clearTimeout(sspaTrafficPoll);
+	if (!jQuery('.sspa-traffic-panel[data-active="1"]').length) {
+		return;
+	}
+	sspaTrafficPoll = window.setTimeout(function () {
+		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
+	}, 15000);
+}
+
+jQuery(function () {
+	sspa_schedule_traffic_poll();
+});
+
+jQuery(document).on('click', '#sspa-traffic-start', function () {
+	var btn = jQuery(this);
+	var message = jQuery('.sspa-traffic-message');
+	if (!jQuery('#sspa-traffic-confirm').prop('checked')) {
+		alert('Confirm that you have read the privacy and resource limits before starting.');
+		return;
+	}
+	btn.prop('disabled', true).text('Running database pre-flight…');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_traffic_start',
+		nonce: sspa_admin.nonce,
+		duration: jQuery('#sspa-traffic-duration').val(),
+		confirmed: 1
+	}, function (resp) {
+		if (!resp.success) {
+			btn.prop('disabled', false).text('Start collection');
+			alert(resp.data || 'Collection could not be started.');
+			return;
+		}
+		message.text('Collection started.');
+		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
+	}).fail(function () {
+		btn.prop('disabled', false).text('Start collection');
+		alert('Collection could not be started.');
+	});
+});
+
+jQuery(document).on('click', '#sspa-traffic-stop, #sspa-traffic-emergency-stop', function () {
+	var btn = jQuery(this);
+	var emergency = btn.is('#sspa-traffic-emergency-stop');
+	if (emergency && !window.confirm('Remove the observer immediately? No more request or order-outcome events will be recorded.')) {
+		return;
+	}
+	btn.prop('disabled', true);
+	jQuery.post(ajaxurl, {
+		action: 'sspa_traffic_stop',
+		nonce: sspa_admin.nonce,
+		collection_id: jQuery('.sspa-traffic-panel').data('collection-id') || 0,
+		emergency: emergency ? 1 : 0
+	}, function (resp) {
+		if (!resp.success) {
+			btn.prop('disabled', false);
+			alert(resp.data || 'Collection could not be stopped.');
+			return;
+		}
+		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
+	}).fail(function () {
+		btn.prop('disabled', false);
+		alert('Collection could not be stopped.');
+	});
+});
+
+jQuery(document).on('click', '#sspa-traffic-observations', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var message = jQuery('.sspa-traffic-message').text(' Preparing observations…');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_traffic_observations',
+		nonce: sspa_admin.nonce,
+		collection_id: jQuery('.sspa-traffic-panel').data('collection-id') || 0
+	}, function (resp) {
+		if (!resp.success) {
+			message.text(' ' + (resp.data || 'Observations could not be prepared.'));
+			return;
+		}
+		var json = JSON.stringify(resp.data.payload, null, 2);
+		var blob = new Blob([json], { type: 'application/json' });
+		var link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = resp.data.filename || 'sspa-experimental-traffic-observations.json';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(link.href);
+		message.text(' Downloaded.');
+	}).fail(function () {
+		message.text(' Observations could not be prepared.');
+	}).always(function () {
+		btn.prop('disabled', false);
+	});
+});
+
+jQuery(document).on('click', '#sspa-traffic-delete', function () {
+	if (!window.confirm('Permanently delete this collection, all raw event rows and its temporary join key?')) {
+		return;
+	}
+	var btn = jQuery(this).prop('disabled', true);
+	jQuery.post(ajaxurl, {
+		action: 'sspa_traffic_delete',
+		nonce: sspa_admin.nonce,
+		collection_id: jQuery('.sspa-traffic-panel').data('collection-id') || 0
+	}, function (resp) {
+		if (!resp.success) {
+			btn.prop('disabled', false);
+			alert(resp.data || 'Collection data could not be deleted.');
+			return;
+		}
+		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
+	}).fail(function () {
+		btn.prop('disabled', false);
+		alert('Collection data could not be deleted.');
 	});
 });
 

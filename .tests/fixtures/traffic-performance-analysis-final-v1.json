@@ -1,0 +1,24 @@
+{
+  "schema": "sspa/traffic-performance-analysis@1",
+  "report_state": "final",
+  "generated_at": "2026-08-14T00:00:00Z",
+  "collection": {
+    "status": "complete",
+    "observed_seconds": 604800,
+    "snapshot_event_id": 84000,
+    "source_revision": 0
+  },
+  "sources": {
+    "wordpress_origin": "exact_target_and_sampled_anonymous",
+    "woocommerce": "exact_observed_events",
+    "browser": "unavailable",
+    "cloudflare": "unavailable"
+  },
+  "commerce": {
+    "baskets_started": {"count": 150, "quality": "exact"},
+    "orders_created": {"count": 40, "quality": "exact"},
+    "payments_observed": {"count": 36, "quality": "exact"},
+    "still_open": {"count": 4, "quality": "exact"}
+  },
+  "limitations": ["wordpress_only_results_are_an_origin_lower_bound"]
+}

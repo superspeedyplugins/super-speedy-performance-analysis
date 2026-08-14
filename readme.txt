@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.22
+Stable tag: 0.23
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,16 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.23 (14th August 2026) =
+* Added an experimental WooCommerce traffic collector with 24-hour, 72-hour and 7-day collection options in the new Traffic tab
+* Added `wp sspa traffic start|status|stop|observations|delete` and matching non-destructive MCP abilities for starting, monitoring, stopping and reviewing an experimental collection
+* Logged-in customer and non-empty-basket requests reaching WordPress are observed exactly, while broad anonymous origin traffic is deterministically sampled
+* WooCommerce basket, cart, checkout, order, payment, cancellation and refund events use temporary keyed joins without storing customer, session, order or product identifiers
+* The collector uses one buffered append per observed request, refuses a slow database pre-flight, retires itself at hard timestamp and event limits without WP-Cron, and checks a separate disk ceiling during health updates
+* Added a privacy-checked experimental observations download for feeding real collection results and limitations back into the Traffic Performance Analysis design
+* Stopped experimental collections can be permanently deleted with their raw event rows and temporary join key from the Traffic tab or WP-CLI; destructive deletion is deliberately not exposed through MCP
+* Renamed the immediate shared-cache scan to Cache optimisation analysis in the GUI, CLI and MCP while retaining the existing `sspa/shared-cache-safety-report@2` schema and `wp sspa cache-scan` compatibility alias
 
 = 0.22 (13th August 2026) =
 * Checkout results now show the synthetic order's email address, WooCommerce order number, coupons and line items so fulfilment teams can identify and ignore it
