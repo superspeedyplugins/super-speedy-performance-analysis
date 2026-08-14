@@ -542,6 +542,19 @@
 	vertical-align: middle;
 }
 
+#sspa-adhoc-pop .sspa-ck-order-details td:first-child {
+	width: 130px;
+	font-weight: 600;
+}
+
+#sspa-adhoc-pop .sspa-ck-order-details td:last-child {
+	width: auto;
+	text-align: left;
+	white-space: normal;
+	font-family: var(--sspa-font);
+	font-size: 12px;
+}
+
 #sspa-adhoc-pop .sspa-ck-step-toggle {
 	display: inline-flex;
 	align-items: center;

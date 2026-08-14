@@ -32,6 +32,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.22 (13th August 2026) =
+* Checkout results now show the synthetic order's email address, WooCommerce order number, coupons and line items so fulfilment teams can identify and ignore it
 * Shared-cache safety reports now separate infrastructure cookies from application hazards, score repeated site-wide signals once, show nonce provenance and page-associated source candidates, fairly sample every component, and exclude builder template pseudo-pages
 * Performance analyses now include a downloadable shared-cache safety report showing visitor-specific content hazards, likely review difficulty, existing dynamic-region coverage and the plugin or theme components worth inspecting first; the same evidence is available through MCP and `wp sspa cache-scan`
 * Classic checkout analysis now uses the nonce rendered for its actual guest cart session, fixing order placement on sites with customised WooCommerce session or nonce handling

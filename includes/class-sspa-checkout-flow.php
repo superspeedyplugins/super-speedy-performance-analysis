@@ -601,6 +601,9 @@ class SSPA_Checkout_Flow {
             $result['outcome'] = 'exception';
             $result['notes']['error'] = $e->getMessage();
         } finally {
+            // Preserve the exact identifiers a fulfilment team may see before cleanup removes
+            // the local order. Integrations and webhooks can already have received it by then.
+            self::capture_order_details($result);
             // Cleanup runs here, never on the happy path: any failure after an order
             // exists still deletes it.
             $result['steps'][] = self::cleanup_step($crawler, $result, $flags);
@@ -615,6 +618,36 @@ class SSPA_Checkout_Flow {
         }
 
         return $result;
+    }
+
+    /** Store the real WooCommerce-facing order details before the temporary order is deleted. */
+    private static function capture_order_details(&$result) {
+        if (empty($result['order_ids']) || !function_exists('wc_get_order')) {
+            return;
+        }
+        $order_id = (int) end($result['order_ids']);
+        $order = $order_id ? wc_get_order($order_id) : null;
+        if (!$order) {
+            return;
+        }
+
+        $items = array();
+        foreach ($order->get_items('line_item') as $item) {
+            $items[] = array(
+                'name' => (string) $item->get_name(),
+                'quantity' => (int) $item->get_quantity(),
+            );
+        }
+        $coupons = array_values(array_filter(array_map('strval', (array) $order->get_coupon_codes()), 'strlen'));
+        $actual_email = (string) $order->get_billing_email();
+
+        $result['notes']['order_id'] = $order_id;
+        $result['notes']['order_number'] = (string) $order->get_order_number();
+        $result['notes']['email'] = is_email($actual_email)
+            ? $actual_email
+            : (isset($result['notes']['email']) ? (string) $result['notes']['email'] : '');
+        $result['notes']['coupon_codes'] = $coupons;
+        $result['notes']['items'] = $items;
     }
 
     /**
@@ -1690,6 +1723,7 @@ class SSPA_Checkout_Flow {
         $run = SSPA_Run_Controller::run_row($run_id);
         $notes = $run ? json_decode((string) $run['notes'], true) : array();
         $notes = is_array($notes) ? $notes : array();
+        $flow_notes = isset($notes['flow']) && is_array($notes['flow']) ? $notes['flow'] : array();
 
         $at_risk = array();
         $secured = array();
@@ -1821,6 +1855,17 @@ class SSPA_Checkout_Flow {
             'management_ms' => round($management_ms, 1),
             'complete_from_status' => isset($notes['flow']['complete_from_status']) ? $notes['flow']['complete_from_status'] : null,
             'complete_to_status' => isset($notes['flow']['complete_to_status']) ? $notes['flow']['complete_to_status'] : null,
+            // Private manage-options result used by the admin UI, CLI and MCP. Community
+            // evidence selects its fields explicitly and never receives these identifiers.
+            'order_details' => array(
+                'email' => isset($flow_notes['email']) ? (string) $flow_notes['email'] : '',
+                'order_id' => isset($flow_notes['order_id']) ? (int) $flow_notes['order_id'] : 0,
+                'order_number' => isset($flow_notes['order_number']) ? (string) $flow_notes['order_number'] : '',
+                'coupon_codes' => array_values((array) (isset($flow_notes['coupon_codes']) ? $flow_notes['coupon_codes'] : array())),
+                'items' => array_values((array) (isset($flow_notes['items']) ? $flow_notes['items'] : array())),
+                'planned_product' => isset($flow_notes['product_name']) ? (string) $flow_notes['product_name'] : '',
+                'planned_quantity' => isset($flow_notes['quantity']) ? (int) $flow_notes['quantity'] : 0,
+            ),
             'excluded' => $excluded,
             'slowest' => $slowest ? $slowest['label'] : null,
             'slowest_step' => $slowest ? $slowest['page_key'] : null,

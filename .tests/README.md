@@ -90,7 +90,8 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
 - `19-checkout-flow.php` - one complete purchase through
   `SSPA_Run_Controller::start(['type' => 'checkout'])`: every step profiled with the right
   method, the cart and checkout pages rendering a real cart, zero order/stock/session
-  residue, the payment boundary marked and the waterfall split at it, the pre-flight
+  residue, fulfilment identifiers retained for the local overlay after cleanup, the payment
+  boundary marked and the waterfall split at it, the pre-flight
   inventory naming a planted integration, a planted blocking HTTP call caught and
   attributed, mail really delivered in deliver mode, the Excimer roll-up, and both named
   failure paths. Plus the payment-mode safety assertions: a flow token with no `pm` flag,

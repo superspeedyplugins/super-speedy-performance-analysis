@@ -281,6 +281,25 @@
 				'. The steps below are what was measured before it stopped.</p>';
 		}
 
+		var order = d.order_details || {};
+		var orderItems = order.items || [];
+		if (!orderItems.length && order.planned_product) {
+			orderItems = [{ name: order.planned_product, quantity: order.planned_quantity || 1 }];
+		}
+		var orderNumber = order.order_number || (order.order_id ? String(order.order_id) : '');
+		var coupons = (order.coupon_codes || []).length ? order.coupon_codes.join(', ') : 'None';
+		html += '<div class="sspa-adhoc-span"><h3 class="sspa-ck-h">Synthetic order details for fulfilment</h3>' +
+			'<p class="sspa-adhoc-note">If a fulfilment, warehouse or webhook integration received this test order, ask them to ignore the following:</p>' +
+			'<table class="sspa-adhoc-table sspa-ck-table sspa-ck-order-details">' +
+			'<tr><td>Email address</td><td><code>' + esc(order.email || 'Unavailable') + '</code></td></tr>' +
+			'<tr><td>Order number</td><td>' + (orderNumber ? '<strong>#' + esc(orderNumber) + '</strong>' : 'No order created') +
+				(order.order_id && String(order.order_id) !== String(orderNumber) ? ' <span class="sspa-adhoc-note">(internal ID ' + esc(order.order_id) + ')</span>' : '') + '</td></tr>' +
+			'<tr><td>Coupon</td><td><code>' + esc(coupons) + '</code></td></tr>' +
+			'<tr><td>Item ordered</td><td>' + (orderItems.length ? orderItems.map(function (item) {
+				return esc((item.quantity || 1) + ' × ' + item.name);
+			}).join('<br>') : 'Unavailable') + '</td></tr>' +
+			'</table></div>';
+
 		html += '<div class="sspa-adhoc-span"><h3 class="sspa-ck-h sspa-ck-atrisk">At risk &mdash; your customer can still walk away during this</h3>' +
 			'<table class="sspa-adhoc-table sspa-ck-table">' + rows(d.at_risk, max, d.slowest, 'risk') +
 			'<tr class="sspa-ck-total"><td>At-risk total</td><td class="sspa-ck-num">' + ms(d.at_risk_ms) +

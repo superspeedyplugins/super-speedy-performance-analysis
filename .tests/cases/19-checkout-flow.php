@@ -256,6 +256,13 @@ sspa_t(!empty($flow['order_total']) && (float) $flow['order_total'] > 0,
     'order total stayed real (' . (isset($flow['order_total']) ? $flow['order_total'] : '?') . ') - the no-payment mode did not zero the cart');
 sspa_t(isset($flow['orders_deleted']) && $flow['orders_deleted'] >= 1 && 0 === (int) $flow['orders_left'],
     'safety report: ' . (int) $flow['orders_deleted'] . ' deleted, ' . (int) $flow['orders_left'] . ' left');
+sspa_t(
+    !empty($flow['email']) && is_email($flow['email'])
+    && !empty($flow['order_id']) && !empty($flow['order_number'])
+    && isset($flow['coupon_codes']) && is_array($flow['coupon_codes'])
+    && !empty($flow['items'][0]['name']) && (int) $flow['quantity'] === (int) $flow['items'][0]['quantity'],
+    'fulfilment identifiers survive local order cleanup'
+);
 
 // ---------------------------------------------------------------- 6. mail behaviour matches the mode
 
@@ -339,6 +346,13 @@ sspa_t(null !== $mark && $mark > 0 && $mark < $place_gen,
 $waterfall = SSPA_Checkout_Flow::waterfall($run_id);
 sspa_t(true === $waterfall['boundary_known'], 'waterfall split the place-order step at the payment boundary');
 sspa_t($waterfall['at_risk_ms'] > 0 && $waterfall['secured_ms'] > 0, 'both halves of the wait have time in them');
+sspa_t(
+    isset($waterfall['order_details'])
+    && $waterfall['order_details']['email'] === $flow['email']
+    && $waterfall['order_details']['order_number'] === $flow['order_number']
+    && $waterfall['order_details']['items'] === $flow['items'],
+    'the local result payload exposes the exact order details rendered in the overlay'
+);
 // Nobody waits for the cleanup, so it is measured but excluded from the customer figure.
 $excluded_keys = array();
 foreach ($waterfall['excluded'] as $row) {

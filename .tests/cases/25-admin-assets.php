@@ -9,6 +9,7 @@ function sspa_assets_t($ok, $label) {
 
 $css = 'includes/admin/css/sspa-admin.css';
 $js = 'includes/admin/js/sspa-admin.js';
+$checkout_js = 'includes/admin/js/sspa-checkout.js';
 
 $css_version = sspa_asset_version($css);
 sspa_assets_t(
@@ -16,6 +17,13 @@ sspa_assets_t(
     'the stylesheet cache key carries the file mtime (' . $css_version . ')'
 );
 sspa_assets_t(sspa_asset_version($js) !== $css_version, 'each asset gets its own cache key');
+sspa_assets_t(
+    false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'Synthetic order details for fulfilment')
+    && false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'Order number')
+    && false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'Coupon')
+    && false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'sspa-ck-order-details'),
+    'checkout overlay renders the fulfilment identifiers'
+);
 sspa_assets_t(SSPA_VERSION === sspa_asset_version('includes/admin/css/does-not-exist.css'), 'a missing asset falls back to the plugin version');
 
 // The point of the whole thing: touching the file must change the key.
