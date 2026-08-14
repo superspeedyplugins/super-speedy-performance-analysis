@@ -50,7 +50,7 @@ class SSPA_Traffic_Ajax {
             wp_send_json_error($payload->get_error_message());
         }
         wp_send_json_success(array(
-            'filename' => 'sspa-experimental-traffic-observations-' . (int) $payload['collection']['id'] . '-' . gmdate('Ymd-His') . '.json',
+            'filename' => sspa_download_filename('sspa-experimental-traffic-observations-' . (int) $payload['collection']['id'] . '-' . gmdate('Ymd-His') . '.json'),
             'payload' => $payload,
         ));
     }

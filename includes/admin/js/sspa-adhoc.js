@@ -282,7 +282,7 @@
 			var url = window.URL.createObjectURL(blob);
 			var link = document.createElement('a');
 			link.href = url;
-			link.download = resp.data.filename || ('sspa-page-' + profileId + '.json');
+			link.download = resp.data.filename || ((sspa_adhoc.download_prefix || '') + 'sspa-page-' + profileId + '.json');
 			document.body.appendChild(link);
 			link.click();
 			link.remove();

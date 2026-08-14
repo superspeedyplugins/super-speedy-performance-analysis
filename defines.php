@@ -46,6 +46,30 @@ function sspa_asset_version($relative_path) {
     return $mtime ? SSPA_VERSION . '.' . $mtime : SSPA_VERSION;
 }
 
+/** Domain and plugin-version prefix shared by every browser download. */
+function sspa_download_prefix($site_url = null) {
+    $url = null === $site_url ? home_url('/') : (string) $site_url;
+    $domain = strtolower(rtrim((string) wp_parse_url($url, PHP_URL_HOST), '.'));
+    if (0 === strpos($domain, 'www.')) {
+        $domain = substr($domain, 4);
+    }
+    $domain = sanitize_file_name($domain);
+    if ('' === $domain) {
+        $domain = 'site';
+    }
+    $version = sanitize_file_name(defined('SSPA_VERSION') ? SSPA_VERSION : 'unknown-version');
+    return $domain . '-' . $version . '-';
+}
+
+/** Keep the existing descriptive filename after the shared grouping prefix. */
+function sspa_download_filename($filename, $site_url = null) {
+    $filename = sanitize_file_name(wp_basename((string) $filename));
+    if ('' === $filename) {
+        $filename = 'sspa-download.json';
+    }
+    return sspa_download_prefix($site_url) . $filename;
+}
+
 function sspa_get_option($key) {
     $options = get_option('sspa_options', array());
     $defaults = sspa_default_options();

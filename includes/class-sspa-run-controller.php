@@ -2188,7 +2188,7 @@ class SSPA_Run_Controller {
             'payload' => $json,
             'summary' => SSPA_Submitter::describe_payload($json),
             'bytes' => strlen($json),
-            'filename' => 'sspa-shared-data-' . gmdate('Ymd-His') . '.json',
+            'filename' => sspa_download_filename('sspa-shared-data-' . gmdate('Ymd-His') . '.json'),
         ));
     }
 

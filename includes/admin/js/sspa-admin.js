@@ -236,7 +236,7 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 		var blob = new Blob([json], { type: 'application/json' });
 		var link = document.createElement('a');
 		link.href = URL.createObjectURL(blob);
-		link.download = resp.data.filename || 'sspa-cache-optimisation-analysis.json';
+		link.download = resp.data.filename || ((sspa_admin.download_prefix || '') + 'sspa-cache-optimisation-analysis.json');
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
@@ -335,7 +335,7 @@ jQuery(document).on('click', '#sspa-traffic-observations', function () {
 		var blob = new Blob([json], { type: 'application/json' });
 		var link = document.createElement('a');
 		link.href = URL.createObjectURL(blob);
-		link.download = resp.data.filename || 'sspa-experimental-traffic-observations.json';
+		link.download = resp.data.filename || ((sspa_admin.download_prefix || '') + 'sspa-experimental-traffic-observations.json');
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
@@ -512,7 +512,7 @@ jQuery(document).on('click', '.sspa-preview-outbox', function () {
 			var blob = new Blob([resp.data.payload], { type: 'application/json' });
 			var a = document.createElement('a');
 			a.href = URL.createObjectURL(blob);
-			a.download = resp.data.filename || 'sspa-shared-data.json';
+			a.download = resp.data.filename || ((sspa_admin.download_prefix || '') + 'sspa-shared-data.json');
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);

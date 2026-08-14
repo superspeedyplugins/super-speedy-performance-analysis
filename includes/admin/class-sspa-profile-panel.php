@@ -63,7 +63,7 @@ class SSPA_Profile_Panel {
         }
         $page_key = sanitize_file_name($payload['profile']['page_key']);
         wp_send_json_success(array(
-            'filename' => 'sspa-page-' . ($page_key ? $page_key : $profile_id) . '-' . gmdate('Ymd-His') . '.json',
+            'filename' => sspa_download_filename('sspa-page-' . ($page_key ? $page_key : $profile_id) . '-' . gmdate('Ymd-His') . '.json'),
             'payload' => $payload,
         ));
     }

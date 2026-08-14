@@ -18,6 +18,21 @@ sspa_assets_t(
 );
 sspa_assets_t(sspa_asset_version($js) !== $css_version, 'each asset gets its own cache key');
 sspa_assets_t(
+    'store.example-' . SSPA_VERSION . '-sspa-report.json' === sspa_download_filename('sspa-report.json', 'https://www.Store.Example:8443/path'),
+    'download filenames group by canonical domain and plugin version before the existing name'
+);
+$download_sources = array(
+    'includes/class-sspa-cache-recon.php',
+    'includes/traffic/class-sspa-traffic-ajax.php',
+    'includes/admin/class-sspa-profile-panel.php',
+    'includes/class-sspa-run-controller.php',
+);
+$download_helpers = 0;
+foreach ($download_sources as $download_source) {
+    $download_helpers += false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $download_source), 'sspa_download_filename(') ? 1 : 0;
+}
+sspa_assets_t(count($download_sources) === $download_helpers, 'every generated JSON download uses the shared filename prefix');
+sspa_assets_t(
     false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'Synthetic order details for fulfilment')
     && false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'Order number')
     && false !== strpos((string) file_get_contents(SSPA_PLUGIN_DIR . $checkout_js), 'Coupon')

@@ -32,6 +32,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.23 (14th August 2026) =
+* Download filenames now start with the site's domain and SSPA version so reports from multiple sites can be grouped without opening them
 * Added an experimental WooCommerce traffic collector with 24-hour, 72-hour and 7-day collection options in the new Traffic tab
 * Added `wp sspa traffic start|status|stop|observations|delete` and matching non-destructive MCP abilities for starting, monitoring, stopping and reviewing an experimental collection
 * Logged-in customer and non-empty-basket requests reaching WordPress are observed exactly, while broad anonymous origin traffic is deterministically sampled
