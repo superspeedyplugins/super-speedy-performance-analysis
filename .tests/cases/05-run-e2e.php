@@ -84,10 +84,17 @@ sspa_t(is_array($capture) && $capture['schema'] === 2, 'profile blob stored + un
 sspa_t(is_array($capture) && $capture['overview']['capture_mode'] === 'full', 'capture mode full (shim active): ' . ($capture ? $capture['overview']['capture_mode'] : '?'));
 sspa_t(is_array($capture) && !empty($capture['sql']['queries'][0]['fp']), 'queries carry fingerprints');
 sspa_t(is_array($capture) && isset($capture['cache_recon']['coverage'], $capture['cache_recon']['nonce_names']), 'privacy-safe cache reconnaissance persisted with the representative page');
-$cache_assessment = SSPA_Report::cache_personalisation($run_id);
-sspa_t(is_array($cache_assessment) && $cache_assessment['assessment']['pages_scanned'] >= 3, 'site-wide cache qualification built from representative pages (' . (is_array($cache_assessment) ? $cache_assessment['assessment']['pages_scanned'] : 0) . ')');
+$cache_assessment = SSPA_Report::cache_safety($run_id);
+sspa_t(is_array($cache_assessment) && $cache_assessment['assessment']['pages_scanned'] >= 3, 'site-wide cache safety status built from representative pages (' . (is_array($cache_assessment) ? $cache_assessment['assessment']['pages_scanned'] : 0) . ')');
 $cache_candidates = is_array($cache_assessment) ? wp_list_pluck($cache_assessment['assessment']['candidate_components'], 'component') : array();
 sspa_t(!in_array('woocommerce', $cache_candidates, true) && !in_array('redis-cache', $cache_candidates, true), 'platform/cache plumbing excluded from bespoke-region candidates');
+$cache_export = SSPA_Cache_Recon::export_data($run_id);
+sspa_t(
+    is_array($cache_export)
+    && 'sspa/shared-cache-safety-report@1' === $cache_export['schema']
+    && isset($cache_export['assessment']['shared_cache_status']),
+    'shared-cache safety evidence builds as a versioned download'
+);
 
 // --- Bootstrap decomposition (the PHP-floor instrument) ---
 $boot = is_array($capture) && isset($capture['boot']) ? $capture['boot'] : null;

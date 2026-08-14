@@ -2,7 +2,7 @@
 defined('ABSPATH') || exit;
 
 /**
- * Privacy-safe reconnaissance for full-page caching and per-visitor output.
+ * Privacy-safe reconnaissance for full-page caching and visitor-specific output.
  *
  * The response scanner runs after a measured request has completed. It never stores HTML,
  * cookie values, nonce values or visible customer text. The source inventory runs after the
@@ -15,6 +15,54 @@ class SSPA_Cache_Recon {
     const MAX_SOURCE_BYTES = 67108864; // 64 MB across the whole active stack.
     const MAX_FILE_BYTES = 1048576;
     const MAX_CANDIDATES = 40;
+
+    public static function register() {
+        add_action('wp_ajax_sspa_cache_recon_export', array(__CLASS__, 'ajax_export'));
+    }
+
+    /** Download the local report shown on the Overview tab. */
+    public static function ajax_export() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('forbidden', 403);
+        }
+        $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
+        $payload = self::export_data($run_id);
+        if (is_wp_error($payload)) {
+            wp_send_json_error($payload->get_error_message());
+        }
+        wp_send_json_success(array(
+            'filename' => 'sspa-shared-cache-safety-' . (int) $payload['run_id'] . '-' . gmdate('Ymd-His') . '.json',
+            'payload' => $payload,
+        ));
+    }
+
+    /** Versioned local evidence document for independent review or support work. */
+    public static function export_data($run_id = 0) {
+        $report = SSPA_Report::cache_safety($run_id);
+        if (is_wp_error($report)) {
+            return $report;
+        }
+        return array(
+            'schema' => 'sspa/shared-cache-safety-report@1',
+            'generated_at' => gmdate('c'),
+            'generated_by' => array(
+                'plugin' => 'super-speedy-performance-analysis',
+                'version' => SSPA_VERSION,
+                'wordpress' => get_bloginfo('version'),
+                'php' => PHP_VERSION,
+                'site_url' => home_url('/'),
+            ),
+            'sensitivity' => array(
+                'classification' => 'private-site-diagnostic',
+                'warning' => __('This file contains exact page URLs and local plugin or theme file paths. It contains no response HTML, cookie values, nonce values or customer content. Review it before sharing outside a trusted technical review.', 'super-speedy-performance-analysis'),
+            ),
+            'run_id' => (int) $report['run_id'],
+            'headline' => $report['headline'],
+            'detail' => $report['detail'],
+            'assessment' => $report['assessment'],
+        );
+    }
 
     /** Only shared-cache candidates. Private/system routes would add noise, not evidence. */
     public static function eligible_job($job) {
@@ -105,7 +153,7 @@ class SSPA_Cache_Recon {
             'subscription' => 'my[-_ ]?subscription|subscription[-_ ]?(?:account|manage)',
         );
         // Attribute values and URLs only. Visible prose mentioning "wishlist" is not evidence
-        // that a personalised feature exists on this page.
+        // that a visitor-specific feature exists on this page.
         $tag_attributes = '';
         if (preg_match_all('/<(?:a|form|div|section|aside|button)\b[^>]*(?:href|action|class|id|data-[a-z0-9_-]+)\s*=\s*["\'][^"\']+["\'][^>]*>/i', $body, $tags)) {
             $tag_attributes = implode("\n", array_slice($tags[0], 0, 1000));
@@ -177,7 +225,7 @@ class SSPA_Cache_Recon {
         return array_keys($names);
     }
 
-    /** Build the one consultant-facing assessment stored as a standalone finding. */
+    /** Build the one site-wide shared-cache safety assessment stored as a standalone finding. */
     public static function build_assessment($profiles, $captures, $source = null) {
         $pages = array();
         $observed = array();
@@ -255,13 +303,9 @@ class SSPA_Cache_Recon {
 
         $hazard_count = $totals['set_cookie_pages'] + $totals['nonce_pages']
             + $totals['legacy_cookie_pages'] + $totals['private_surface_pages'] + $high;
-        if (!$woocommerce) {
-            $qualification = 'outside_woocommerce_service';
-        } elseif ($hazard_count > 0) {
-            $qualification = 'strong_candidate';
-        } else {
-            $qualification = 'possible_candidate';
-        }
+        $shared_cache_status = ($hazard_count > 0 || !empty($candidates))
+            ? 'visitor_specific_content_review_recommended'
+            : 'no_visitor_specific_content_hazards_detected';
 
         $difficulty_points = $totals['set_cookie_pages'] * 3
             + $totals['nonce_pages']
@@ -292,7 +336,7 @@ class SSPA_Cache_Recon {
 
         return array(
             'schema' => self::SCHEMA,
-            'qualification' => $qualification,
+            'shared_cache_status' => $shared_cache_status,
             'difficulty' => $difficulty,
             'difficulty_points' => $difficulty_points,
             'woocommerce' => $woocommerce,
@@ -390,7 +434,7 @@ class SSPA_Cache_Recon {
         unset($candidate);
 
         // An isolated echo or current-user read somewhere in a plugin is too weak to send a
-        // consultant digging. Keep only corroborated candidates or components observed in the
+        // site owner digging. Keep only corroborated candidates or components observed in the
         // render whose combined evidence reaches the same medium threshold.
         $candidates = array_filter($candidates, function ($candidate) {
             $signals = (array) $candidate['signals'];
@@ -493,7 +537,7 @@ class SSPA_Cache_Recon {
         foreach (array_unique($active) as $entry) {
             $slug = ('.' !== dirname($entry)) ? dirname($entry) : basename($entry, '.php');
             // Platform/cache plumbing is expected to contain auth, cookies and output code.
-            // It is not where a consultancy starts looking for bespoke personalised regions.
+            // It is not where a site owner starts looking for bespoke visitor-specific regions.
             if (in_array($slug, array(
                 'super-speedy-performance-analysis', 'woocommerce', 'redis-cache',
                 'super-speedy-ajax-prices', 'ssap-addon-cache-optimisation',

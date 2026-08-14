@@ -57,15 +57,14 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     </div>
 
     <?php
-    $sspa_cache_recon = SSPA_Insights::standalone($sspa_last_run['id'], 'cache_personalisation');
+    $sspa_cache_recon = SSPA_Insights::standalone($sspa_last_run['id'], 'cache_safety');
     if ($sspa_cache_recon) :
         $sspa_cache_rendered = SSPA_Insights::render($sspa_cache_recon);
         $sspa_cache_evidence = json_decode((string) $sspa_cache_recon['evidence'], true);
         $sspa_cache_evidence = is_array($sspa_cache_evidence) ? $sspa_cache_evidence : array();
-        $sspa_qualification_labels = array(
-            'strong_candidate' => __('Strong consultancy candidate', 'super-speedy-performance-analysis'),
-            'possible_candidate' => __('Possible consultancy candidate', 'super-speedy-performance-analysis'),
-            'outside_woocommerce_service' => __('Outside the WooCommerce service scope', 'super-speedy-performance-analysis'),
+        $sspa_shared_cache_labels = array(
+            'visitor_specific_content_review_recommended' => __('Visitor-specific content review recommended', 'super-speedy-performance-analysis'),
+            'no_visitor_specific_content_hazards_detected' => __('No visitor-specific content hazards detected', 'super-speedy-performance-analysis'),
         );
         $sspa_hazard_labels = array(
             'set_cookie_on_cache_candidate' => __('A shared-cache candidate sets cookies', 'super-speedy-performance-analysis'),
@@ -76,15 +75,15 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             'partial_browser_scan' => __('Browser transport could inspect only a response prefix', 'super-speedy-performance-analysis'),
             'stored_php_needs_manual_review' => __('Database-stored PHP snippets need manual review', 'super-speedy-performance-analysis'),
         );
-        $sspa_qualification = isset($sspa_cache_evidence['qualification']) ? $sspa_cache_evidence['qualification'] : '';
+        $sspa_shared_cache_status = isset($sspa_cache_evidence['shared_cache_status']) ? $sspa_cache_evidence['shared_cache_status'] : '';
         $sspa_cache_totals = isset($sspa_cache_evidence['totals']) ? (array) $sspa_cache_evidence['totals'] : array();
         ?>
         <div class="sspa-placeholder sspa-cache-recon">
-            <h2><?php esc_html_e('Cache personalisation reconnaissance', 'super-speedy-performance-analysis'); ?></h2>
+            <h2><?php esc_html_e('Shared-cache safety scan', 'super-speedy-performance-analysis'); ?></h2>
             <p><strong><?php echo esc_html($sspa_cache_rendered['headline']); ?></strong></p>
             <p>
-                <span class="sspa-badge"><?php echo esc_html(isset($sspa_qualification_labels[$sspa_qualification]) ? $sspa_qualification_labels[$sspa_qualification] : __('Not assessed', 'super-speedy-performance-analysis')); ?></span>
-                <span class="sspa-badge"><?php printf(esc_html__('Difficulty: %s', 'super-speedy-performance-analysis'), esc_html(isset($sspa_cache_evidence['difficulty']) ? $sspa_cache_evidence['difficulty'] : __('unknown', 'super-speedy-performance-analysis'))); ?></span>
+                <span class="sspa-badge"><?php echo esc_html(isset($sspa_shared_cache_labels[$sspa_shared_cache_status]) ? $sspa_shared_cache_labels[$sspa_shared_cache_status] : __('Not assessed', 'super-speedy-performance-analysis')); ?></span>
+                <span class="sspa-badge"><?php printf(esc_html__('Review difficulty: %s', 'super-speedy-performance-analysis'), esc_html(isset($sspa_cache_evidence['difficulty']) ? $sspa_cache_evidence['difficulty'] : __('unknown', 'super-speedy-performance-analysis'))); ?></span>
             </p>
             <p class="description"><?php echo esc_html($sspa_cache_rendered['detail']); ?></p>
             <p class="description">
@@ -176,10 +175,11 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <?php endif; ?>
 
             <p class="description">
-                <?php esc_html_e('This scan uses anonymous responses and source indicators. It identifies where a controlled guest, customer and basket comparison should begin; it does not prove a leak or prove that a candidate component owns a changed region.', 'super-speedy-performance-analysis'); ?>
-                <?php if ($sspa_cache_rendered['rec_link']) : ?>
-                    <a href="<?php echo esc_url($sspa_cache_rendered['rec_link']); ?>" target="_blank"><?php esc_html_e('View the implementation service', 'super-speedy-performance-analysis'); ?> &rarr;</a>
-                <?php endif; ?>
+                <?php esc_html_e('This scan uses anonymous responses and source indicators. It identifies where controlled guest, customer and basket testing should begin; it does not prove that shared caching is safe or that a candidate component owns a changed region.', 'super-speedy-performance-analysis'); ?>
+            </p>
+            <p>
+                <button type="button" class="button sspa-cache-safety-download" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Download shared-cache safety report', 'super-speedy-performance-analysis'); ?></button>
+                <span class="description sspa-cache-safety-download-status" aria-live="polite"></span>
             </p>
         </div>
     <?php endif; ?>

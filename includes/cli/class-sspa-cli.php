@@ -272,7 +272,7 @@ class SSPA_CLI {
     }
 
     /**
-     * Show the cache-personalisation qualification produced by a normal analysis.
+     * Show the shared-cache safety report produced by a normal analysis.
      *
      * [--run=<id>]
      * : Specific completed run; defaults to latest.
@@ -283,7 +283,7 @@ class SSPA_CLI {
      * @subcommand cache-scan
      */
     public function cache_scan($args, $assoc_args) {
-        $assessment = SSPA_Report::cache_personalisation(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        $assessment = SSPA_Report::cache_safety(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
         if (is_wp_error($assessment)) {
             WP_CLI::error($assessment->get_error_message());
         }
@@ -295,8 +295,8 @@ class SSPA_CLI {
         WP_CLI::log($assessment['headline']);
         WP_CLI::log($assessment['detail']);
         WP_CLI::log(sprintf(
-            'Qualification: %s | Difficulty: %s | Hazards: %d | Candidate components: %d',
-            $a['qualification'],
+            'Shared-cache status: %s | Review difficulty: %s | Hazards: %d | Candidate components: %d',
+            $a['shared_cache_status'],
             $a['difficulty'],
             count((array) $a['hazards']),
             count((array) $a['candidate_components'])

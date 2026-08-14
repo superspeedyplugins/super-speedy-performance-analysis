@@ -100,10 +100,9 @@
       "title": "Profiling requests blocked",
       "body": "A security layer blocked this plugin's self-profiling requests, so some pages could not be measured. Whitelist your own server's IP in the named security plugin and re-run the analysis."
     },
-    "cache_personalisation_review": {
-      "title": "Review cache personalisation",
-      "body": "This is a passive reconnaissance result, not proof that content leaks or that a named component caused it. Review the hazards and candidate components, then compare controlled guest, customer and basket renders before enabling shared caching for those states.",
-      "link": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/"
+    "cache_safety_review": {
+      "title": "Review visitor-specific content",
+      "body": "This is a passive safety scan, not proof that content leaks or that a named component caused it. Review the hazards and candidate components, then compare controlled guest, customer and basket responses before enabling shared caching for those states."
     },
     "unindexed_query": {
       "title": "Query with no usable index",

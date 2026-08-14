@@ -42,12 +42,12 @@ class SSPA_Report {
             }
         }
 
-        $cache_personalisation = null;
-        $cache_row = SSPA_Insights::standalone($run_id, 'cache_personalisation');
+        $cache_safety = null;
+        $cache_row = SSPA_Insights::standalone($run_id, 'cache_safety');
         if ($cache_row) {
             $cache_evidence = json_decode((string) $cache_row['evidence'], true);
             $cache_rendered = SSPA_Insights::render($cache_row);
-            $cache_personalisation = array(
+            $cache_safety = array(
                 'headline' => $cache_rendered['headline'],
                 'detail' => $cache_rendered['detail'],
                 'assessment' => is_array($cache_evidence) ? $cache_evidence : array(),
@@ -104,7 +104,7 @@ class SSPA_Report {
             ),
             'insights' => array_slice($findings, 0, 10),
             'findings' => $findings,
-            'cache_personalisation' => $cache_personalisation,
+            'cache_safety' => $cache_safety,
             'pages' => $pages,
             'impacts' => self::impacts(),
         );
@@ -163,15 +163,15 @@ class SSPA_Report {
         return SSPA_Archive_Profile::build($run_id);
     }
 
-    /** The consultant-facing cache qualification embedded in a normal analysis run. */
-    public static function cache_personalisation($run_id = 0) {
+    /** The shared-cache safety report embedded in a normal analysis run. */
+    public static function cache_safety($run_id = 0) {
         $run_id = $run_id ? (int) $run_id : self::latest_done_run_id();
         if (!$run_id) {
             return new WP_Error('sspa_no_run', __('No completed analysis run found. Run an analysis first.', 'super-speedy-performance-analysis'));
         }
-        $row = SSPA_Insights::standalone($run_id, 'cache_personalisation');
+        $row = SSPA_Insights::standalone($run_id, 'cache_safety');
         if (!$row) {
-            return new WP_Error('sspa_no_cache_recon', __('That run predates cache-personalisation reconnaissance or contained no eligible pages.', 'super-speedy-performance-analysis'));
+            return new WP_Error('sspa_no_cache_recon', __('That run predates the shared-cache safety scan or contained no eligible pages.', 'super-speedy-performance-analysis'));
         }
         $evidence = json_decode((string) $row['evidence'], true);
         $rendered = SSPA_Insights::render($row);

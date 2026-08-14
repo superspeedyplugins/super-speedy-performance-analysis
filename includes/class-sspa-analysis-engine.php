@@ -60,17 +60,17 @@ class SSPA_Analysis_Engine {
         $this->environment();
         $this->duplicate_functionality();
         $this->security_blocks();
-        $this->cache_personalisation();
+        $this->cache_safety();
 
         return $this->findings;
     }
 
     /**
-     * One site-wide reconnaissance result. It qualifies the site for deeper cache work and
-     * ranks where a consultant should read first; it never claims the passive scan proved a
+     * One site-wide reconnaissance result. It records whether visitor-specific output needs review and
+     * ranks where a site owner should inspect first; it never claims the passive scan proved a
      * leak or identified the exact callback responsible.
      */
-    private function cache_personalisation() {
+    private function cache_safety() {
         $assessment = SSPA_Cache_Recon::build_assessment($this->profiles, $this->captures);
         if (!$assessment) {
             return;
@@ -78,11 +78,11 @@ class SSPA_Analysis_Engine {
         $has_hazards = !empty($assessment['hazards']) || !empty($assessment['candidate_components']);
         $this->add(
             $has_hazards ? 'warn' : 'info',
-            'cache_personalisation',
+            'cache_safety',
             null,
             null,
             $assessment,
-            'cache_personalisation_review',
+            'cache_safety_review',
             'inferred'
         );
     }

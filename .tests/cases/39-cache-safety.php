@@ -1,7 +1,7 @@
 <?php
-// Passive cache-personalisation reconnaissance: no response/customer values persist,
+// Passive shared-cache safety reconnaissance: no response/customer values persist,
 // existing mitigation markers survive, source evidence is ranked without claiming blame,
-// and the assessment gives agents a stable qualification/difficulty result.
+// and the assessment gives agents a stable shared-cache-status/difficulty result.
 
 function sspa_cr_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
@@ -67,11 +67,12 @@ $inventory = array(
     )),
 );
 $assessment = SSPA_Cache_Recon::build_assessment($profiles, $captures, $inventory);
-sspa_cr_t('strong_candidate' === $assessment['qualification'], 'WooCommerce site with hazards qualifies as a strong candidate');
+sspa_cr_t('visitor_specific_content_review_recommended' === $assessment['shared_cache_status'], 'visitor-specific content hazards produce an explicit review status');
 sspa_cr_t(in_array($assessment['difficulty'], array('moderate', 'high'), true), 'hazards raise the estimated difficulty (' . $assessment['difficulty'] . ')');
 sspa_cr_t(1 === $assessment['pages_scanned'] && !empty($assessment['candidate_components']), 'assessment carries page count and ranked component evidence');
 sspa_cr_t(home_url('/shop/') === $assessment['pages'][0]['url'], 'assessment retains the tested page URL, not its response content');
 sspa_cr_t(in_array('type_a_vs_type_b_requires_controlled_identity_comparison', $assessment['limitations'], true), 'assessment does not pretend passive evidence proves Type A or B');
+sspa_cr_t((bool) has_action('wp_ajax_sspa_cache_recon_export', array('SSPA_Cache_Recon', 'ajax_export')), 'download endpoint is registered for administrators');
 
 sspa_cr_t(SSPA_Cache_Recon::eligible_job(array('page_key' => 'shop', 'url' => home_url('/shop/'), 'variant' => 'anon')), 'shop page is a shared-cache candidate');
 sspa_cr_t(!SSPA_Cache_Recon::eligible_job(array('page_key' => 'wc-checkout', 'url' => home_url('/checkout/'), 'variant' => 'anon')), 'checkout is excluded as private');

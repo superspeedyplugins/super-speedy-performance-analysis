@@ -177,10 +177,10 @@ Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` 
 - `38-turnstile-checkout.php` - plants Cloudflare Turnstile's documented bypass contract
   and both WooCommerce checkout validation surfaces, then proves the real synthetic checkout
   completes, records the scoped bypass and removes its temporary order.
-- `39-cache-personalisation-recon.php` - passive response scanning keeps cookie/nonce names but
+- `39-cache-safety.php` - the shared-cache safety scan keeps cookie/nonce names but
   never their values, recognises existing Type A/Type B coverage and private surfaces, ignores
   source-code comments, ranks corroborated visitor-state/output evidence, produces stable
-  consultancy qualification and difficulty, and excludes checkout/wp-admin from shared-cache
+  cache-safety status and review difficulty, and excludes checkout/wp-admin from shared-cache
   candidates.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback

@@ -24,7 +24,7 @@ class SSPA_Abilities {
         return array(
             self::CATEGORY . '/get-status',
             self::CATEGORY . '/get-report',
-            self::CATEGORY . '/get-cache-personalisation',
+            self::CATEGORY . '/get-cache-safety-report',
             self::CATEGORY . '/get-findings',
             self::CATEGORY . '/get-plugin-impacts',
             self::CATEGORY . '/get-site-metrics',
@@ -118,9 +118,9 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
-        wp_register_ability(self::CATEGORY . '/get-cache-personalisation', array(
-            'label' => __('Get cache personalisation assessment', 'super-speedy-performance-analysis'),
-            'description' => __('Read the latest passive cache-consultancy qualification: estimated difficulty, potential hazards, existing SSAP coverage and the plugin/theme candidates worth inspecting first. Candidate components are leads, not proven causes.', 'super-speedy-performance-analysis'),
+        wp_register_ability(self::CATEGORY . '/get-cache-safety-report', array(
+            'label' => __('Get shared-cache safety report', 'super-speedy-performance-analysis'),
+            'description' => __('Read the latest shared-cache safety scan: shared-cache status, estimated review difficulty, potential visitor-specific content hazards, existing dynamic-region coverage and the plugin or theme candidates worth inspecting first. Candidate components are leads, not proven causes.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',
@@ -132,7 +132,7 @@ class SSPA_Abilities {
             ),
             'output_schema' => array('type' => 'object'),
             'permission_callback' => array(__CLASS__, 'can_manage'),
-            'execute_callback' => array(__CLASS__, 'exec_get_cache_personalisation'),
+            'execute_callback' => array(__CLASS__, 'exec_get_cache_safety_report'),
             'meta' => $readonly,
         ));
 
@@ -322,8 +322,8 @@ class SSPA_Abilities {
         return SSPA_Report::archive_profile(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
-    public static function exec_get_cache_personalisation($input) {
-        return SSPA_Report::cache_personalisation(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
+    public static function exec_get_cache_safety_report($input) {
+        return SSPA_Report::cache_safety(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_findings($input) {

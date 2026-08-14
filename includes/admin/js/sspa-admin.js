@@ -218,6 +218,37 @@ function sspa_esc(str) {
 	return jQuery('<span>').text(str == null ? '' : String(str)).html();
 }
 
+// Download the complete local shared-cache safety evidence shown on Overview. The server
+// builds a versioned document; the browser saves it without sending it anywhere else.
+jQuery(document).on('click', '.sspa-cache-safety-download', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var status = btn.siblings('.sspa-cache-safety-download-status').text(' Preparing report…');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_cache_recon_export',
+		nonce: sspa_admin.nonce,
+		run_id: btn.data('run-id')
+	}, function (resp) {
+		if (!resp.success) {
+			status.text(' ' + (resp.data || 'The report could not be prepared.'));
+			return;
+		}
+		var json = JSON.stringify(resp.data.payload, null, 2);
+		var blob = new Blob([json], { type: 'application/json' });
+		var link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = resp.data.filename || 'sspa-shared-cache-safety.json';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(link.href);
+		status.text(' Downloaded.');
+	}).fail(function () {
+		status.text(' The report could not be prepared.');
+	}).always(function () {
+		btn.prop('disabled', false);
+	});
+});
+
 // ---- Plugins drill-down: per-page x cache-mode measured impacts ----
 
 jQuery(document).on('click', '.sspa-impact-details', function (e) {

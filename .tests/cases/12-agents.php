@@ -29,11 +29,11 @@ if (is_array($report)) {
     sspa_t(empty($report['findings']) || !empty($report['findings'][0]['headline']), 'findings carry headlines when the clean run has any');
     sspa_t(empty($report['findings']) || isset($report['findings'][0]['recommendation']['body']), 'findings carry explicit recommendation objects when present');
     sspa_t(isset($report['site']['sector']), 'site block present (' . $report['site']['sector'] . ')');
-    sspa_t(isset($report['cache_personalisation']['assessment']['qualification']), 'report carries cache-personalisation qualification');
+    sspa_t(isset($report['cache_safety']['assessment']['shared_cache_status']), 'report carries shared-cache safety status');
 }
 
-$cache_recon = wp_get_ability('super-speedy-performance/get-cache-personalisation')->execute(array());
-sspa_t(is_array($cache_recon) && isset($cache_recon['assessment']['difficulty']), 'get-cache-personalisation returns the dedicated assessment');
+$cache_recon = wp_get_ability('super-speedy-performance/get-cache-safety-report')->execute(array());
+sspa_t(is_array($cache_recon) && isset($cache_recon['assessment']['difficulty']), 'get-cache-safety-report returns the dedicated assessment');
 
 $findings = wp_get_ability('super-speedy-performance/get-findings')->execute(array());
 sspa_t(is_array($findings) && isset($findings['total'], $findings['findings']), 'get-findings shape');
@@ -88,7 +88,7 @@ if (class_exists('WP_CLI')) {
 
     $json = WP_CLI::runcommand('sspa cache-scan --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_cache = json_decode((string) $json, true);
-    sspa_t(is_array($cli_cache) && isset($cli_cache['assessment']['qualification']), 'wp sspa cache-scan --format=json returns the assessment');
+    sspa_t(is_array($cli_cache) && isset($cli_cache['assessment']['shared_cache_status']), 'wp sspa cache-scan --format=json returns the assessment');
 
     $out = WP_CLI::runcommand('sspa status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_status = json_decode((string) $out, true);

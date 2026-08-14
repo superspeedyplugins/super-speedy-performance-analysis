@@ -19,7 +19,7 @@ class SSPA_Insights {
      * so the within-severity ranking (biggest delta first) puts it last among the warns and it
      * drops off the list - when what it says is that a plugin tried to change the live site.
      */
-    const STANDALONE = array('autoload_coverage', 'isolation_reaction', 'cache_personalisation');
+    const STANDALONE = array('autoload_coverage', 'isolation_reaction', 'cache_safety');
 
     /**
      * Every finding of one type for a run - one reaction per reacting pair.
@@ -257,18 +257,18 @@ class SSPA_Insights {
                 $headline = sprintf(__('%1$s blocked profiling of %2$d page(s)', 'super-speedy-performance-analysis'), $e['layer'], count((array) $e['pages']));
                 $detail = implode(', ', (array) $e['pages']);
                 break;
-            case 'cache_personalisation':
-                $qualification = isset($e['qualification']) ? $e['qualification'] : 'not_assessed';
-                if ('strong_candidate' === $qualification) {
-                    $headline = __('This WooCommerce store is a strong candidate for full-page cache consultancy', 'super-speedy-performance-analysis');
-                } elseif ('possible_candidate' === $qualification) {
-                    $headline = __('This WooCommerce store may qualify for full-page caching of logged-in and basket traffic', 'super-speedy-performance-analysis');
+            case 'cache_safety':
+                $shared_cache_status = isset($e['shared_cache_status']) ? $e['shared_cache_status'] : 'not_assessed';
+                if ('visitor_specific_content_review_recommended' === $shared_cache_status) {
+                    $headline = __('Visitor-specific content may need attention before these pages are shared-cached', 'super-speedy-performance-analysis');
+                } elseif ('no_visitor_specific_content_hazards_detected' === $shared_cache_status) {
+                    $headline = __('No obvious visitor-specific content hazards were detected', 'super-speedy-performance-analysis');
                 } else {
-                    $headline = __('Cache personalisation was surveyed, but this site is outside the WooCommerce consultancy scope', 'super-speedy-performance-analysis');
+                    $headline = __('Shared-cache safety was not assessed', 'super-speedy-performance-analysis');
                 }
                 $detail = sprintf(
-                    /* translators: 1: pages scanned, 2: difficulty, 3: hazards, 4: candidate components */
-                    __('%1$d shared-cache page type(s) scanned. Estimated implementation difficulty: %2$s. %3$d hazard class(es) and %4$d component candidate(s) need review.', 'super-speedy-performance-analysis'),
+                    /* translators: 1: pages scanned, 2: review difficulty, 3: hazards, 4: candidate components */
+                    __('%1$d shared-cache page type(s) scanned. Estimated review difficulty: %2$s. %3$d hazard class(es) and %4$d component candidate(s) were recorded.', 'super-speedy-performance-analysis'),
                     (int) ($e['pages_scanned'] ?? 0),
                     isset($e['difficulty']) ? $e['difficulty'] : __('unknown', 'super-speedy-performance-analysis'),
                     count((array) ($e['hazards'] ?? array())),
