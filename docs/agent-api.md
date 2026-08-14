@@ -13,9 +13,9 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
   `stop-traffic-collection`, `get-traffic-observations`, `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
-- **MCP**: when the MCP Adapter plugin is installed, a server is registered at
-  `/wp-json/mcp/super-speedy-performance` exposing the same abilities as tools
-  (dash-joined names, e.g. `super-speedy-performance-get-report`).
+- **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
+  and exposes them as first-class tools (dash-joined names, for example
+  `super-speedy-performance-get-report`). The plugin registers no dedicated MCP server.
 
 Runs started via abilities are asynchronous: poll `get-status` until `active` is false.
 `wp sspa run` is synchronous and drives the batches itself.

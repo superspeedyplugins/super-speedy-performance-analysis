@@ -71,7 +71,17 @@ wp_set_current_user((int) $subscriber_id);
 sspa_t(get_current_user_id() > 0 && !current_user_can('manage_options'), 'low-privilege test user in place');
 $denied = wp_get_ability('super-speedy-performance/get-report')->execute(array());
 sspa_t(is_wp_error($denied), 'non-admin denied by permission callback');
+$subscriber = new WP_User((int) $subscriber_id);
+$subscriber->add_cap('sspa_manage');
+$allowed = wp_get_ability('super-speedy-performance/get-report')->execute(array());
+$denied_execute = wp_get_ability('super-speedy-performance/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
+sspa_t(is_array($allowed) && !is_wp_error($allowed), 'manage-only user can read reports');
+sspa_t(is_wp_error($denied_execute), 'manage-only user cannot start analyses');
+$subscriber->remove_cap('sspa_manage');
 wp_set_current_user(1);
+
+$unconfirmed_checkout = wp_get_ability('super-speedy-performance/run-checkout-flow')->execute(array());
+sspa_t(is_wp_error($unconfirmed_checkout) && 'sspa_confirm_required' === $unconfirmed_checkout->get_error_code(), 'real checkout run refuses without confirm=true');
 
 // --- run-analysis ability starts an async run ---
 $started = wp_get_ability('super-speedy-performance/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));

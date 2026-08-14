@@ -32,6 +32,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.23 (14th August 2026) =
+* Standardised the 17 performance abilities on the shared site bridge and removed the duplicate dedicated Adapter server
+* Added separate `sspa_manage` and `sspa_execute` permissions so a report reader cannot start measurements or external work
+* Real checkout runs now require `confirm: true` and default to suppressed mail with integrations and webhooks off unless each side effect is explicitly enabled
 * Download filenames now start with the site's domain and SSPA version so reports from multiple sites can be grouped without opening them
 * Added an experimental WooCommerce traffic collector with 24-hour, 72-hour and 7-day collection options in the new Traffic tab
 * Added `wp sspa traffic start|status|stop|observations|delete` and matching non-destructive MCP abilities for starting, monitoring, stopping and reviewing an experimental collection

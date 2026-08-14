@@ -6,18 +6,19 @@ defined('ABSPATH') || exit;
  * Mirrors the proven SSE_MCP pattern; loaded only when the Abilities API exists
  * (bootstrap gates on function_exists('wp_register_ability')).
  *
- * Readonly abilities are callable via GET on the core REST run controller
- * (/wp-json/wp-abilities/v1/abilities/<name>/run) even without the MCP Adapter.
+ * Readonly abilities are callable via GET on the core REST run controller.
  */
 class SSPA_Abilities {
 
     /** Dash-only category slug; ability names are CATEGORY . '/name'. */
     const CATEGORY = 'super-speedy-performance';
+    const CAP_MANAGE = 'sspa_manage';
+    const CAP_EXECUTE = 'sspa_execute';
 
     public static function init() {
         add_action('wp_abilities_api_categories_init', array(__CLASS__, 'register_category'));
         add_action('wp_abilities_api_init', array(__CLASS__, 'register_abilities'));
-        add_action('mcp_adapter_init', array(__CLASS__, 'register_server'));
+        add_filter('user_has_cap', array(__CLASS__, 'grant_admin_caps'), 10, 3);
     }
 
     public static function ability_names() {
@@ -43,7 +44,19 @@ class SSPA_Abilities {
     }
 
     public static function can_manage() {
-        return current_user_can('manage_options');
+        return current_user_can(self::CAP_MANAGE);
+    }
+
+    public static function can_execute() {
+        return current_user_can(self::CAP_EXECUTE);
+    }
+
+    public static function grant_admin_caps($allcaps, $caps, $args) {
+        if (!empty($allcaps['manage_options'])) {
+            $allcaps[self::CAP_MANAGE] = true;
+            $allcaps[self::CAP_EXECUTE] = true;
+        }
+        return $allcaps;
     }
 
     public static function register_category() {
@@ -239,7 +252,7 @@ class SSPA_Abilities {
                     'total' => array('type' => 'integer'),
                 ),
             ),
-            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'permission_callback' => array(__CLASS__, 'can_execute'),
             'execute_callback' => array(__CLASS__, 'exec_run_analysis'),
             'meta' => $active,
         ));
@@ -266,29 +279,30 @@ class SSPA_Abilities {
                     'status' => array('type' => 'string'),
                 ),
             ),
-            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'permission_callback' => array(__CLASS__, 'can_execute'),
             'execute_callback' => array(__CLASS__, 'exec_run_deep'),
             'meta' => $active,
         ));
 
         wp_register_ability(self::CATEGORY . '/run-checkout-flow', array(
             'label' => __('Measure the checkout flow (buys something for real)', 'super-speedy-performance-analysis'),
-            'description' => __('Measure a real purchase AND handling the order afterwards: each step of the purchase funnel, then viewing the order in wp-admin and marking it completed - the two things a shop owner does most - with the full plugin set active and nothing switched off. THIS CREATES A REAL ORDER. Real order emails are sent (including the completed-order email when the order is marked completed) and real integrations fire; the order is cancelled and deleted afterwards and stock is restored. Call with dry_run first to get the pre-flight inventory - exactly which emails, webhooks and plugins the run would set off - and show it to the site owner before running for real. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
+            'description' => __('Measure a real purchase and the order-handling workflow. THIS CREATES A REAL ORDER. The MCP-safe defaults suppress mail, integrations and webhooks; each can be enabled explicitly. The order is cancelled and deleted afterwards and stock is restored. Call with dry_run first, show the pre-flight inventory to the site owner, then pass confirm:true for a real run. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',
                 'properties' => array(
                     'dry_run' => array('type' => 'boolean', 'description' => __('Return the pre-flight inventory and create nothing.', 'super-speedy-performance-analysis')),
+                    'confirm' => array('type' => 'boolean', 'description' => __('Must be true for a real checkout run.', 'super-speedy-performance-analysis')),
                     'product_id' => array('type' => 'integer', 'description' => __('Product to buy; defaults to the cheapest purchasable, in-stock, shippable one.', 'super-speedy-performance-analysis')),
-                    'allow_integrations' => array('type' => 'boolean', 'description' => __('Default true. Turning this off makes the result no longer a real-store number.', 'super-speedy-performance-analysis')),
-                    'allow_webhooks' => array('type' => 'boolean', 'description' => __('Default true.', 'super-speedy-performance-analysis')),
-                    'mail_mode' => array('type' => 'string', 'enum' => array('deliver', 'construct', 'suppress'), 'description' => __('deliver (default) sends the order emails for real so the mail server is measured too.', 'super-speedy-performance-analysis')),
+                    'allow_integrations' => array('type' => 'boolean', 'description' => __('Default false. Set true explicitly to fire store integrations.', 'super-speedy-performance-analysis')),
+                    'allow_webhooks' => array('type' => 'boolean', 'description' => __('Default false. Set true explicitly to fire webhooks.', 'super-speedy-performance-analysis')),
+                    'mail_mode' => array('type' => 'string', 'enum' => array('deliver', 'construct', 'suppress'), 'description' => __('suppress by default. Set deliver explicitly to send order emails.', 'super-speedy-performance-analysis')),
                 ),
                 'additionalProperties' => false,
                 'default' => array(),
             ),
             'output_schema' => array('type' => 'object'),
-            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'permission_callback' => array(__CLASS__, 'can_execute'),
             'execute_callback' => array(__CLASS__, 'exec_run_checkout_flow'),
             // Destructive: it creates an order, sends mail and fires integrations. An
             // agent must not run it without the owner having seen the pre-flight.
@@ -329,7 +343,7 @@ class SSPA_Abilities {
                 'default' => array(),
             ),
             'output_schema' => array('type' => 'object'),
-            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'permission_callback' => array(__CLASS__, 'can_execute'),
             'execute_callback' => array(__CLASS__, 'exec_start_traffic_collection'),
             'meta' => $idempotent_control,
         ));
@@ -364,7 +378,7 @@ class SSPA_Abilities {
                 'default' => array(),
             ),
             'output_schema' => array('type' => 'object'),
-            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'permission_callback' => array(__CLASS__, 'can_execute'),
             'execute_callback' => array(__CLASS__, 'exec_stop_traffic_collection'),
             'meta' => $idempotent_control,
         ));
@@ -394,7 +408,7 @@ class SSPA_Abilities {
                 'type' => 'object',
                 'properties' => array('queued' => array('type' => 'boolean')),
             ),
-            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'permission_callback' => array(__CLASS__, 'can_execute'),
             'execute_callback' => array(__CLASS__, 'exec_submit'),
             'meta' => $active,
         ));
@@ -509,14 +523,26 @@ class SSPA_Abilities {
             return array('dry_run' => true, 'inventory' => $sample['json']);
         }
 
-        $args = array('type' => 'checkout', 'trigger' => 'mcp');
+        if (!isset($input['confirm']) || true !== rest_sanitize_boolean($input['confirm'])) {
+            return new WP_Error('sspa_confirm_required', __('confirm must be true for a real checkout run.', 'super-speedy-performance-analysis'));
+        }
+
+        $args = array(
+            'type' => 'checkout',
+            'trigger' => 'mcp',
+            'mail_mode' => 'suppress',
+            'allow_integrations' => false,
+            'allow_webhooks' => false,
+        );
         foreach (array('product_id', 'mail_mode') as $key) {
             if (isset($input[$key])) {
                 $args[$key] = $input[$key];
             }
         }
         foreach (array('allow_integrations', 'allow_webhooks') as $key) {
-            $args[$key] = !isset($input[$key]) || (bool) $input[$key];
+            if (isset($input[$key])) {
+                $args[$key] = (bool) $input[$key];
+            }
         }
         $run_id = SSPA_Run_Controller::start($args);
         if (is_wp_error($run_id)) {
@@ -569,27 +595,4 @@ class SSPA_Abilities {
         return array('queued' => true);
     }
 
-    public static function register_server($adapter = null) {
-        if (!is_object($adapter) || !method_exists($adapter, 'create_server')) {
-            return;
-        }
-        try {
-            $adapter->create_server(
-                self::CATEGORY,
-                'mcp',
-                self::CATEGORY,
-                'Super Speedy Performance Analysis',
-                __('Profile the site, isolate slow plugins, read findings.', 'super-speedy-performance-analysis'),
-                SSPA_VERSION,
-                array('WP\\MCP\\Transport\\HttpTransport'),
-                null,
-                null,
-                self::ability_names(),
-                array(),
-                array()
-            );
-        } catch (Throwable $e) {
-            error_log('SSPA_Abilities: could not register MCP server: ' . $e->getMessage());
-        }
-    }
 }
