@@ -1,48 +1,27 @@
 #!/usr/bin/env bash
-# Run the SSPA test suite against the docker environment (starts it if needed).
+# Run the SSPA test suite against the native parallel-dev test site.
 # Usage: .tests/run-tests.sh [case-substring]
+#
+# No Docker. The environment is created by .tests/setup-site.sh; this script only checks
+# it is there and runs the cases against it.
 set -uo pipefail
-source "$(dirname "${BASH_SOURCE[0]}")/docker/env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
-if ! docker ps --format '{{.Names}}' | grep -qx $SSPA_WP; then
-    "$PLUGIN_DIR/.tests/docker/up.sh" || exit 1
-fi
-
-sync_plugin
-
-# Retire the bundled schema-1 receiver from long-lived test volumes. Its source is no longer
-# synced, but WordPress can keep the old top-level plugin active until explicitly deactivated.
-if cli plugin is-active super-speedy-performance-hub >/dev/null 2>&1; then
-    echo "deactivating retired schema-1 hub plugin..."
-    cli plugin deactivate super-speedy-performance-hub --quiet
-fi
-
-# Excimer for the phase-5 sampling collector - idempotent, self-heals a recreated env.
-"$PLUGIN_DIR/.tests/docker/install-excimer.sh" || true
+sspa_require_site || exit 1
+sync_plugin || exit 1
 
 # Pre-flight: several cases silently degrade into failures (sector "general", tiny deep
 # deltas, no write profiles) when the WooCommerce sample data has gone missing - reseed.
 PRODUCTS=$(cli post list --post_type=product --post_status=publish --format=count 2>/dev/null | tr -dc '0-9')
 if [ "${PRODUCTS:-0}" -lt 5 ]; then
-    echo "sample products missing ($PRODUCTS) - reseeding WooCommerce sample data..."
-    cli import "$CONTAINER_PLUGIN_DIR/../woocommerce/sample-data/sample_products.xml" --authors=create --quiet || true
-    cli eval '
-        if (count(wc_get_orders(array("limit" => -1, "return" => "ids"))) < 3) {
-            foreach (get_posts(array("post_type" => "product", "numberposts" => 3)) as $prod) {
-                $order = wc_create_order();
-                $order->add_product(wc_get_product($prod->ID), 2);
-                $order->set_address(array("first_name" => "Test", "last_name" => "Customer", "email" => "test@example.com"), "billing");
-                $order->calculate_totals();
-                $order->update_status("processing");
-            }
-        }
-        echo "orders: " . count(wc_get_orders(array("limit" => -1, "return" => "ids"))) . "\n";
-    '
+    echo "sample products missing (${PRODUCTS:-0}) - re-running setup..."
+    "$PLUGIN_DIR/.tests/setup-site.sh" || exit 1
 fi
 
 FILTER="${1:-}"
 FAILED=0
 RAN=0
+FAILED_NAMES=""
 
 for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     name=$(basename "$case_file")
@@ -51,14 +30,16 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     fi
     RAN=$((RAN + 1))
     echo "=== $name ==="
-    output=$(cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/cases/$name" 2>&1)
+    output=$(cli eval-file "$case_file" 2>&1)
     echo "$output"
     if echo "$output" | grep -q '^FAIL' || ! echo "$output" | grep -q '^PASS'; then
         FAILED=$((FAILED + 1))
+        FAILED_NAMES="$FAILED_NAMES $name"
         echo "--- $name FAILED ---"
     fi
 done
 
 echo
 echo "$RAN case file(s) run, $FAILED failed"
+[ -n "$FAILED_NAMES" ] && echo "failed:$FAILED_NAMES"
 exit $FAILED

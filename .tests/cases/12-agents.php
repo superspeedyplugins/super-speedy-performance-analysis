@@ -67,17 +67,40 @@ $subscriber_id = username_exists('sspa-perm-test');
 if (!$subscriber_id) {
     $subscriber_id = wp_insert_user(array('user_login' => 'sspa-perm-test', 'user_pass' => wp_generate_password(), 'role' => 'subscriber'));
 }
-wp_set_current_user((int) $subscriber_id);
+// wp_set_current_user() returns early when the id is unchanged, so the in-memory WP_User
+// keeps whatever caps it was loaded with and a later add_cap()/remove_cap() is invisible to
+// current_user_can(). Bounce through 0 to force a reload.
+$sspa_switch_to = function ($id) {
+    wp_set_current_user(0);
+    wp_set_current_user((int) $id);
+};
+
+// Start from a known cap set. Without this the case is order-dependent in BOTH directions:
+// on a fresh site "manage-only user can read reports" failed (the cap was added but never
+// picked up), and on any later run the cap left behind by an aborted earlier run made
+// "non-admin denied" fail instead. The old Docker environment was long-lived, so the first
+// run's failure was seen once and then hidden by its own residue for ever after.
+$subscriber = new WP_User((int) $subscriber_id);
+$subscriber->remove_cap('sspa_manage');
+$subscriber->remove_cap('sspa_execute');
+$sspa_switch_to($subscriber_id);
+sspa_t(!current_user_can('sspa_manage'), 'precondition: test user starts without sspa_manage');
+
 sspa_t(get_current_user_id() > 0 && !current_user_can('manage_options'), 'low-privilege test user in place');
 $denied = wp_get_ability('super-speedy-performance/get-report')->execute(array());
 sspa_t(is_wp_error($denied), 'non-admin denied by permission callback');
-$subscriber = new WP_User((int) $subscriber_id);
+
 $subscriber->add_cap('sspa_manage');
+$sspa_switch_to($subscriber_id);
+sspa_t(current_user_can('sspa_manage'), 'sspa_manage granted and visible to current_user_can()');
 $allowed = wp_get_ability('super-speedy-performance/get-report')->execute(array());
 $denied_execute = wp_get_ability('super-speedy-performance/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
 sspa_t(is_array($allowed) && !is_wp_error($allowed), 'manage-only user can read reports');
 sspa_t(is_wp_error($denied_execute), 'manage-only user cannot start analyses');
+
 $subscriber->remove_cap('sspa_manage');
+$sspa_switch_to($subscriber_id);
+sspa_t(!current_user_can('sspa_manage'), 'cap removed again, so a re-run starts clean');
 wp_set_current_user(1);
 
 $unconfirmed_checkout = wp_get_ability('super-speedy-performance/run-checkout-flow')->execute(array());

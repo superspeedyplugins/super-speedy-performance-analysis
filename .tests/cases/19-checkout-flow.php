@@ -20,7 +20,7 @@ function sspa_t($ok, $label) {
 global $wpdb;
 
 if (!class_exists('WooCommerce')) {
-    echo "FAIL: WooCommerce is not active in the docker env\n";
+    echo "FAIL: WooCommerce is not active on the test site (run .tests/setup-site.sh)\n";
     return;
 }
 
@@ -117,7 +117,7 @@ sspa_t(in_array('sspa-slow-integration/sspa-slow-integration.php', $active_plugi
 // unmanaged stock it would pass vacuously.
 $target = SSPA_Checkout_Flow::default_product();
 if (!$target) {
-    echo "FAIL: no purchasable product in the docker store\n";
+    echo "FAIL: no purchasable product on the test site (run .tests/setup-site.sh)\n";
     $remove('sspa-slow-integration');
     $remove('sspa-mail-observer');
     return;

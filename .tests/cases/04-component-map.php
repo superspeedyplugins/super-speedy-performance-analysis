@@ -29,12 +29,35 @@ $attr = $map->attribute($frames);
 sspa_t($attr['component'] === 'woocommerce', 'code-owner mode (default): the executing plugin wins attribution');
 
 // Our own frames never claim attribution.
+//
+// The path MUST come from SSPA_PLUGIN_DIR, not from WP_PLUGIN_DIR . '/<slug>'. Self-exclusion
+// keys on `dirname(__DIR__)`, which PHP has already resolved through any symlink, and every
+// path in a real `debug_backtrace()` is resolved the same way - so a resolved path is the only
+// thing this code ever sees at runtime.
+//
+// This used to build the path from WP_PLUGIN_DIR and passed only because the old Docker
+// harness COPIED the plugin into the container, making the two identical. Every parallel-dev
+// site symlinks wp-content/plugins/<slug> to the repository, so the constructed path became
+// /opt/homebrew/.../wp-content/plugins/... while own_dir is /Users/dave/dev/... - the frame
+// was attributed to this plugin instead of being skipped. The code was right; the fixture
+// was describing an installation layout that no longer exists.
+sspa_t(strpos(SSPA_PLUGIN_DIR, WP_PLUGIN_DIR) !== 0 || realpath(WP_PLUGIN_DIR . '/super-speedy-performance-analysis') === rtrim(SSPA_PLUGIN_DIR, '/'),
+    'fixture precondition: SSPA_PLUGIN_DIR is the resolved plugin path');
 $frames = array(
-    array(WP_PLUGIN_DIR . '/super-speedy-performance-analysis/profiler/class-sspa-capture.php', 10, 'finalize'),
+    array(SSPA_PLUGIN_DIR . 'profiler/class-sspa-capture.php', 10, 'finalize'),
     array(ABSPATH . 'wp-includes/option.php', 20, 'get_option'),
 );
 $attr = $map->attribute($frames);
 sspa_t($attr['component'] === 'core', 'profiler frames excluded from attribution');
+
+// The complement, so the assertion above cannot pass by excluding everything: a frame from a
+// DIFFERENT plugin in the same directory must still win attribution.
+$frames = array(
+    array(WP_PLUGIN_DIR . '/woocommerce/includes/wc-core-functions.php', 10, 'wc_get_products'),
+    array(ABSPATH . 'wp-includes/option.php', 20, 'get_option'),
+);
+$attr = $map->attribute($frames);
+sspa_t($attr['component'] === 'woocommerce', 'a non-profiler plugin frame is still attributed');
 
 // Degraded mode: resolve callable names via reflection.
 $attr = $map->attribute_from_summary("require('wp-load.php'), wp_not_installed, get_option");

@@ -2,7 +2,7 @@
 // MySQL query fingerprints from performance_schema (phase 4).
 //
 // This test is ADAPTIVE. Most WordPress databases cannot read performance_schema - the
-// docker MariaDB here ships with it off, which is the common real-world case - so the
+// the local MariaDB ships with it off, which is the common real-world case - so the
 // graceful no-op path is the one most users hit and is tested unconditionally. Where the
 // digest table IS readable, the real path is exercised too.
 

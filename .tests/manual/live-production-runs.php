@@ -1,9 +1,9 @@
 <?php
 // Deliver one REAL analysis of every run type to the production collector.
 //
-// Usage, from bash in this plugin repository, against the DISPOSABLE docker site only:
+// Usage, from bash in this plugin repository, against the DISPOSABLE test site only:
 //
-//   source .tests/docker/env.sh
+//   source .tests/env.sh
 //   sync_plugin
 //   cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-production-runs.php" \
 //       https://collector.superspeedy.org production

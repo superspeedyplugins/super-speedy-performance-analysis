@@ -1,6 +1,9 @@
 <?php
 // Manual PHP-client -> receiver -> R2 compatibility check.
-// Usage: wp eval-file .../.tests/manual/live-r2.php http://host.docker.internal:8788
+// Usage: wp eval-file .../.tests/manual/live-r2.php http://localhost:8788
+// (host.docker.internal is still accepted below: the superspeedy.org receiver is one of
+// the few stacks that legitimately still runs in Docker. From this native test site the
+// receiver is reachable on localhost.)
 
 function sspa_live_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";

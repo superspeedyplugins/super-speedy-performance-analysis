@@ -9,7 +9,7 @@ function sspa_turnstile_t($ok, $label) {
 }
 
 if (!class_exists('WooCommerce')) {
-    echo "FAIL: WooCommerce is not active in the docker env\n";
+    echo "FAIL: WooCommerce is not active on the test site (run .tests/setup-site.sh)\n";
     return;
 }
 
@@ -56,7 +56,7 @@ sspa_turnstile_t(!is_wp_error($activated), 'Turnstile validation fixture activat
 
 $product = SSPA_Checkout_Flow::default_product();
 if (!$product) {
-    echo "FAIL: no purchasable product in the docker store\n";
+    echo "FAIL: no purchasable product on the test site (run .tests/setup-site.sh)\n";
     deactivate_plugins($slug . '/' . $slug . '.php');
     @unlink($dir . '/' . $slug . '.php');
     @rmdir($dir);

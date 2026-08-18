@@ -1,66 +1,124 @@
 # Super Speedy Performance Analysis - test suite
 
-The suite runs against a disposable Docker WordPress site - NEVER against the local
+The suite runs against a dedicated **native** WordPress site - NEVER against the local
 superspeedy install (that install is used for other testing and gets `wp reset` regularly).
+
+**No Docker.** Converted 16 August 2026. The environment is a parallel-dev site: nginx +
+php-fpm + mariadb, created in about three seconds, costing a directory and a database.
+The Docker pair it replaced needed a Colima VM reserving 6 GB and 4 CPUs before a single
+WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 
 ## Running the tests
 
 ```bash
-.tests/run-tests.sh            # starts the docker env if needed, syncs the plugin, runs all cases
+.tests/setup-site.sh           # create/top up the test site (idempotent)
+.tests/setup-site.sh --reset   # destroy and rebuild it from scratch
+.tests/run-tests.sh            # run all cases
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
-.tests/docker/down.sh          # tear the environment down
 ```
 
-Run these from **bash**, not zsh: `docker/env.sh` derives the plugin directory from
-`BASH_SOURCE`, which zsh does not set when the file is sourced interactively, and
-`sync_plugin` then silently copies the wrong tree (the parent directory) into the container.
+Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
+which zsh does not set when the file is sourced interactively.
+
+The site is **persistent**, not per-run - 43 case files against a fresh install every time
+would be slow, and the cases are written to be idempotent against a standing site. When one
+leaves residue behind, `--reset` is the cure.
 
 ### A second environment alongside the default one
 
-Container names and the host port are overridable, so a second checkout - a parallel session
-working on a feature branch - can run its own environment without colliding with `sspa-*` on
-port 8090:
+The scenario name is overridable, so a second checkout - a parallel session working on a
+feature branch - can run its own site without colliding with the default one:
 
 ```bash
-export SSPA_ENV_PREFIX=sspack SSPA_PORT=8092
-.tests/run-tests.sh
+export SSPA_SCENARIO=mybranch
+.tests/setup-site.sh && .tests/run-tests.sh
 ```
 
 A test case file passes when it prints at least one `PASS` line and no `FAIL` lines.
 `run-tests.sh` exits non-zero if any case fails.
 
-## The Docker environment
+## The environment
 
-Plain `docker` commands, no compose (not installed on this Mac). `docker/up.sh` creates:
+`setup-site.sh` builds, at `http://tests.super-speedy-performance-analysis.localhost:8081`:
 
-- `sspa-db` - mariadb 10.11
-- `sspa-wp` - wordpress php8.3-apache, reachable at http://localhost:8090 (admin/admin);
-  its internal site URL is `http://sspa-wp` so the plugin's loopback crawler works
-  inside the container network
-- WooCommerce + its sample products, 30 generated posts, a News category, 3 orders
+- the plugin, **symlinked** to this repository, so edits are live with nothing to sync
+- WooCommerce + its 18 sample products, 30 generated posts, a News category, 3 orders
+- **HPOS enabled** - live runs HPOS and the plugin queries `wp_wc_orders` directly in raw
+  SQL. With HPOS off, ownership lookups silently return nothing and the failures look like
+  pricing bugs rather than a misconfigured environment
+- **coming-soon mode off** - WooCommerce ships `woocommerce_coming_soon` ON, which hides the
+  store from logged-out visitors. wp-admin looks fine while the crawler sees no product grid
+  at all, so store assertions fail with nothing actually wrong
 
-`wp` commands run via a throwaway `wordpress:cli` container (`cli()` in `docker/env.sh`).
+`wp` commands run through `cli()` in `env.sh`, which is just `wp --path=<site> --url=<site>`.
+
+### Two capabilities the old Docker image provided
+
+Both were restored natively on 16 August 2026, so the suite covers exactly what it did under
+Docker. `setup-site.sh` prints the state of each; if either is missing, the case that needs it
+FAILS rather than quietly passing, because a skip that looks like a pass is how coverage rots.
+
+- **Excimer** (case 18, the sampling profiler). **Do not install it on this machine.**
+
+  `pecl install excimer` builds and works, and case 18 passes with it - but it SEGFAULTS
+  php-fpm under load. Measured 16 August 2026 across three identical full-suite runs:
+
+  | Excimer | Xdebug | New SIGSEGVs in php-fpm |
+  |---|---|---:|
+  | 1.2.6 (pecl) | on | 8 |
+  | none | on | **0** |
+  | 1.2.6 (pecl) | off | 12 |
+  | none | on | **0** |
+  | 1.2.7 (upstream source) | on | 14 |
+
+  Two things that were checked and ruled out. It is **not an Xdebug conflict** - the crash
+  count is driven entirely by the Excimer column. And it is **not a stale extension**:
+  `pecl install excimer` gives 1.2.6, the last release ever published to PECL (upstream has
+  left PECL - see includes/class-sspa-tools.php), so the obvious theory was that 1.2.6 simply
+  predates PHP 8.5. Building 1.2.7 from current upstream - whose newest commit is "Fix build
+  with PHP 8.6.0alpha3", so it certainly targets 8.5 - made it WORSE, not better.
+
+  Still untested, and the one thing that could still exonerate Excimer: a Linux distro build
+  (`php8.5-excimer` from deb.sury.org or Remi) on x86_64. Homebrew does not package Excimer,
+  so macOS cannot install what a client server actually runs. The
+  crashes are not confined to the suite: they kill php-fpm workers, so every parallel-dev
+  site returns 502s while it is loaded. The collateral is easy to misread as plugin bugs
+  (case 19 failed with `gen=0ms` on a step that is fine, and case 42 tripped a p95 timing
+  ceiling).
+
+  Case 18 therefore FAILS on this machine, and that is the honest state - it is not skipped,
+  because a skip that reads as a pass is how coverage rots. If you need it, the options are a
+  different PHP build or a pinned-version environment, decided deliberately.
+
+  If you do try again: it must be loaded in **php-fpm**, not just the CLI - the profiler
+  samples the web request, and `wp eval` proving `extension_loaded('excimer')` says nothing
+  about the SAPI serving the profiled page. Check with a script fetched over HTTP, and watch
+  `/opt/homebrew/var/log/php-fpm.log` for SIGSEGV.
+
+- **A persistent object cache** (case 10, and the extra cache modes case 09 measures):
+
+  ```bash
+  pecl install redis && brew services restart php && brew services start redis
+  ```
+
+  `setup-site.sh` then installs the `redis-cache` plugin and runs `wp redis enable` to place
+  the `object-cache.php` drop-in. parallel-dev already gives every site its own
+  `WP_REDIS_DATABASE` and `WP_CACHE_KEY_SALT`, so two sites cannot share a keyspace. Our
+  `db.php` shim and the Redis drop-in coexist - both appear in `wp redis status`.
 
 ### Harness gotchas (learned the hard way)
 
-- **No bind mounts**: `/opt/homebrew` is not in Docker Desktop's shared paths, so a bind
-  mount appears as an EMPTY directory (silently). The plugin is instead copied in with
-  `sync_plugin()` (tar pipe); `run-tests.sh` syncs before every run, so container code is
-  always current.
-- **wp-config reads env at runtime**: the wordpress image's wp-config.php uses
-  `getenv_docker()`, so the CLI container needs the same `WORDPRESS_DB_*` env vars as the
-  apache container or it tries to connect to host `mysql`.
-- **mariadb client TLS**: the CLI image's mariadb client requires TLS by default, so DB
-  readiness is probed with the mariadb container's own `healthcheck.sh`, not `wp db check`.
-- **opcache revalidation**: apache revalidates changed PHP files at most every 2s
-  (`opcache.revalidate_freq=2`). Tests that swap `wp-content/db.php` sleep 3s before
+- **opcache revalidation**: php-fpm revalidates changed PHP files at most every 2s
+  (`opcache.revalidate_freq`). Tests that swap `wp-content/db.php` sleep 3s before
   sending profiled requests.
 - **Sample data can vanish** (observed Jul 2026: 0 products, 0 orders in a long-lived
-  env; up.sh's import line ends in `|| true` so a failed seed is silent). The symptom is
-  a 5-case failure cluster: sector "general" instead of e-commerce, "product page
-  profiled" fails, deep deltas tiny (~25ms - the bad plugin's queries are cheap on an
-  empty postmeta), no save-product write profile. `run-tests.sh` now pre-flight checks
-  the product count and reseeds automatically.
+  env). The symptom is a 5-case failure cluster: sector "general" instead of e-commerce,
+  "product page profiled" fails, deep deltas tiny (~25ms - the bad plugin's queries are
+  cheap on an empty postmeta), no save-product write profile. `run-tests.sh` pre-flight
+  checks the product count and re-runs `setup-site.sh` automatically.
+- **`wp eval-file` runs in function scope**, so a top-level `$fails = 0` in a case file is a
+  LOCAL variable. A helper that does `global $fails` then increments a DIFFERENT variable and
+  the summary line reads 0 no matter what happened. Use `$GLOBALS['...']` on both sides.
 
 ## Cases
 
@@ -234,9 +292,9 @@ make integration-r2
 Then, from this plugin repository in bash:
 
 ```bash
-source .tests/docker/env.sh
+source .tests/env.sh
 sync_plugin
-cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-r2.php" http://host.docker.internal:8788
+cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-r2.php" http://localhost:8788
 ```
 
 This is deliberately manual because it writes a real object to R2 and requires the receiver's
@@ -255,7 +313,7 @@ every host except `collector.superspeedy.org`, needs an explicit opt-in token, a
 real permanent synthetic object to the production archive:
 
 ```bash
-source .tests/docker/env.sh
+source .tests/env.sh
 sync_plugin
 cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-production.php" \
     https://collector.superspeedy.org production
@@ -284,7 +342,7 @@ or the exporters change: the synthetic fixture is ~1 KB with one evidence record
 notice a payload-size or evidence-volume problem.
 
 Both scripts write real permanent objects to the production archive. Run them only from the
-disposable Docker site, and expect `processing_status=partial` while the production processor
+disposable test site, and expect `processing_status=partial` while the production processor
 is 1.0 and the payload schema is 1.1.
 
 ## Not yet covered (planned)

@@ -10,7 +10,7 @@ function sspa_t($ok, $label) {
 global $wpdb;
 
 if (!wp_using_ext_object_cache()) {
-    echo "FAIL: docker env has no persistent object cache (run docker/up.sh redis provisioning)\n";
+    echo "FAIL: the test site has no persistent object cache - install a Redis/Memcached object-cache.php drop-in on it\n";
     return;
 }
 sspa_t(true, 'persistent object cache active');

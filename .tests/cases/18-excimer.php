@@ -1,7 +1,7 @@
 <?php
 // Phase-5 Excimer collector: sampling profile captured during a normal profiled
 // request, attributed through the component map. The extension lives in the APACHE
-// container (run-tests.sh installs it via docker/install-excimer.sh); this CLI process
+// web SAPI serving the profiled requests, not necessarily this CLI process
 // never has it, so the decision comes from the CAPTURE contents.
 
 function sspa_t($ok, $label) {
@@ -32,7 +32,7 @@ sspa_t(is_array($capture), 'capture unpacked');
 
 $p = is_array($capture) && isset($capture['profile']) ? $capture['profile'] : null;
 // If this fails, excimer is not loaded in the APACHE container - run
-// .tests/docker/install-excimer.sh (run-tests.sh does this automatically).
+// pecl install excimer, then add extension=excimer.so to the php-fpm ini.
 sspa_t(is_array($p), 'excimer profile captured');
 if (is_array($p)) {
     sspa_t('excimer' === $p['collector'], 'collector labelled excimer');

@@ -16,7 +16,7 @@ function sspa_om_t($ok, $label) {
 global $wpdb;
 
 if (!class_exists('WooCommerce')) {
-    echo "FAIL: WooCommerce is not active in the docker env\n";
+    echo "FAIL: WooCommerce is not active on the test site (run .tests/setup-site.sh)\n";
     return;
 }
 
