@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.23.5
+Stable tag: 0.23.6
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.23.6 (18th August 2026) =
+* Updated `super-speedy-settings` to 1.8.0, restoring the official WordPress MCP Adapter
 
 = 0.23 (14th August 2026) =
 * Standardised the 17 performance abilities on the shared site bridge and removed the duplicate dedicated Adapter server
