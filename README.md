@@ -45,7 +45,7 @@ The whole plugin is drivable without the GUI:
 
 - **WP-CLI**: `wp sspa run`, `wp sspa status`, `wp sspa findings`, `wp sspa impacts`,
   `wp sspa report`, `wp sspa cache-optimisation-report` and the experimental
-  `wp sspa traffic start|status|stop|observations|delete` commands - JSON output throughout.
+  `wp sspa traffic start|status|stop|observations|compare|delete` commands - JSON output throughout.
 - **WordPress Abilities API** (WP 6.9+) with the same surface, exposed through the one shared
   Super Speedy MCP bridge without AI Engine or the WordPress MCP Adapter.
 - **[SKILL.md](SKILL.md)** teaches Claude-based agents the install -> run -> interpret

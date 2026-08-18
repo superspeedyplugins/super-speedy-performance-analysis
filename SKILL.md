@@ -99,16 +99,22 @@ collector for 24 hours, 72 hours or 7 days:
 wp sspa traffic start --duration=24h
 wp sspa traffic status --format=json
 wp sspa traffic observations
+wp sspa traffic compare <before-collection-id> <after-collection-id>
 wp sspa traffic stop
 ```
 
 The matching abilities are `start-traffic-collection`, `get-traffic-collection-status`,
-`get-traffic-observations` and `stop-traffic-collection`. Explain that this writes anonymous
+`get-traffic-observations`, `compare-traffic-collections` and `stop-traffic-collection`. Explain that this writes anonymous
 keyed event rows, observes logged-in and non-empty-basket origin requests exactly, samples broad
 anonymous origin traffic, and cannot see requests served entirely at the CDN/page-cache edge.
 The `sspa/traffic-collector-observations@1` output is experimental evidence, not the finished
 Traffic Performance Analysis. A normal stop ends request collection and keeps the bounded order
 outcome window; `emergency: true` removes the observer immediately.
+
+The observations include comparable actor-state by surface by page-class performance groups,
+origin generation average/p95 and SSF/cache-fragment opportunity headlines. The comparison
+normalises request volumes and processing totals to 24 hours and never labels traffic not
+identified as automation as human.
 
 Raw deletion is deliberately not an MCP ability. After downloading the observations, the owner
 can use the Traffic tab or `wp sspa traffic delete <collection-id> --yes`.

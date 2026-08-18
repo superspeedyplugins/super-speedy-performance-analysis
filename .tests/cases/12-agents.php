@@ -49,7 +49,8 @@ sspa_t(is_array($metrics) && 'e-commerce' === $metrics['sector'], 'get-site-metr
 
 $traffic_status_ability = wp_get_ability('super-speedy-performance/get-traffic-collection-status');
 $traffic_observations_ability = wp_get_ability('super-speedy-performance/get-traffic-observations');
-sspa_t(is_object($traffic_status_ability) && is_object($traffic_observations_ability), 'traffic status and observations abilities registered');
+$traffic_compare_ability = wp_get_ability('super-speedy-performance/compare-traffic-collections');
+sspa_t(is_object($traffic_status_ability) && is_object($traffic_observations_ability) && is_object($traffic_compare_ability), 'traffic status, observations and comparison abilities registered');
 $traffic_started = wp_get_ability('super-speedy-performance/start-traffic-collection')->execute(array('duration' => '24h'));
 sspa_t(is_array($traffic_started) && !empty($traffic_started['active']), 'start-traffic-collection executes through the full pipeline');
 if (is_array($traffic_started) && !empty($traffic_started['collection']['id'])) {
@@ -58,6 +59,8 @@ if (is_array($traffic_started) && !empty($traffic_started['collection']['id'])) 
     sspa_t(is_array($traffic_status) && $traffic_id === $traffic_status['collection']['id'], 'get-traffic-collection-status returns typed collection state');
     $traffic_observations = $traffic_observations_ability->execute(array('collection_id' => $traffic_id));
     sspa_t(is_array($traffic_observations) && SSPA_Traffic_Privacy::SCHEMA === $traffic_observations['schema'], 'get-traffic-observations returns the privacy-safe Phase 3 schema');
+    $traffic_comparison = $traffic_compare_ability->execute(array('before_collection_id' => $traffic_id, 'after_collection_id' => $traffic_id));
+    sspa_t(is_array($traffic_comparison) && 'sspa/traffic-collection-comparison@1' === $traffic_comparison['schema'], 'compare-traffic-collections returns the duration-normalised schema');
     $traffic_stopped = wp_get_ability('super-speedy-performance/stop-traffic-collection')->execute(array('collection_id' => $traffic_id, 'emergency' => true));
     sspa_t(is_array($traffic_stopped) && 'stopped' === $traffic_stopped['collection']['status'], 'stop-traffic-collection emergency stop executes');
 }
@@ -148,6 +151,12 @@ if (class_exists('WP_CLI')) {
     $json = WP_CLI::runcommand('sspa traffic status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_traffic = json_decode((string) $json, true);
     sspa_t(is_array($cli_traffic) && array_key_exists('active', $cli_traffic), 'wp sspa traffic status --format=json parses');
+
+    if (!empty($traffic_id)) {
+        $json = WP_CLI::runcommand('sspa traffic compare ' . $traffic_id . ' ' . $traffic_id, array('return' => true, 'launch' => true, 'exit_error' => false));
+        $cli_comparison = json_decode((string) $json, true);
+        sspa_t(is_array($cli_comparison) && 'sspa/traffic-collection-comparison@1' === $cli_comparison['schema'], 'wp sspa traffic compare emits the duration-normalised schema');
+    }
 
     $out = WP_CLI::runcommand('sspa status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_status = json_decode((string) $out, true);

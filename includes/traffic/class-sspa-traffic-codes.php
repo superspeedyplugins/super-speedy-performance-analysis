@@ -4,7 +4,7 @@ defined('ABSPATH') || exit;
 /** Stable numeric storage codes for the experimental traffic collector. */
 class SSPA_Traffic_Codes {
 
-    const OBSERVER_VERSION = 1;
+    const OBSERVER_VERSION = 2;
 
     const COLLECTION_PLANNED = 1;
     const COLLECTION_RUNNING = 2;
@@ -58,6 +58,12 @@ class SSPA_Traffic_Codes {
     const ACTOR_STAFF = 6;
     const ACTOR_AUTOMATED_CLAIMED = 7;
 
+    const AUTOMATION_NOT_IDENTIFIED = 0;
+    const AUTOMATION_CLAIMED_SEARCH = 1;
+    const AUTOMATION_CLAIMED_SHOPPING = 2;
+    const AUTOMATION_CLAIMED_GENERIC = 3;
+    const AUTOMATION_TRUSTED_CLOUDFLARE = 4;
+
     const SURFACE_UNKNOWN = 0;
     const SURFACE_PUBLIC_CACHE_CANDIDATE = 1;
     const SURFACE_PUBLIC_PRIVATE = 2;
@@ -83,6 +89,13 @@ class SSPA_Traffic_Codes {
     const PAGE_PRODUCT_SINGLE = 7;
     const PAGE_TAXONOMY = 8;
     const PAGE_OTHER_PUBLIC = 9;
+
+    const SSF_PROTECTION_UNAVAILABLE = 0;
+    const SSF_PRODUCT_ARCHIVE_ALLOWED = 1;
+    const SSF_REDIRECT_NEAREST_ARCHIVE = 2;
+    const SSF_REDIRECT_SHOP = 3;
+    const SSF_PRODUCT_SINGLE_NOT_PROTECTABLE = 4;
+    const SSF_UNRELATED_REQUEST = 5;
 
     const FLAG_EXACT = 1;
     const FLAG_SAMPLED = 2;
@@ -174,7 +187,7 @@ class SSPA_Traffic_Codes {
     public static function surface($code) {
         return self::label($code, array(
             self::SURFACE_UNKNOWN => 'unknown',
-            self::SURFACE_PUBLIC_CACHE_CANDIDATE => 'public_html_cache_candidate',
+            self::SURFACE_PUBLIC_CACHE_CANDIDATE => 'public_html_get_head',
             self::SURFACE_PUBLIC_PRIVATE => 'public_html_private',
             self::SURFACE_CART => 'cart',
             self::SURFACE_CHECKOUT => 'checkout',
@@ -203,6 +216,34 @@ class SSPA_Traffic_Codes {
             self::PAGE_TAXONOMY => 'public_taxonomy',
             self::PAGE_OTHER_PUBLIC => 'other_public',
         ), 'unknown');
+    }
+
+    public static function automation($code) {
+        return self::label($code, array(
+            self::AUTOMATION_NOT_IDENTIFIED => 'not_identified_as_automation',
+            self::AUTOMATION_CLAIMED_SEARCH => 'claimed_search_crawler',
+            self::AUTOMATION_CLAIMED_SHOPPING => 'claimed_shopping_crawler',
+            self::AUTOMATION_CLAIMED_GENERIC => 'claimed_generic_crawler',
+            self::AUTOMATION_TRUSTED_CLOUDFLARE => 'trusted_cloudflare_bot',
+        ), 'unknown');
+    }
+
+    public static function ssf_protection($code) {
+        return self::label($code, array(
+            self::SSF_PROTECTION_UNAVAILABLE => 'unavailable',
+            self::SSF_PRODUCT_ARCHIVE_ALLOWED => 'product_archive_allowed',
+            self::SSF_REDIRECT_NEAREST_ARCHIVE => 'redirect_to_nearest_archive',
+            self::SSF_REDIRECT_SHOP => 'redirect_to_shop',
+            self::SSF_PRODUCT_SINGLE_NOT_PROTECTABLE => 'product_single_not_protectable',
+            self::SSF_UNRELATED_REQUEST => 'unrelated_request',
+        ), 'unknown');
+    }
+
+    public static function ssf_protectable($code) {
+        return in_array((int) $code, array(
+            self::SSF_REDIRECT_NEAREST_ARCHIVE,
+            self::SSF_REDIRECT_SHOP,
+        ), true);
     }
 
     private static function label($code, $map, $fallback) {

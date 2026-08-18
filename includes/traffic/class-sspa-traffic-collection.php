@@ -490,6 +490,12 @@ class SSPA_Traffic_Collection {
             ) linked",
             $id
         ));
+        $duration_seconds = self::observed_duration_seconds($status['collection']);
+        $performance = self::request_performance_data(
+            $id,
+            (int) $status['collection']['origin_sample_modulus'],
+            $duration_seconds
+        );
         $payload = array(
             'schema' => SSPA_Traffic_Privacy::SCHEMA,
             'generated_at' => gmdate('c'),
@@ -506,6 +512,10 @@ class SSPA_Traffic_Collection {
             'request_actor_states' => $actors,
             'request_surfaces' => $surfaces,
             'request_page_classes' => $pages,
+            'request_performance_groups' => $performance['groups'],
+            'origin_page_generation' => $performance['origin_page_generation'],
+            'ssf_protection_opportunity' => $performance['ssf_protection_opportunity'],
+            'cache_fragment_opportunity' => $performance['cache_fragment_opportunity'],
             'exact_origin_cohorts' => array(
                 'quality' => 'exact_for_observed_origin_requests',
                 'distinct_non_empty_basket_actors' => (int) ($cohorts['basket_actors'] ?? 0),
@@ -530,6 +540,9 @@ class SSPA_Traffic_Collection {
                 'edge_cache_hits_are_not_visible',
                 'open_baskets_are_not_yet_finalised',
                 'actor_and_order_joins_are_not_exported',
+                'not_identified_as_automation_does_not_mean_human',
+                'wordpress_origin_rows_are_requests_not_served_entirely_by_an_upstream_page_cache_or_cdn',
+                'cloudflare_edge_hits_require_a_matching_cloudflare_analytics_export',
             ),
         );
         $problems = SSPA_Traffic_Privacy::validate_export($payload);
@@ -537,6 +550,431 @@ class SSPA_Traffic_Collection {
             return new WP_Error('sspa_traffic_privacy', __('The experimental observation export failed its privacy allowlist.', 'super-speedy-performance-analysis'), $problems);
         }
         return $payload;
+    }
+
+    public static function comparison($before_collection_id, $after_collection_id) {
+        $before = self::observations((int) $before_collection_id);
+        if (is_wp_error($before)) {
+            return $before;
+        }
+        $after = self::observations((int) $after_collection_id);
+        if (is_wp_error($after)) {
+            return $after;
+        }
+        $before_snapshot = self::comparison_snapshot($before);
+        $after_snapshot = self::comparison_snapshot($after);
+        $metrics = array(
+            'origin_page_generation' => array(
+                'wall_ms_average', 'wall_ms_p95', 'projected_daily_requests',
+                'projected_daily_wall_ms', 'projected_daily_cpu_us', 'projected_daily_queries',
+            ),
+            'private_state_catalogue' => array(
+                'wall_ms_average', 'projected_daily_requests', 'projected_daily_wall_ms',
+                'projected_daily_cpu_us', 'projected_daily_queries',
+            ),
+            'ssf_protection_opportunity' => array('protectable_projected_daily_requests'),
+        );
+        $changes = array();
+        foreach ($metrics as $section => $names) {
+            $changes[$section] = array();
+            foreach ($names as $name) {
+                $changes[$section][$name] = self::metric_change(
+                    $before_snapshot[$section][$name] ?? null,
+                    $after_snapshot[$section][$name] ?? null
+                );
+            }
+        }
+        $result = array(
+            'schema' => 'sspa/traffic-collection-comparison@1',
+            'generated_at' => gmdate('c'),
+            'normalisation' => 'request_volumes_and_processing_totals_projected_to_24_hours;_per_request_average_and_p95_not_duration_scaled',
+            'before' => $before_snapshot,
+            'after' => $after_snapshot,
+            'changes' => $changes,
+            'limitations' => array(
+                'cloudflare_edge_hits_are_unavailable_without_matching_cloudflare_analytics',
+                'not_identified_as_automation_does_not_mean_human',
+                'net_fragment_saving_is_unavailable_until_fragment_requests_are_measured',
+            ),
+        );
+        $problems = SSPA_Traffic_Privacy::validate_export($result);
+        return $problems
+            ? new WP_Error('sspa_traffic_privacy', __('The traffic comparison failed its privacy allowlist.', 'super-speedy-performance-analysis'), $problems)
+            : $result;
+    }
+
+    private static function comparison_snapshot($observations) {
+        return array(
+            'collection_id' => (int) $observations['collection']['id'],
+            'observed_duration_seconds' => (int) $observations['origin_page_generation']['observed_duration_seconds'],
+            'origin_page_generation' => $observations['origin_page_generation'],
+            'private_state_catalogue' => $observations['cache_fragment_opportunity']['private_state_catalogue'],
+            'catalogue_page_classes' => $observations['cache_fragment_opportunity']['page_classes'],
+            'ssf_protection_opportunity' => $observations['ssf_protection_opportunity'],
+        );
+    }
+
+    private static function metric_change($before, $after) {
+        if ($before === null || $after === null) {
+            return array('before' => $before, 'after' => $after, 'absolute' => null, 'percent' => null, 'quality' => 'unavailable');
+        }
+        $before = (float) $before;
+        $after = (float) $after;
+        $absolute = $after - $before;
+        $percent = $before != 0.0 ? round($absolute / $before * 100, 4) : ($after == 0.0 ? 0.0 : null);
+        return array(
+            'before' => $before,
+            'after' => $after,
+            'absolute' => round($absolute, 4),
+            'percent' => $percent,
+            'quality' => 'normalised_comparison',
+        );
+    }
+
+    private static function observed_duration_seconds($collection) {
+        $started = !empty($collection['started_at']) ? strtotime($collection['started_at']) : 0;
+        $until = !empty($collection['collect_until']) ? strtotime($collection['collect_until']) : 0;
+        if (!$started || !$until) {
+            return 0;
+        }
+        return max(1, min(time(), $until) - $started);
+    }
+
+    /**
+     * Build privacy-safe comparable aggregates from retained request rows.
+     *
+     * Exact and sampled observations remain separate groups. Estimated totals weight only
+     * sampled rows by the collection modulus; raw exact and sampled counts are never added.
+     */
+    private static function request_performance_data($collection_id, $sample_modulus, $duration_seconds) {
+        global $wpdb;
+        $table = SSPA_Schema::table('traffic_events');
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT actor_key,actor_state,automation_code,surface_code,page_class,ssf_protection_code,wall_ms,cpu_us,query_count,flags
+             FROM $table WHERE collection_id = %d AND event_code = %d ORDER BY id",
+            $collection_id,
+            SSPA_Traffic_Codes::EVENT_REQUEST
+        ), ARRAY_A);
+        $groups = array();
+        foreach ((array) $rows as $row) {
+            $sampled = ((int) $row['flags'] & SSPA_Traffic_Codes::FLAG_SAMPLED) !== 0;
+            $key = implode(':', array(
+                (int) $row['actor_state'],
+                (int) $row['surface_code'],
+                (int) $row['page_class'],
+                $sampled ? 1 : 0,
+            ));
+            if (!isset($groups[$key])) {
+                $groups[$key] = array(
+                    'actor_state_code' => (int) $row['actor_state'],
+                    'surface_code' => (int) $row['surface_code'],
+                    'page_class_code' => (int) $row['page_class'],
+                    'sampling' => $sampled ? 'sampled' : 'exact',
+                    'requests' => 0,
+                    'actors' => array(),
+                    'wall_ms' => array(),
+                    'wall_ms_sum' => 0,
+                    'cpu_us_sum' => 0,
+                    'cpu_measurements' => 0,
+                    'query_count_sum' => 0,
+                    'query_measurements' => 0,
+                );
+            }
+            $groups[$key]['requests']++;
+            if ($row['actor_key'] !== null) {
+                $groups[$key]['actors'][bin2hex($row['actor_key'])] = true;
+            }
+            $wall_ms = (int) $row['wall_ms'];
+            $groups[$key]['wall_ms'][] = $wall_ms;
+            $groups[$key]['wall_ms_sum'] += $wall_ms;
+            if ($row['cpu_us'] !== null) {
+                $groups[$key]['cpu_us_sum'] += (int) $row['cpu_us'];
+                $groups[$key]['cpu_measurements']++;
+            }
+            if ($row['query_count'] !== null) {
+                $groups[$key]['query_count_sum'] += (int) $row['query_count'];
+                $groups[$key]['query_measurements']++;
+            }
+        }
+
+        ksort($groups, SORT_NATURAL);
+        $export = array();
+        foreach ($groups as $group) {
+            sort($group['wall_ms'], SORT_NUMERIC);
+            $observed = (int) $group['requests'];
+            $weight = 'sampled' === $group['sampling'] ? max(1, (int) $sample_modulus) : 1;
+            $p95_index = max(0, (int) ceil($observed * 0.95) - 1);
+            $export[] = array(
+                'actor_state' => SSPA_Traffic_Codes::actor($group['actor_state_code']),
+                'surface' => SSPA_Traffic_Codes::surface($group['surface_code']),
+                'page_class' => SSPA_Traffic_Codes::page_class($group['page_class_code']),
+                'sampling' => $group['sampling'],
+                'quality' => 1 === $weight ? 'exact' : 'estimated',
+                'observed_requests' => $observed,
+                'distinct_actors' => count($group['actors']),
+                'sample_modulus' => $weight,
+                'estimated_requests' => $observed * $weight,
+                'wall_ms_sum' => (int) $group['wall_ms_sum'],
+                'estimated_wall_ms_sum' => (int) $group['wall_ms_sum'] * $weight,
+                'wall_ms_average' => $observed ? round($group['wall_ms_sum'] / $observed, 3) : null,
+                'wall_ms_p95' => $observed ? (int) $group['wall_ms'][$p95_index] : null,
+                'cpu_us_sum' => $group['cpu_measurements'] ? (int) $group['cpu_us_sum'] : null,
+                'estimated_cpu_us_sum' => $group['cpu_measurements'] ? (int) $group['cpu_us_sum'] * $weight : null,
+                'cpu_measurements' => (int) $group['cpu_measurements'],
+                'query_count_sum' => $group['query_measurements'] ? (int) $group['query_count_sum'] : null,
+                'estimated_query_count_sum' => $group['query_measurements'] ? (int) $group['query_count_sum'] * $weight : null,
+                'query_measurements' => (int) $group['query_measurements'],
+            );
+        }
+
+        $origin = self::performance_totals($export, $duration_seconds);
+        $origin['wall_ms_p95'] = self::weighted_wall_p95($rows, $sample_modulus);
+        return array(
+            'groups' => $export,
+            'origin_page_generation' => $origin,
+            'ssf_protection_opportunity' => self::ssf_protection_opportunity($rows, $sample_modulus, $duration_seconds),
+            'cache_fragment_opportunity' => self::cache_fragment_opportunity($export, $duration_seconds),
+        );
+    }
+
+    private static function performance_totals($groups, $duration_seconds) {
+        $totals = self::sum_performance_groups($groups);
+        $totals['observed_duration_seconds'] = (int) $duration_seconds;
+        $totals['projected_daily_requests'] = $duration_seconds > 0
+            ? (int) round($totals['estimated_requests'] * DAY_IN_SECONDS / $duration_seconds)
+            : null;
+        $totals['projected_daily_wall_ms'] = $duration_seconds > 0
+            ? (int) round($totals['estimated_wall_ms_sum'] * DAY_IN_SECONDS / $duration_seconds)
+            : null;
+        $totals['projected_daily_cpu_us'] = $duration_seconds > 0 && $totals['estimated_cpu_us_sum'] !== null
+            ? (int) round($totals['estimated_cpu_us_sum'] * DAY_IN_SECONDS / $duration_seconds)
+            : null;
+        $totals['projected_daily_queries'] = $duration_seconds > 0 && $totals['estimated_query_count_sum'] !== null
+            ? (int) round($totals['estimated_query_count_sum'] * DAY_IN_SECONDS / $duration_seconds)
+            : null;
+        return $totals;
+    }
+
+    private static function weighted_wall_p95($rows, $sample_modulus) {
+        $histogram = array();
+        $total = 0;
+        foreach ((array) $rows as $row) {
+            $sampled = ((int) $row['flags'] & SSPA_Traffic_Codes::FLAG_SAMPLED) !== 0;
+            $weight = $sampled ? max(1, (int) $sample_modulus) : 1;
+            $wall = (int) $row['wall_ms'];
+            $histogram[$wall] = ($histogram[$wall] ?? 0) + $weight;
+            $total += $weight;
+        }
+        if (!$total) {
+            return null;
+        }
+        ksort($histogram, SORT_NUMERIC);
+        $rank = max(1, (int) ceil($total * 0.95));
+        $seen = 0;
+        foreach ($histogram as $wall => $count) {
+            $seen += $count;
+            if ($seen >= $rank) {
+                return (int) $wall;
+            }
+        }
+        return null;
+    }
+
+    private static function sum_performance_groups($groups) {
+        $result = array(
+            'quality' => 'unavailable',
+            'observed_requests' => array('exact' => 0, 'sampled' => 0),
+            'estimated_requests' => 0,
+            'estimated_wall_ms_sum' => 0,
+            'estimated_cpu_us_sum' => null,
+            'estimated_query_count_sum' => null,
+            'wall_ms_average' => null,
+        );
+        $cpu = 0;
+        $queries = 0;
+        $cpu_available = false;
+        $queries_available = false;
+        foreach ((array) $groups as $group) {
+            $sampling = 'sampled' === $group['sampling'] ? 'sampled' : 'exact';
+            $result['observed_requests'][$sampling] += (int) $group['observed_requests'];
+            $result['estimated_requests'] += (int) $group['estimated_requests'];
+            $result['estimated_wall_ms_sum'] += (int) $group['estimated_wall_ms_sum'];
+            if ($group['estimated_cpu_us_sum'] !== null) {
+                $cpu += (int) $group['estimated_cpu_us_sum'];
+                $cpu_available = true;
+            }
+            if ($group['estimated_query_count_sum'] !== null) {
+                $queries += (int) $group['estimated_query_count_sum'];
+                $queries_available = true;
+            }
+        }
+        if ($result['estimated_requests']) {
+            $result['quality'] = $result['observed_requests']['sampled'] ? 'estimated' : 'exact';
+            $result['wall_ms_average'] = round($result['estimated_wall_ms_sum'] / $result['estimated_requests'], 3);
+        }
+        $result['estimated_cpu_us_sum'] = $cpu_available ? $cpu : null;
+        $result['estimated_query_count_sum'] = $queries_available ? $queries : null;
+        return $result;
+    }
+
+    private static function cache_fragment_opportunity($groups, $duration_seconds) {
+        $public = array();
+        $catalogue = array();
+        $private = array();
+        $without_private_state = array();
+        $page_groups = array('product_single' => array(), 'product_archive' => array(), 'shop' => array());
+        $private_states = array('guest_non_empty_basket', 'logged_in_no_basket', 'logged_in_non_empty_basket');
+        $catalogue_pages = array_keys($page_groups);
+        foreach ((array) $groups as $group) {
+            if ('public_html_get_head' !== $group['surface']) {
+                continue;
+            }
+            $public[] = $group;
+            if (!in_array($group['page_class'], $catalogue_pages, true)) {
+                continue;
+            }
+            $catalogue[] = $group;
+            $page_groups[$group['page_class']][] = $group;
+            if (in_array($group['actor_state'], $private_states, true)) {
+                $private[] = $group;
+            } elseif ('staff' !== $group['actor_state']) {
+                $without_private_state[] = $group;
+            }
+        }
+        $page_breakdown = array();
+        foreach ($page_groups as $page => $items) {
+            $page_private = array_values(array_filter($items, function ($group) use ($private_states) {
+                return in_array($group['actor_state'], $private_states, true);
+            }));
+            $page_breakdown[$page] = array(
+                'all' => self::sum_performance_groups($items),
+                'logged_in_or_non_empty_basket' => self::sum_performance_groups($page_private),
+            );
+        }
+        $private_totals = self::daily_projection(self::sum_performance_groups($private), $duration_seconds);
+        return array(
+            'denominator' => 'wordpress_origin_public_html_get_head_requests',
+            'observed_duration_seconds' => (int) $duration_seconds,
+            'total_public_html_get_head' => self::sum_performance_groups($public),
+            'catalogue_public_html_get_head' => self::sum_performance_groups($catalogue),
+            'private_state_catalogue' => $private_totals,
+            'without_logged_in_or_basket_state_catalogue' => self::sum_performance_groups($without_private_state),
+            'page_classes' => $page_breakdown,
+            'gross_page_generation_work_potentially_avoided' => array(
+                'quality' => $private_totals['quality'],
+                'wall_ms' => $private_totals['estimated_wall_ms_sum'],
+                'cpu_us' => $private_totals['estimated_cpu_us_sum'],
+                'queries' => $private_totals['estimated_query_count_sum'],
+            ),
+            'fragment_processing' => array('quality' => 'unavailable', 'requests' => null, 'wall_ms' => null, 'cpu_us' => null, 'queries' => null),
+            'net_saving' => array('quality' => 'unavailable', 'wall_ms' => null, 'cpu_us' => null, 'queries' => null),
+        );
+    }
+
+    private static function daily_projection($totals, $duration_seconds) {
+        $factor = $duration_seconds > 0 ? DAY_IN_SECONDS / $duration_seconds : null;
+        $totals['projected_daily_requests'] = $factor !== null ? (int) round($totals['estimated_requests'] * $factor) : null;
+        $totals['projected_daily_wall_ms'] = $factor !== null ? (int) round($totals['estimated_wall_ms_sum'] * $factor) : null;
+        $totals['projected_daily_cpu_us'] = $factor !== null && $totals['estimated_cpu_us_sum'] !== null ? (int) round($totals['estimated_cpu_us_sum'] * $factor) : null;
+        $totals['projected_daily_queries'] = $factor !== null && $totals['estimated_query_count_sum'] !== null ? (int) round($totals['estimated_query_count_sum'] * $factor) : null;
+        return $totals;
+    }
+
+    private static function ssf_protection_opportunity($rows, $sample_modulus, $duration_seconds) {
+        $groups = array();
+        $protection_available = false;
+        foreach ((array) $rows as $row) {
+            $automation_code = (int) $row['automation_code'];
+            if (!$automation_code && SSPA_Traffic_Codes::ACTOR_AUTOMATED_CLAIMED === (int) $row['actor_state']) {
+                $automation_code = SSPA_Traffic_Codes::AUTOMATION_CLAIMED_GENERIC;
+            }
+            $protection_code = (int) $row['ssf_protection_code'];
+            if (SSPA_Traffic_Codes::SSF_PROTECTION_UNAVAILABLE !== $protection_code) {
+                $protection_available = true;
+            }
+            $sampled = ((int) $row['flags'] & SSPA_Traffic_Codes::FLAG_SAMPLED) !== 0;
+            $key = implode(':', array($automation_code, $protection_code, $sampled ? 1 : 0));
+            if (!isset($groups[$key])) {
+                $groups[$key] = array(
+                    'automation_code' => $automation_code,
+                    'protection_code' => $protection_code,
+                    'sampling' => $sampled ? 'sampled' : 'exact',
+                    'observed_requests' => 0,
+                    'wall_ms_sum' => 0,
+                    'cpu_us_sum' => 0,
+                    'cpu_available' => false,
+                    'query_count_sum' => 0,
+                    'query_available' => false,
+                );
+            }
+            $groups[$key]['observed_requests']++;
+            $groups[$key]['wall_ms_sum'] += (int) $row['wall_ms'];
+            if ($row['cpu_us'] !== null) {
+                $groups[$key]['cpu_us_sum'] += (int) $row['cpu_us'];
+                $groups[$key]['cpu_available'] = true;
+            }
+            if ($row['query_count'] !== null) {
+                $groups[$key]['query_count_sum'] += (int) $row['query_count'];
+                $groups[$key]['query_available'] = true;
+            }
+        }
+        $export = array();
+        $claimed = 0;
+        $not_identified = 0;
+        $protectable = 0;
+        $protectable_wall = 0;
+        $protectable_cpu = 0;
+        $protectable_queries = 0;
+        $protectable_cpu_available = false;
+        $protectable_queries_available = false;
+        foreach ($groups as $group) {
+            $weight = 'sampled' === $group['sampling'] ? max(1, (int) $sample_modulus) : 1;
+            $estimated = $group['observed_requests'] * $weight;
+            if (SSPA_Traffic_Codes::AUTOMATION_NOT_IDENTIFIED === $group['automation_code']) {
+                $not_identified += $estimated;
+            } else {
+                $claimed += $estimated;
+            }
+            if (SSPA_Traffic_Codes::AUTOMATION_NOT_IDENTIFIED !== $group['automation_code'] && SSPA_Traffic_Codes::ssf_protectable($group['protection_code'])) {
+                $protectable += $estimated;
+                $protectable_wall += $group['wall_ms_sum'] * $weight;
+                if ($group['cpu_available']) {
+                    $protectable_cpu += $group['cpu_us_sum'] * $weight;
+                    $protectable_cpu_available = true;
+                }
+                if ($group['query_available']) {
+                    $protectable_queries += $group['query_count_sum'] * $weight;
+                    $protectable_queries_available = true;
+                }
+            }
+            $export[] = array(
+                'automation' => SSPA_Traffic_Codes::automation($group['automation_code']),
+                'ssf_reason' => SSPA_Traffic_Codes::ssf_protection($group['protection_code']),
+                'sampling' => $group['sampling'],
+                'quality' => 1 === $weight ? 'exact' : 'estimated',
+                'observed_requests' => (int) $group['observed_requests'],
+                'sample_modulus' => $weight,
+                'estimated_requests' => $estimated,
+                'estimated_wall_ms_sum' => $group['wall_ms_sum'] * $weight,
+                'estimated_cpu_us_sum' => $group['cpu_available'] ? $group['cpu_us_sum'] * $weight : null,
+                'estimated_query_count_sum' => $group['query_available'] ? $group['query_count_sum'] * $weight : null,
+            );
+        }
+        return array(
+            'quality' => $protection_available ? ($sample_modulus > 1 ? 'estimated' : 'exact') : 'unavailable',
+            'denominator' => 'claimed_automation_wordpress_origin_requests',
+            'observed_duration_seconds' => (int) $duration_seconds,
+            'claimed_automation_estimated_requests' => $claimed,
+            'not_identified_as_automation_estimated_requests' => $not_identified,
+            'protectable_claimed_automation_estimated_requests' => $protection_available ? $protectable : null,
+            'protectable_percent_of_claimed_automation' => $protection_available && $claimed ? round($protectable / $claimed * 100, 4) : null,
+            'protectable_projected_daily_requests' => $protection_available && $duration_seconds > 0 ? (int) round($protectable * DAY_IN_SECONDS / $duration_seconds) : null,
+            'protectable_estimated_wall_ms_sum' => $protection_available ? $protectable_wall : null,
+            'protectable_estimated_cpu_us_sum' => $protection_available && $protectable_cpu_available ? $protectable_cpu : null,
+            'protectable_estimated_query_count_sum' => $protection_available && $protectable_queries_available ? $protectable_queries : null,
+            'groups' => $export,
+            'cloudflare_edge_quality' => 'unavailable',
+        );
     }
 
     /**

@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '2.0';
+    const DB_VERSION = '2.1';
 
     const LOCK_OPTION = 'sspa_schema_lock';
 
@@ -289,8 +289,10 @@ class SSPA_Schema {
             path_key binary(8) NULL,
             event_code tinyint(3) unsigned NOT NULL,
             actor_state tinyint(3) unsigned NOT NULL DEFAULT 0,
+            automation_code tinyint(3) unsigned NOT NULL DEFAULT 0,
             surface_code tinyint(3) unsigned NOT NULL DEFAULT 0,
             page_class tinyint(3) unsigned NOT NULL DEFAULT 0,
+            ssf_protection_code tinyint(3) unsigned NOT NULL DEFAULT 0,
             status_code smallint(5) unsigned NOT NULL DEFAULT 0,
             wall_ms mediumint(8) unsigned NOT NULL DEFAULT 0,
             cpu_us int(10) unsigned NULL,

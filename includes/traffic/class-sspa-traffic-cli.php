@@ -78,6 +78,39 @@ class SSPA_Traffic_CLI {
     }
 
     /**
+     * Compare two retained collections with request volumes and processing totals normalised to 24 hours.
+     *
+     * <before-collection-id>
+     * : Collection recorded before the change.
+     *
+     * <after-collection-id>
+     * : Collection recorded after the change.
+     *
+     * [--output=<path>]
+     * : Write JSON to this path instead of stdout.
+     */
+    public function compare($args, $assoc_args) {
+        $before = isset($args[0]) ? (int) $args[0] : 0;
+        $after = isset($args[1]) ? (int) $args[1] : 0;
+        if (!$before || !$after) {
+            WP_CLI::error('Provide the before and after collection ids.');
+        }
+        $result = SSPA_Traffic_Collection::comparison($before, $after);
+        if (is_wp_error($result)) {
+            WP_CLI::error($result->get_error_message());
+        }
+        $json = wp_json_encode($result, JSON_PRETTY_PRINT);
+        if (!empty($assoc_args['output'])) {
+            if (false === file_put_contents($assoc_args['output'], $json . PHP_EOL)) {
+                WP_CLI::error('Could not write comparison to ' . $assoc_args['output']);
+            }
+            WP_CLI::success('Wrote ' . $assoc_args['output']);
+            return;
+        }
+        WP_CLI::line($json);
+    }
+
+    /**
      * Permanently delete one stopped collection, its raw rows and temporary join key.
      *
      * <collection-id>

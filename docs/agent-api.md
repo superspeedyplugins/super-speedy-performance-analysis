@@ -5,13 +5,13 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 ## Surfaces (identical data)
 
 - **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|cache-scan|cache-optimisation-report|report`
-  plus `wp sspa traffic start|status|stop|observations|delete` (report/findings/impacts
+  plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts
   take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
   `get-status`, `get-report`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
   `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
-  `stop-traffic-collection`, `get-traffic-observations`, `submit-results`. Readonly ones answer GET at
+  `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
@@ -82,7 +82,21 @@ guest/customer/basket comparison is still required before enabling shared cachin
 `sspa/traffic-collector-observations@1`. This is a Phase 3 aggregate diagnostic, not the final
 `sspa/traffic-performance-analysis@1` report. It contains collection health, source quality,
 event/request distributions, exact observed logged-in and non-empty-basket origin cohorts,
-WooCommerce event/link counts and aggregate minor-unit values by currency.
+WooCommerce event/link counts and aggregate minor-unit values by currency. Request-performance
+groups keep actor state, surface, page class and exact/sampled status separate. Each group states
+observed and estimated request counts, sample modulus, distinct actor count, wall-time average and
+p95, and wall/CPU/query totals. Only sampled rows are weighted.
+
+The `ssf_protection_opportunity` headline uses SSF's installed pure archive-gate decision when
+available. The `cache_fragment_opportunity` headline separates product single, product archive
+and shop GET/HEAD requests reaching WordPress by logged-in/basket state. Gross origin work is
+reported, while fragment cost and net saving stay unavailable until fragment requests are
+measured separately.
+
+`wp sspa traffic compare <before-id> <after-id>` and the `compare-traffic-collections` ability
+return `sspa/traffic-collection-comparison@1`. Request volumes and processing totals are projected
+to 24 hours before comparison; average and p95 generation time remain per-request measurements.
+Every metric contains before, after, absolute change and percentage change.
 
 It never exposes actor, session, account, order or path join keys. The source ledger explicitly
 marks browser and Cloudflare evidence unavailable and anonymous WordPress-origin requests sampled.

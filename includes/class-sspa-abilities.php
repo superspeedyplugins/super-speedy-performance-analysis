@@ -408,6 +408,25 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        wp_register_ability(self::CATEGORY . '/compare-traffic-collections', array(
+            'label' => __('Compare traffic collections', 'super-speedy-performance-analysis'),
+            'description' => __('Compare before and after origin page-generation, SSF protection and private-state catalogue evidence with duration-normalised daily totals.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'before_collection_id' => array('type' => 'integer'),
+                    'after_collection_id' => array('type' => 'integer'),
+                ),
+                'required' => array('before_collection_id', 'after_collection_id'),
+                'additionalProperties' => false,
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_compare_traffic_collections'),
+            'meta' => $readonly,
+        ));
+
         wp_register_ability(self::CATEGORY . '/submit-results', array(
             'label' => __('Queue anonymised results for superspeedy.org', 'super-speedy-performance-analysis'),
             'description' => __('Save the latest run to the durable local submission queue. Background delivery retries automatically. Only works when the site owner has opted in on the Share tab - agents cannot enable sharing.', 'super-speedy-performance-analysis'),
@@ -595,6 +614,13 @@ class SSPA_Abilities {
 
     public static function exec_get_traffic_observations($input) {
         return SSPA_Traffic_Collection::observations(!empty($input['collection_id']) ? (int) $input['collection_id'] : 0);
+    }
+
+    public static function exec_compare_traffic_collections($input) {
+        return SSPA_Traffic_Collection::comparison(
+            (int) $input['before_collection_id'],
+            (int) $input['after_collection_id']
+        );
     }
 
     public static function exec_submit($input) {

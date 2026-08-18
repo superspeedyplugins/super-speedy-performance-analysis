@@ -40,6 +40,10 @@ SSPA_Traffic_Helper::install(array(
     'key_option' => SSPA_Traffic_Collection::key_option($collection_id),
 ));
 
+$plain_anonymous = wp_remote_get(home_url('/shop/?sspa_traffic_fixture=plain-anonymous'), array(
+    'timeout' => 20,
+    'user-agent' => 'Mozilla/5.0',
+));
 $add = wp_remote_get(add_query_arg('add-to-cart', $product_id, home_url('/')), array('timeout' => 20, 'redirection' => 0));
 $cookies = is_wp_error($add) ? array() : wp_remote_retrieve_cookies($add);
 $cart = wp_remote_get(wc_get_cart_url(), array('timeout' => 20, 'cookies' => $cookies));
@@ -49,6 +53,18 @@ $basket_request = $wpdb->get_row($wpdb->prepare("SELECT actor_key,actor_state,fl
 sspa_tw_t(!is_wp_error($add) && !is_wp_error($cart), 'guest basket requests complete');
 sspa_tw_t($basket_events >= 1 && $cart_events >= 1, 'empty-to-non-empty basket and cart view events are observed');
 sspa_tw_t($basket_request && strlen($basket_request['actor_key']) === 12, 'guest basket request has only a twelve-byte keyed actor join');
+
+$bot_with_basket = wp_remote_get(home_url('/shop/?sspa_traffic_fixture=bot-with-basket'), array(
+    'timeout' => 20,
+    'cookies' => $cookies,
+    'user-agent' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+));
+$bot_request = $wpdb->get_row($wpdb->prepare(
+    "SELECT actor_state,automation_code,flags FROM $events WHERE collection_id = %d AND event_code = 1 ORDER BY id DESC LIMIT 1",
+    $collection_id
+), ARRAY_A);
+sspa_tw_t(!is_wp_error($bot_with_basket) && $bot_request && SSPA_Traffic_Codes::AUTOMATION_CLAIMED_SEARCH === (int) $bot_request['automation_code'], 'claimed search crawler remains automation when it carries a WooCommerce session');
+sspa_tw_t($bot_request && SSPA_Traffic_Codes::ACTOR_GUEST_NON_EMPTY_BASKET === (int) $bot_request['actor_state'] && ((int) $bot_request['flags'] & SSPA_Traffic_Codes::FLAG_NON_EMPTY_BASKET), 'bot automation and non-empty-basket state remain separate dimensions');
 
 $planted_email = 'traffic-planted@example.test';
 $user_id = wp_create_user('sspa-traffic-planted', wp_generate_password(24), $planted_email);
@@ -129,10 +145,68 @@ sspa_tw_t($order_event && strlen($order_event['commerce_key']) === 12 && 'EUR' =
 sspa_tw_t($paid_event && hash_equals($order_event['commerce_key'], $paid_event['commerce_key']), 'delayed payment joins to order creation without storing order id');
 sspa_tw_t($excluded_admin >= 1, 'admin-created order is marked outside the shopper funnel');
 
+$sample_row = $wpdb->get_row($wpdb->prepare(
+    "SELECT id,actor_state FROM $events WHERE collection_id = %d AND event_code = %d AND actor_state IN (%d,%d) AND page_class = %d ORDER BY id LIMIT 1",
+    $collection_id,
+    SSPA_Traffic_Codes::EVENT_REQUEST,
+    SSPA_Traffic_Codes::ACTOR_ANONYMOUS_NO_SESSION,
+    SSPA_Traffic_Codes::ACTOR_ANONYMOUS_EMPTY_SESSION,
+    SSPA_Traffic_Codes::PAGE_SHOP
+), ARRAY_A);
+$sample_row_id = $sample_row ? (int) $sample_row['id'] : 0;
+if ($sample_row_id) {
+    $wpdb->query($wpdb->prepare(
+        "UPDATE $events SET flags = (flags & ~%d) | %d WHERE id = %d",
+        SSPA_Traffic_Codes::FLAG_EXACT,
+        SSPA_Traffic_Codes::FLAG_SAMPLED,
+        $sample_row_id
+    ));
+    $wpdb->update($collections, array('origin_sample_modulus' => 10), array('id' => $collection_id));
+}
+
 $observations = SSPA_Traffic_Collection::observations($collection_id);
 $encoded = wp_json_encode($observations);
 sspa_tw_t(!is_wp_error($observations) && SSPA_Traffic_Privacy::SCHEMA === $observations['schema'], 'privacy-safe experimental observations build');
 sspa_tw_t(false === strpos($encoded, $planted_email) && false === strpos($encoded, 'sspa-traffic-planted') && !SSPA_Traffic_Privacy::validate_export($observations), 'observation JSON contains no planted customer data or forbidden identity properties');
+$performance_groups = isset($observations['request_performance_groups']) ? $observations['request_performance_groups'] : null;
+$basket_shop_group = null;
+foreach ((array) $performance_groups as $group) {
+    if ('guest_non_empty_basket' === $group['actor_state'] && 'public_html_get_head' === $group['surface'] && 'shop' === $group['page_class'] && 'exact' === $group['sampling']) {
+        $basket_shop_group = $group;
+        break;
+    }
+}
+sspa_tw_t(is_array($performance_groups) && !empty($performance_groups), 'actor-state by surface by page-class performance groups are exported');
+sspa_tw_t($basket_shop_group && $basket_shop_group['observed_requests'] >= 1 && $basket_shop_group['estimated_requests'] === $basket_shop_group['observed_requests'], 'exact basket shop requests are not sample-weighted');
+sspa_tw_t($basket_shop_group && array_key_exists('wall_ms_p95', $basket_shop_group) && array_key_exists('cpu_us_sum', $basket_shop_group) && array_key_exists('query_count_sum', $basket_shop_group), 'performance groups carry average/p95 wall time, CPU and query evidence');
+$sampled_shop_group = null;
+$sample_actor_label = $sample_row ? SSPA_Traffic_Codes::actor((int) $sample_row['actor_state']) : '';
+foreach ((array) $performance_groups as $group) {
+    if ($sample_actor_label === $group['actor_state'] && 'shop' === $group['page_class']) {
+        if ('sampled' === $group['sampling']) {
+            $sampled_shop_group = $group;
+        }
+    }
+}
+sspa_tw_t(!is_wp_error($plain_anonymous) && $sample_row_id && $sampled_shop_group && 10 === $sampled_shop_group['sample_modulus'] && $sampled_shop_group['estimated_requests'] === $sampled_shop_group['observed_requests'] * 10, 'sampled request counts are weighted by the collection modulus');
+$observed_exact = 0;
+$observed_sampled = 0;
+foreach ((array) $performance_groups as $group) {
+    if ('sampled' === $group['sampling']) {
+        $observed_sampled += $group['observed_requests'];
+    } else {
+        $observed_exact += $group['observed_requests'];
+    }
+}
+$origin_generation = $observations['origin_page_generation'];
+sspa_tw_t($origin_generation['observed_requests']['exact'] === $observed_exact && $origin_generation['observed_requests']['sampled'] === $observed_sampled && $origin_generation['estimated_requests'] > $observed_exact + $observed_sampled, 'exact and sampled raw counts remain separate while only the estimate applies weighting');
+$cache_opportunity = isset($observations['cache_fragment_opportunity']) ? $observations['cache_fragment_opportunity'] : null;
+sspa_tw_t($cache_opportunity && $cache_opportunity['private_state_catalogue']['estimated_requests'] >= 1, 'cache-fragment headline isolates logged-in or basket catalogue requests');
+sspa_tw_t($cache_opportunity && 'unavailable' === $cache_opportunity['fragment_processing']['quality'] && null === $cache_opportunity['net_saving']['wall_ms'], 'unmeasured fragment processing and net saving remain unavailable');
+$comparison = method_exists('SSPA_Traffic_Collection', 'comparison')
+    ? SSPA_Traffic_Collection::comparison($collection_id, $collection_id)
+    : null;
+sspa_tw_t($comparison && 'sspa/traffic-collection-comparison@1' === $comparison['schema'] && 0.0 === $comparison['changes']['origin_page_generation']['wall_ms_average']['percent'], 'before/after comparison reports normalised page-generation changes');
 $columns = $wpdb->get_col("SHOW COLUMNS FROM $events");
 sspa_tw_t(!array_intersect($columns, array('email', 'ip', 'user_id', 'session_id', 'order_id', 'product_id', 'coupon_code', 'user_agent')), 'event table has no prohibited customer-data columns');
 

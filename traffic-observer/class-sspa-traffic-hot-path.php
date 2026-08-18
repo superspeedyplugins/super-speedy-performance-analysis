@@ -142,6 +142,7 @@ class SSPA_Traffic_Hot_Path {
         $context = self::actor_context();
         $surface = self::surface();
         $page_class = self::page_class();
+        $ssf_protection = self::ssf_protection($page_class);
         $collect_request = self::collecting_requests() && self::should_record_request($context, $surface);
 
         if ($context['actor_key'] !== null && $context['related_actor_key'] !== null
@@ -155,10 +156,10 @@ class SSPA_Traffic_Hot_Path {
         $rows = array();
         if ($collect_request || self::$events) {
             if ($collect_request) {
-                $rows[] = self::request_row($context, $surface, $page_class, $observer_us);
+                $rows[] = self::request_row($context, $surface, $page_class, $ssf_protection, $observer_us);
             }
             foreach (self::$events as $event) {
-                $rows[] = self::event_row($event, $context, $surface, $page_class, $observer_us);
+                $rows[] = self::event_row($event, $context, $surface, $page_class, $ssf_protection, $observer_us);
             }
         }
         if (!$rows) {
@@ -167,7 +168,7 @@ class SSPA_Traffic_Hot_Path {
         self::insert_rows($rows);
     }
 
-    private static function request_row($context, $surface, $page_class, $observer_us) {
+    private static function request_row($context, $surface, $page_class, $ssf_protection, $observer_us) {
         $wall_ns = (function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000)) - self::$started_ns;
         $flags = $context['flags'];
         if (SSPA_Traffic_Codes::SURFACE_PUBLIC_CACHE_CANDIDATE === $surface) {
@@ -188,8 +189,10 @@ class SSPA_Traffic_Hot_Path {
             'path_key' => self::path_key(),
             'event_code' => SSPA_Traffic_Codes::EVENT_REQUEST,
             'actor_state' => $context['actor_state'],
+            'automation_code' => $context['automation_code'],
             'surface_code' => $surface,
             'page_class' => $page_class,
+            'ssf_protection_code' => $ssf_protection,
             'status_code' => min(999, max(0, (int) http_response_code())),
             'wall_ms' => min(16777215, max(0, (int) round($wall_ns / 1000000))),
             'cpu_us' => self::cpu_delta_us(),
@@ -201,7 +204,7 @@ class SSPA_Traffic_Hot_Path {
         );
     }
 
-    private static function event_row($event, $context, $surface, $page_class, $observer_us) {
+    private static function event_row($event, $context, $surface, $page_class, $ssf_protection, $observer_us) {
         return array(
             'actor_key' => $context['actor_key'],
             'related_actor_key' => isset($event['related_actor_key']) ? $event['related_actor_key'] : null,
@@ -209,8 +212,10 @@ class SSPA_Traffic_Hot_Path {
             'path_key' => null,
             'event_code' => (int) $event['event_code'],
             'actor_state' => $context['actor_state'],
+            'automation_code' => $context['automation_code'],
             'surface_code' => $surface,
             'page_class' => $page_class,
+            'ssf_protection_code' => $ssf_protection,
             'status_code' => 0,
             'wall_ms' => 0,
             'cpu_us' => null,
@@ -228,6 +233,7 @@ class SSPA_Traffic_Hot_Path {
         $staff = false;
         $user_key = null;
         $session_key = null;
+        $automation = self::automation_class();
 
         if ($logged_in) {
             $user = wp_get_current_user();
@@ -250,7 +256,7 @@ class SSPA_Traffic_Hot_Path {
             $state = SSPA_Traffic_Codes::ACTOR_GUEST_NON_EMPTY_BASKET;
         } elseif ($session_key !== null) {
             $state = SSPA_Traffic_Codes::ACTOR_ANONYMOUS_EMPTY_SESSION;
-        } elseif (self::claimed_bot()) {
+        } elseif (SSPA_Traffic_Codes::AUTOMATION_NOT_IDENTIFIED !== $automation) {
             $state = SSPA_Traffic_Codes::ACTOR_AUTOMATED_CLAIMED;
         } else {
             $state = SSPA_Traffic_Codes::ACTOR_ANONYMOUS_NO_SESSION;
@@ -270,6 +276,7 @@ class SSPA_Traffic_Hot_Path {
             'actor_key' => $user_key !== null ? $user_key : $session_key,
             'related_actor_key' => $user_key !== null ? $session_key : null,
             'actor_state' => $state,
+            'automation_code' => $automation,
             'flags' => $flags,
         );
     }
@@ -475,9 +482,63 @@ class SSPA_Traffic_Hot_Path {
         return is_string($path) && $path !== '' ? $path : '/';
     }
 
-    private static function claimed_bot() {
-        $ua = isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
-        return $ua !== '' && (bool) preg_match('/bot|crawler|spider|slurp/i', $ua);
+    private static function automation_class() {
+        $ua = strtolower(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '');
+        if ($ua === '') {
+            return SSPA_Traffic_Codes::AUTOMATION_NOT_IDENTIFIED;
+        }
+        foreach (array('googlebot-product', 'adsbot-google', 'shoppingbot', 'pricebot', 'merchantbot') as $token) {
+            if (strpos($ua, $token) !== false) {
+                return SSPA_Traffic_Codes::AUTOMATION_CLAIMED_SHOPPING;
+            }
+        }
+        foreach (array('googlebot', 'bingbot', 'yandexbot', 'baiduspider', 'duckduckbot', 'slurp', 'applebot', 'petalbot', 'seznambot', 'sogou') as $token) {
+            if (strpos($ua, $token) !== false) {
+                return SSPA_Traffic_Codes::AUTOMATION_CLAIMED_SEARCH;
+            }
+        }
+        foreach (array('bot', 'crawler', 'spider', 'crawl', 'facebookexternalhit', 'facebot', 'twitterbot', 'linkedinbot', 'semrush', 'ahrefs', 'mj12', 'dotbot', 'bytespider', 'gptbot', 'chatgpt-user', 'claudebot', 'anthropic-ai', 'perplexitybot', 'ccbot', 'amazonbot', 'ia_archiver') as $token) {
+            if (strpos($ua, $token) !== false) {
+                return SSPA_Traffic_Codes::AUTOMATION_CLAIMED_GENERIC;
+            }
+        }
+        return SSPA_Traffic_Codes::AUTOMATION_NOT_IDENTIFIED;
+    }
+
+    /**
+     * Classify with SSF's installed pure archive-gate function. No policy is recreated here.
+     */
+    private static function ssf_protection($page_class) {
+        if (SSPA_Traffic_Codes::PAGE_PRODUCT_SINGLE === (int) $page_class) {
+            return SSPA_Traffic_Codes::SSF_PRODUCT_SINGLE_NOT_PROTECTABLE;
+        }
+        global $ssf_archive_gate_policy;
+        if (!function_exists('ssf_archive_gate_decision') || !is_array($ssf_archive_gate_policy)) {
+            return SSPA_Traffic_Codes::SSF_PROTECTION_UNAVAILABLE;
+        }
+        $policy = $ssf_archive_gate_policy;
+        $policy['enabled'] = true;
+        $decision = ssf_archive_gate_decision(
+            isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET',
+            isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/',
+            $policy
+        );
+        if ('redirect' === ($decision['action'] ?? '')) {
+            $target = wp_parse_url((string) ($decision['location'] ?? ''), PHP_URL_PATH);
+            foreach ((array) ($policy['landing_paths'] ?? array()) as $path => $details) {
+                if ((string) $target === (string) $path && empty($details['taxonomies']) && empty($details['terms'])) {
+                    return SSPA_Traffic_Codes::SSF_REDIRECT_SHOP;
+                }
+            }
+            return SSPA_Traffic_Codes::SSF_REDIRECT_NEAREST_ARCHIVE;
+        }
+        if ('indexable' === ($decision['reason'] ?? '') && in_array((int) $page_class, array(
+            SSPA_Traffic_Codes::PAGE_SHOP,
+            SSPA_Traffic_Codes::PAGE_PRODUCT_ARCHIVE,
+        ), true)) {
+            return SSPA_Traffic_Codes::SSF_PRODUCT_ARCHIVE_ALLOWED;
+        }
+        return SSPA_Traffic_Codes::SSF_UNRELATED_REQUEST;
     }
 
     private static function cpu_delta_us() {
@@ -508,7 +569,7 @@ class SSPA_Traffic_Hot_Path {
                     $values[] = $row[$binary];
                 }
             }
-            foreach (array('event_code', 'actor_state', 'surface_code', 'page_class', 'status_code', 'wall_ms') as $number) {
+            foreach (array('event_code', 'actor_state', 'automation_code', 'surface_code', 'page_class', 'ssf_protection_code', 'status_code', 'wall_ms') as $number) {
                 $parts[] = '%d';
                 $values[] = (int) $row[$number];
             }
@@ -530,7 +591,7 @@ class SSPA_Traffic_Hot_Path {
             $values[] = (int) $row['flags'];
             $groups[] = '(' . implode(',', $parts) . ')';
         }
-        $columns = '(collection_id,observed_at,actor_key,related_actor_key,commerce_key,path_key,event_code,actor_state,surface_code,page_class,status_code,wall_ms,cpu_us,query_count,observer_us,value_minor,currency,flags)';
+        $columns = '(collection_id,observed_at,actor_key,related_actor_key,commerce_key,path_key,event_code,actor_state,automation_code,surface_code,page_class,ssf_protection_code,status_code,wall_ms,cpu_us,query_count,observer_us,value_minor,currency,flags)';
         $sql = 'INSERT INTO `' . esc_sql(self::$config['table']) . '` ' . $columns . ' VALUES ' . implode(',', $groups);
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is built above from literal column names and generated %s/%d/NULL placeholders only; every value goes in through $values.
         $prepared = $wpdb->prepare($sql, $values);
