@@ -28,7 +28,8 @@ class SSPA_Analysis_Engine {
         $this->demographics = $demographics;
 
         $this->profiles = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d',
+            'SELECT * FROM %i WHERE run_id = %d',
+            SSPA_Schema::table('profiles'),
             $this->run_id
         ), ARRAY_A);
 
@@ -105,7 +106,8 @@ class SSPA_Analysis_Engine {
         $this->findings = 0;
 
         $this->profiles = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND page_key NOT IN ('flow-preflight','flow-delete-order')",
+            "SELECT * FROM %i WHERE run_id = %d AND page_key NOT IN ('flow-preflight','flow-delete-order')",
+            SSPA_Schema::table('profiles'),
             $this->run_id
         ), ARRAY_A);
         $this->captures = array();
@@ -1193,7 +1195,8 @@ class SSPA_Analysis_Engine {
     public static function score($run_id) {
         global $wpdb;
         $counts = $wpdb->get_results($wpdb->prepare(
-            'SELECT severity, COUNT(*) c FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d GROUP BY severity',
+            'SELECT severity, COUNT(*) c FROM %i WHERE run_id = %d GROUP BY severity',
+            SSPA_Schema::table('findings'),
             $run_id
         ), ARRAY_A);
         $critical = 0;

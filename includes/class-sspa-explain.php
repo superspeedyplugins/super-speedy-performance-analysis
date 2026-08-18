@@ -61,6 +61,7 @@ class SSPA_Explain {
         }
 
         $suppress = $wpdb->suppress_errors(true);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $sql IS the statement being explained, captured from the profiler; there is nothing to parameterise. is_explainable() above admits only a single SELECT with no trailing statement and no '?' fingerprint.
         $rows = $wpdb->get_results('EXPLAIN ' . rtrim(trim($sql), ';'), ARRAY_A);
         $wpdb->suppress_errors($suppress);
 

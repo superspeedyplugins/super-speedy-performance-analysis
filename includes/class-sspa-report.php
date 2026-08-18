@@ -12,9 +12,10 @@ class SSPA_Report {
 
     public static function latest_done_run_id() {
         global $wpdb;
-        return (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
-        );
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
     }
 
     /**
@@ -58,7 +59,8 @@ class SSPA_Report {
         foreach ($wpdb->get_results($wpdb->prepare(
             'SELECT page_key, variant, page_gen_ms, ttfb_ms, sql_ms, sql_count, rows_returned_total,
                     http_ms, php_ms, peak_mem_bytes, dupe_query_count, mail_count, response_code, blocked_by
-             FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d ORDER BY page_gen_ms DESC',
+             FROM %i WHERE run_id = %d ORDER BY page_gen_ms DESC',
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A) as $p) {
             $pages[] = array(
@@ -186,12 +188,12 @@ class SSPA_Report {
     public static function impacts() {
         global $wpdb;
         $out = array();
-        foreach ($wpdb->get_results(
+        foreach ($wpdb->get_results($wpdb->prepare(
             'SELECT plugin, page_key, method, object_cache_mode, delta_ttfb_ms, delta_sql_ms, delta_http_ms, delta_mem_bytes,
                     delta_queries, noise_floor_ms, confidence, created
-             FROM ' . SSPA_Schema::table('plugin_impacts') . ' ORDER BY id DESC LIMIT 1000',
-            ARRAY_A
-        ) as $i) {
+             FROM %i ORDER BY id DESC LIMIT 1000',
+            SSPA_Schema::table('plugin_impacts')
+        ), ARRAY_A) as $i) {
             $out[] = array(
                 'plugin' => $i['plugin'],
                 'page_key' => $i['page_key'],

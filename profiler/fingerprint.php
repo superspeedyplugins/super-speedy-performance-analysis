@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Standalone - used by the profiler at capture time, by the analysis engine for dupe
 // detection, and by the anonymiser for submissions. No WordPress dependencies.
 

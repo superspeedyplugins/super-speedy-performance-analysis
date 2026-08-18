@@ -308,7 +308,7 @@ class SSPA_Browser_Transport {
         if ('' === $error && $redirected) {
             SSPA_Crawler::discard_capture($pending['token_id']);
             $is_login = $final_url && strpos($final_url, 'wp-login.php') !== false;
-            $same_host = $final_url && strtolower((string) parse_url($final_url, PHP_URL_HOST)) === strtolower((string) parse_url(home_url('/'), PHP_URL_HOST));
+            $same_host = $final_url && strtolower((string) wp_parse_url($final_url, PHP_URL_HOST)) === strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
             if (!$is_login && $same_host && $bt['hops'] < 2) {
                 $bt['hops']++;
                 $bt['current_url'] = $final_url;

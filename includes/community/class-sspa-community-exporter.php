@@ -38,7 +38,8 @@ class SSPA_Community_Exporter {
     public static function build($run_id, $submission_uuid = null, $payload_created_at = null, $consent_scope = 'automatic') {
         global $wpdb;
         $run = $wpdb->get_row($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+            'SELECT * FROM %i WHERE id = %d',
+            SSPA_Schema::table('runs'),
             (int) $run_id
         ), ARRAY_A);
         if (!$run) {
@@ -68,7 +69,8 @@ class SSPA_Community_Exporter {
         self::add_evidence($evidence, 'sspa/site-snapshot', $measurement_version, $site_snapshot);
 
         $profiles = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d ORDER BY id ASC',
+            'SELECT * FROM %i WHERE run_id = %d ORDER BY id ASC',
+            SSPA_Schema::table('profiles'),
             (int) $run_id
         ), ARRAY_A);
         $page_refs = array();
@@ -96,7 +98,8 @@ class SSPA_Community_Exporter {
         }
 
         $components = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('component_stats') . ' WHERE run_id = %d ORDER BY id ASC',
+            'SELECT * FROM %i WHERE run_id = %d ORDER BY id ASC',
+            SSPA_Schema::table('component_stats'),
             (int) $run_id
         ), ARRAY_A);
         foreach ($components as $row) {
@@ -185,7 +188,8 @@ class SSPA_Community_Exporter {
         $sector = null;
         if (!empty($run['site_metrics_id'])) {
             $row = $wpdb->get_row($wpdb->prepare(
-                'SELECT metrics, sector FROM ' . SSPA_Schema::table('site_metrics') . ' WHERE id = %d',
+                'SELECT metrics, sector FROM %i WHERE id = %d',
+                SSPA_Schema::table('site_metrics'),
                 (int) $run['site_metrics_id']
             ), ARRAY_A);
             if ($row) {
@@ -366,7 +370,8 @@ class SSPA_Community_Exporter {
     private static function add_findings(&$evidence, $run_id, $measurement_version, $submission_uuid) {
         global $wpdb;
         $rows = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d ORDER BY id ASC',
+            'SELECT * FROM %i WHERE run_id = %d ORDER BY id ASC',
+            SSPA_Schema::table('findings'),
             (int) $run_id
         ), ARRAY_A);
         foreach ($rows as $row) {
@@ -530,7 +535,8 @@ class SSPA_Community_Exporter {
     private static function add_impacts(&$evidence, $run, $measurement_version, $submission_uuid, $versions) {
         global $wpdb;
         $rows = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('plugin_impacts') . ' WHERE test_run_id = %d ORDER BY id ASC',
+            'SELECT * FROM %i WHERE test_run_id = %d ORDER BY id ASC',
+            SSPA_Schema::table('plugin_impacts'),
             (int) $run['id']
         ), ARRAY_A);
         foreach ($rows as $row) {
@@ -538,7 +544,8 @@ class SSPA_Community_Exporter {
             $baseline_uuid = null;
             if (!empty($row['baseline_run_id'])) {
                 $baseline_uuid = $wpdb->get_var($wpdb->prepare(
-                    'SELECT run_uuid FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+                    'SELECT run_uuid FROM %i WHERE id = %d',
+                    SSPA_Schema::table('runs'),
                     (int) $row['baseline_run_id']
                 ));
             }

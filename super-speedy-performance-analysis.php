@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.23.2
+ * Version: 0.23.5
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -24,6 +24,13 @@ define('SSPA_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 require_once SSPA_PLUGIN_DIR . 'defines.php';
 
+// SSPA-SELFHOSTED-UPDATER-START
+// Everything between these two markers is DELETED by .build/build.sh when it builds the
+// wordpress.org edition. wordpress.org forbids a bundled updater that phones home, and PCP
+// errors on the mere mention of PucFactory - the class_exists() guard below is not enough,
+// because the check is a string scan, not a reachability analysis. The markers keep that a
+// mechanical deletion rather than a second copy of this file that would drift.
+//
 // Shared settings/menu/PUC framework, loaded for the shared Super Speedy menu and the
 // bundled update-checker library. Deliberately NOT registered via SuperSpeedySettings::init():
 // this plugin is free (no licence key, so no licence table and no auth-server gated download)
@@ -56,6 +63,7 @@ add_action('plugins_loaded', function () {
         'super-speedy-performance-analysis'
     );
 }, -9998);
+// SSPA-SELFHOSTED-UPDATER-END
 
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-schema.php';
 require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-codes.php';

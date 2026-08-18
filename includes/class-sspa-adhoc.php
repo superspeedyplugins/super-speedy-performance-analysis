@@ -118,18 +118,27 @@ class SSPA_Adhoc {
                 'select_all' => __('Select every eligible plugin', 'super-speedy-performance-analysis'),
                 'select_none' => __('Clear', 'super-speedy-performance-analysis'),
                 'cache_modes' => __('Also measure with the object cache off and while it primes (three times the measurements, for the plugins that show an impact)', 'super-speedy-performance-analysis'),
+                /* translators: 1: number of plugins, 2: number of measurements, 3: estimated duration */
                 'estimate' => __('%1$s plugins × 1 page = %2$s measurements, about %3$s.', 'super-speedy-performance-analysis'),
+                /* translators: 1: number of plugins, 2: number of pages, 3: number of measurements, 4: estimated duration */
                 'estimate_site' => __('%1$s plugins × %2$s pages = %3$s measurements, about %4$s.', 'super-speedy-performance-analysis'),
+                /* translators: 1: number of plugins, 2: number of measurements, 3: estimated duration */
                 'estimate_screen' => __('All %1$s plugins, screened: each is first measured on its busiest pages (about %2$s measurements, %3$s), then only the plugins that show an impact get the full treatment.', 'super-speedy-performance-analysis'),
+                /* translators: 1: number of additional measurements, 2: estimated duration */
                 'estimate_phase2' => __('Plugins that show an impact are then re-measured with the object cache off and priming - up to %1$s more measurements, about %2$s, if every one of them does.', 'super-speedy-performance-analysis'),
                 'estimate_none' => __('Tick at least one plugin.', 'super-speedy-performance-analysis'),
                 'start_measuring' => __('Start measuring', 'super-speedy-performance-analysis'),
                 'cancel' => __('Cancel', 'super-speedy-performance-analysis'),
+                /* translators: %s: number of minutes */
                 'minutes' => __('%s minutes', 'super-speedy-performance-analysis'),
+                /* translators: %s: number of seconds */
                 'seconds' => __('%s seconds', 'super-speedy-performance-analysis'),
                 'no_cost' => __('nothing attributed', 'super-speedy-performance-analysis'),
+                /* translators: %s: milliseconds attributed to this component on this page */
                 'attributed_here' => __('%sms attributed here', 'super-speedy-performance-analysis'),
+                /* translators: %s: milliseconds attributed to this component across the site */
                 'attributed_site' => __('%sms attributed across the site', 'super-speedy-performance-analysis'),
+                /* translators: %s: comma-separated plugins that must be measured together with this one */
                 'with_group' => __('· measured together with %s, which cannot run without it', 'super-speedy-performance-analysis'),
             ),
         ));
@@ -160,8 +169,8 @@ class SSPA_Adhoc {
             $url = substr($url, 0, $hash);
         }
         $url = rtrim(preg_replace('/([?&])sspa_nc=[a-f0-9]*(&|$)/', '$1', $url), '?&');
-        $parts = parse_url($url);
-        $home = parse_url(home_url('/'));
+        $parts = wp_parse_url($url);
+        $home = wp_parse_url(home_url('/'));
         if (!$url || empty($parts['host']) || 0 !== strcasecmp($parts['host'], $home['host'])) {
             return new WP_Error('sspa_bad_url', __('Only URLs on this site can be profiled.', 'super-speedy-performance-analysis'));
         }
@@ -215,7 +224,7 @@ class SSPA_Adhoc {
     }
 
     private static function compare_key($url) {
-        $parts = parse_url((string) $url);
+        $parts = wp_parse_url((string) $url);
         if (!is_array($parts)) {
             return '';
         }

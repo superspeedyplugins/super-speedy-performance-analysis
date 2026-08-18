@@ -105,7 +105,8 @@ class SSPA_Archive_Profile {
 
         $profiles = $wpdb->get_results($wpdb->prepare(
             'SELECT id, page_key, variant, response_code, blocked_by, profile_blob
-             FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d',
+             FROM %i WHERE run_id = %d',
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
 

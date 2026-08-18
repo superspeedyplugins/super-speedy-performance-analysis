@@ -254,6 +254,7 @@ class SSPA_Community_Client {
         }
         $status = (int) wp_remote_retrieve_response_code($response);
         if ($status < 200 || $status >= 300) {
+            /* translators: %d: the HTTP status code returned by object storage */
             return self::error('sspa_upload_http_' . $status, sprintf(__('Object storage rejected the upload (HTTP %d).', 'super-speedy-performance-analysis'), $status), self::permanent_status($status), $status, self::retry_after($response));
         }
         return true;
@@ -301,6 +302,7 @@ class SSPA_Community_Client {
         $remote_code = isset($response['body']['error']['code']) ? sanitize_key($response['body']['error']['code']) : $fallback_code;
         return self::error(
             $remote_code ?: $fallback_code,
+            /* translators: %d: the HTTP status code returned by the collector */
             sprintf(__('The collector rejected the request (HTTP %d).', 'super-speedy-performance-analysis'), $status),
             self::permanent_status($status),
             $status,

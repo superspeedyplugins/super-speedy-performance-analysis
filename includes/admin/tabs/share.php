@@ -30,8 +30,9 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         <?php esc_html_e('Covers every full scan, spot check, plugin impact analysis, cache analysis, page analysis and checkout analysis, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
         <?php
         printf(
+            /* translators: 1: consent text version number, 2: optional " accepted <date> UTC" clause */
             esc_html__('Consent text version %1$d%2$s. Turning sharing off stops new payload creation and delivery attempts; it does not delete already archived evidence.', 'super-speedy-performance-analysis'),
-            SSPA_Community_Schema::CONSENT_VERSION,
+            (int) SSPA_Community_Schema::CONSENT_VERSION,
             $sspa_consent_version && $sspa_consented_at ? ' accepted ' . esc_html($sspa_consented_at) . ' UTC' : ''
         );
         ?>
@@ -83,6 +84,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
                 <strong><?php esc_html_e('Sharing is on, but some analyses could not be prepared and were not sent.', 'super-speedy-performance-analysis'); ?></strong>
                 <?php
                 printf(
+                    /* translators: %d: number of analyses affected by a payload build error */
                     esc_html(_n(
                         '%d analysis was affected. This is usually a bug in the anonymiser rather than anything wrong with your site - please report it.',
                         '%d analyses were affected. This is usually a bug in the anonymiser rather than anything wrong with your site - please report it.',
@@ -97,7 +99,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
                 <summary><?php esc_html_e('Technical detail', 'super-speedy-performance-analysis'); ?></summary>
                 <ul>
                     <?php foreach ($sspa_build_errors as $sspa_error_run_id => $sspa_error_row) : ?>
-                        <li><code><?php echo esc_html($sspa_error_row['code']); ?></code> - <?php echo esc_html($sspa_error_row['detail']); ?> (<?php printf(esc_html__('run %d', 'super-speedy-performance-analysis'), (int) $sspa_error_run_id); ?>)</li>
+                        <li><code><?php /* translators: %d: the analysis run id */ echo esc_html($sspa_error_row['code']); ?></code> - <?php echo esc_html($sspa_error_row['detail']); ?> (<?php printf(esc_html__('run %d', 'super-speedy-performance-analysis'), (int) $sspa_error_run_id); ?>)</li>
                     <?php endforeach; ?>
                 </ul>
             </details>
@@ -119,19 +121,20 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <p class="description">
         <?php
         printf(
+            /* translators: 1: pending count, 2: retrying count, 3: archived count, 4: count requiring attention, 5: paused count */
             esc_html__('Local queue: %1$d pending, %2$d retrying, %3$d archived, %4$d requiring attention and %5$d paused. Network delivery runs in the background and safely retries after outages.', 'super-speedy-performance-analysis'),
-            $sspa_counts['pending'],
-            $sspa_counts['retry'],
-            $sspa_counts['sent'],
-            $sspa_counts['permanent_failure'],
-            $sspa_counts['cancelled']
+            (int) $sspa_counts['pending'],
+            (int) $sspa_counts['retry'],
+            (int) $sspa_counts['sent'],
+            (int) $sspa_counts['permanent_failure'],
+            (int) $sspa_counts['cancelled']
         );
         ?>
         <?php if ($sspa_queue_status['oldest_pending']) : ?>
-            <?php printf(esc_html__('Oldest pending: %s UTC.', 'super-speedy-performance-analysis'), esc_html($sspa_queue_status['oldest_pending'])); ?>
+            <?php /* translators: %s: UTC timestamp of the oldest pending item */ printf(esc_html__('Oldest pending: %s UTC.', 'super-speedy-performance-analysis'), esc_html($sspa_queue_status['oldest_pending'])); ?>
         <?php endif; ?>
         <?php if ($sspa_queue_status['next_attempt']) : ?>
-            <?php printf(esc_html__('Next attempt: %s UTC.', 'super-speedy-performance-analysis'), esc_html($sspa_queue_status['next_attempt'])); ?>
+            <?php /* translators: %s: UTC timestamp of the next delivery attempt */ printf(esc_html__('Next attempt: %s UTC.', 'super-speedy-performance-analysis'), esc_html($sspa_queue_status['next_attempt'])); ?>
         <?php endif; ?>
     </p>
 </div>
@@ -141,12 +144,13 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <p>
         <?php
         printf(
+            /* translators: 1: eligible runs, 2: already queued or archived, 3: remaining, 4: retaining detailed captures, 5: retaining scalar summaries only, 6: total size of remaining detailed data */
             esc_html__('%1$d eligible runs: %2$d already queued or archived and %3$d remaining. Of the remaining runs, %4$d retain detailed captures and %5$d retain scalar summaries only. Remaining detailed source data uses %6$s.', 'super-speedy-performance-analysis'),
-            $sspa_inventory['eligible'],
-            $sspa_inventory['queued'],
-            $sspa_inventory['remaining'],
-            $sspa_inventory['with_detail'],
-            $sspa_inventory['scalar_only'],
+            (int) $sspa_inventory['eligible'],
+            (int) $sspa_inventory['queued'],
+            (int) $sspa_inventory['remaining'],
+            (int) $sspa_inventory['with_detail'],
+            (int) $sspa_inventory['scalar_only'],
             esc_html(size_format($sspa_inventory['source_detail_bytes']))
         );
         ?>
@@ -180,10 +184,10 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <?php endif; ?>
     <?php if ($sspa_inventory['build_errors']) : ?>
         <details>
-            <summary><?php printf(esc_html__('%d historical payload build error(s)', 'super-speedy-performance-analysis'), count($sspa_inventory['build_errors'])); ?></summary>
+            <summary><?php /* translators: %d: number of historical payload build errors */ printf(esc_html__('%d historical payload build error(s)', 'super-speedy-performance-analysis'), count($sspa_inventory['build_errors'])); ?></summary>
             <ul>
                 <?php foreach ($sspa_inventory['build_errors'] as $sspa_error_run => $sspa_error) : ?>
-                    <li><?php printf(esc_html__('Run %1$d: %2$s - %3$s', 'super-speedy-performance-analysis'), (int) $sspa_error_run, esc_html($sspa_error['code']), esc_html($sspa_error['detail'])); ?></li>
+                    <li><?php /* translators: 1: run id, 2: error code, 3: error detail */ printf(esc_html__('Run %1$d: %2$s - %3$s', 'super-speedy-performance-analysis'), (int) $sspa_error_run, esc_html($sspa_error['code']), esc_html($sspa_error['detail'])); ?></li>
                 <?php endforeach; ?>
             </ul>
         </details>
@@ -246,7 +250,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <div id="sspa-payload-summary" class="sspa-payload-summary" style="display:none"></div>
     <pre id="sspa-payload-preview" style="display:none"></pre>
     <p class="description">
-        <?php printf(esc_html__('Install ID: %s (random - not derived from your site).', 'super-speedy-performance-analysis'), esc_html(SSPA_Community_Identity::install_uuid())); ?>
-        <?php printf(esc_html__('Collector: %s.', 'super-speedy-performance-analysis'), esc_html(SSPA_Community_Identity::collector_url())); ?>
+        <?php /* translators: %s: the random install id */ printf(esc_html__('Install ID: %s (random - not derived from your site).', 'super-speedy-performance-analysis'), esc_html(SSPA_Community_Identity::install_uuid())); ?>
+        <?php /* translators: %s: the collector URL */ printf(esc_html__('Collector: %s.', 'super-speedy-performance-analysis'), esc_html(SSPA_Community_Identity::collector_url())); ?>
     </p>
 </div>

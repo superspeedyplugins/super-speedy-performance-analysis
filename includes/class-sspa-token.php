@@ -50,7 +50,7 @@ class SSPA_Token {
     }
 
     public static function request_path($url) {
-        $parts = parse_url($url);
+        $parts = wp_parse_url($url);
         $path = isset($parts['path']) ? $parts['path'] : '/';
         if (isset($parts['query']) && $parts['query'] !== '') {
             $path .= '?' . $parts['query'];

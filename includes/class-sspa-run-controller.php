@@ -62,7 +62,10 @@ class SSPA_Run_Controller {
         SSPA_Helper_Files::ensure_installed();
         $health = SSPA_Helper_Files::health();
         if (!$health['mu']) {
-            return new WP_Error('sspa_no_mu', __('The mu-plugin loader could not be installed (wp-content/mu-plugins is not writable).', 'super-speedy-performance-analysis'));
+            // Two different causes, two different fixes - never report one as the other.
+            return !empty($health['file_mods_blocked'])
+                ? new WP_Error('sspa_file_mods_disallowed', __('The mu-plugin loader could not be installed: this site sets DISALLOW_FILE_MODS, which forbids plugins from writing files. Profiling needs that loader, so remove the constant (or install wp-content/mu-plugins/sspa-loader.php by hand) to use this plugin.', 'super-speedy-performance-analysis'))
+                : new WP_Error('sspa_no_mu', __('The mu-plugin loader could not be installed (wp-content/mu-plugins is not writable).', 'super-speedy-performance-analysis'));
         }
 
         if (!empty($args['swap_dropin']) && in_array($health['dropin'], array('foreign', 'qm'), true)) {
@@ -297,9 +300,10 @@ class SSPA_Run_Controller {
         // particular product, an order screen) is measurable without one.
         $scoped_url = !empty($args['url']) ? (string) $args['url'] : '';
 
-        $source_run_id = (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
-        );
+        $source_run_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         if (!$source_run_id && !$scoped_url) {
             return new WP_Error('sspa_no_baseline', __('Run a normal analysis first - plugin impact analysis sweeps the pages it profiled.', 'super-speedy-performance-analysis'));
         }
@@ -328,10 +332,12 @@ class SSPA_Run_Controller {
             // Pages: everything real the source run successfully profiled, re-resolved to
             // crawlable jobs now. Write/mail probes cannot be re-crawled and are skipped.
             $page_keys = $wpdb->get_col($wpdb->prepare(
-                'SELECT DISTINCT page_key FROM ' . SSPA_Schema::table('profiles') . "
+                "SELECT DISTINCT page_key FROM %i
                  WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
-                 AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'",
-                $source_run_id
+                 AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE %s",
+                SSPA_Schema::table('profiles'),
+                $source_run_id,
+                $wpdb->esc_like('write-') . '%'
             ));
             // A sweep can be narrowed to specific pages. Without this a targeted run still
             // covers every page the source run profiled, which is the difference between
@@ -363,11 +369,13 @@ class SSPA_Run_Controller {
         // Slowest resolvable page: the screening page every plugin gets tested on. A sweep
         // scoped to one URL has no source run to rank pages by, and only one page to pick.
         $slowest = !$source_run_id ? null : $wpdb->get_var($wpdb->prepare(
-            'SELECT page_key FROM ' . SSPA_Schema::table('profiles') . "
+            "SELECT page_key FROM %i
              WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
-             AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'
+             AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE %s
              ORDER BY page_gen_ms DESC LIMIT 1",
-            $source_run_id
+            SSPA_Schema::table('profiles'),
+            $source_run_id,
+            $wpdb->esc_like('write-') . '%'
         ));
         if (!isset($page_jobs[$slowest])) {
             $slowest = key($page_jobs);
@@ -378,9 +386,11 @@ class SSPA_Run_Controller {
         $attr = array(); // slug => page_key => cost
         foreach ($wpdb->get_results($wpdb->prepare(
             'SELECT cs.component, p.page_key, (cs.sql_ms + cs.http_ms) cost
-             FROM ' . SSPA_Schema::table('component_stats') . ' cs
-             JOIN ' . SSPA_Schema::table('profiles') . ' p ON p.id = cs.profile_id
+             FROM %i cs
+             JOIN %i p ON p.id = cs.profile_id
              WHERE cs.run_id = %d',
+            SSPA_Schema::table('component_stats'),
+            SSPA_Schema::table('profiles'),
             $source_run_id
         ), ARRAY_A) as $r) {
             if (isset($page_jobs[$r['page_key']])) {
@@ -675,14 +685,16 @@ class SSPA_Run_Controller {
         if (!empty($args['page_keys'])) {
             $page_keys = (array) $args['page_keys'];
         } else {
-            $source_run_id = (int) $wpdb->get_var(
-                'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
-            );
+            $source_run_id = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM %i WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1",
+                SSPA_Schema::table('runs')
+            ));
             $page_keys = $source_run_id ? $wpdb->get_col($wpdb->prepare(
-                'SELECT page_key FROM ' . SSPA_Schema::table('profiles') . "
+                "SELECT page_key FROM %i
                  WHERE run_id = %d AND variant = 'anon' AND page_key NOT IN ('baseline','mail-probe')
                  AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
                  ORDER BY page_gen_ms DESC LIMIT 3",
+                SSPA_Schema::table('profiles'),
                 $source_run_id
             )) : array();
             if (!$page_keys) {
@@ -958,7 +970,8 @@ class SSPA_Run_Controller {
             return $cache[$run_id];
         }
         $plugin_set = $wpdb->get_var($wpdb->prepare(
-            'SELECT plugin_set FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+            'SELECT plugin_set FROM %i WHERE id = %d',
+            SSPA_Schema::table('runs'),
             $run_id
         ));
         $cache[$run_id] = self::decode_component_versions($plugin_set);
@@ -1332,7 +1345,8 @@ class SSPA_Run_Controller {
         $profiles = $wpdb->get_results($wpdb->prepare(
             'SELECT id, page_key, plugin_set_hash, object_cache_mode, page_gen_ms, sql_ms, http_ms,
                     peak_mem_bytes, sql_count, samples, response_code, blocked_by
-             FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d ORDER BY id ASC',
+             FROM %i WHERE run_id = %d ORDER BY id ASC',
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
 
@@ -1425,7 +1439,8 @@ class SSPA_Run_Controller {
         $pairs = array(); // "excluded|reactor" => {excluded, reactor, ops: [op => count], sql: sample, page_key}
         foreach ($reacted_cells as $cell) {
             $blob = $wpdb->get_var($wpdb->prepare(
-                'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . ' WHERE id = %d',
+                'SELECT profile_blob FROM %i WHERE id = %d',
+                SSPA_Schema::table('profiles'),
                 (int) $cell['profile_id']
             ));
             $capture = $blob ? json_decode((string) @gzuncompress($blob), true) : null;
@@ -1557,7 +1572,8 @@ class SSPA_Run_Controller {
         // Verify the off half really ran without a persistent cache (from the captures).
         $verified = true;
         $off_profiles = $wpdb->get_results($wpdb->prepare(
-            'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND object_cache_mode = 'disabled'",
+            "SELECT profile_blob FROM %i WHERE run_id = %d AND object_cache_mode = 'disabled'",
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
         foreach ($off_profiles as $p) {
@@ -1569,9 +1585,11 @@ class SSPA_Run_Controller {
 
         $rows = $wpdb->get_results($wpdb->prepare(
             'SELECT p.object_cache_mode, cs.component, cs.component_type, SUM(cs.query_count) qc, SUM(cs.sql_ms) sql_ms
-             FROM ' . SSPA_Schema::table('component_stats') . ' cs
-             JOIN ' . SSPA_Schema::table('profiles') . ' p ON p.id = cs.profile_id
+             FROM %i cs
+             JOIN %i p ON p.id = cs.profile_id
              WHERE cs.run_id = %d GROUP BY p.object_cache_mode, cs.component, cs.component_type',
+            SSPA_Schema::table('component_stats'),
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
 
@@ -1721,7 +1739,8 @@ class SSPA_Run_Controller {
         } else {
             // Queue is deleted once the run leaves the crawling state.
             $total = (int) $wpdb->get_var($wpdb->prepare(
-                'SELECT COUNT(*) FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d',
+                'SELECT COUNT(*) FROM %i WHERE run_id = %d',
+                SSPA_Schema::table('profiles'),
                 $run_id
             ));
             $idx = $total;
@@ -1862,7 +1881,8 @@ class SSPA_Run_Controller {
         $ids = array();
         $meta_tables = array($wpdb->postmeta => 'post_id');
         $hpos_meta = $wpdb->prefix . 'wc_orders_meta';
-        if ($hpos_meta === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $hpos_meta))) {
+        if ($hpos_meta === $wpdb->get_var($wpdb->prepare(
+            'SHOW TABLES LIKE %s', $hpos_meta))) {
             $meta_tables[$hpos_meta] = 'order_id';
         }
         foreach ($meta_tables as $table => $id_col) {
@@ -2107,6 +2127,7 @@ class SSPA_Run_Controller {
         }
         // Newest measurement per page and cache mode, matching the Plugins tab: a sweep scoped
         // to one page must not hide every other page it did not re-measure.
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
         $rows = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql($plugin), ARRAY_A);
         if (!$rows) {
             wp_send_json_error(__('No measured impacts for this plugin yet - run a plugin impact analysis.', 'super-speedy-performance-analysis'));

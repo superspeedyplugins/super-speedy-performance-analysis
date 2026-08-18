@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // The per-request capture orchestrator. Armed by the mu-loader for token requests; collects
 // SQL / HTTP / cache / overview data and writes a gzcompressed JSON capture to the
 // sspa_captures table at PHP shutdown (after WordPress's own shutdown hooks).
@@ -115,7 +116,7 @@ if (!class_exists('SSPA_Capture')) {
                     $frames[] = array($f['file'], isset($f['line']) ? $f['line'] : 0, (isset($f['class']) ? $f['class'] . '::' : '') . $f['function']);
                 }
             }
-            $parts = parse_url((string) $url);
+            $parts = wp_parse_url((string) $url);
             $code = null;
             if (is_wp_error($response)) {
                 $code = 'error:' . $response->get_error_code();

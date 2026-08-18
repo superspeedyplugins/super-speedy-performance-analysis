@@ -60,6 +60,11 @@ class SSPA_Abilities {
     }
 
     public static function register_category() {
+        // The Abilities API is WordPress 6.9+. The hooks below only fire where it exists, but
+        // guard anyway so a direct call on an older site is a no-op rather than a fatal.
+        if (!function_exists('wp_register_ability_category')) {
+            return;
+        }
         wp_register_ability_category(self::CATEGORY, array(
             'label' => __('Super Speedy Performance Analysis', 'super-speedy-performance-analysis'),
             'description' => __('Profile a WordPress site, attribute SQL/RAM/time to plugins, isolate culprits, read plain-English findings.', 'super-speedy-performance-analysis'),
@@ -67,6 +72,10 @@ class SSPA_Abilities {
     }
 
     public static function register_abilities() {
+        // See register_category() - WordPress 6.9+ only.
+        if (!function_exists('wp_register_ability')) {
+            return;
+        }
         $readonly = array(
             'annotations' => array('readonly' => true, 'destructive' => false, 'idempotent' => true),
             'show_in_rest' => true,
@@ -554,9 +563,10 @@ class SSPA_Abilities {
 
     public static function exec_get_checkout_flow($input) {
         global $wpdb;
-        $run_id = !empty($input['run_id']) ? (int) $input['run_id'] : (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE run_type = 'checkout' AND status IN ('done','failed') ORDER BY id DESC LIMIT 1"
-        );
+        $run_id = !empty($input['run_id']) ? (int) $input['run_id'] : (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i WHERE run_type = 'checkout' AND status IN ('done','failed') ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         if (!$run_id) {
             return new WP_Error('sspa_no_checkout_run', __('No checkout flow has been measured yet.', 'super-speedy-performance-analysis'));
         }

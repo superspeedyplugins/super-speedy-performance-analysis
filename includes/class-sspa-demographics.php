@@ -259,7 +259,7 @@ class SSPA_Demographics {
 
     public static function latest() {
         global $wpdb;
-        $row = $wpdb->get_row('SELECT * FROM ' . SSPA_Schema::table('site_metrics') . ' ORDER BY id DESC LIMIT 1', ARRAY_A);
+        $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM %i ORDER BY id DESC LIMIT 1', SSPA_Schema::table('site_metrics')), ARRAY_A);
         if (!$row) {
             return null;
         }

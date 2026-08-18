@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Standalone. Phase-5 sampling collector (design: .docs/implementation-plan-profilers-
 // and-digests.md section B): Excimer records a COMPLETE call stack every sample period,
 // so the same attribution walk used for SQL runs exactly over profiler data - no

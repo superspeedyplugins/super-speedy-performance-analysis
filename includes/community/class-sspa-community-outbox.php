@@ -33,7 +33,8 @@ class SSPA_Community_Outbox {
             return new WP_Error('sspa_not_opted_in', __('Sharing is not enabled.', 'super-speedy-performance-analysis'));
         }
         $run = $wpdb->get_row($wpdb->prepare(
-            'SELECT id, run_uuid, run_type FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
+            'SELECT id, run_uuid, run_type FROM %i WHERE id = %d',
+            SSPA_Schema::table('runs'),
             (int) $run_id
         ), ARRAY_A);
         if (!$run || !wp_is_uuid($run['run_uuid'], 4)) {
@@ -132,11 +133,12 @@ class SSPA_Community_Outbox {
 
     public static function queue_latest() {
         global $wpdb;
-        $run_id = (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . "
+        $run_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i
              WHERE status = 'done' OR (run_type = 'checkout' AND status = 'failed')
-             ORDER BY id DESC LIMIT 1"
-        );
+             ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         return $run_id ? self::queue_run($run_id) : new WP_Error('sspa_no_run', __('Run an analysis first - there is nothing to share yet.', 'super-speedy-performance-analysis'));
     }
 
@@ -156,10 +158,12 @@ class SSPA_Community_Outbox {
         $now = gmdate('Y-m-d H:i:s');
         $consent_clause = get_option('sspa_share_optin') ? '' : " AND consent_scope = 'manual'";
         return $wpdb->get_row($wpdb->prepare(
-            'SELECT * FROM ' . self::table() . "
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $consent_clause is one of two literals chosen above, never input.
+            "SELECT * FROM %i
              WHERE state IN ('pending','retry') AND (next_attempt IS NULL OR next_attempt <= %s)
              $consent_clause
              ORDER BY created ASC, id ASC LIMIT 1",
+            self::table(),
             $now
         ), ARRAY_A);
     }
@@ -170,24 +174,25 @@ class SSPA_Community_Outbox {
      */
     public static function has_pending_manual() {
         global $wpdb;
-        return (bool) $wpdb->get_var(
-            'SELECT id FROM ' . self::table() . " WHERE consent_scope = 'manual' AND state IN ('pending','retry') LIMIT 1"
-        );
+        return (bool) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i WHERE consent_scope = 'manual' AND state IN ('pending','retry') LIMIT 1",
+            self::table()
+        ));
     }
 
     public static function get($id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . self::table() . ' WHERE id = %d', (int) $id), ARRAY_A);
+        return $wpdb->get_row($wpdb->prepare('SELECT * FROM %i WHERE id = %d', self::table(), (int) $id), ARRAY_A);
     }
 
     public static function for_run_uuid($run_uuid) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . self::table() . ' WHERE run_uuid = %s', $run_uuid), ARRAY_A);
+        return $wpdb->get_row($wpdb->prepare('SELECT * FROM %i WHERE run_uuid = %s', self::table(), $run_uuid), ARRAY_A);
     }
 
     public static function latest() {
         global $wpdb;
-        return $wpdb->get_row('SELECT * FROM ' . self::table() . ' ORDER BY id DESC LIMIT 1', ARRAY_A);
+        return $wpdb->get_row($wpdb->prepare('SELECT * FROM %i ORDER BY id DESC LIMIT 1', self::table()), ARRAY_A);
     }
 
     public static function preview($row) {
@@ -299,16 +304,18 @@ class SSPA_Community_Outbox {
         $limit = max(1, min(100, (int) $limit));
         return $wpdb->get_results($wpdb->prepare(
             'SELECT o.*, r.run_type, r.started AS run_started
-             FROM ' . self::table() . ' o
-             JOIN ' . SSPA_Schema::table('runs') . ' r ON r.id = o.run_id
+             FROM %i o
+             JOIN %i r ON r.id = o.run_id
              ORDER BY o.id DESC LIMIT %d',
+            self::table(),
+            SSPA_Schema::table('runs'),
             $limit
         ), ARRAY_A);
     }
 
     public static function counts() {
         global $wpdb;
-        $rows = $wpdb->get_results('SELECT state, COUNT(*) c FROM ' . self::table() . ' GROUP BY state', ARRAY_A);
+        $rows = $wpdb->get_results($wpdb->prepare('SELECT state, COUNT(*) c FROM %i GROUP BY state', self::table()), ARRAY_A);
         $counts = array('pending' => 0, 'retry' => 0, 'sent' => 0, 'permanent_failure' => 0, 'cancelled' => 0);
         foreach ($rows as $row) {
             $counts[$row['state']] = (int) $row['c'];
@@ -318,11 +325,11 @@ class SSPA_Community_Outbox {
 
     public static function queue_status() {
         global $wpdb;
-        $row = $wpdb->get_row(
-            'SELECT MIN(created) AS oldest_pending, MIN(next_attempt) AS next_attempt
-             FROM ' . self::table() . " WHERE state IN ('pending','retry')",
-            ARRAY_A
-        );
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT MIN(created) AS oldest_pending, MIN(next_attempt) AS next_attempt
+             FROM %i WHERE state IN ('pending','retry')",
+            self::table()
+        ), ARRAY_A);
         return array(
             'oldest_pending' => !empty($row['oldest_pending']) ? $row['oldest_pending'] : null,
             'next_attempt' => !empty($row['next_attempt']) ? $row['next_attempt'] : null,

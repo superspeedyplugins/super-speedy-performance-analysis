@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Entry point called by the mu-loader once a token has been verified. Standalone.
 
 if (!function_exists('sspa_profiler_boot')) {

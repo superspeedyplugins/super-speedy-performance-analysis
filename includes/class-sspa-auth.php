@@ -22,7 +22,7 @@ class SSPA_Auth {
             return array();
         }
         $expiry = time() + 300;
-        $scheme_secure = force_ssl_admin() || 'https' === parse_url(home_url(), PHP_URL_SCHEME);
+        $scheme_secure = force_ssl_admin() || 'https' === wp_parse_url(home_url(), PHP_URL_SCHEME);
         $cookies = array(
             LOGGED_IN_COOKIE => wp_generate_auth_cookie($user_id, $expiry, 'logged_in'),
         );
@@ -48,7 +48,7 @@ class SSPA_Auth {
         $user_id = wp_insert_user(array(
             'user_login' => 'sspa-test-customer',
             'user_pass' => wp_generate_password(32),
-            'user_email' => 'sspa-test-customer@' . parse_url(home_url(), PHP_URL_HOST),
+            'user_email' => 'sspa-test-customer@' . wp_parse_url(home_url(), PHP_URL_HOST),
             'role' => $role,
             'display_name' => 'SSPA Test Customer',
         ));

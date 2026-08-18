@@ -20,11 +20,13 @@ foreach ($sspa_helper_files as $sspa_file) {
     if (file_exists($sspa_file)) {
         $sspa_head = file_get_contents($sspa_file, false, null, 0, 512);
         if ($sspa_head !== false && strpos($sspa_head, 'Super Speedy Performance Analysis') !== false) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- uninstall removes only helper files this plugin wrote; WP_Filesystem is not reliably initialisable during plugin deletion.
             unlink($sspa_file);
         }
     }
 }
 if (file_exists(WPMU_PLUGIN_DIR . '/sspa-traffic-observer.stopped')) {
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- uninstall removes only this plugin's own observer stop-flag.
     unlink(WPMU_PLUGIN_DIR . '/sspa-traffic-observer.stopped');
 }
 
@@ -36,5 +38,6 @@ $wpdb->query($wpdb->prepare(
 ));
 // If we were holding a displaced drop-in (run crashed mid-analysis), restore it.
 if (!file_exists(WP_CONTENT_DIR . '/db.php') && file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold')) {
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- restores a foreign db.php this plugin displaced; leaving it held would break the site.
     rename(WP_CONTENT_DIR . '/db.php.sspa-hold', WP_CONTENT_DIR . '/db.php');
 }

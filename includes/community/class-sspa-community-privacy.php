@@ -135,7 +135,7 @@ class SSPA_Community_Privacy {
 
     public static function validate($payload) {
         $blocked_keys = '/(^|_)(url|domain|domain_hash|email|ip|user_id|order_id|product_id|session|cookie|nonce|authorization|request_body|response_body|filesystem_path)(_|$)/i';
-        $host = strtolower((string) parse_url(home_url('/'), PHP_URL_HOST));
+        $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
         // Bare Docker/intranet hostnames commonly collide with plugin slugs. Complete URLs
         // are rejected separately; only use a host as a raw-string needle when it is an FQDN.
         $host_needle = (false !== strpos($host, '.')) ? $host : '';
@@ -151,6 +151,7 @@ class SSPA_Community_Privacy {
                 foreach ($value as $key => $child) {
                     $child_path = $path . '.' . $key;
                     if (is_string($key) && preg_match($blocked_keys, $key)) {
+                        /* translators: %s: the payload path of the forbidden field */
                         return new WP_Error('sspa_privacy_forbidden_key', sprintf(__('Forbidden community field at %s.', 'super-speedy-performance-analysis'), $child_path));
                     }
                     $error = $scan($child, $child_path, is_string($key) ? $key : '');
@@ -179,10 +180,12 @@ class SSPA_Community_Privacy {
                     || preg_match('/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i', $value)
                     || preg_match('/\b(?:\d{1,3}\.){3}\d{1,3}\b/', $value)
                     || preg_match('#(?:^|[\s\'\"])/(?:users|home|var|srv|opt|etc|tmp)/#i', $normal))) {
+                /* translators: %s: the payload path holding potential private data */
                 return new WP_Error('sspa_privacy_forbidden_value', sprintf(__('Potential private data at %s.', 'super-speedy-performance-analysis'), $path));
             }
             foreach ($needles as $needle) {
                 if (strlen($needle) >= 3 && false !== strpos($normal, strtolower(str_replace('\\', '/', $needle)))) {
+                    /* translators: %s: the payload path holding site-identifying data */
                     return new WP_Error('sspa_privacy_site_identifier', sprintf(__('Site-identifying data at %s.', 'super-speedy-performance-analysis'), $path));
                 }
             }

@@ -41,9 +41,15 @@ class SSPA_Traffic_Helper {
         if (is_multisite()) {
             return new WP_Error('sspa_traffic_multisite', __('The experimental traffic collector is not available on multisite yet because its MU observer must remain absent for inactive sites.', 'super-speedy-performance-analysis'));
         }
+        // The site owner has forbidden plugins from writing files. Installing an mu-plugin is
+        // exactly that, so refuse - and say so, rather than reporting it as a write failure.
+        if (SSPA_Helper_Files::file_mods_blocked()) {
+            return new WP_Error('sspa_file_mods_disallowed', __('This site sets DISALLOW_FILE_MODS, which forbids plugins from writing files, so the traffic observer cannot be installed.', 'super-speedy-performance-analysis'));
+        }
         if (!is_dir(WPMU_PLUGIN_DIR) && !wp_mkdir_p(WPMU_PLUGIN_DIR)) {
             return new WP_Error('sspa_traffic_mu_dir', __('Could not create the mu-plugins directory.', 'super-speedy-performance-analysis'));
         }
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write; see class-sspa-helper-files.php.
         if (!is_writable(WPMU_PLUGIN_DIR) && !(is_file(self::path()) && is_writable(self::path()))) {
             return new WP_Error('sspa_traffic_mu_write', __('The mu-plugins directory is not writable, so the active-only traffic observer cannot be installed.', 'super-speedy-performance-analysis'));
         }
@@ -75,15 +81,20 @@ class SSPA_Traffic_Helper {
         );
 
         if (is_file(self::stopped_path())) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only this plugin's own observer stop-flag.
             unlink(self::stopped_path());
         }
         $temporary = self::path() . '.tmp-' . wp_generate_password(8, false, false);
         if (file_put_contents($temporary, $content, LOCK_EX) !== strlen($content)) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- cleans up our own temporary file after a failed write.
             @unlink($temporary);
             return new WP_Error('sspa_traffic_mu_write', __('Could not write the traffic observer.', 'super-speedy-performance-analysis'));
         }
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- sets 0644 on our own temporary file before it is renamed into place.
         @chmod($temporary, 0644);
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic install of the observer mu-plugin: write to a temporary file, then rename, so no request ever sees a half-written observer.
         if (!rename($temporary, self::path())) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- cleans up our own temporary file after a failed rename.
             @unlink($temporary);
             return new WP_Error('sspa_traffic_mu_rename', __('Could not activate the traffic observer atomically.', 'super-speedy-performance-analysis'));
         }
@@ -111,9 +122,11 @@ class SSPA_Traffic_Helper {
     private static function remove_unlocked() {
         $removed = true;
         if (self::is_ours(self::path())) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only the observer mu-plugin this plugin wrote.
             $removed = @unlink(self::path());
         }
         if (is_file(self::stopped_path())) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only this plugin's own observer stop-flag.
             @unlink(self::stopped_path());
         }
         if (function_exists('opcache_invalidate')) {

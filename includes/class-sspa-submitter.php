@@ -70,11 +70,12 @@ class SSPA_Submitter {
      */
     public static function dry_run_preview() {
         global $wpdb;
-        $run_id = (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . "
+        $run_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i
              WHERE status = 'done' OR (run_type = 'checkout' AND status = 'failed')
-             ORDER BY id DESC LIMIT 1"
-        );
+             ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         if (!$run_id) {
             return new WP_Error('sspa_no_run', __('Run an analysis first - there is nothing to preview yet.', 'super-speedy-performance-analysis'));
         }
@@ -182,17 +183,22 @@ class SSPA_Submitter {
 
     private static function history_message($row) {
         if ('sent' === $row['state']) {
+            /* translators: 1: analysis type, 2: compressed payload size */
             return sprintf(__('%1$s archived (%2$s)', 'super-speedy-performance-analysis'), $row['run_type'], size_format((int) $row['compressed_bytes']));
         }
         if ('permanent_failure' === $row['state']) {
+            /* translators: 1: analysis type, 2: error code */
             return sprintf(__('%1$s requires attention: %2$s', 'super-speedy-performance-analysis'), $row['run_type'], $row['last_error_code']);
         }
         if ('retry' === $row['state']) {
+            /* translators: 1: analysis type, 2: error code */
             return sprintf(__('%1$s queued for retry: %2$s', 'super-speedy-performance-analysis'), $row['run_type'], $row['last_error_code']);
         }
         if ('cancelled' === $row['state']) {
+            /* translators: %s: analysis type */
             return sprintf(__('%s paused locally', 'super-speedy-performance-analysis'), $row['run_type']);
         }
+        /* translators: %s: analysis type */
         return sprintf(__('%s queued locally', 'super-speedy-performance-analysis'), $row['run_type']);
     }
 }

@@ -52,9 +52,11 @@ class SSPA_Attribution {
             $rows = $wpdb->get_results($wpdb->prepare(
                 'SELECT cs.profile_id, p.page_key, cs.component, cs.component_type,
                         cs.query_count, cs.sql_ms, cs.rows_returned, cs.slowest_query_ms, cs.http_ms
-                 FROM ' . SSPA_Schema::table('component_stats') . ' cs
-                 JOIN ' . SSPA_Schema::table('profiles') . ' p ON p.id = cs.profile_id
+                 FROM %i cs
+                 JOIN %i p ON p.id = cs.profile_id
                  WHERE cs.run_id = %d',
+                SSPA_Schema::table('component_stats'),
+                SSPA_Schema::table('profiles'),
                 $run_id
             ), ARRAY_A);
             foreach ($rows as &$row) {
@@ -66,8 +68,9 @@ class SSPA_Attribution {
 
         $rows = array();
         foreach ($wpdb->get_results($wpdb->prepare(
-            'SELECT id, page_key, profile_blob FROM ' . SSPA_Schema::table('profiles') . '
+            'SELECT id, page_key, profile_blob FROM %i
              WHERE run_id = %d AND profile_blob IS NOT NULL',
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A) as $profile) {
             $capture = self::unpack($profile['profile_blob']);

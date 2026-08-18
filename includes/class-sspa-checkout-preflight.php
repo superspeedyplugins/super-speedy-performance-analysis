@@ -239,7 +239,7 @@ class SSPA_Checkout_Preflight {
             if (!$webhook) {
                 continue;
             }
-            $host = parse_url((string) $webhook->get_delivery_url(), PHP_URL_HOST);
+            $host = wp_parse_url((string) $webhook->get_delivery_url(), PHP_URL_HOST);
             $out[] = array(
                 'host' => $host ? $host : 'unknown',
                 'topic' => (string) $webhook->get_topic(),

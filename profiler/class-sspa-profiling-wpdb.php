@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Instantiated by the sspa db.php shim for token-bearing requests only. Records what core
 // SAVEQUERIES cannot: returned row counts, per-query errors, and real backtrace frames for
 // component attribution. Normal traffic never sees this class.

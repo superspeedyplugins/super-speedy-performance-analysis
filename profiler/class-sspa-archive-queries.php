@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Records the WP_Query instances that Super Speedy Archives could optimise, so its two
 // configuration decisions - which columns to carry on the mirror table, and which meta keys to
 // materialise as typed columns - can be answered from a profiled run instead of by hand.

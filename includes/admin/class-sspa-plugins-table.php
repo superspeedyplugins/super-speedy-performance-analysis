@@ -16,10 +16,11 @@ class SSPA_Plugins_Table {
      */
     public static function latest_run_id() {
         global $wpdb;
-        return (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . "
-             WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
-        );
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i
+             WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
     }
 
     /**
@@ -41,19 +42,28 @@ class SSPA_Plugins_Table {
      */
     public static function latest_impacts_sql($plugin = '', $page_key = '') {
         global $wpdb;
-        $table = SSPA_Schema::table('plugin_impacts');
+        // Every value goes in as a placeholder and the table name as %i, so the caller
+        // receives a fully prepared string. Callers pass it straight to $wpdb and carry a
+        // phpcs:ignore saying so, because the sniff cannot see the prepare() from there.
         $conditions = array();
+        $args = array(SSPA_Schema::table('plugin_impacts'), SSPA_Schema::table('plugin_impacts'));
         if ('' !== $plugin) {
-            $conditions[] = $wpdb->prepare('plugin = %s', $plugin);
+            $conditions[] = 'plugin = %s';
+            $args[] = $plugin;
         }
         if ('' !== $page_key) {
-            $conditions[] = $wpdb->prepare('page_key = %s', $page_key);
+            $conditions[] = 'page_key = %s';
+            $args[] = $page_key;
         }
         $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
-        return "SELECT pi.* FROM $table pi
-                JOIN (SELECT MAX(id) mid FROM $table$where
+        return $wpdb->prepare(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $where is built from the literal placeholder strings above, never from input.
+            "SELECT pi.* FROM %i pi
+                JOIN (SELECT MAX(id) mid FROM %i$where
                       GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
-                ORDER BY pi.page_key, pi.id";
+                ORDER BY pi.page_key, pi.id",
+            $args
+        );
     }
 
     public static function render($run_id, $mode) {
@@ -89,9 +99,10 @@ class SSPA_Plugins_Table {
         });
 
         // Latest cache-impact results (component => saved_pct), if a cache run has been done.
-        $cache_notes = $wpdb->get_var(
-            'SELECT notes FROM ' . SSPA_Schema::table('runs') . " WHERE run_type = 'cache_impact' AND status = 'done' ORDER BY id DESC LIMIT 1"
-        );
+        $cache_notes = $wpdb->get_var($wpdb->prepare(
+            "SELECT notes FROM %i WHERE run_type = 'cache_impact' AND status = 'done' ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         $cache = array();
         if ($cache_notes) {
             $decoded = json_decode($cache_notes, true);
@@ -101,6 +112,7 @@ class SSPA_Plugins_Table {
         }
 
         $impacts = array();
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
         foreach ($wpdb->get_results(self::latest_impacts_sql(), ARRAY_A) as $row) {
             $impacts[$row['plugin']][] = $row;
         }
@@ -144,8 +156,10 @@ class SSPA_Plugins_Table {
                         if (isset($cache[$c['component']]['saved_pct'])) {
                             $pct = (int) $cache[$c['component']]['saved_pct'];
                             if ($pct < 15) {
+                                /* translators: %d: percentage of queries the plugin ran without consulting the object cache */
                                 echo '<span class="sspa-badge sspa-blocked">' . esc_html(sprintf(__('cache-blind (%d%%)', 'super-speedy-performance-analysis'), $pct)) . '</span>';
                             } else {
+                                /* translators: %d: percentage of queries saved by the object cache */
                                 echo esc_html(sprintf(__('%d%% queries saved', 'super-speedy-performance-analysis'), $pct));
                             }
                         } else {
@@ -220,13 +234,17 @@ class SSPA_Plugins_Table {
             $saves = $typical < 0;
             echo '<strong class="' . ($saves ? 'sspa-impact-saves' : 'sspa-impact-adds') . '">';
             echo esc_html($saves
+                /* translators: %s: milliseconds saved, formatted */
                 ? sprintf(__('saves %sms typically', 'super-speedy-performance-analysis'), number_format(abs($typical)))
+                /* translators: %s: milliseconds added, formatted */
                 : sprintf(__('adds %sms typically', 'super-speedy-performance-analysis'), number_format($typical)));
             echo '</strong> ';
             $worst_delta = (float) $worst['delta_ttfb_ms'];
             echo esc_html(sprintf(
                 $worst_delta < 0
+                    /* translators: 1: milliseconds saved, 2: page key */
                     ? __('up to %1$sms saved on %2$s', 'super-speedy-performance-analysis')
+                    /* translators: 1: milliseconds added, 2: page key */
                     : __('up to %1$sms on %2$s', 'super-speedy-performance-analysis'),
                 number_format(abs($worst_delta)),
                 $worst['page_key']
@@ -245,6 +263,7 @@ class SSPA_Plugins_Table {
                 return (float) $r['noise_floor_ms'];
             }, $mode_rows);
             echo '<span class="sspa-badge">' . esc_html(sprintf(
+                /* translators: 1: number of pages, 2: noise floor in milliseconds */
                 __('no measurable impact on %1$d pages (±%2$sms noise)', 'super-speedy-performance-analysis'),
                 count($mode_rows),
                 number_format($floors ? max($floors) : 30)
@@ -335,7 +354,9 @@ class SSPA_Plugins_Table {
         return '<br><small class="sspa-impact-detail">' . esc_html(sprintf(
             /* translators: 1: date, 2: version or empty */
             $measured_version
+                /* translators: 1: date measured, 2: plugin version measured */
                 ? __('measured %1$s on version %2$s', 'super-speedy-performance-analysis')
+                /* translators: %1$s: date measured */
                 : __('measured %1$s', 'super-speedy-performance-analysis'),
             $when,
             (string) $measured_version

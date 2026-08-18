@@ -24,9 +24,10 @@ class SSPA_Anonymiser {
     public static function build() {
         global $wpdb;
 
-        $run_id = (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
-        );
+        $run_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         if (!$run_id) {
             return new WP_Error('sspa_no_run', __('Run an analysis first - there is nothing to share yet.', 'super-speedy-performance-analysis'));
         }
@@ -51,7 +52,8 @@ class SSPA_Anonymiser {
         foreach ($wpdb->get_results($wpdb->prepare(
             'SELECT page_key, variant, page_gen_ms, sql_ms, sql_count, http_ms, php_ms, peak_mem_bytes,
                     rows_returned_total, dupe_query_count, mail_count, mail_ms, response_code
-             FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d',
+             FROM %i WHERE run_id = %d',
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A) as $p) {
             $profiles[] = array_map(function ($v) {
@@ -62,16 +64,19 @@ class SSPA_Anonymiser {
         $observations = $wpdb->get_results($wpdb->prepare(
             'SELECT cs.component, cs.component_type, p.page_key, cs.query_count, cs.sql_ms,
                     cs.rows_returned, cs.slowest_query_ms, cs.http_ms
-             FROM ' . SSPA_Schema::table('component_stats') . ' cs
-             JOIN ' . SSPA_Schema::table('profiles') . ' p ON p.id = cs.profile_id
+             FROM %i cs
+             JOIN %i p ON p.id = cs.profile_id
              WHERE cs.run_id = %d',
+            SSPA_Schema::table('component_stats'),
+            SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
 
         $findings = array();
         foreach ($wpdb->get_results($wpdb->prepare(
             'SELECT finding_type, severity, component, page_key, recommendation_key, confidence, evidence
-             FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d',
+             FROM %i WHERE run_id = %d',
+            SSPA_Schema::table('findings'),
             $run_id
         ), ARRAY_A) as $f) {
             $evidence = json_decode((string) $f['evidence'], true);
@@ -113,16 +118,17 @@ class SSPA_Anonymiser {
             $findings[] = $f;
         }
 
-        $impacts = $wpdb->get_results(
+        $impacts = $wpdb->get_results($wpdb->prepare(
             'SELECT plugin, page_key, method, object_cache_mode, delta_ttfb_ms, delta_sql_ms, delta_http_ms,
                     delta_mem_bytes, delta_queries, noise_floor_ms, confidence
-             FROM ' . SSPA_Schema::table('plugin_impacts') . ' ORDER BY id DESC LIMIT 1000',
-            ARRAY_A
-        );
+             FROM %i ORDER BY id DESC LIMIT 1000',
+            SSPA_Schema::table('plugin_impacts')
+        ), ARRAY_A);
 
-        $cache_notes = $wpdb->get_var(
-            'SELECT notes FROM ' . SSPA_Schema::table('runs') . " WHERE run_type = 'cache_impact' AND status = 'done' ORDER BY id DESC LIMIT 1"
-        );
+        $cache_notes = $wpdb->get_var($wpdb->prepare(
+            "SELECT notes FROM %i WHERE run_type = 'cache_impact' AND status = 'done' ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         $cache = array();
         if ($cache_notes) {
             $decoded = json_decode($cache_notes, true);
@@ -135,7 +141,7 @@ class SSPA_Anonymiser {
             }
         }
 
-        $host = (string) parse_url(home_url(), PHP_URL_HOST);
+        $host = (string) wp_parse_url(home_url(), PHP_URL_HOST);
 
         return array(
             'schema' => self::SCHEMA,

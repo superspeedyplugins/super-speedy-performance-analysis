@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Standalone. Maps stack frames (file paths, or bare callable names in degraded mode) to
 // the responsible component: a plugin slug, the theme, an mu-plugin, or core.
 

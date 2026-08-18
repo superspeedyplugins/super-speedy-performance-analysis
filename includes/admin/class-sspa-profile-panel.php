@@ -73,7 +73,8 @@ class SSPA_Profile_Panel {
     public static function profile_row($profile_id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('profiles') . ' WHERE id = %d',
+            'SELECT * FROM %i WHERE id = %d',
+            SSPA_Schema::table('profiles'),
             (int) $profile_id
         ), ARRAY_A);
     }
@@ -87,10 +88,12 @@ class SSPA_Profile_Panel {
     public static function newest_profile_id_for_page($page_key) {
         global $wpdb;
         return (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT p.id FROM ' . SSPA_Schema::table('profiles') . ' p
-             INNER JOIN ' . SSPA_Schema::table('runs') . " r ON r.id = p.run_id
+            "SELECT p.id FROM %i p
+             INNER JOIN %i r ON r.id = p.run_id
              WHERE p.page_key = %s AND r.status = 'done' AND p.plugin_set_hash = ''
              ORDER BY p.id DESC LIMIT 1",
+            SSPA_Schema::table('profiles'),
+            SSPA_Schema::table('runs'),
             $page_key
         ));
     }
@@ -153,6 +156,7 @@ class SSPA_Profile_Panel {
         $findings = array_values(array_filter(SSPA_Report::findings((int) $row['run_id']), function ($finding) use ($row) {
             return empty($finding['page_key']) || $finding['page_key'] === $row['page_key'];
         }));
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
         $impacts = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('', (string) $row['page_key']), ARRAY_A);
 
         return array(
@@ -757,6 +761,7 @@ class SSPA_Profile_Panel {
         global $wpdb;
 
         $page_key = (string) $row['page_key'];
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
         $rows = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('', $page_key), ARRAY_A);
 
         $html = '<div class="sspa-adhoc-span" id="sspa-adhoc-impact"><h4>'
@@ -929,17 +934,20 @@ class SSPA_Profile_Panel {
                 wp_send_json_error(__('Run a normal analysis first - plugin impact analysis re-measures the pages it profiled.', 'super-speedy-performance-analysis'));
             }
             foreach ($wpdb->get_results($wpdb->prepare(
-                'SELECT component, SUM(sql_ms + http_ms) cost FROM ' . SSPA_Schema::table('component_stats') . '
+                'SELECT component, SUM(sql_ms + http_ms) cost FROM %i
                  WHERE run_id = %d GROUP BY component',
+                SSPA_Schema::table('component_stats'),
                 $run_id
             ), ARRAY_A) as $component_row) {
                 $blamed[$component_row['component']] = (float) $component_row['cost'];
             }
             $pages = max(1, (int) $wpdb->get_var($wpdb->prepare(
-                'SELECT COUNT(DISTINCT page_key) FROM ' . SSPA_Schema::table('profiles') . "
+                "SELECT COUNT(DISTINCT page_key) FROM %i
                  WHERE run_id = %d AND blocked_by IS NULL AND page_gen_ms IS NOT NULL
-                 AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE 'write-%%'",
-                $run_id
+                 AND page_key NOT IN ('baseline', 'mail-probe') AND page_key NOT LIKE %s",
+                SSPA_Schema::table('profiles'),
+                $run_id,
+                $wpdb->esc_like('write-') . '%'
             )));
         }
 
@@ -988,14 +996,15 @@ class SSPA_Profile_Panel {
      */
     public static function seconds_per_job() {
         global $wpdb;
-        $rows = $wpdb->get_results(
-            'SELECT r.started, r.finished, COUNT(p.id) jobs
-             FROM ' . SSPA_Schema::table('runs') . ' r
-             INNER JOIN ' . SSPA_Schema::table('profiles') . " p ON p.run_id = r.id
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.started, r.finished, COUNT(p.id) jobs
+             FROM %i r
+             INNER JOIN %i p ON p.run_id = r.id
              WHERE r.status = 'done' AND r.finished IS NOT NULL AND r.started IS NOT NULL
              GROUP BY r.id HAVING jobs >= 3 ORDER BY r.id DESC LIMIT 5",
-            ARRAY_A
-        );
+            SSPA_Schema::table('runs'),
+            SSPA_Schema::table('profiles')
+        ), ARRAY_A);
         $rates = array();
         foreach ((array) $rows as $run) {
             $seconds = strtotime($run['finished'] . ' UTC') - strtotime($run['started'] . ' UTC');

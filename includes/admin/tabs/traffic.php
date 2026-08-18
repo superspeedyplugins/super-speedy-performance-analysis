@@ -19,14 +19,14 @@ $sspa_traffic_has_woo = class_exists('WooCommerce');
 
     <div class="sspa-traffic-status" aria-live="polite">
         <?php if ($sspa_traffic_collection) : ?>
-            <h3><?php printf(esc_html__('Collection #%d', 'super-speedy-performance-analysis'), (int) $sspa_traffic_collection['id']); ?></h3>
+            <h3><?php /* translators: %d: the traffic collection id */ printf(esc_html__('Collection #%d', 'super-speedy-performance-analysis'), (int) $sspa_traffic_collection['id']); ?></h3>
             <table class="widefat striped sspa-traffic-summary"><tbody>
                 <tr><th><?php esc_html_e('State', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="status"><?php echo esc_html($sspa_traffic_collection['status']); ?></td></tr>
                 <tr><th><?php esc_html_e('Started', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="started_at"><?php echo esc_html($sspa_traffic_collection['started_at'] ?: '—'); ?></td></tr>
                 <tr><th><?php esc_html_e('Request collection ends', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="collect_until"><?php echo esc_html($sspa_traffic_collection['collect_until'] ?: '—'); ?></td></tr>
                 <tr><th><?php esc_html_e('Order outcome window ends', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="outcomes_until"><?php echo esc_html($sspa_traffic_collection['outcomes_until'] ?: '—'); ?></td></tr>
-                <tr><th><?php esc_html_e('Event rows', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="event_count"><?php echo number_format_i18n((int) $sspa_traffic_collection['event_count']); ?></td></tr>
-                <tr><th><?php esc_html_e('Event ceiling', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="event_ceiling"><?php echo number_format_i18n((int) $sspa_traffic_collection['event_ceiling']); ?></td></tr>
+                <tr><th><?php esc_html_e('Event rows', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="event_count"><?php echo esc_html(number_format_i18n((int) $sspa_traffic_collection['event_count'])); ?></td></tr>
+                <tr><th><?php esc_html_e('Event ceiling', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="event_ceiling"><?php echo esc_html(number_format_i18n((int) $sspa_traffic_collection['event_ceiling'])); ?></td></tr>
                 <tr><th><?php esc_html_e('Event table bytes', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="table_bytes"><?php echo $sspa_traffic_collection['table_bytes'] === null ? esc_html__('Unavailable', 'super-speedy-performance-analysis') : esc_html(size_format((int) $sspa_traffic_collection['table_bytes'])); ?></td></tr>
                 <tr><th><?php esc_html_e('Database pre-flight p95', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="preflight_insert_ms_p95"><?php echo $sspa_traffic_collection['preflight_insert_ms_p95'] === null ? '—' : esc_html($sspa_traffic_collection['preflight_insert_ms_p95'] . ' ms'); ?></td></tr>
                 <tr><th><?php esc_html_e('Observer preparation', 'super-speedy-performance-analysis'); ?></th><td data-traffic-value="observer_us_average"><?php echo $sspa_traffic_collection['observer_us_average'] === null ? '—' : esc_html($sspa_traffic_collection['observer_us_average'] . ' µs average'); ?></td></tr>

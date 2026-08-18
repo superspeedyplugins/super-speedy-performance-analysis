@@ -199,7 +199,12 @@ class SSPA_Traffic_Collection {
         global $wpdb;
         $table = SSPA_Schema::table('traffic_collections');
         $running = implode(',', array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME));
-        $row = $wpdb->get_row("SELECT * FROM $table WHERE blog_id = " . (int) get_current_blog_id() . " AND status_code IN ($running) ORDER BY id DESC LIMIT 1", ARRAY_A);
+        $row = $wpdb->get_row($wpdb->prepare(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $running is a comma-joined list of integer class constants.
+            "SELECT * FROM %i WHERE blog_id = %d AND status_code IN ($running) ORDER BY id DESC LIMIT 1",
+            $table,
+            (int) get_current_blog_id()
+        ), ARRAY_A);
         if ($row) {
             self::reconcile($row);
             $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $row['id']), ARRAY_A);
@@ -213,7 +218,8 @@ class SSPA_Traffic_Collection {
     public static function latest() {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('traffic_collections') . ' WHERE blog_id = %d ORDER BY id DESC LIMIT 1',
+            'SELECT * FROM %i WHERE blog_id = %d ORDER BY id DESC LIMIT 1',
+            SSPA_Schema::table('traffic_collections'),
             get_current_blog_id()
         ), ARRAY_A);
     }
@@ -221,13 +227,14 @@ class SSPA_Traffic_Collection {
     public static function get($collection_id) {
         global $wpdb;
         $row = $wpdb->get_row($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('traffic_collections') . ' WHERE id = %d AND blog_id = %d',
+            'SELECT * FROM %i WHERE id = %d AND blog_id = %d',
+            SSPA_Schema::table('traffic_collections'),
             (int) $collection_id,
             get_current_blog_id()
         ), ARRAY_A);
         if ($row) {
             self::reconcile($row);
-            $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . SSPA_Schema::table('traffic_collections') . ' WHERE id = %d', (int) $collection_id), ARRAY_A);
+            $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM %i WHERE id = %d', SSPA_Schema::table('traffic_collections'), (int) $collection_id), ARRAY_A);
         }
         return $row ?: null;
     }
@@ -421,10 +428,26 @@ class SSPA_Traffic_Collection {
         }
         $id = (int) $status['collection']['id'];
         $table = SSPA_Schema::table('traffic_events');
-        $event_counts = self::group_counts("SELECT event_code code, COUNT(*) total FROM $table WHERE collection_id = %d GROUP BY event_code", $id, array('SSPA_Traffic_Codes', 'event'));
-        $actors = self::group_counts("SELECT actor_state code, COUNT(*) total FROM $table WHERE collection_id = %d AND event_code = 1 GROUP BY actor_state", $id, array('SSPA_Traffic_Codes', 'actor'));
-        $surfaces = self::group_counts("SELECT surface_code code, COUNT(*) total FROM $table WHERE collection_id = %d AND event_code = 1 GROUP BY surface_code", $id, array('SSPA_Traffic_Codes', 'surface'));
-        $pages = self::group_counts("SELECT page_class code, COUNT(*) total FROM $table WHERE collection_id = %d AND event_code = 1 GROUP BY page_class", $id, array('SSPA_Traffic_Codes', 'page_class'));
+        $event_counts = self::label_counts($wpdb->get_results($wpdb->prepare(
+            'SELECT event_code code, COUNT(*) total FROM %i WHERE collection_id = %d GROUP BY event_code',
+            $table,
+            $id
+        ), ARRAY_A), array('SSPA_Traffic_Codes', 'event'));
+        $actors = self::label_counts($wpdb->get_results($wpdb->prepare(
+            'SELECT actor_state code, COUNT(*) total FROM %i WHERE collection_id = %d AND event_code = 1 GROUP BY actor_state',
+            $table,
+            $id
+        ), ARRAY_A), array('SSPA_Traffic_Codes', 'actor'));
+        $surfaces = self::label_counts($wpdb->get_results($wpdb->prepare(
+            'SELECT surface_code code, COUNT(*) total FROM %i WHERE collection_id = %d AND event_code = 1 GROUP BY surface_code',
+            $table,
+            $id
+        ), ARRAY_A), array('SSPA_Traffic_Codes', 'surface'));
+        $pages = self::label_counts($wpdb->get_results($wpdb->prepare(
+            'SELECT page_class code, COUNT(*) total FROM %i WHERE collection_id = %d AND event_code = 1 GROUP BY page_class',
+            $table,
+            $id
+        ), ARRAY_A), array('SSPA_Traffic_Codes', 'page_class'));
         $values = array();
         foreach ($wpdb->get_results($wpdb->prepare(
             "SELECT event_code, currency, COUNT(*) total, SUM(value_minor) value_minor_sum FROM $table WHERE collection_id = %d AND value_minor IS NOT NULL GROUP BY event_code,currency",
@@ -516,10 +539,15 @@ class SSPA_Traffic_Collection {
         return $payload;
     }
 
-    private static function group_counts($sql, $id, $label_callback) {
-        global $wpdb;
+    /**
+     * Turn "code => count" rows into labelled counts.
+     *
+     * Takes the rows rather than the SQL: each caller now prepares its own literal query,
+     * which is what lets the table name go through %i instead of being interpolated.
+     */
+    private static function label_counts($rows, $label_callback) {
         $out = array();
-        foreach ($wpdb->get_results($wpdb->prepare($sql, $id), ARRAY_A) as $row) {
+        foreach ((array) $rows as $row) {
             $out[] = array('label' => call_user_func($label_callback, $row['code']), 'count' => (int) $row['total']);
         }
         return $out;

@@ -131,9 +131,10 @@ class SSPA_Checkout_Flow {
         }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         if (!$run_id) {
-            $run_id = (int) $wpdb->get_var(
-                'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE run_type = 'checkout' AND status IN ('done','failed') ORDER BY id DESC LIMIT 1"
-            );
+            $run_id = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM %i WHERE run_type = 'checkout' AND status IN ('done','failed') ORDER BY id DESC LIMIT 1",
+                SSPA_Schema::table('runs')
+            ));
         }
         if (!$run_id) {
             wp_send_json_success(array('found' => false));
@@ -149,7 +150,8 @@ class SSPA_Checkout_Flow {
         $waterfall['age_seconds'] = max(0, time() - (int) strtotime($run['started'] . ' UTC'));
         $waterfall['findings'] = $wpdb->get_results($wpdb->prepare(
             'SELECT severity, finding_type, component, page_key, evidence, recommendation_key
-             FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d ORDER BY FIELD(severity, %s, %s, %s)',
+             FROM %i WHERE run_id = %d ORDER BY FIELD(severity, %s, %s, %s)',
+            SSPA_Schema::table('findings'),
             $run_id,
             'critical',
             'warn',
@@ -349,6 +351,7 @@ class SSPA_Checkout_Flow {
         $modes[] = array(
             'key' => 'sandbox',
             'label' => $matched
+                /* translators: %s: the sandbox payment gateway label */
                 ? sprintf(__('Sandbox payment - %s', 'super-speedy-performance-analysis'), $matched->label())
                 : __('Sandbox payment', 'super-speedy-performance-analysis'),
             'available' => (bool) $matched,
@@ -483,7 +486,7 @@ class SSPA_Checkout_Flow {
         }
         $admin = (string) get_option('admin_email');
         if (!is_email($admin)) {
-            return 'sspa-perf@' . (string) parse_url(home_url(), PHP_URL_HOST);
+            return 'sspa-perf@' . (string) wp_parse_url(home_url(), PHP_URL_HOST);
         }
         $tag = is_int($run_id) ? (string) $run_id : (string) $run_id;
         $at = strrpos($admin, '@');
@@ -967,8 +970,23 @@ class SSPA_Checkout_Flow {
         // The transition happened in the loopback, a different process, so this process's
         // order cache is stale - bust it before reading the resulting status, or a completed
         // order still reads as processing.
+        //
+        // wp_cache_delete($order_id, 'orders') is NOT enough, and on its own it is a no-op:
+        // WooCommerce does not key orders by bare id. It keys them
+        // `orders:wc_cache_<prefix>_<id>`, where <prefix> comes from a stored, rotating value,
+        // so the delete above removes a key that never existed. Only rotating that prefix -
+        // which is what invalidate_cache_group() does - actually invalidates the entry.
+        //
+        // Invisible without a persistent object cache, because each process then starts with
+        // an empty cache and the read could not be stale. With Redis or Memcached in front of
+        // it - which is most sites that care about performance, i.e. this plugin's users - the
+        // panel reported "processing -> processing" for an order that really did complete.
+        // Reproduced 16 August 2026 and covered by .tests/cases/33-order-management.php.
         wp_cache_delete($order_id, 'orders');
         clean_post_cache($order_id);
+        if (class_exists('WC_Cache_Helper')) {
+            WC_Cache_Helper::invalidate_cache_group('orders');
+        }
         $fresh = wc_get_order($order_id);
         $result['notes']['complete_to_status'] = $fresh ? $fresh->get_status() : null;
     }
@@ -1714,7 +1732,8 @@ class SSPA_Checkout_Flow {
     public static function waterfall($run_id) {
         global $wpdb;
         $rows = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d ORDER BY id ASC',
+            'SELECT * FROM %i WHERE run_id = %d ORDER BY id ASC',
+            SSPA_Schema::table('profiles'),
             (int) $run_id
         ), ARRAY_A);
         if (!$rows) {

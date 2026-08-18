@@ -1,4 +1,5 @@
 <?php
+defined('ABSPATH') || exit;
 // Standalone. Decomposes the per-request PHP "floor" - the cost every page pays before
 // rendering - which single-plugin exclusion can never see when it is spread across many
 // plugins in slices smaller than the noise gate.

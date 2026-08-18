@@ -532,7 +532,9 @@ class SSPA_Traffic_Hot_Path {
         }
         $columns = '(collection_id,observed_at,actor_key,related_actor_key,commerce_key,path_key,event_code,actor_state,surface_code,page_class,status_code,wall_ms,cpu_us,query_count,observer_us,value_minor,currency,flags)';
         $sql = 'INSERT INTO `' . esc_sql(self::$config['table']) . '` ' . $columns . ' VALUES ' . implode(',', $groups);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is built above from literal column names and generated %s/%d/NULL placeholders only; every value goes in through $values.
         $prepared = $wpdb->prepare($sql, $values);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $prepared is the return of $wpdb->prepare() on the line above.
         $inserted = $wpdb->query($prepared);
         if ($inserted === false) {
             self::retire('database_error');
@@ -548,6 +550,7 @@ class SSPA_Traffic_Hot_Path {
         $observer = self::$config['observer_path'];
         $stopped = self::$config['stopped_path'];
         if (is_file($observer)) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- retirement path inside the observer's hot path; runs before the plugin (and WP_Filesystem) is available and must stay dependency-free.
             @rename($observer, $stopped);
             @file_put_contents($stopped, sanitize_key($reason));
         }

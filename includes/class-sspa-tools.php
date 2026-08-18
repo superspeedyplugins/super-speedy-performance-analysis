@@ -245,10 +245,11 @@ class SSPA_Tools {
     public static function frame_truncation() {
         global $wpdb;
 
-        $run_id = (int) $wpdb->get_var(
-            'SELECT id FROM ' . SSPA_Schema::table('runs') . " WHERE status = 'done'
-             AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1"
-        );
+        $run_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM %i WHERE status = 'done'
+             AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('runs')
+        ));
         if (!$run_id) {
             return null;
         }
@@ -256,8 +257,9 @@ class SSPA_Tools {
         $queries = 0;
         $truncated = 0;
         foreach ($wpdb->get_col($wpdb->prepare(
-            'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . '
+            'SELECT profile_blob FROM %i
              WHERE run_id = %d AND profile_blob IS NOT NULL',
+            SSPA_Schema::table('profiles'),
             $run_id
         )) as $blob) {
             $json = @gzuncompress($blob);
@@ -495,7 +497,8 @@ class SSPA_Tools {
 
         if ($key === 'performance_schema') {
             return sprintf(
-                __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and need read access to MySQL's performance_schema statistics.\n\nCould you please:\n1. Ensure performance_schema is enabled on the database server (MariaDB has it off by default).\n2. Run: %s\n\nThis is read-only access to query statistics. It grants no access to any data and cannot modify anything.\n\nMySQL version reported to my site: %s\n\nThank you.", 'super-speedy-performance-analysis'),
+                /* translators: 1: the GRANT statement to run, 2: the MySQL version this site reports */
+                __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and need read access to MySQL's performance_schema statistics.\n\nCould you please:\n1. Ensure performance_schema is enabled on the database server (MariaDB has it off by default).\n2. Run: %1\$s\n\nThis is read-only access to query statistics. It grants no access to any data and cannot modify anything.\n\nMySQL version reported to my site: %2\$s\n\nThank you.", 'super-speedy-performance-analysis'),
                 str_replace("\n", ' ', self::grant_sql()),
                 $env['mysql']
             );

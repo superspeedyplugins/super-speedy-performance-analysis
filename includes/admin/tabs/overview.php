@@ -83,11 +83,12 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <p><strong><?php echo esc_html($sspa_cache_rendered['headline']); ?></strong></p>
             <p>
                 <span class="sspa-badge"><?php echo esc_html(isset($sspa_shared_cache_labels[$sspa_shared_cache_status]) ? $sspa_shared_cache_labels[$sspa_shared_cache_status] : __('Not assessed', 'super-speedy-performance-analysis')); ?></span>
-                <span class="sspa-badge"><?php printf(esc_html__('Review difficulty: %s', 'super-speedy-performance-analysis'), esc_html(isset($sspa_cache_evidence['difficulty']) ? $sspa_cache_evidence['difficulty'] : __('unknown', 'super-speedy-performance-analysis'))); ?></span>
+                <span class="sspa-badge"><?php /* translators: %s: review difficulty, e.g. "low" */ printf(esc_html__('Review difficulty: %s', 'super-speedy-performance-analysis'), esc_html(isset($sspa_cache_evidence['difficulty']) ? $sspa_cache_evidence['difficulty'] : __('unknown', 'super-speedy-performance-analysis'))); ?></span>
             </p>
             <p class="description"><?php echo esc_html($sspa_cache_rendered['detail']); ?></p>
             <p class="description">
                 <?php printf(
+                    /* translators: 1: Type A marker count, 2: Type B region count, 3: cart-fragment marker count, 4: files inspected, 5: components covered */
                     esc_html__('Existing coverage found: %1$d Type A marker(s), %2$d Type B region(s), %3$d cart-fragment marker(s). The bounded source scan inspected %4$d file(s) across %5$d component(s).', 'super-speedy-performance-analysis'),
                     (int) ($sspa_cache_totals['type_a_markers'] ?? 0),
                     (int) ($sspa_cache_totals['type_b_regions'] ?? 0),
@@ -98,6 +99,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             </p>
             <?php if (!empty($sspa_cache_evidence['source_scan']['truncated'])) : ?>
                 <p class="description"><?php printf(
+                    /* translators: %d: number of components whose source scan hit the safety limit */
                     esc_html__('Source inspection reached a safety limit for %d component(s); those components are listed in the download rather than silently treated as fully scanned.', 'super-speedy-performance-analysis'),
                     count((array) ($sspa_cache_evidence['source_scan']['components_truncated'] ?? array()))
                 ); ?></p>
@@ -113,7 +115,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                             echo esc_html(isset($sspa_hazard_labels[$sspa_hazard_type]) ? $sspa_hazard_labels[$sspa_hazard_type] : str_replace('_', ' ', $sspa_hazard_type));
                             ?>
                             <?php if (!empty($sspa_hazard['pages'])) : ?>
-                                <?php printf(esc_html__('%d page type(s)', 'super-speedy-performance-analysis'), (int) $sspa_hazard['pages']); ?>
+                                <?php /* translators: %d: number of page types */ printf(esc_html__('%d page type(s)', 'super-speedy-performance-analysis'), (int) $sspa_hazard['pages']); ?>
                             <?php endif; ?>
                             <?php if (!empty($sspa_hazard['names'])) : ?>
                                 <br><code><?php echo esc_html(implode(', ', (array) $sspa_hazard['names'])); ?></code>
@@ -127,7 +129,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
 
             <?php if (!empty($sspa_cache_evidence['pages'])) : ?>
                 <details>
-                    <summary><?php printf(esc_html__('%d page type(s) scanned', 'super-speedy-performance-analysis'), count((array) $sspa_cache_evidence['pages'])); ?></summary>
+                    <summary><?php /* translators: %d: number of page types scanned */ printf(esc_html__('%d page type(s) scanned', 'super-speedy-performance-analysis'), count((array) $sspa_cache_evidence['pages'])); ?></summary>
                     <table class="widefat striped">
                         <thead><tr>
                             <th><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?></th>
@@ -165,7 +167,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
 
             <?php if (!empty($sspa_cache_evidence['candidate_components'])) : ?>
                 <details>
-                    <summary><?php printf(esc_html__('%d component(s) worth inspecting first', 'super-speedy-performance-analysis'), count((array) $sspa_cache_evidence['candidate_components'])); ?></summary>
+                    <summary><?php /* translators: %d: number of components worth inspecting first */ printf(esc_html__('%d component(s) worth inspecting first', 'super-speedy-performance-analysis'), count((array) $sspa_cache_evidence['candidate_components'])); ?></summary>
                     <ol class="sspa-insights">
                         <?php foreach (array_slice((array) $sspa_cache_evidence['candidate_components'], 0, 15) as $sspa_candidate) : ?>
                             <li>
@@ -173,7 +175,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                                 <span class="sspa-badge"><?php echo esc_html(isset($sspa_candidate['review_priority']) ? $sspa_candidate['review_priority'] : ($sspa_candidate['risk'] ?? __('unknown', 'super-speedy-performance-analysis'))); ?></span>
                                 <span class="description"><?php echo esc_html(implode(', ', array_map(function ($signal) { return str_replace('_', ' ', $signal); }, (array) $sspa_candidate['signals']))); ?></span>
                                 <?php if (!empty($sspa_candidate['observed_pages'])) : ?>
-                                    <br><span class="description"><?php printf(esc_html__('Observed while rendering: %s', 'super-speedy-performance-analysis'), esc_html(implode(', ', (array) $sspa_candidate['observed_pages']))); ?></span>
+                                    <br><span class="description"><?php /* translators: %s: comma-separated page keys the component was observed on */ printf(esc_html__('Observed while rendering: %s', 'super-speedy-performance-analysis'), esc_html(implode(', ', (array) $sspa_candidate['observed_pages']))); ?></span>
                                 <?php endif; ?>
                                 <?php if (!empty($sspa_candidate['evidence'])) : ?>
                                     <ul>
@@ -282,7 +284,8 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             );
             if (!empty($sspa_deep_notes['phase2_plugins'])) {
                 echo ' ' . esc_html(sprintf(
-                    __('%d plugin(s) showed impact in the screening pass and got the full page-by-page treatment%s.', 'super-speedy-performance-analysis'),
+                    /* translators: 1: number of plugins, 2: optional extra clause about cache modes */
+                    __('%1$d plugin(s) showed impact in the screening pass and got the full page-by-page treatment%2$s.', 'super-speedy-performance-analysis'),
                     (int) $sspa_deep_notes['phase2_plugins'],
                     count((array) ($sspa_deep_notes['modes'] ?? array())) > 1 ? __(' including object-cache-disabled and priming measurements', 'super-speedy-performance-analysis') : ''
                 ));
@@ -290,6 +293,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             $sspa_unres = $sspa_deep_notes['unresolved'] ?? 0;
             $sspa_unres = is_array($sspa_unres) ? count($sspa_unres) : (int) $sspa_unres;
             if ($sspa_unres) {
+                /* translators: %d: number of plugin/page cells that could not be measured */
                 echo ' ' . esc_html(sprintf(__('%d cell(s) could not be measured (page failed without the plugin - usually a dependency).', 'super-speedy-performance-analysis'), $sspa_unres));
             }
             ?>
@@ -325,6 +329,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         <p>
             <?php
             $bits = array();
+            /* translators: %s: the site sector, e.g. "retail" */
             $bits[] = sprintf(__('Sector: %s', 'super-speedy-performance-analysis'), $sspa_demo['sector']);
             foreach (array('post' => 'posts', 'page' => 'pages', 'product' => 'products') as $pt => $label) {
                 if (!empty($m['post_counts'][$pt])) {
@@ -345,18 +350,18 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     <?php endif; ?>
 
     <?php
-    $sspa_blob_bytes = (int) $wpdb->get_var('SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM ' . SSPA_Schema::table('profiles'));
-    $sspa_run_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $sspa_runs_table");
+    $sspa_blob_bytes = (int) $wpdb->get_var($wpdb->prepare('SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM %i', SSPA_Schema::table('profiles')));
+    $sspa_run_count = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i', $sspa_runs_table));
     $sspa_retention = (int) sspa_get_option('blob_retention_runs');
     ?>
     <div class="sspa-placeholder">
         <h2><?php esc_html_e('Stored data', 'super-speedy-performance-analysis'); ?></h2>
         <p>
-            <?php printf(esc_html__('Detailed profile data: %1$s across %2$d runs. Summary metrics and findings are kept forever; only the detailed per-query data below is prunable.', 'super-speedy-performance-analysis'), esc_html(size_format($sspa_blob_bytes)), $sspa_run_count); ?>
+            <?php /* translators: 1: total size of stored profile data, 2: number of runs */ printf(esc_html__('Detailed profile data: %1$s across %2$d runs. Summary metrics and findings are kept forever; only the detailed per-query data below is prunable.', 'super-speedy-performance-analysis'), esc_html(size_format($sspa_blob_bytes)), (int) $sspa_run_count); ?>
         </p>
         <p>
             <button type="button" class="button" id="sspa-prune-blobs" data-keep="<?php echo esc_attr($sspa_retention); ?>">
-                <?php printf(esc_html__('Delete detailed data older than the last %d runs', 'super-speedy-performance-analysis'), $sspa_retention); ?>
+                <?php /* translators: %d: number of runs of detailed data kept */ printf(esc_html__('Delete detailed data older than the last %d runs', 'super-speedy-performance-analysis'), (int) $sspa_retention); ?>
             </button>
             <span class="description"><?php esc_html_e('When sharing is enabled, affected runs are saved to the durable local submission queue before their detailed source data is deleted.', 'super-speedy-performance-analysis'); ?></span>
         </p>
@@ -369,7 +374,17 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         <li>
             <?php echo $sspa_health['mu'] ? '&#9989;' : '&#10060;'; ?>
             <?php esc_html_e('Profiler loader (mu-plugin)', 'super-speedy-performance-analysis'); ?>:
-            <?php echo $sspa_health['mu'] ? esc_html__('installed', 'super-speedy-performance-analysis') : esc_html__('not installed - wp-content/mu-plugins is not writable', 'super-speedy-performance-analysis'); ?>
+            <?php
+            if ($sspa_health['mu']) {
+                esc_html_e('installed', 'super-speedy-performance-analysis');
+            } elseif (!empty($sspa_health['file_mods_blocked'])) {
+                // A deliberate site setting, not a permissions problem. Saying "not writable"
+                // here would send the user to chmod something that is not the cause.
+                esc_html_e('not installed - this site sets DISALLOW_FILE_MODS, which forbids plugins from writing files', 'super-speedy-performance-analysis');
+            } else {
+                esc_html_e('not installed - wp-content/mu-plugins is not writable', 'super-speedy-performance-analysis');
+            }
+            ?>
         </li>
         <li>
             <?php
@@ -411,7 +426,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                 /* translators: 1: date, 2: page count */
                 esc_html__('Last analysis: %1$s (%2$d pages profiled).', 'super-speedy-performance-analysis'),
                 esc_html(get_date_from_gmt($sspa_last_run['finished'], get_option('date_format') . ' ' . get_option('time_format'))),
-                (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d', $sspa_last_run['id']))
+                (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id = %d', SSPA_Schema::table('profiles'), $sspa_last_run['id']))
             );
             ?>
             <?php esc_html_e('See the Pages tab for results.', 'super-speedy-performance-analysis'); ?>

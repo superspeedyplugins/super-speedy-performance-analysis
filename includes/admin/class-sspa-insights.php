@@ -27,7 +27,8 @@ class SSPA_Insights {
     public static function all_of_type($run_id, $finding_type) {
         global $wpdb;
         return $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d AND finding_type = %s ORDER BY id ASC',
+            'SELECT * FROM %i WHERE run_id = %d AND finding_type = %s ORDER BY id ASC',
+            SSPA_Schema::table('findings'),
             (int) $run_id,
             $finding_type
         ), ARRAY_A);
@@ -39,7 +40,8 @@ class SSPA_Insights {
     public static function standalone($run_id, $finding_type) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('findings') . ' WHERE run_id = %d AND finding_type = %s ORDER BY id DESC LIMIT 1',
+            'SELECT * FROM %i WHERE run_id = %d AND finding_type = %s ORDER BY id DESC LIMIT 1',
+            SSPA_Schema::table('findings'),
             (int) $run_id,
             $finding_type
         ), ARRAY_A);
@@ -47,12 +49,13 @@ class SSPA_Insights {
 
     public static function top($run_id, $limit = 5) {
         global $wpdb;
-        $excluded = "'" . implode("','", array_map('esc_sql', self::STANDALONE)) . "'";
+        $excluded = implode(',', array_fill(0, count(self::STANDALONE), '%s'));
         $rows = $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $excluded is a generated run of %s placeholders, one per STANDALONE entry.
+            "SELECT * FROM %i WHERE run_id = %d
              AND finding_type NOT IN ($excluded)
              ORDER BY FIELD(severity, 'critical', 'warn', 'info'), id ASC",
-            $run_id
+            array_merge(array(SSPA_Schema::table('findings'), $run_id), self::STANDALONE)
         ), ARRAY_A);
 
         // Secondary ordering: biggest measured impact first within each severity.
@@ -93,6 +96,7 @@ class SSPA_Insights {
         $via_note = '';
         if (!empty($e['via'])) {
             $via_note = ' ' . sprintf(
+                /* translators: %s: the component the work actually happened in, e.g. "woocommerce" */
                 __('(work done in %s, charged here because this is what called it)', 'super-speedy-performance-analysis'),
                 $e['via']
             );
@@ -100,11 +104,13 @@ class SSPA_Insights {
 
         // What EXPLAIN said is wrong with the query plan, when we managed to get one.
         $plan_line = !empty($e['plan_note'])
+            /* translators: %s: the MySQL query plan note, e.g. "full table scan on wp_postmeta" */
             ? sprintf(__('Query plan: %s. (Row counts are MySQL\'s estimate, not a measurement.)', 'super-speedy-performance-analysis'), $e['plan_note'])
             : '';
 
         switch ($finding['finding_type']) {
             case 'slow_query':
+                /* translators: 1: component name, 2: milliseconds, 3: page key */
                 $headline = sprintf(__('%1$s ran a %2$sms query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((float) $e['ms']), $page) . $via_note;
                 $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
@@ -156,11 +162,14 @@ class SSPA_Insights {
                 ));
                 break;
             case 'big_result_set':
+                /* translators: 1: component name, 2: number of rows, 3: page key */
                 $headline = sprintf(__('%1$s fetched %2$s rows in a single query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((int) $e['rows']), $page) . $via_note;
                 $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
             case 'query_loop':
+                /* translators: 1: component name, 2: number of queries, 3: page key */
                 $headline = sprintf(__('%1$s ran %2$d queries on %3$s', 'super-speedy-performance-analysis'), $component, (int) $e['query_count'], $page);
+                /* translators: 1: milliseconds of SQL, 2: number of rows fetched */
                 $detail = sprintf(__('%1$sms of SQL, %2$s rows fetched. Query counts like this usually mean queries inside a loop and grow with your content.', 'super-speedy-performance-analysis'), number_format((float) $e['sql_ms'], 1), number_format((int) $e['rows']));
                 // Name where they ran. "plugin-b ran 70 queries" is much less actionable than
                 // "70 of them inside woocommerce" - that says it is looping over an API.
@@ -183,22 +192,28 @@ class SSPA_Insights {
                 }
                 break;
             case 'dupe_queries':
+                /* translators: 1: component name, 2: number of times the query repeated, 3: page key */
                 $headline = sprintf(__('%1$s ran the identical query %2$d times on %3$s', 'super-speedy-performance-analysis'), $component, (int) $e['count'], $page);
                 $detail = !empty($e['sql']) ? $e['sql'] : '';
                 break;
             case 'slow_http':
+                /* translators: 1: component name, 2: milliseconds, 3: outbound URL called, 4: page key */
                 $headline = sprintf(__('%1$s blocked page render for %2$sms calling %3$s (on %4$s)', 'super-speedy-performance-analysis'), $component, number_format((float) $e['ms']), $e['url'], $page);
                 break;
             case 'blocking_mail':
+                /* translators: 1: component name, 2: milliseconds, 3: page key */
                 $headline = sprintf(__('%1$s spent %2$sms building an email during %3$s', 'super-speedy-performance-analysis'), $component, number_format((float) $e['construct_ms']), $page);
                 break;
             case 'cache_blind':
+                /* translators: 1: component name, 2: queries with the object cache on, 3: queries with it off, 4: percentage saved */
                 $headline = sprintf(__('%1$s ignores your object cache (%2$d queries with it, %3$d without - %4$d%% saved)', 'super-speedy-performance-analysis'), $component, (int) $e['queries_on'], (int) $e['queries_off'], (int) $e['saved_pct']);
                 break;
             case 'cache_friendly':
+                /* translators: 1: component name, 2: percentage of queries saved */
                 $headline = sprintf(__('%1$s uses the object cache well (%2$d%% of its queries saved)', 'super-speedy-performance-analysis'), $component, (int) $e['saved_pct']);
                 break;
             case 'autoload_bloat':
+                /* translators: %s: total size of autoloaded options, e.g. "1.2 MB" */
                 $headline = sprintf(__('Autoloaded options are %s - loaded on every request', 'super-speedy-performance-analysis'), size_format((int) $e['autoload_bytes']));
                 break;
             case 'autoload_coverage':
@@ -213,12 +228,14 @@ class SSPA_Insights {
                 break;
             case 'environment':
                 if ('old_php' === $finding['recommendation_key']) {
+                    /* translators: %s: the PHP version in use, e.g. "7.4" */
                     $headline = sprintf(__('PHP %s is holding this site back', 'super-speedy-performance-analysis'), $e['php']);
                 } else {
                     $headline = __('Large database with no persistent object cache', 'super-speedy-performance-analysis');
                 }
                 break;
             case 'duplicate_functionality':
+                /* translators: 1: number of plugins, 2: plugin category, 3: comma-separated plugin names */
                 $headline = sprintf(__('%1$d overlapping %2$s plugins active: %3$s', 'super-speedy-performance-analysis'), count($e['plugins']), $e['category'], implode(', ', $e['plugins']));
                 break;
             case 'isolation_reaction':
@@ -254,6 +271,7 @@ class SSPA_Insights {
                 );
                 break;
             case 'security_block':
+                /* translators: 1: the layer that blocked profiling, 2: number of pages affected */
                 $headline = sprintf(__('%1$s blocked profiling of %2$d page(s)', 'super-speedy-performance-analysis'), $e['layer'], count((array) $e['pages']));
                 $detail = implode(', ', (array) $e['pages']);
                 break;

@@ -2,7 +2,7 @@
 defined('ABSPATH') || exit;
 
 global $wpdb;
-$sspa_runs = $wpdb->get_results('SELECT * FROM ' . SSPA_Schema::table('runs') . ' ORDER BY id DESC LIMIT 50', ARRAY_A);
+$sspa_runs = $wpdb->get_results($wpdb->prepare('SELECT * FROM %i ORDER BY id DESC LIMIT 50', SSPA_Schema::table('runs')), ARRAY_A);
 $sspa_optin = SSPA_Submitter::opted_in();
 
 // Plain names for the analysis types, so the share control says what it would actually send.
@@ -55,9 +55,10 @@ if (!$sspa_runs) : ?>
         <tbody>
         <?php foreach ($sspa_runs as $run) :
             $notes = json_decode((string) $run['notes'], true);
-            $pages = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d', $run['id']));
+            $pages = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id = %d', SSPA_Schema::table('profiles'), $run['id']));
             $median_gen = $wpdb->get_var($wpdb->prepare(
-                'SELECT AVG(page_gen_ms) FROM ' . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND page_gen_ms IS NOT NULL AND page_key != 'baseline'",
+                "SELECT AVG(page_gen_ms) FROM %i WHERE run_id = %d AND page_gen_ms IS NOT NULL AND page_key != 'baseline'",
+                SSPA_Schema::table('profiles'),
                 $run['id']
             ));
             $sspa_label = isset($sspa_type_labels[$run['run_type']]) ? $sspa_type_labels[$run['run_type']] : $run['run_type'];
@@ -72,14 +73,14 @@ if (!$sspa_runs) : ?>
                 <td><?php echo esc_html($run['run_type']); ?></td>
                 <td><?php echo esc_html($run['started']); ?></td>
                 <td><?php echo esc_html($run['status']); ?></td>
-                <td><?php echo $pages; ?></td>
+                <td><?php echo (int) $pages; ?></td>
                 <td><?php echo $median_gen !== null ? esc_html(number_format((float) $median_gen, 1)) : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['findings']) ? (int) $notes['findings'] : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['score']) ? (int) $notes['score'] . '/100' : '-'; ?></td>
                 <td>
                     <?php if ($sspa_run_versions) : ?>
                         <details class="sspa-run-components">
-                            <summary><?php printf(esc_html(_n('%d component', '%d components', count($sspa_run_versions), 'super-speedy-performance-analysis')), count($sspa_run_versions)); ?></summary>
+                            <summary><?php /* translators: %d: number of components recorded for this run */ printf(esc_html(_n('%d component', '%d components', count($sspa_run_versions), 'super-speedy-performance-analysis')), count($sspa_run_versions)); ?></summary>
                             <ul>
                                 <?php foreach ($sspa_run_versions as $sspa_component_key => $sspa_component_version) : ?>
                                     <li>
@@ -104,7 +105,7 @@ if (!$sspa_runs) : ?>
                         <button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="<?php echo (int) $sspa_outbox['id']; ?>"><?php esc_html_e('Preview data', 'super-speedy-performance-analysis'); ?></button>
                     <?php elseif ($sspa_shareable) : ?>
                         <button type="button" class="button button-small sspa-share-run" data-run-id="<?php echo (int) $run['id']; ?>">
-                            <?php printf(esc_html__('Share this %s', 'super-speedy-performance-analysis'), esc_html($sspa_label)); ?>
+                            <?php /* translators: %s: analysis type, e.g. "full scan" */ printf(esc_html__('Share this %s', 'super-speedy-performance-analysis'), esc_html($sspa_label)); ?>
                         </button>
                     <?php else : ?>
                         <span class="description"><?php esc_html_e('Not shareable', 'super-speedy-performance-analysis'); ?></span>

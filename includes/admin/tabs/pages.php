@@ -39,12 +39,15 @@ if (!$sspa_last_run_id) : ?>
      * score computed over whichever pages happened to be checked by hand is not a site score.
      */
     $sspa_profiles = $wpdb->get_results($wpdb->prepare(
-        'SELECT p.*, r.run_type FROM ' . SSPA_Schema::table('profiles') . ' p
-         INNER JOIN ' . $sspa_runs_table . " r ON r.id = p.run_id
+        "SELECT p.*, r.run_type FROM %i p
+         INNER JOIN %i r ON r.id = p.run_id
          WHERE r.status = 'done' AND p.plugin_set_hash = ''
-           AND (p.run_id = %d OR (r.run_type = 'adhoc' AND p.page_key NOT LIKE 'url-%%'))
+           AND (p.run_id = %d OR (r.run_type = 'adhoc' AND p.page_key NOT LIKE %s))
          ORDER BY p.id ASC",
-        $sspa_last_run_id
+        SSPA_Schema::table('profiles'),
+        $sspa_runs_table,
+        $sspa_last_run_id,
+        $wpdb->esc_like('url-') . '%'
     ), ARRAY_A);
 
     $sspa_newest = array();
@@ -96,6 +99,7 @@ if (!$sspa_last_run_id) : ?>
                 <td>
                     <?php
                     if ($p['blocked_by']) {
+                        /* translators: %s: the layer that blocked profiling of this page */
                         echo '<span class="sspa-blocked">' . esc_html(sprintf(__('blocked by %s', 'super-speedy-performance-analysis'), $p['blocked_by'])) . '</span>';
                     } elseif ($p['page_gen_ms'] === null && 'baseline' !== $p['page_key']) {
                         echo '<span class="sspa-blocked">' . esc_html__('not measured - cache served it', 'super-speedy-performance-analysis') . '</span>';
