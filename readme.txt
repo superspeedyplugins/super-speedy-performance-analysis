@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.23
+Stable tag: 0.23.5
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -44,6 +44,11 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Added a privacy-checked experimental observations download for feeding real collection results and limitations back into the Traffic Performance Analysis design
 * Stopped experimental collections can be permanently deleted with their raw event rows and temporary join key from the Traffic tab or WP-CLI; destructive deletion is deliberately not exposed through MCP
 * Renamed the immediate shared-cache scan to Cache optimisation analysis in the GUI, CLI and MCP while retaining the existing `sspa/shared-cache-safety-report@2` schema and `wp sspa cache-scan` compatibility alias
+* Fixed the checkout flow reporting an order's completion transition as `processing` to `processing` on sites with a persistent object cache
+* Cleared every Plugin Check (PCP) error: table names now go through `$wpdb->prepare()`'s `%i` placeholder, admin output is escaped, and translatable strings with placeholders carry translators comments
+* Sites that set `DISALLOW_FILE_MODS` are respected: no helper files are written, and the health line and run errors name the constant instead of file permissions
+* Added a wordpress.org edition build that omits the bundled update checker
+* Tested the full suite on PHP 8.1 through 8.5
 
 = 0.22 (13th August 2026) =
 * Checkout results now show the synthetic order's email address, WooCommerce order number, coupons and line items so fulfilment teams can identify and ignore it
