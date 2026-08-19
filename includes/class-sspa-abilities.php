@@ -25,6 +25,7 @@ class SSPA_Abilities {
         return array(
             self::CATEGORY . '/get-status',
             self::CATEGORY . '/get-report',
+            self::CATEGORY . '/get-http-calls',
             self::CATEGORY . '/get-archive-profile',
             self::CATEGORY . '/get-cache-optimisation-analysis',
             self::CATEGORY . '/get-cache-safety-report',
@@ -130,6 +131,24 @@ class SSPA_Abilities {
             'output_schema' => array('type' => 'object'),
             'permission_callback' => array(__CLASS__, 'can_manage'),
             'execute_callback' => array(__CLASS__, 'exec_get_report'),
+            'meta' => $readonly,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-http-calls', array(
+            'label' => __('Get outbound HTTP API calls', 'super-speedy-performance-analysis'),
+            'description' => __('Read the complete privacy-safe inventory of outbound WordPress HTTP API calls from the latest baseline or spot analysis. Calls are grouped by normalised endpoint, method and owning component, with page occurrence, purpose and fail-safe block classification for consumers such as Scalability Pro.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'run_id' => array('type' => 'integer', 'description' => __('Specific completed baseline or spot run; defaults to the latest.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_http_calls'),
             'meta' => $readonly,
         ));
 
@@ -456,6 +475,10 @@ class SSPA_Abilities {
     public static function exec_get_report($input) {
         $report = SSPA_Report::build(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
         return is_wp_error($report) ? $report : $report;
+    }
+
+    public static function exec_get_http_calls($input) {
+        return SSPA_Report::http_calls(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_archive_profile($input) {

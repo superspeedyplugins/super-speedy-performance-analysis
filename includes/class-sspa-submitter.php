@@ -113,6 +113,7 @@ class SSPA_Submitter {
             'sspa/plugin-toggle-spot' => __('plugin activation spot checks', 'super-speedy-performance-analysis'),
             'sspa/adhoc-page-profile' => __('single page timings', 'super-speedy-performance-analysis'),
             'sspa/component-state' => __('performance settings published by plugins that opted in', 'super-speedy-performance-analysis'),
+            'sspa/http-call' => __('privacy-normalised outbound HTTP API call aggregates', 'super-speedy-performance-analysis'),
         );
         $includes = array();
         foreach ($counts as $type => $n) {
@@ -146,6 +147,7 @@ class SSPA_Submitter {
                 __('your domain name and every URL', 'super-speedy-performance-analysis'),
                 __('filesystem paths', 'super-speedy-performance-analysis'),
                 __('raw SQL - queries are reduced to a shape with all values removed', 'super-speedy-performance-analysis'),
+                __('HTTP query values, request bodies, headers, cookies and account, install, order or payment identifiers', 'super-speedy-performance-analysis'),
                 __('any customer, order, user or email data', 'super-speedy-performance-analysis'),
                 // The narrower promise. Until 0.20.0 this said "option and setting values" with
                 // no exception, and that was true. A plugin can now publish its own performance

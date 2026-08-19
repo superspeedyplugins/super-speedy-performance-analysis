@@ -17,6 +17,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <p><?php esc_html_e('Site characteristics travel as size bands, never exact counts: what kind of site this is (for example an online shop that also publishes), and roughly how much of everything it holds - posts, pages, products, orders in total and in the last 30 days, users, comments, database size and how many plugins are active. Bands are ranges such as "under 10,000", so a payload cannot say how many orders you took.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('A checkout analysis sends two separate records. The customer flow holds the ordered steps a shopper waits through, split at the payment; the order-management flow holds what you as the shop owner then wait through - opening the order and marking it completed - with its own total, so admin time is never mixed into the customer figure. Both carry step timings and status names only, never an order, product, customer or address.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('A plugin can also publish its own performance settings, so a measurement can be told apart from the same site measured with different settings. Only plugins that have deliberately opted in do this, and each one chooses exactly which of its settings to publish; this plugin never reads another plugin\'s options itself. Licence keys, credentials and anything you typed in free text are not published.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('Outbound WordPress HTTP API calls are shared as aggregates: the responsible plugin, normalised external endpoint, method, timing, page class, likely purpose and whether blocking it could affect payments or order fulfilment. Query values, request contents, headers, cookies, account, install, order and payment identifiers are never included.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Anonymisation happens in this plugin before the payload enters the local queue. Your domain, URLs, filesystem paths, raw SQL, credentials, emails, customer/order data and request contents are forbidden. A privacy validation failure prevents the payload from being queued or sent.', 'super-speedy-performance-analysis'); ?></p>
 
     <h3><?php esc_html_e('1. Share every analysis automatically', 'super-speedy-performance-analysis'); ?></h3>
@@ -30,13 +31,20 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         <?php esc_html_e('Covers every full scan, spot check, plugin impact analysis, cache analysis, page analysis and checkout analysis, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
         <?php
         printf(
-            /* translators: 1: consent text version number, 2: optional " accepted <date> UTC" clause */
-            esc_html__('Consent text version %1$d%2$s. Turning sharing off stops new payload creation and delivery attempts; it does not delete already archived evidence.', 'super-speedy-performance-analysis'),
+            /* translators: 1: current consent text version number, 2: accepted consent text version and date */
+            esc_html__('Current consent text version %1$d%2$s. Turning sharing off stops new payload creation and delivery attempts; it does not delete already archived evidence.', 'super-speedy-performance-analysis'),
             (int) SSPA_Community_Schema::CONSENT_VERSION,
-            $sspa_consent_version && $sspa_consented_at ? ' accepted ' . esc_html($sspa_consented_at) . ' UTC' : ''
+            $sspa_consent_version && $sspa_consented_at
+                ? ' · ' . sprintf(esc_html__('accepted version %1$d on %2$s UTC', 'super-speedy-performance-analysis'), $sspa_consent_version, esc_html($sspa_consented_at))
+                : ''
         );
         ?>
     </p>
+    <?php if ($sspa_optin && $sspa_consent_version < SSPA_Community_Schema::CONSENT_VERSION) : ?>
+        <p class="notice notice-info inline">
+            <?php esc_html_e('Sharing still uses the version you accepted and does not include outbound HTTP API aggregates. Switch sharing off and on again after reviewing the text above to include them.', 'super-speedy-performance-analysis'); ?>
+        </p>
+    <?php endif; ?>
 
     <?php
     // Every plugin publishing its own settings, in its own words, each with its own switch.

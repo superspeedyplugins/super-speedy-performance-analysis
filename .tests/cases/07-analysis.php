@@ -129,6 +129,13 @@ sspa_t($f !== null, 'blocking HTTP call caught');
 if ($f) {
     sspa_t($f['severity'] === 'critical', 'front-end blocking HTTP is critical');
 }
+$http_blob = $wpdb->get_var($wpdb->prepare(
+    "SELECT profile_blob FROM " . SSPA_Schema::table('profiles') . " WHERE run_id = %d AND page_key = 'home'",
+    $run_id
+));
+$http_capture = $http_blob ? json_decode(gzuncompress($http_blob), true) : null;
+$captured_http = is_array($http_capture) && !empty($http_capture['http']['calls']) ? $http_capture['http']['calls'][0] : null;
+sspa_t(is_array($captured_http) && 'http' === $captured_http['scheme'] && false === $captured_http['sslverify'], 'HTTP capture persists scheme and sslverify for the public inventory');
 
 // Insights render without notices and name the plugin in the top 5.
 $top = SSPA_Insights::top($run_id, 5);

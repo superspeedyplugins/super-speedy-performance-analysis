@@ -257,6 +257,11 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   classic order creation, delayed payment and an excluded admin-created order. It proves the
   actor and commerce joins, minor-unit/currency fields, privacy-safe observations and prohibited
   customer-data columns.
+- `45-http-api-contract.php` - the stable outbound WordPress HTTP API inventory consumed by
+  Scalability Pro: complete below-threshold coverage, endpoint/method/component aggregation,
+  variable path and query-value privacy, licence/update/telemetry/payment classification,
+  fail-safe block verdicts, identical PHP/Abilities/WP-CLI surfaces, old-capture completeness
+  reporting, and opt-in privacy-safe community evidence for superspeedy.org.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

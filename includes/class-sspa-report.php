@@ -18,6 +18,11 @@ class SSPA_Report {
         ));
     }
 
+    /** Stable outbound WordPress HTTP API inventory for cross-plugin consumers. */
+    public static function http_calls($run_id = 0) {
+        return SSPA_HTTP_API_Report::build($run_id);
+    }
+
     /**
      * @return array|WP_Error
      */

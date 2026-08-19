@@ -10,7 +10,8 @@ if (!class_exists('SSPA_Capture')) {
         // 2 added the `archives` section. A consumer seeing no `archives` key on a schema-1
         // capture must read it as "this run predates the contract", never as "this site has no
         // archives" - the two are indistinguishable from the payload alone.
-        const SCHEMA_VERSION = 2;
+        // 3 adds HTTP scheme and sslverify to the stable outbound-call source data.
+        const SCHEMA_VERSION = 3;
         const FULL_SQL_TOP_N = 20;
         const FULL_SQL_MS = 50;
         const FULL_SQL_ROWS = 200;
@@ -141,12 +142,14 @@ if (!class_exists('SSPA_Capture')) {
                 $q = implode('&', $pairs);
             }
             $this->http_calls[] = array(
+                'scheme' => isset($parts['scheme']) ? strtolower((string) $parts['scheme']) : null,
                 'url' => (isset($parts['host']) ? $parts['host'] : '') . (isset($parts['path']) ? $parts['path'] : ''),
                 'q' => $q,
                 'method' => isset($args['method']) ? $args['method'] : 'GET',
                 'ms' => ($start !== null) ? (microtime(true) - $start) * 1000 : null,
                 'code' => $code,
                 'blocking' => !isset($args['blocking']) || $args['blocking'],
+                'sslverify' => !isset($args['sslverify']) || (bool) $args['sslverify'],
                 'frames' => $frames,
             );
         }

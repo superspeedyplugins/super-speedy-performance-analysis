@@ -59,6 +59,9 @@ class SSPA_Community_Exporter {
         }
 
         $measurement_version = max(1, (int) $run['measurement_version']);
+        $consent_version = ('manual' === $consent_scope)
+            ? SSPA_Community_Schema::CONSENT_VERSION
+            : max(0, (int) get_option('sspa_share_consent_version', 0));
         $inventory = self::inventory_for_run($run, $submission_uuid);
         $versions = array();
         foreach ($inventory as $component) {
@@ -117,6 +120,9 @@ class SSPA_Community_Exporter {
         }
 
         self::add_findings($evidence, $run_id, $measurement_version, $submission_uuid);
+        if ($consent_version >= 3) {
+            self::add_http_calls($evidence, $run_id, $measurement_version, $submission_uuid, $versions);
+        }
         self::add_archives($evidence, $run_id, $measurement_version);
         if ('deep' === $run['run_type']) {
             self::add_impacts($evidence, $run, $measurement_version, $submission_uuid, $versions);
@@ -151,9 +157,7 @@ class SSPA_Community_Exporter {
             'client' => array(
                 'name' => 'super-speedy-performance-analysis',
                 'version' => SSPA_VERSION,
-                'consent_version' => ('manual' === $consent_scope)
-                    ? SSPA_Community_Schema::CONSENT_VERSION
-                    : max(0, (int) get_option('sspa_share_consent_version', 0)),
+                'consent_version' => $consent_version,
             ),
             'anonymisation_version' => SSPA_Community_Schema::ANONYMISATION_VERSION,
             'payload_created_at' => $payload_created_at,
@@ -365,6 +369,56 @@ class SSPA_Community_Exporter {
             'components' => $components,
             'phases' => $phases,
         );
+    }
+
+    /** One aggregate per external endpoint/method/component, with no site or query values. */
+    private static function add_http_calls(&$evidence, $run_id, $measurement_version, $submission_uuid, $versions) {
+        $inventory = SSPA_HTTP_API_Report::build($run_id);
+        if (is_wp_error($inventory)) {
+            return;
+        }
+        $site_host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+        foreach ((array) $inventory['calls'] as $call) {
+            if ('' !== $site_host && 0 === strcasecmp($site_host, (string) $call['host'])) {
+                continue; // a site's own hostname never leaves it
+            }
+            $component = SSPA_Community_Privacy::component($call['component'], $call['component_type'], $submission_uuid);
+            $version_key = $component['type'] . ':' . $component['slug'];
+            $page_classes = array();
+            foreach ((array) $call['page_keys'] as $page_key) {
+                $variant = (0 === strpos($page_key, 'admin-') || 0 === strpos($page_key, 'wp-admin-')) ? 'admin' : '';
+                $page_classes[SSPA_Community_Privacy::page_class($page_key, $variant)] = true;
+            }
+            $data = array(
+                'schema' => 1,
+                'inventory_complete' => (bool) $inventory['complete'],
+                'incomplete_reasons' => array_values((array) $inventory['incomplete_reasons']),
+                'endpoint' => (string) $call['endpoint'],
+                'scheme' => $call['scheme'],
+                'host' => (string) $call['host'],
+                'path' => (string) $call['path'],
+                'query_keys' => array_values((array) $call['query_keys']),
+                'method' => (string) $call['method'],
+                'blocking' => (bool) $call['blocking'],
+                'sslverify' => $call['sslverify'],
+                'response_class' => (string) $call['response_class'],
+                'calls' => (int) $call['calls'],
+                'total_ms' => (float) $call['total_ms'],
+                'worst_ms' => null === $call['worst_ms'] ? null : (float) $call['worst_ms'],
+                'component' => $component,
+                'component_version' => isset($versions[$version_key]) ? $versions[$version_key] : null,
+                'caller' => SSPA_Community_Privacy::function_name($call['caller'], $component['type']),
+                'page_classes' => array_values(array_keys($page_classes)),
+                'purpose' => (string) $call['purpose'],
+                'purpose_confidence' => (string) $call['purpose_confidence'],
+                'block_safety' => (string) $call['block_safety'],
+                'block_safety_reasons' => array_values((array) $call['block_safety_reasons']),
+                'evidence_class' => 'outbound_http',
+            );
+            if (!is_wp_error(SSPA_Community_Privacy::validate($data))) {
+                self::add_evidence($evidence, 'sspa/http-call', $measurement_version, $data);
+            }
+        }
     }
 
     private static function add_findings(&$evidence, $run_id, $measurement_version, $submission_uuid) {

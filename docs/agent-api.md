@@ -4,12 +4,12 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 ## Surfaces (identical data)
 
-- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|cache-scan|cache-optimisation-report|report`
+- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|http-calls|cache-scan|cache-optimisation-report|report`
   plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts
   take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
   `get-status`, `get-report`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
-  `get-archive-profile`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
+  `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
   `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
   `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
@@ -19,6 +19,44 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 Runs started via abilities are asynchronous: poll `get-status` until `active` is false.
 `wp sspa run` is synchronous and drives the batches itself.
+
+## Outbound HTTP API inventory
+
+`SSPA_Report::http_calls($run_id)`, the `get-http-calls` ability and
+`wp sspa http-calls [--run-id=<id>] --format=json` return the identical local-only object. With no
+run id they use the latest completed baseline or spot analysis. Reading it never starts a run.
+
+The object has its own schema version, currently `1`:
+
+```json
+{
+  "schema": 1,
+  "run_id": 123,
+  "captured_at": "2026-08-19T12:00:00+00:00",
+  "complete": true,
+  "incomplete_reasons": [],
+  "calls": [{
+    "endpoint": "api.freemius.com/v1/installs/{id}/updates/latest.json",
+    "scheme": "https", "host": "api.freemius.com",
+    "path": "/v1/installs/{id}/updates/latest.json",
+    "query_keys": ["sdk_version"], "method": "GET",
+    "blocking": true, "sslverify": true, "response_class": "2xx",
+    "calls": 3, "total_ms": 1620.3, "worst_ms": 543.1,
+    "component": "example-plugin", "component_type": "plugin",
+    "caller": "Example_Plugin::check_updates", "page_keys": ["wp-admin-example"],
+    "purpose": "licence", "purpose_confidence": "high",
+    "block_safety": "review", "block_safety_reasons": []
+  }]
+}
+```
+
+The inventory includes fast calls as well as slow findings and aggregates by normalised endpoint,
+method and component. It never returns query values, bodies, headers, cookies, credentials or
+account/install/order/payment identifiers. Variable path segments become typed placeholders.
+`purpose` is `payment`, `licence`, `update`, `telemetry`, `marketing`, `operational` or `unknown`.
+`block_safety` is `never`, `review` or `safe`; consumers must fail unknown values to review and
+must never offer blocking for `never`. `complete=false` names coverage gaps in
+`incomplete_reasons`, including old captures, truncation and analyses without wp-admin pages.
 
 ## Report object (get-report / wp sspa report)
 

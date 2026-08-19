@@ -79,8 +79,8 @@ $blob = $wpdb->get_var($wpdb->prepare("SELECT profile_blob FROM $profiles_table 
 $capture = $blob ? json_decode(gzuncompress($blob), true) : null;
 // Pinned to the literal rather than to SSPA_Capture::SCHEMA_VERSION: comparing the constant
 // against itself would pass whatever it became, and the whole point is that a consumer reading
-// an older capture can tell which contract it was written to. 2 added the archives section.
-sspa_t(is_array($capture) && $capture['schema'] === 2, 'profile blob stored + unpacks');
+// an older capture can tell which contract it was written to. 3 added HTTP scheme and sslverify.
+sspa_t(is_array($capture) && $capture['schema'] === 3, 'profile blob stored + unpacks');
 sspa_t(is_array($capture) && $capture['overview']['capture_mode'] === 'full', 'capture mode full (shim active): ' . ($capture ? $capture['overview']['capture_mode'] : '?'));
 sspa_t(is_array($capture) && !empty($capture['sql']['queries'][0]['fp']), 'queries carry fingerprints');
 sspa_t(is_array($capture) && isset($capture['cache_recon']['coverage'], $capture['cache_recon']['nonce_names']), 'privacy-safe cache reconnaissance persisted with the representative page');

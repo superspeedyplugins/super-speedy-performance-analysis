@@ -366,6 +366,31 @@ class SSPA_CLI {
     }
 
     /**
+     * Output the stable outbound WordPress HTTP API inventory.
+     *
+     * [--run-id=<id>]
+     * : Specific completed baseline or spot run; defaults to the latest.
+     *
+     * [--format=<format>]
+     * : json (default) or table.
+     *
+     * @subcommand http-calls
+     */
+    public function http_calls($args, $assoc_args) {
+        $report = SSPA_Report::http_calls(!empty($assoc_args['run-id']) ? (int) $assoc_args['run-id'] : 0);
+        if (is_wp_error($report)) {
+            WP_CLI::error($report->get_error_message());
+        }
+        if (!isset($assoc_args['format']) || 'json' === $assoc_args['format']) {
+            WP_CLI::line(wp_json_encode($report));
+            return;
+        }
+        WP_CLI\Utils\format_items('table', $report['calls'], array(
+            'endpoint', 'method', 'component', 'purpose', 'block_safety', 'calls', 'total_ms', 'worst_ms',
+        ));
+    }
+
+    /**
      * Output the full agent-facing report as JSON.
      *
      * [--run=<id>]
