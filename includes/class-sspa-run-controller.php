@@ -1437,19 +1437,23 @@ class SSPA_Run_Controller {
      *
      *  1    every cell sample hashed identical to the (stable) baseline
      *  0    the baseline was stable and any cell sample differed
-     *  null unknowable - hashes missing (pre-0.24.0 samples), or the page's output
-     *       varies BETWEEN baseline samples (rotating content), so a differing cell
-     *       proves nothing either way
+     *  2    the page's output varied BETWEEN this sweep's own baseline samples -
+     *       byte-identity is unobtainable HERE, whatever any other run thought of the
+     *       page. Distinct from null so a consumer can treat the page as dynamic
+     *       (fall back to a zero-footprint bar) instead of deadlocking, and so the
+     *       condition is diagnosable from the data instead of by code archaeology.
+     *       (Observed on a real site: every cell degraded this way at once.)
+     *  null unknowable - hashes missing (pre-0.24.0 samples)
      *
      * A verdict of 1 is the strong claim, so it requires a stable baseline; anything
-     * uncertain degrades to null, never to 1.
+     * uncertain degrades to 2/null, never to 1.
      */
     private static function output_identical($baseline_hashes, $cell_hashes) {
         if (!$baseline_hashes || !$cell_hashes) {
             return null;
         }
         if (count(array_unique($baseline_hashes)) > 1) {
-            return null;
+            return 2;
         }
         return array_unique($cell_hashes) === array(reset($baseline_hashes)) ? 1 : 0;
     }

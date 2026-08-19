@@ -227,10 +227,12 @@ class SSPA_Crawler {
      * bodies hash differently, which reads as "output changed" and fails SAFE (the sweep
      * records output_identical=0, never a false "identical").
      *
-     * $headers, when given, are folded into the hash (minus per-request volatile ones)
-     * so header-only differences - a security plugin's CSP, an X-Redirect-By - also
-     * count as "output changed". A plugin whose entire job is response headers must
-     * never read as byte-identical.
+     * $headers, when given, contribute only the ALLOWLISTED, plugin-controlled subset
+     * (security policy, CORS, redirects, robots, preload Link headers) - so a plugin
+     * whose job is those headers still reads as changing the output, while CDN/proxy
+     * transport noise cannot destabilise the hash. A plugin emitting a bespoke header
+     * outside the allowlist is not detectable this way; the zero-footprint bar covers
+     * that case.
      */
     public static function body_hash($body, $headers = null) {
         if ('' === $body) {
@@ -238,36 +240,61 @@ class SSPA_Crawler {
         }
         $header_lines = '';
         if (is_array($headers) || $headers instanceof Traversable) {
-            $volatile = array(
-                'date', 'expires', 'age', 'set-cookie', 'etag', 'last-modified',
-                'content-length', 'connection', 'keep-alive', 'transfer-encoding',
-                'server-timing', 'x-request-id', 'cf-ray', 'x-runtime',
-                'x-sspa-profiled', 'x-sspa-ps', 'x-spro-unloaded',
+            // ALLOWLIST, not denylist. A denylist of known-volatile headers shipped
+            // first and produced an all-NULL identity verdict on a real site: its CDN
+            // stamped a unique per-request header (the x-varnish / x-served-by / via
+            // class), every pair of samples hashed differently, every baseline read
+            // "unstable", and no plugin could ever be proven idle. The only headers
+            // that belong in an OUTPUT-identity hash are ones a plugin deliberately
+            // sets to change behaviour; everything else - CDN tracing, cache status,
+            // timing, cookies - is transport noise.
+            $meaningful = array(
+                'content-type', 'location', 'x-redirect-by', 'x-frame-options',
+                'x-content-type-options', 'referrer-policy', 'permissions-policy',
+                'strict-transport-security', 'content-security-policy',
+                'content-security-policy-report-only', 'x-robots-tag',
+                'access-control-allow-origin', 'access-control-allow-methods',
+                'access-control-allow-headers', 'access-control-allow-credentials',
+                'access-control-expose-headers', 'cross-origin-opener-policy',
+                'cross-origin-embedder-policy', 'cross-origin-resource-policy',
+                'x-permitted-cross-domain-policies', 'link',
             );
             $kept = array();
             foreach ($headers as $name => $value) {
                 $name = strtolower((string) $name);
-                if (in_array($name, $volatile, true)) {
+                if (!in_array($name, $meaningful, true)) {
                     continue;
                 }
-                $kept[] = $name . ': ' . (is_array($value) ? implode(', ', $value) : (string) $value);
+                $value = is_array($value) ? implode(', ', $value) : (string) $value;
+                // CSP script nonces are per-response by design; normalise them so a
+                // CSP-setting plugin still hashes stable.
+                if (0 === strpos($name, 'content-security-policy')) {
+                    $value = preg_replace("/'nonce-[^']*'/", "'nonce-0'", $value);
+                }
+                $kept[] = $name . ': ' . $value;
             }
             sort($kept);
             $header_lines = implode("\n", $kept) . "\n\n";
         }
         $normalised = preg_replace(
             array(
+                // HTML comments wholesale: render-time footers ("<!-- generated in
+                // 0.42s -->", cache stamps) vary per request, and a plugin whose only
+                // output is a comment changes nothing a visitor sees.
+                '/<!--.*?-->/s',
                 // _wpnonce=abc123 in URLs and wp.apiFetch nonce embeds.
                 '/([?&;]_wpnonce=)[a-f0-9]{6,12}/i',
                 // Hidden nonce inputs: value="abc123" adjacent to a *nonce* name (both orders).
                 '/(name=["\'][^"\']*nonce[^"\']*["\'][^>]{0,80}value=["\'])[a-f0-9]{6,12}(["\'])/i',
                 '/(value=["\'])[a-f0-9]{6,12}(["\'][^>]{0,80}name=["\'][^"\']*nonce[^"\']*["\'])/i',
-                // JSON-embedded nonces: "nonce":"abc123", 'rest_nonce':'...' etc.
-                '/(["\'][a-z_]*nonce["\']\s*[:=]\s*["\'])[a-f0-9]{6,12}(["\'])/i',
+                // JSON/data-attribute nonces: "nonce":"abc", "data-nonce":"abc", ajax_nonce etc.
+                '/(["\'][a-z0-9_-]*nonce["\']\s*[:=]\s*["\'])[a-f0-9]{6,12}(["\'])/i',
+                // Script/CSP nonce attributes: <script nonce="...">.
+                '/(\snonce=["\'])[^"\']*(["\'])/i',
                 // Millisecond/second timestamps in query strings (cache busters, analytics).
                 '/([?&;](?:t|ts|time|_)=)\d{10,13}/',
             ),
-            array('${1}0', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0'),
+            array('', '${1}0', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0'),
             $body
         );
         if (null === $normalised) {

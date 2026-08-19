@@ -205,6 +205,18 @@ class SSPA_Report {
      */
     const PAGE_PLUGIN_USAGE_SCHEMA = 1;
 
+    /**
+     * The same normalisation SSPA_Community_Exporter::safe_version() applies when the
+     * sweep stamps plugin_impacts.plugin_version - duplicated here because that method
+     * is deliberately private to the exporter. Keep the two in step: a divergence
+     * makes measured_version comparisons fail on formatting and silently blocks
+     * consumers' promotions.
+     */
+    private static function comparable_version($version) {
+        $version = trim((string) $version);
+        return preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $version) ? $version : null;
+    }
+
     public static function page_plugin_usage($run_id = 0) {
         global $wpdb;
         $run_id = $run_id ? (int) $run_id : self::latest_done_run_id();
@@ -225,14 +237,31 @@ class SSPA_Report {
 
         // Latest measured impact per plugin x page, normal cache mode - one indexed pass.
         $impacts = array(); // "plugin|page_key" => row
+        // Pages whose LATEST sweep found its own baselines unstable (output_identical
+        // sentinel 2): byte-identity was unobtainable when it mattered, so the page is
+        // exported as dynamic regardless of what this run's samples thought.
+        $swept_dynamic = array(); // page_key => true
+        $page_newest = array();   // page_key => created of the page's newest impact row
         foreach ($wpdb->get_results($wpdb->prepare(
             "SELECT plugin, plugin_version, page_key, delta_ttfb_ms, noise_floor_ms, output_identical, confidence, created
-             FROM %i WHERE object_cache_mode = 'normal' AND method = 'single_out' ORDER BY id DESC LIMIT 2000",
-            SSPA_Schema::table('plugin_impacts')
+             FROM %i WHERE object_cache_mode = 'normal' AND method = 'single_out' AND blog_id = %d
+             ORDER BY id DESC LIMIT 2000",
+            SSPA_Schema::table('plugin_impacts'),
+            get_current_blog_id()
         ), ARRAY_A) as $row) {
             $key = $row['plugin'] . '|' . $row['page_key'];
+            if (!isset($page_newest[$row['page_key']])) {
+                // Rows arrive newest-first, so the first row seen for a page carries its
+                // most recent sweep's timestamp; only sentinel rows from THAT sweep may
+                // mark the page dynamic - stale sentinels from an older, noisier era
+                // must not pin a since-stabilised page.
+                $page_newest[$row['page_key']] = $row['created'];
+            }
             if (!isset($impacts[$key])) {
                 $impacts[$key] = $row;
+                if (2 === (int) $row['output_identical'] && $row['created'] === $page_newest[$row['page_key']]) {
+                    $swept_dynamic[$row['page_key']] = true;
+                }
             }
         }
 
@@ -282,7 +311,11 @@ class SSPA_Report {
                 $plugins[] = array(
                     'plugin' => $slug,
                     'file' => $file,
-                    'version' => isset($all_plugins[$file]['Version']) ? $all_plugins[$file]['Version'] : null,
+                    // Normalised with the SAME rule the sweep's version stamp uses
+                    // (community exporter safe_version), so a consumer's strict
+                    // string compare of the two can never fail on formatting alone.
+                    'version' => isset($all_plugins[$file]['Version'])
+                        ? self::comparable_version($all_plugins[$file]['Version']) : null,
                     'classification' => $classifications[$slug]['classification'],
                     'classification_reasons' => $classifications[$slug]['reasons'],
                     'group' => isset($groups[$slug]) ? $groups[$slug] : array(),
@@ -303,7 +336,10 @@ class SSPA_Report {
                         'delta_generation_ms' => null !== $impact['delta_ttfb_ms'] ? round((float) $impact['delta_ttfb_ms'], 1) : null,
                         'noise_floor_ms' => null !== $impact['noise_floor_ms'] ? round((float) $impact['noise_floor_ms'], 1) : null,
                         'confidence' => $impact['confidence'],
-                        'output_identical' => null !== $impact['output_identical'] ? (bool) $impact['output_identical'] : null,
+                        // Sentinel 2 (sweep baselines unstable) exports as null here;
+                        // its page-level meaning travels via output_stable=false.
+                        'output_identical' => (null !== $impact['output_identical'] && 2 !== (int) $impact['output_identical'])
+                            ? (bool) $impact['output_identical'] : null,
                         'measured_version' => $impact['plugin_version'],
                         'measured_at' => $impact['created'],
                     ) : null,
@@ -321,6 +357,12 @@ class SSPA_Report {
                 }
             }
             $output_stable = count($stable_hashes) >= 2 ? (1 === count(array_unique($stable_hashes))) : null;
+            // The sweep's verdict outranks this run's samples: if the LATEST deep scan
+            // of this page found its own baselines unstable, byte-identity is
+            // unobtainable in practice and consumers must use their dynamic-page bar.
+            if (isset($swept_dynamic[$p['page_key']])) {
+                $output_stable = false;
+            }
 
             $pages[] = array(
                 'page_key' => $p['page_key'],
