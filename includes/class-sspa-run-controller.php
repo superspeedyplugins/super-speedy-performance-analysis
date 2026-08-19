@@ -1437,7 +1437,7 @@ class SSPA_Run_Controller {
      *
      *  1    every cell sample hashed identical to the (stable) baseline
      *  0    the baseline was stable and any cell sample differed
-     *  null unknowable - hashes missing (pre-0.23.10 samples), or the page's output
+     *  null unknowable - hashes missing (pre-0.24.0 samples), or the page's output
      *       varies BETWEEN baseline samples (rotating content), so a differing cell
      *       proves nothing either way
      *
