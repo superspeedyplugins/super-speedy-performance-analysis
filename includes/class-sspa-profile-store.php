@@ -82,6 +82,9 @@ class SSPA_Profile_Store {
                     : null,
                 'cached' => $s['cached'],
                 'gen_ms' => isset($s['capture']['overview']['gen_ms']) ? round($s['capture']['overview']['gen_ms'], 1) : null,
+                // Normalised response hash, so the sweep can compare a cell's output
+                // against its baseline's without keeping bodies.
+                'body_hash' => isset($s['body_hash']) ? $s['body_hash'] : null,
             );
             // A plugin reacted to the excluded set during this sample. Kept in the summary
             // (not only the median blob) so the sweep can spot a reacted cell without
@@ -124,26 +127,101 @@ class SSPA_Profile_Store {
         ));
         $profile_id = (int) $wpdb->insert_id;
 
-        if ($median_capture && !empty($median_capture['components'])) {
-            foreach ($median_capture['components'] as $component => $stats) {
+        if ($median_capture) {
+            // Boot evidence (include cost, hook-callback cost, enqueued assets) used to
+            // live only inside the prunable profile_blob, which made it unusable as a
+            // cross-plugin contract - blobs age out after a few runs. Folding it into
+            // component_stats at save time makes "did this plugin actually DO anything
+            // on this page" durable and queryable. Older rows carry NULLs, which readers
+            // must report as unknown, never as zero activity.
+            $boot_extra = self::boot_component_evidence($median_capture);
+            $seen = array();
+            if (!empty($median_capture['components'])) {
+                foreach ($median_capture['components'] as $component => $stats) {
+                    $extra = isset($boot_extra[$component]) ? $boot_extra[$component] : array('include_ms' => null, 'hook_ms' => null, 'assets_count' => null);
+                    $seen[$component] = true;
+                    $wpdb->insert(SSPA_Schema::table('component_stats'), array(
+                        'profile_id' => $profile_id,
+                        'run_id' => $run_id,
+                        'component' => substr($component, 0, 191),
+                        'component_type' => $stats['type'],
+                        'query_count' => (int) $stats['query_count'],
+                        'sql_ms' => (float) $stats['sql_ms'],
+                        'rows_returned' => (int) $stats['rows'],
+                        'slowest_query_ms' => (float) $stats['slowest_ms'],
+                        'http_ms' => (float) $stats['http_ms'],
+                        'mail_ms' => 0,
+                        'cache_hits' => 0,
+                        'cache_misses' => 0,
+                        'include_ms' => $extra['include_ms'],
+                        'hook_ms' => $extra['hook_ms'],
+                        'assets_count' => $extra['assets_count'],
+                    ));
+                }
+            }
+            // Plugins that loaded but ran no query/HTTP/mail have no aggregate row, yet
+            // their include/hook/asset footprint is exactly the evidence an unload
+            // decision needs - a zero-footprint row IS the finding.
+            foreach ($boot_extra as $component => $extra) {
+                if (isset($seen[$component]) || 'core' === $component) {
+                    continue;
+                }
                 $wpdb->insert(SSPA_Schema::table('component_stats'), array(
                     'profile_id' => $profile_id,
                     'run_id' => $run_id,
                     'component' => substr($component, 0, 191),
-                    'component_type' => $stats['type'],
-                    'query_count' => (int) $stats['query_count'],
-                    'sql_ms' => (float) $stats['sql_ms'],
-                    'rows_returned' => (int) $stats['rows'],
-                    'slowest_query_ms' => (float) $stats['slowest_ms'],
-                    'http_ms' => (float) $stats['http_ms'],
+                    'component_type' => 'theme' === $component ? 'theme' : 'plugin',
+                    'query_count' => 0,
+                    'sql_ms' => 0,
+                    'rows_returned' => 0,
+                    'slowest_query_ms' => 0,
+                    'http_ms' => 0,
                     'mail_ms' => 0,
                     'cache_hits' => 0,
                     'cache_misses' => 0,
+                    'include_ms' => $extra['include_ms'],
+                    'hook_ms' => $extra['hook_ms'],
+                    'assets_count' => $extra['assets_count'],
                 ));
             }
         }
 
         return $profile_id;
+    }
+
+    /**
+     * Per-component boot evidence from a capture: include cost, timed hook-callback
+     * cost (boot components = includes + callbacks, so the callback share is the
+     * difference), and enqueued asset count.
+     *
+     * @return array component => {include_ms:?float, hook_ms:?float, assets_count:?int}
+     */
+    private static function boot_component_evidence($capture) {
+        $out = array();
+        $boot = isset($capture['boot']) && is_array($capture['boot']) ? $capture['boot'] : array();
+        $includes = isset($boot['includes']) && is_array($boot['includes']) ? $boot['includes'] : array();
+        $combined = isset($boot['components']) && is_array($boot['components']) ? $boot['components'] : array();
+        $assets = isset($boot['assets']) && is_array($boot['assets']) ? $boot['assets'] : array();
+
+        foreach ($includes as $component => $ms) {
+            $out[$component] = array('include_ms' => (float) $ms, 'hook_ms' => 0.0, 'assets_count' => 0);
+        }
+        foreach ($combined as $component => $ms) {
+            if (!isset($out[$component])) {
+                $out[$component] = array('include_ms' => null, 'hook_ms' => (float) $ms, 'assets_count' => 0);
+                continue;
+            }
+            $out[$component]['hook_ms'] = round(max(0, (float) $ms - (float) $out[$component]['include_ms']), 2);
+        }
+        foreach ($assets as $component => $counts) {
+            $total = (int) (isset($counts['scripts']) ? $counts['scripts'] : 0) + (int) (isset($counts['styles']) ? $counts['styles'] : 0);
+            if (!isset($out[$component])) {
+                $out[$component] = array('include_ms' => null, 'hook_ms' => null, 'assets_count' => $total);
+                continue;
+            }
+            $out[$component]['assets_count'] = $total;
+        }
+        return $out;
     }
 
     public static function median($values) {

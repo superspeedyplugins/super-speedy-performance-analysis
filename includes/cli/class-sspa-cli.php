@@ -366,6 +366,24 @@ class SSPA_CLI {
     }
 
     /**
+     * Output the page-plugin-usage contract as JSON: per profiled page, what every
+     * active plugin actually did there, the latest measured exclusion delta, and an
+     * unload-safety classification. The surface behind per-page plugin unloading.
+     *
+     * [--run=<id>]
+     * : Specific run id (defaults to the latest completed run).
+     *
+     * @subcommand page-plugin-usage
+     */
+    public function page_plugin_usage($args, $assoc_args) {
+        $usage = SSPA_Report::page_plugin_usage(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        if (is_wp_error($usage)) {
+            WP_CLI::error($usage->get_error_message());
+        }
+        WP_CLI::line(wp_json_encode($usage));
+    }
+
+    /**
      * Output the full agent-facing report as JSON.
      *
      * [--run=<id>]

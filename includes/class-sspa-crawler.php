@@ -194,6 +194,12 @@ class SSPA_Crawler {
             }
         }
 
+        // Output identity: a hash of the response with per-request noise stripped, so the
+        // sweep can say "excluding this plugin changed no bytes" - which timing deltas alone
+        // cannot. Only hashed once the sample is known to be a genuine uncached profiled
+        // response; comparing a cached body against a live one would be meaningless.
+        $sample['body_hash'] = self::body_hash((string) $norm['body']);
+
         $capture = self::fetch_capture($token_id);
         if ($capture) {
             if (!empty($flags['cr'])) {
@@ -209,6 +215,39 @@ class SSPA_Crawler {
             $sample['error'] = 'capture_missing';
         }
         return $sample;
+    }
+
+    /**
+     * Hash a response body with legitimately-per-request noise removed, so two requests
+     * for the SAME page content hash equal. Strips: nonces (all common shapes), session/
+     * CSRF hidden fields, our own token echoes, and timestamps embedded by analytics
+     * snippets. Deliberately conservative - anything NOT stripped that varies makes two
+     * bodies hash differently, which reads as "output changed" and fails SAFE (the sweep
+     * records output_identical=0, never a false "identical").
+     */
+    public static function body_hash($body) {
+        if ('' === $body) {
+            return null;
+        }
+        $normalised = preg_replace(
+            array(
+                // _wpnonce=abc123 in URLs and wp.apiFetch nonce embeds.
+                '/([?&;]_wpnonce=)[a-f0-9]{6,12}/i',
+                // Hidden nonce inputs: value="abc123" adjacent to a *nonce* name (both orders).
+                '/(name=["\'][^"\']*nonce[^"\']*["\'][^>]{0,80}value=["\'])[a-f0-9]{6,12}(["\'])/i',
+                '/(value=["\'])[a-f0-9]{6,12}(["\'][^>]{0,80}name=["\'][^"\']*nonce[^"\']*["\'])/i',
+                // JSON-embedded nonces: "nonce":"abc123", 'rest_nonce':'...' etc.
+                '/(["\'][a-z_]*nonce["\']\s*[:=]\s*["\'])[a-f0-9]{6,12}(["\'])/i',
+                // Millisecond/second timestamps in query strings (cache busters, analytics).
+                '/([?&;](?:t|ts|time|_)=)\d{10,13}/',
+            ),
+            array('${1}0', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0'),
+            $body
+        );
+        if (null === $normalised) {
+            $normalised = $body; // a PCRE failure must not lose the sample
+        }
+        return md5($normalised);
     }
 
     private function profiled_request($url, $cookies, $flags) {

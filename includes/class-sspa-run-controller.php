@@ -1291,6 +1291,7 @@ class SSPA_Run_Controller {
                 'delta_mem_bytes' => (int) $d['delta_mem'],
                 'delta_queries' => (int) $d['delta_queries'],
                 'noise_floor_ms' => round($d['gate'], 1),
+                'output_identical' => isset($d['output_identical']) ? $d['output_identical'] : null,
                 'confidence' => !empty($d['measured']) ? 'measured' : 'none',
                 // A sweep scoped to one URL takes its own baselines, so it has no source run
                 // to point at - null rather than a nonexistent run 0.
@@ -1357,7 +1358,11 @@ class SSPA_Run_Controller {
 
             if ('' === (string) $p['plugin_set_hash']) {
                 if ($ok) {
-                    $baselines[$key] = array('p' => $p, 'gate' => self::noise_gate($p['samples']));
+                    $baselines[$key] = array(
+                        'p' => $p,
+                        'gate' => self::noise_gate($p['samples']),
+                        'hashes' => self::samples_body_hashes($p['samples']),
+                    );
                 }
                 continue;
             }
@@ -1410,9 +1415,43 @@ class SSPA_Run_Controller {
                 'delta_http' => (float) $b['http_ms'] - (float) $p['http_ms'],
                 'delta_mem' => (int) $b['peak_mem_bytes'] - (int) $p['peak_mem_bytes'],
                 'delta_queries' => (int) $b['sql_count'] - (int) $p['sql_count'],
+                'output_identical' => self::output_identical($baselines[$key]['hashes'], self::samples_body_hashes($p['samples'])),
             );
         }
         return $deltas;
+    }
+
+    /** Non-null normalised body hashes from a profile's sample-summaries JSON. */
+    private static function samples_body_hashes($samples_json) {
+        $hashes = array();
+        foreach ((array) json_decode((string) $samples_json, true) as $s) {
+            if (is_array($s) && !empty($s['body_hash'])) {
+                $hashes[] = (string) $s['body_hash'];
+            }
+        }
+        return $hashes;
+    }
+
+    /**
+     * Did excluding the plugin change the page's output?
+     *
+     *  1    every cell sample hashed identical to the (stable) baseline
+     *  0    the baseline was stable and any cell sample differed
+     *  null unknowable - hashes missing (pre-0.23.10 samples), or the page's output
+     *       varies BETWEEN baseline samples (rotating content), so a differing cell
+     *       proves nothing either way
+     *
+     * A verdict of 1 is the strong claim, so it requires a stable baseline; anything
+     * uncertain degrades to null, never to 1.
+     */
+    private static function output_identical($baseline_hashes, $cell_hashes) {
+        if (!$baseline_hashes || !$cell_hashes) {
+            return null;
+        }
+        if (count(array_unique($baseline_hashes)) > 1) {
+            return null;
+        }
+        return array_unique($cell_hashes) === array(reset($baseline_hashes)) ? 1 : 0;
     }
 
     /**
