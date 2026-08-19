@@ -42,6 +42,10 @@ ssx_build_target() {
     # .server .git* .vscode …) so none reach the shipped zip.
     find "$stage" -name '.*' -prune -exec rm -rf {} + 2>/dev/null
 
+    # This machine-local config is gitignored but not dot-prefixed, so the
+    # generic dot-path removal above does not catch it.
+    rm -f "$stage/wp-cli.local.yml"
+
     local zip="${OUT_DIR}/${ZIP_NAME}"
     rm -f "$zip"
     ( cd "$work" && zip -rqX "$zip" "${PLUGIN_FOLDER}/" ) || ssx_die "zip failed"

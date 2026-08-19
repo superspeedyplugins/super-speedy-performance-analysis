@@ -46,6 +46,9 @@ LINT=$(find "$ROOT" -name '*.php' -exec php -l {} \; 2>&1 | grep -v '^No syntax 
 DOTS=$(find "$ROOT" -name '.*' -not -name '.' | head -5)
 [ -z "$DOTS" ] && pass "no dot-files in the zip" || fail "dot-files present:"$'\n'"$DOTS"
 
+[ ! -e "$ROOT/wp-cli.local.yml" ] && pass "no machine-local wp-cli config" \
+                                      || fail "machine-local wp-cli.local.yml present"
+
 # Things every edition needs.
 for f in "$SLUG.php" readme.txt includes/class-sspa-schema.php profiler/bootstrap.php \
          mu/sspa-loader.php dropins/db.php uninstall.php; do
