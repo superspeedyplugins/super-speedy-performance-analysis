@@ -47,9 +47,6 @@ window.SSPATransport = (function () {
 			headers: {}
 		};
 		opts.headers[job.header_name] = job.header_value;
-		if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
-			opts.signal = AbortSignal.timeout(job.timeout_ms || 60000);
-		}
 		var start = performance.now();
 		return fetch(job.url, opts).then(function (response) {
 			// Read the body to completion: PHP must never be cut off before the

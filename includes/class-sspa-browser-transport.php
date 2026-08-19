@@ -237,7 +237,6 @@ class SSPA_Browser_Transport {
             'header_value' => $token['header'],
             'purpose' => $purpose,
             'echo_headers' => self::ECHO_HEADERS,
-            'timeout_ms' => SSPA_Crawler::loopback_timeout() * 1000,
             'label' => SSPA_Run_Controller::job_label($job),
             'done' => (int) $queue['idx'],
             'total' => count($queue['jobs']),
@@ -356,7 +355,8 @@ class SSPA_Browser_Transport {
             'code' => $code,
             'headers' => $headers,
             'body' => $body,
-            'error' => ('' !== $error) ? $error : null,
+            'error' => ('' !== $error) ? 'browser_fetch_failed' : null,
+            'error_message' => ('' !== $error) ? $error : null,
             'cookies_present' => $cookies_present,
         ), $pending['token_id'], $pending['flags']);
 

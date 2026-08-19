@@ -47,30 +47,6 @@ jQuery(document).on('click', '#sspa-tools-recheck', function () {
 	});
 });
 
-// Settings tab: save in place, and show the value that was actually stored - the server
-// clamps to 10-900, so what comes back can differ from what was typed.
-jQuery(document).on('click', '#sspa-save-settings', function () {
-	var btn = jQuery(this).prop('disabled', true);
-	var note = jQuery('#sspa-settings-saved').text('');
-	jQuery.post(ajaxurl, {
-		action: 'sspa_save_settings',
-		nonce: sspa_admin.nonce,
-		loopback_timeout: jQuery('#sspa-loopback-timeout').val()
-	}, function (resp) {
-		btn.prop('disabled', false);
-		if (!resp.success) {
-			note.text(resp.data || 'Could not save.');
-			return;
-		}
-		jQuery('#sspa-loopback-timeout').val(resp.data.loopback_timeout);
-		note.text('Saved.');
-		window.setTimeout(function () { note.text(''); }, 2000);
-	}).fail(function () {
-		btn.prop('disabled', false);
-		note.text('Could not save.');
-	});
-});
-
 // Replace an orphaned Query Monitor db.php (QM deactivated, drop-in left behind).
 jQuery(document).on('click', '#sspa-replace-stale-dropin', function () {
 	var btn = jQuery(this).prop('disabled', true).text('Replacing…');

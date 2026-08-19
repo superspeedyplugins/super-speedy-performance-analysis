@@ -216,12 +216,12 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   heredoc silently becomes the CASE file's path and hooks register under a name that never
   fires, making guard assertions vacuous.
 
-- `32-loopback-timeout.php` - the measurement timeout genuinely reaches the crawler, proven
-  both ways with a page that sleeps 12s: at a 10s timeout nothing measures and the samples
-  record the abandonment; at 30s the same page measures at ~12,000ms. Also the sanitiser table
-  (floor 10, ceiling 900, non-numeric falls back to 60). Gotcha: the slow-page probe query arg
-  must NOT be `sspa_`-prefixed - the catalogue matcher strips `sspa_*` keys and the run would
-  file under `home` and measure the catalogue URL without the sleep.
+- `32-loopback-timeout.php` - measurement requests impose no response timeout, proven with a
+  real page that sleeps 12s while the obsolete stored timeout is 10s. It also forces a real
+  WordPress transport failure through the crawler, profile store and result panel, asserting
+  that the exact transport explanation is retained and displayed. Gotcha: the slow-page probe
+  query arg must NOT be `sspa_`-prefixed - the catalogue matcher strips `sspa_*` keys and the
+  run would file under `home` and measure the catalogue URL without the sleep.
 
 - `33-order-management.php` - the order-management steps the checkout flow appends (view order
   in wp-admin, mark processing -> completed). Drives the real `start(['type' => 'checkout'])`

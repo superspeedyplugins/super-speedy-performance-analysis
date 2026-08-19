@@ -12,27 +12,32 @@ class SSPA_Crawler {
     const SAMPLES = 3;
 
     /**
-     * Seconds each measurement request may wait for the page, from Settings.
+     * Send a measurement request without imposing a client-side response deadline.
      *
-     * The old hardcoded 60 abandoned every sample on a site whose pages take minutes -
-     * the exact site whose owner most needs the measurement, and who has already raised
-     * their server timeouts to load the page in a browser.
+     * WordPress defaults omitted timeouts to five seconds, and Requests clamps zero to
+     * one second in its cURL transport. cURL therefore needs an explicit zero applied
+     * after Requests configures the handle. The very large argument is the equivalent
+     * fallback for the streams transport, whose zero means "return immediately" rather
+     * than "wait indefinitely". Server, PHP, proxy and operating-system limits remain.
+     *
+     * @param string $url  Measurement URL.
+     * @param array  $args WordPress HTTP request arguments.
+     * @return array|WP_Error
      */
-    public static function loopback_timeout() {
-        return self::sanitise_loopback_timeout(sspa_get_option('loopback_timeout'));
-    }
+    public static function request($url, $args = array()) {
+        $args['timeout'] = 2147483647;
+        $disable_curl_timeout = static function ($handle, $request, $request_url) use ($url) {
+            if ($request_url === $url && defined('CURLOPT_TIMEOUT')) {
+                curl_setopt($handle, CURLOPT_TIMEOUT, 0);
+            }
+        };
 
-    /**
-     * 10-900 seconds; anything non-numeric or absurd falls back to the default 60.
-     * Shared by the crawler and the Settings save handler so the stored value and the
-     * used value can never disagree.
-     */
-    public static function sanitise_loopback_timeout($value) {
-        $value = (int) $value;
-        if ($value <= 0) {
-            return 60;
+        add_action('http_api_curl', $disable_curl_timeout, PHP_INT_MAX, 3);
+        try {
+            return wp_remote_request($url, $args);
+        } finally {
+            remove_action('http_api_curl', $disable_curl_timeout, PHP_INT_MAX);
         }
-        return max(10, min(900, $value));
     }
 
     /**
@@ -128,11 +133,12 @@ class SSPA_Crawler {
      *     @type array       $headers Response headers, LOWERCASE keys.
      *     @type string      $body    Body, first 20KB is enough.
      *     @type string|null $error   Transport error code, or null.
+     *     @type string|null $error_message Transport error explanation, or null.
      *     @type bool        $cookies_present Whether auth cookies rode along.
      * }
      * @param string $token_id The minted token id this request carried.
      * @param array  $flags    The token flags (ps echo is verified when set).
-     * @return array Sample: {wall_ms, code, cached, blocked_by, error, capture}
+     * @return array Sample: {wall_ms, code, cached, blocked_by, error, error_message, capture}
      */
     public static function evaluate_sample($norm, $token_id, $flags) {
         $sample = array(
@@ -141,11 +147,15 @@ class SSPA_Crawler {
             'cached' => false,
             'blocked_by' => null,
             'error' => null,
+            'error_message' => null,
             'capture' => null,
         );
 
         if (!empty($norm['error'])) {
             $sample['error'] = $norm['error'];
+            $sample['error_message'] = !empty($norm['error_message'])
+                ? sanitize_text_field($norm['error_message'])
+                : sanitize_text_field($norm['error']);
             return $sample;
         }
 
@@ -244,6 +254,7 @@ class SSPA_Crawler {
             'headers' => is_wp_error($response) ? array() : $this->lower_headers($response),
             'body' => is_wp_error($response) ? '' : (string) wp_remote_retrieve_body($response),
             'error' => is_wp_error($response) ? $response->get_error_code() : null,
+            'error_message' => is_wp_error($response) ? $response->get_error_message() : null,
             'cookies_present' => !empty($cookies),
         ), $token['id'], $flags);
     }
@@ -267,7 +278,8 @@ class SSPA_Crawler {
      *     @type array        $flags   Token flags, e.g. ['v' => 'guest', 'ck' => 'flow'].
      * }
      * @return array The sample shape SSPA_Profile_Store::save() expects (wall_ms, code,
-     *               cached, blocked_by, error, capture) plus body, json and cookies.
+     *               cached, blocked_by, error, error_message, capture) plus body, json
+     *               and cookies.
      */
     public function send_profiled($url, $args = array()) {
         $method = isset($args['method']) ? strtoupper($args['method']) : 'GET';
@@ -288,9 +300,8 @@ class SSPA_Crawler {
         }
 
         $start = microtime(true);
-        $response = wp_remote_request($hop_url, array(
+        $response = self::request($hop_url, array(
             'method' => $method,
-            'timeout' => self::loopback_timeout(),
             'redirection' => 0,
             'sslverify' => false,
             'headers' => $headers,
@@ -306,6 +317,7 @@ class SSPA_Crawler {
             'headers' => is_wp_error($response) ? array() : $this->lower_headers($response),
             'body' => $body_out,
             'error' => is_wp_error($response) ? $response->get_error_code() : null,
+            'error_message' => is_wp_error($response) ? $response->get_error_message() : null,
             'cookies_present' => !empty($args['cookies']),
         ), $token['id'], $flags);
 
@@ -333,7 +345,6 @@ class SSPA_Crawler {
             $headers[SSPA_Token::HEADER] = $token_header;
         }
         $args = array(
-            'timeout' => self::loopback_timeout(),
             'redirection' => 0,
             'sslverify' => false,
             'headers' => $headers,
@@ -341,7 +352,7 @@ class SSPA_Crawler {
         if ($cookies) {
             $args['cookies'] = $cookies;
         }
-        return wp_remote_get($url, $args);
+        return self::request($url, $args);
     }
 
     public static function discard_capture($token_id) {

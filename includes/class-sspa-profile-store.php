@@ -77,6 +77,9 @@ class SSPA_Profile_Store {
                 'wall_ms' => $s['wall_ms'],
                 'code' => $s['code'],
                 'error' => $s['error'],
+                'error_message' => !empty($s['error_message'])
+                    ? substr(sanitize_text_field($s['error_message']), 0, 1000)
+                    : null,
                 'cached' => $s['cached'],
                 'gen_ms' => isset($s['capture']['overview']['gen_ms']) ? round($s['capture']['overview']['gen_ms'], 1) : null,
             );

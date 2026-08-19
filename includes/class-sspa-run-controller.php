@@ -30,7 +30,6 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
-        add_action('wp_ajax_sspa_save_settings', array(__CLASS__, 'ajax_save_settings'));
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
         add_action('wp_ajax_sspa_publisher_toggle', array(__CLASS__, 'ajax_publisher_toggle'));
         add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
@@ -1033,8 +1032,7 @@ class SSPA_Run_Controller {
         $url = home_url('/');
         $url .= (strpos($url, '?') === false ? '?' : '&') . 'sspa_nc=' . bin2hex(random_bytes(6));
         $token = SSPA_Token::mint($url, array('bl' => '1', 'v' => 'anon'));
-        $response = wp_remote_get($url, array(
-            'timeout' => 15,
+        $response = SSPA_Crawler::request($url, array(
             'redirection' => 0,
             'sslverify' => false,
             'headers' => array('Cache-Control' => 'no-cache', SSPA_Token::HEADER => $token['header']),
@@ -2042,20 +2040,6 @@ class SSPA_Run_Controller {
             wp_send_json_error(__('No such tab.', 'super-speedy-performance-analysis'));
         }
         wp_send_json_success(array('tabs' => $html, 'active_run' => self::active_run_id()));
-    }
-
-    /**
-     * Settings tab save. The sanitiser is the crawler's own, so what gets stored is
-     * exactly what gets used, and the response echoes the clamped value back so the
-     * field can show what was actually saved rather than what was typed.
-     */
-    public static function ajax_save_settings() {
-        self::ajax_guard();
-        $timeout = SSPA_Crawler::sanitise_loopback_timeout(
-            isset($_POST['loopback_timeout']) ? wp_unslash($_POST['loopback_timeout']) : 0
-        );
-        sspa_update_option('loopback_timeout', $timeout);
-        wp_send_json_success(array('loopback_timeout' => $timeout));
     }
 
     public static function ajax_replace_stale_dropin() {

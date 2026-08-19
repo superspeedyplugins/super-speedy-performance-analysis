@@ -223,9 +223,11 @@ class SSPA_Profile_Panel {
         $html .= self::queries_html($capture);
         $html .= self::http_html($capture);
         if (null === $capture) {
-            $html .= '<p class="sspa-adhoc-note sspa-adhoc-span">'
-                . esc_html__('No detailed data is stored for this measurement - it was pruned, or the capture did not come back. The headline figures above are still the measured ones.', 'super-speedy-performance-analysis')
-                . '</p>';
+            if (!self::transport_errors($row)) {
+                $html .= '<p class="sspa-adhoc-note sspa-adhoc-span">'
+                    . esc_html__('No detailed data is stored for this measurement because it was pruned.', 'super-speedy-performance-analysis')
+                    . '</p>';
+            }
         }
         $html .= '</div>';
         return $html;
@@ -297,6 +299,12 @@ class SSPA_Profile_Panel {
             /* translators: %s: the plugin or service that blocked the request */
             $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">' . esc_html(sprintf(__('Blocked by %s', 'super-speedy-performance-analysis'), $row['blocked_by'])) . '</p>';
         }
+        foreach (self::transport_errors($row) as $error) {
+            /* translators: %s: the HTTP transport's own error message */
+            $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">'
+                . esc_html(sprintf(__('Measurement transport error: %s', 'super-speedy-performance-analysis'), $error))
+                . '</p>';
+        }
         if (!is_array($capture) || !isset($capture['overview'])) {
             return $html;
         }
@@ -317,6 +325,23 @@ class SSPA_Profile_Panel {
         return $html;
     }
 
+    /** Unique transport failures retained in this profile's sample summaries. */
+    private static function transport_errors($row) {
+        $samples = json_decode((string) $row['samples'], true);
+        $errors = array();
+        foreach ((array) $samples as $sample) {
+            if (empty($sample['error'])) {
+                continue;
+            }
+            $message = !empty($sample['error_message']) ? $sample['error_message'] : $sample['error'];
+            $message = sanitize_text_field($message);
+            if ('' !== $message) {
+                $errors[$message] = true;
+            }
+        }
+        return array_keys($errors);
+    }
+
     private static function stat($value, $label) {
         return '<div class="sspa-adhoc-stat"><span class="sspa-adhoc-stat-value">' . esc_html($value)
             . '</span><span class="sspa-adhoc-stat-label">' . esc_html($label) . '</span></div>';
@@ -333,7 +358,7 @@ class SSPA_Profile_Panel {
             null !== $row['sql_ms'] ? number_format((float) $row['sql_ms'], 1) . 'ms / ' . (int) $row['sql_count'] : '?',
             __('SQL / queries', 'super-speedy-performance-analysis')
         );
-        $html .= self::stat(null !== $row['http_ms'] ? self::ms($row['http_ms']) : '0ms', __('HTTP', 'super-speedy-performance-analysis'));
+        $html .= self::stat(null !== $row['http_ms'] ? self::ms($row['http_ms']) : '?', __('HTTP', 'super-speedy-performance-analysis'));
         $html .= self::stat($row['peak_mem_bytes'] ? size_format((int) $row['peak_mem_bytes']) : '?', __('Peak RAM', 'super-speedy-performance-analysis'));
 
         // The object cache figures for this page. Hit rate is the number that matters: a cache
