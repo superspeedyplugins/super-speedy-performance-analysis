@@ -239,7 +239,7 @@ class SSPA_Report {
         // Full-set profiles of this run (baseline plugin set, normal cache mode), plus
         // their component attribution.
         $profiles = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, page_key, url, variant, method, page_gen_ms, created
+            "SELECT id, page_key, url, variant, method, page_gen_ms, samples, created
              FROM %i WHERE run_id = %d AND plugin_set_hash = '' AND object_cache_mode = 'normal' AND method = 'GET'
              ORDER BY id ASC",
             SSPA_Schema::table('profiles'),
@@ -309,6 +309,19 @@ class SSPA_Report {
                     ) : null,
                 );
             }
+            // Does this page's (normalised) output hold still between fetches? A REAL
+            // page with rotating products or dynamic sections legitimately varies, and
+            // a consumer must know: byte-identity evidence (output_identical) is
+            // structurally unobtainable there, so any decision gated on it needs a
+            // different bar. true = stable, false = varies, null = not enough samples.
+            $stable_hashes = array();
+            foreach ((array) json_decode((string) $p['samples'], true) as $s) {
+                if (is_array($s) && !empty($s['body_hash'])) {
+                    $stable_hashes[] = (string) $s['body_hash'];
+                }
+            }
+            $output_stable = count($stable_hashes) >= 2 ? (1 === count(array_unique($stable_hashes))) : null;
+
             $pages[] = array(
                 'page_key' => $p['page_key'],
                 'url' => $p['url'],
@@ -316,6 +329,7 @@ class SSPA_Report {
                 // Median server generation time from this run's full-set profile, so a
                 // consumer can prioritise pages by how slow they actually are.
                 'generation_ms' => null !== $p['page_gen_ms'] ? round((float) $p['page_gen_ms'], 1) : null,
+                'output_stable' => $output_stable,
                 'profiled_at' => $p['created'],
                 'plugins' => $plugins,
             );

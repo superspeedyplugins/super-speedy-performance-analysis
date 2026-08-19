@@ -67,6 +67,10 @@ if (is_wp_error($usage)) {
     sspa_t(is_array($usage['pages']), 'pages array present');
     $checked_plugin = false;
     foreach ($usage['pages'] as $page) {
+        sspa_t(array_key_exists('output_stable', $page), 'page carries output_stable: ' . $page['page_key']);
+        break;
+    }
+    foreach ($usage['pages'] as $page) {
         foreach ($page['plugins'] as $p) {
             $checked_plugin = true;
             sspa_t(in_array($p['classification'], array('never', 'review', 'candidate'), true), 'classification uses the ladder: ' . $p['plugin']);
