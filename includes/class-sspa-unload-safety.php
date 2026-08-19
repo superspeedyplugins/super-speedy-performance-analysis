@@ -39,6 +39,9 @@ class SSPA_Unload_Safety {
         'multilingual', 'redirects',
         // They must observe the request to serve or populate caches.
         'page-cache',
+        // They deliberately CHANGE every page's output (dequeue/defer/rewrite assets);
+        // unloading one un-optimises the page, which defeats the point.
+        'asset-optimiser',
         // The theme depends on them; unloading breaks rendering.
         'page-builder',
     );

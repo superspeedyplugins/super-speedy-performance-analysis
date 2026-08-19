@@ -146,7 +146,9 @@ which pages. Top level: `schema`, `generated_at`, `run` {id, type, started, fini
 `complete` (bool), `incomplete_reasons` (e.g. `no_deep_run_yet`,
 `run_predates_evidence_capture`), `pages[]`.
 
-Each page: `page_key`, `url`, `variant`, `profiled_at`, `plugins[]`. Each plugin entry:
+Each page: `page_key`, `url`, `variant`, `generation_ms` (median server generation time
+from the run's full-set profile, for prioritising pages by slowness; null when the page
+could not be measured), `profiled_at`, `plugins[]`. Each plugin entry:
 
 - `plugin` (slug), `file` (dir/file.php), `version` (installed now)
 - `classification`: `never` | `review` | `candidate` - the unload-safety ladder.

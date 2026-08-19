@@ -239,7 +239,7 @@ class SSPA_Report {
         // Full-set profiles of this run (baseline plugin set, normal cache mode), plus
         // their component attribution.
         $profiles = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, page_key, url, variant, method, created
+            "SELECT id, page_key, url, variant, method, page_gen_ms, created
              FROM %i WHERE run_id = %d AND plugin_set_hash = '' AND object_cache_mode = 'normal' AND method = 'GET'
              ORDER BY id ASC",
             SSPA_Schema::table('profiles'),
@@ -313,6 +313,9 @@ class SSPA_Report {
                 'page_key' => $p['page_key'],
                 'url' => $p['url'],
                 'variant' => $p['variant'],
+                // Median server generation time from this run's full-set profile, so a
+                // consumer can prioritise pages by how slow they actually are.
+                'generation_ms' => null !== $p['page_gen_ms'] ? round((float) $p['page_gen_ms'], 1) : null,
                 'profiled_at' => $p['created'],
                 'plugins' => $plugins,
             );

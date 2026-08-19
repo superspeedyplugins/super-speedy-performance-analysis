@@ -198,7 +198,9 @@ class SSPA_Crawler {
         // sweep can say "excluding this plugin changed no bytes" - which timing deltas alone
         // cannot. Only hashed once the sample is known to be a genuine uncached profiled
         // response; comparing a cached body against a live one would be meaningless.
-        $sample['body_hash'] = self::body_hash((string) $norm['body']);
+        // Headers are folded in because a plugin can change ONLY headers (security
+        // headers, CSP, redirects-adjacent behaviour) while the body stays identical.
+        $sample['body_hash'] = self::body_hash((string) $norm['body'], $headers);
 
         $capture = self::fetch_capture($token_id);
         if ($capture) {
@@ -224,10 +226,34 @@ class SSPA_Crawler {
      * snippets. Deliberately conservative - anything NOT stripped that varies makes two
      * bodies hash differently, which reads as "output changed" and fails SAFE (the sweep
      * records output_identical=0, never a false "identical").
+     *
+     * $headers, when given, are folded into the hash (minus per-request volatile ones)
+     * so header-only differences - a security plugin's CSP, an X-Redirect-By - also
+     * count as "output changed". A plugin whose entire job is response headers must
+     * never read as byte-identical.
      */
-    public static function body_hash($body) {
+    public static function body_hash($body, $headers = null) {
         if ('' === $body) {
             return null;
+        }
+        $header_lines = '';
+        if (is_array($headers) || $headers instanceof Traversable) {
+            $volatile = array(
+                'date', 'expires', 'age', 'set-cookie', 'etag', 'last-modified',
+                'content-length', 'connection', 'keep-alive', 'transfer-encoding',
+                'server-timing', 'x-request-id', 'cf-ray', 'x-runtime',
+                'x-sspa-profiled', 'x-sspa-ps', 'x-spro-unloaded',
+            );
+            $kept = array();
+            foreach ($headers as $name => $value) {
+                $name = strtolower((string) $name);
+                if (in_array($name, $volatile, true)) {
+                    continue;
+                }
+                $kept[] = $name . ': ' . (is_array($value) ? implode(', ', $value) : (string) $value);
+            }
+            sort($kept);
+            $header_lines = implode("\n", $kept) . "\n\n";
         }
         $normalised = preg_replace(
             array(
@@ -247,7 +273,7 @@ class SSPA_Crawler {
         if (null === $normalised) {
             $normalised = $body; // a PCRE failure must not lose the sample
         }
-        return md5($normalised);
+        return md5($header_lines . $normalised);
     }
 
     private function profiled_request($url, $cookies, $flags) {
