@@ -203,6 +203,27 @@ if (class_exists('WooCommerce')) {
     sspa_t(is_array($lookup) && 'wc_product_meta_lookup' === $lookup['table'], 'lookup table named: ' . ($lookup ? $lookup['table'] : 'none'));
     sspa_t(is_array($lookup) && 'min_price' === $lookup['column'], 'lookup column named: ' . ($lookup ? $lookup['column'] : 'none'));
 
+    // Popularity is the production case consumed by Super Speedy Archives:
+    // Woo keeps the friendly intent in query vars, then resolves it to a typed
+    // total_sales column plus product_id as the deterministic tie-breaker.
+    $pop_run = sspa_archive_run(home_url('/?post_type=product&orderby=popularity'));
+    $pop_record = is_wp_error($pop_run) ? null : sspa_main_archive(sspa_archive_capture($pop_run));
+    $pop_requested = is_array($pop_record) && !empty($pop_record['orderby_requested'][0]['by'])
+        ? $pop_record['orderby_requested'][0]['by']
+        : '';
+    sspa_t('popularity' === $pop_requested, 'popularity kept as the friendly WP_Query intent: ' . $pop_requested);
+
+    $pop_columns = array();
+    if (is_array($pop_record)) {
+        foreach ($pop_record['orderby_final'] as $term) {
+            if ('other_table' === $term['source'] && 'wc_product_meta_lookup' === $term['table']) {
+                $pop_columns[] = $term['column'] . ' ' . $term['order'];
+            }
+        }
+    }
+    sspa_t(array('total_sales DESC', 'product_id DESC') === $pop_columns,
+        'popularity resolves to total_sales DESC plus product_id DESC: ' . implode(', ', $pop_columns));
+
     // --- The composite must not be prefixed on an exclusion ---
     //
     // Woo adds a product_visibility NOT IN clause to every product query. NOT IN excludes, it
@@ -247,6 +268,13 @@ if (class_exists('WooCommerce')) {
     $min_price = isset($lookup_types['wc_product_meta_lookup.min_price']) ? $lookup_types['wc_product_meta_lookup.min_price'] : null;
     sspa_t(is_array($min_price) && 'schema' === $min_price['confidence'], 'lookup column type taken from the schema, not sampled');
     sspa_t(is_array($min_price) && 'decimal' === $min_price['sql_type'], 'min_price typed decimal: ' . ($min_price ? $min_price['sql_type'] : 'none'));
+
+    $pop_types = SSPA_Archive_Types::infer(array(
+        'other_table' => array('wc_product_meta_lookup' => array('total_sales' => array('order'))),
+    ));
+    $total_sales = isset($pop_types['wc_product_meta_lookup.total_sales']) ? $pop_types['wc_product_meta_lookup.total_sales'] : null;
+    sspa_t(is_array($total_sales) && 'schema' === $total_sales['confidence'], 'total_sales type taken from the lookup schema');
+    sspa_t(is_array($total_sales) && 'bigint' === $total_sales['sql_type'], 'total_sales typed bigint: ' . ($total_sales ? $total_sales['sql_type'] : 'none'));
 }
 
 // --- Type inference: the field only this plugin can supply ---
