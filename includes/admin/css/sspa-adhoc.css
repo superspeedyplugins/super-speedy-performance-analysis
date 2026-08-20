@@ -203,6 +203,16 @@
 	color: var(--sspa-faint);
 }
 
+#sspa-adhoc-pop .sspa-excimer-prompt {
+	color: var(--sspa-primary);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+#sspa-adhoc-pop .sspa-excimer-prompt:hover {
+	text-decoration: underline;
+}
+
 #sspa-adhoc-pop code {
 	font-family: var(--sspa-font-mono);
 	font-size: 12px;

@@ -267,6 +267,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   query values, variable endpoint IDs and checkout fulfilment identifiers cannot leave in the
   document; all three result surfaces expose both actions, and cache advice carries the optional
   implementation-service link.
+- `48-excimer-prompts.php` - an Excimer phase remains expandable when wrapper-based phase
+  attribution is empty, and measurements captured without Excimer link each missing
+  function-level view to the Tools tab's server-specific installation instructions.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

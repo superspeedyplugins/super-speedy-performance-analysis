@@ -404,6 +404,16 @@ class SSPA_Profile_Panel {
         );
     }
 
+    /** Small, consistent route to the server-specific Excimer instructions. */
+    private static function excimer_prompt_html($extra_class = '') {
+        $class = trim('sspa-excimer-prompt ' . $extra_class);
+        $label = extension_loaded('excimer')
+            ? __('Re-run with Excimer to improve this data', 'super-speedy-performance-analysis')
+            : __('Install Excimer to improve this data', 'super-speedy-performance-analysis');
+        return '<a class="' . esc_attr($class) . '" href="' . esc_url(admin_url('admin.php?page=sspa#tools')) . '">'
+            . esc_html($label) . '</a>';
+    }
+
     /** What a request phase can expand into, from data the capture already stores. */
     private static function phase_detail($boot, $key) {
         $from_hooks = function ($names) use ($boot) {
@@ -450,7 +460,11 @@ class SSPA_Profile_Panel {
         $has_global_fns = !empty($profile['functions']);
 
         $html = '<h4>' . esc_html__('Where the PHP time went', 'super-speedy-performance-analysis')
-            . ' <small>' . esc_html__('Click a phase to expand it', 'super-speedy-performance-analysis') . '</small></h4>';
+            . ' <small>' . esc_html__('Click a phase to expand it', 'super-speedy-performance-analysis');
+        if (empty($profile)) {
+            $html .= ' · ' . self::excimer_prompt_html('sspa-excimer-phases-prompt');
+        }
+        $html .= '</small></h4>';
         $html .= '<table class="sspa-adhoc-table">';
         foreach ($boot['segments'] as $key => $ms) {
             $label = isset($names[$key]) ? $names[$key] : $key;
@@ -458,8 +472,15 @@ class SSPA_Profile_Panel {
             $detail = is_array($detail) ? array_filter($detail, function ($v) {
                 return (float) $v >= 0.5;
             }) : array();
+            $phase_fns = !empty($profile['phases'][$key]['functions']);
             if (!$detail) {
-                $html .= '<tr><td class="sspa-adhoc-phase-plain">' . esc_html($label) . '</td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
+                if ($phase_fns) {
+                    $html .= '<tr class="sspa-adhoc-phase" data-phase="' . esc_attr($key) . '"><td><span class="sspa-adhoc-caret">&#9656;</span>'
+                        . esc_html($label) . '</td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
+                    $html .= self::phase_function_rows($profile, $key, true);
+                } else {
+                    $html .= '<tr><td class="sspa-adhoc-phase-plain">' . esc_html($label) . '</td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
+                }
                 continue;
             }
             arsort($detail);
@@ -477,7 +498,6 @@ class SSPA_Profile_Panel {
                 $gap_label = ('render_and_output' === $key)
                     ? __('theme templates + direct output (untimed)', 'super-speedy-performance-analysis')
                     : __('untimed / core framework', 'super-speedy-performance-analysis');
-                $phase_fns = !empty($profile['phases'][$key]['functions']);
                 $classes = 'sspa-adhoc-sub' . ($phase_fns ? ' sspa-adhoc-untimed' : (($has_global_fns) ? ' sspa-adhoc-tobyfn' : ''));
                 $title = $phase_fns
                     ? __('Click: the functions the profiler sampled during this phase', 'super-speedy-performance-analysis')
@@ -494,13 +514,16 @@ class SSPA_Profile_Panel {
     }
 
     /** Hidden rows listing what the sampling profiler caught DURING one phase. */
-    private static function phase_function_rows($profile, $phase_key) {
+    private static function phase_function_rows($profile, $phase_key, $direct_children = false) {
         if (empty($profile['phases'][$phase_key]['functions'])) {
             return '';
         }
         $html = '';
         foreach ($profile['phases'][$phase_key]['functions'] as $fn) {
-            $html .= '<tr class="sspa-adhoc-fnsub" data-fnparent="' . esc_attr($phase_key) . '" style="display:none"><td><small><code>'
+            $class = $direct_children ? 'sspa-adhoc-sub sspa-adhoc-fnsub' : 'sspa-adhoc-fnsub';
+            $html .= '<tr class="' . esc_attr($class) . '"'
+                . ($direct_children ? ' data-parent="' . esc_attr($phase_key) . '"' : '')
+                . ' data-fnparent="' . esc_attr($phase_key) . '" style="display:none"><td><small><code>'
                 . esc_html($fn['fn']) . '</code> · ' . esc_html($fn['component']) . '</small></td><td><small>'
                 . esc_html(number_format((float) $fn['self_ms'], 1)) . 'ms</small></td></tr>';
         }
@@ -561,7 +584,8 @@ class SSPA_Profile_Panel {
                 . esc_html__('Theme templates + direct output', 'super-speedy-performance-analysis') . ' <small>('
                 . esc_html__('untimed remainder', 'super-speedy-performance-analysis')
                 . (($phase_fns || $linkable) ? ' - ' . esc_html__('click for the function view', 'super-speedy-performance-analysis') : '')
-                . ')</small></td><td>' . esc_html(number_format((float) $untimed, 1)) . 'ms</td></tr>';
+                . ')' . (empty($profile) ? ' · ' . self::excimer_prompt_html('sspa-excimer-render-prompt') : '')
+                . '</small></td><td>' . esc_html(number_format((float) $untimed, 1)) . 'ms</td></tr>';
             if ($phase_fns) {
                 $html .= self::phase_function_rows($profile, 'render_and_output');
             }
@@ -660,7 +684,16 @@ class SSPA_Profile_Panel {
     }
 
     private static function functions_html($capture) {
-        if (!is_array($capture) || empty($capture['profile']['functions'])) {
+        if (!is_array($capture)) {
+            return '';
+        }
+        if (empty($capture['profile'])) {
+            return '<div class="sspa-adhoc-span sspa-excimer-missing" id="sspa-adhoc-byfn"><h4>'
+                . esc_html__('By function', 'super-speedy-performance-analysis') . '</h4><p class="sspa-adhoc-note">'
+                . esc_html__('Function-level sampling was not available for this measurement.', 'super-speedy-performance-analysis') . ' '
+                . self::excimer_prompt_html('sspa-excimer-functions-prompt') . '.</p></div>';
+        }
+        if (empty($capture['profile']['functions'])) {
             return '';
         }
         $profile = $capture['profile'];

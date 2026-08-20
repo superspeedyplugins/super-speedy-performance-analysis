@@ -152,6 +152,10 @@ class SSPA_Adhoc {
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('sspa_admin'),
                 'results_url' => admin_url('admin.php?page=sspa#pages'),
+                'tools_url' => admin_url('admin.php?page=sspa#tools'),
+                'excimer_prompt' => extension_loaded('excimer')
+                    ? __('Re-run with Excimer to improve this data', 'super-speedy-performance-analysis')
+                    : __('Install Excimer to improve this data', 'super-speedy-performance-analysis'),
                 'logo_url' => $logo,
                 'version' => SSPA_VERSION,
             ));

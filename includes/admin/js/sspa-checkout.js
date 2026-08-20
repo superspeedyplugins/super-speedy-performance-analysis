@@ -395,7 +395,8 @@
 			});
 			html += '</table><p class="sspa-adhoc-note">' + esc(d.profile.note) + '</p>';
 		} else {
-			html += '<p class="sspa-adhoc-note">No sampling profile: the Excimer extension is not installed. The Tools tab explains how to add it.</p>';
+			html += '<p class="sspa-adhoc-note">No function-level sampling was available for this measurement. ' +
+				'<a class="sspa-excimer-prompt" href="' + esc(sspa_checkout.tools_url) + '">' + esc(sspa_checkout.excimer_prompt) + '</a>.</p>';
 		}
 
 		// The safety report, stated rather than assumed.
