@@ -331,7 +331,53 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 'components' => array_slice($components, 0, 100, true),
                 'top_callbacks' => array_slice($top, 0, 15),
                 'render' => $render,
+                'assets' => $this->assets(),
             );
+        }
+
+        /**
+         * Which components put scripts/styles on this response. A plugin whose only
+         * front-end job is enqueuing an asset does near-zero PHP work and runs no
+         * queries, so every other instrument reads it as idle - this is the signal
+         * that stops such a plugin being called safe to unload.
+         *
+         * Counted from the queues at shutdown: `done` holds handles actually printed,
+         * `queue` catches anything enqueued but not yet printed when the request died.
+         * Attribution is by the registered src URL's /plugins/<slug>/ segment; themes
+         * fold into 'theme', core bundles and external URLs into 'core'.
+         *
+         * @return array component => {scripts:int, styles:int}
+         */
+        private function assets() {
+            $out = array();
+            foreach (array('scripts' => 'wp_scripts', 'styles' => 'wp_styles') as $kind => $global_key) {
+                if (empty($GLOBALS[$global_key]) || !is_object($GLOBALS[$global_key])) {
+                    continue;
+                }
+                $registry = $GLOBALS[$global_key];
+                $handles = array_unique(array_merge(
+                    isset($registry->done) ? (array) $registry->done : array(),
+                    isset($registry->queue) ? (array) $registry->queue : array()
+                ));
+                foreach ($handles as $handle) {
+                    if (empty($registry->registered[$handle]) || empty($registry->registered[$handle]->src)) {
+                        continue; // alias handles (dependency bundles) carry no src
+                    }
+                    $src = str_replace('\\', '/', (string) $registry->registered[$handle]->src);
+                    if (preg_match('#/wp-content/plugins/([^/]+)/#', $src, $m)) {
+                        $component = $m[1];
+                    } elseif (false !== strpos($src, '/wp-content/themes/')) {
+                        $component = 'theme';
+                    } else {
+                        $component = 'core';
+                    }
+                    if (!isset($out[$component])) {
+                        $out[$component] = array('scripts' => 0, 'styles' => 0);
+                    }
+                    $out[$component][$kind]++;
+                }
+            }
+            return $out;
         }
 
         /**

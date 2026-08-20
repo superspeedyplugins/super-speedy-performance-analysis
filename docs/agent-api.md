@@ -173,6 +173,43 @@ measurement with the plugin virtually excluded. **Positive = the plugin ADDS tha
 the plugin is speeding the site up (common for search/filter replacement plugins). Never
 describe a negative delta as the plugin being slow.
 
+## Page plugin usage object (get-page-plugin-usage / wp sspa page-plugin-usage)
+
+Separate from the report and additive to it; its own `schema` (currently 1,
+`SSPA_Report::PAGE_PLUGIN_USAGE_SCHEMA`). PHP surface: `SSPA_Report::page_plugin_usage($run_id = 0)`.
+
+What it answers: for each profiled page, what every active plugin actually DID there, so a
+consumer (Scalability Pro's Unload Plugins tab) can decide which plugins are not needed on
+which pages. Top level: `schema`, `generated_at`, `run` {id, type, started, finished},
+`complete` (bool), `incomplete_reasons` (e.g. `no_deep_run_yet`,
+`run_predates_evidence_capture`), `pages[]`.
+
+Each page: `page_key`, `url`, `variant`, `generation_ms` (median server generation time
+from the run's full-set profile, for prioritising pages by slowness; null when the page
+could not be measured), `output_stable` (true = the page's normalised output held still
+between fetches; false = it varies between loads - rotating/dynamic content - so
+byte-identity evidence is structurally unobtainable for this page and `output_identical`
+will be null; null = not enough samples to say), `profiled_at`, `plugins[]`. Each plugin
+entry:
+
+- `plugin` (slug), `file` (dir/file.php), `version` (installed now)
+- `classification`: `never` | `review` | `candidate` - the unload-safety ladder.
+  **`never` always wins over measurements**; it covers money/order paths, security,
+  membership/access control, consent banners, multilingual/routing, caching and
+  page-builder plugins, plus anything whose dependency group contains one of those.
+  A classifier failure lands on `never`/`review`, never `candidate`.
+- `classification_reasons`, `group` (plugins that must be unloaded together with it)
+- `evidence` {attributed, query_count, sql_ms, http_ms, mail_ms, include_ms, hook_ms,
+  assets_count} - attribution from this run's full-set profile. **NULL include_ms /
+  hook_ms / assets_count mean the run predates evidence capture: report UNKNOWN, never
+  zero.**
+- `impact` (nullable) - the latest deep-sweep measurement for this plugin on this
+  page: `delta_generation_ms`, `noise_floor_ms`, `confidence` (measured|none),
+  `output_identical` (true = excluding the plugin changed no bytes of the normalised
+  response; false = it did; null = unknowable), `measured_version`, `measured_at`.
+  Evidence measured against a version other than `version` is stale - re-measure before
+  acting on it.
+
 ## Archive profile object (get-archive-profile)
 
 Separate from the report and additive to it, so `SSPA_Report::SCHEMA` does not move. It has its

@@ -190,6 +190,223 @@ class SSPA_Report {
         );
     }
 
+    /**
+     * The page-plugin-usage contract: for each profiled page, what every active plugin
+     * actually DID there, with a per-plugin unload-safety classification. This is the
+     * stable cross-plugin surface behind Scalability Pro's Unload Plugins tab - SPRO
+     * must consume THIS (or the matching ability/CLI), never the tables or blobs.
+     *
+     * Evidence per plugin per page:
+     *   attribution  (every run)   queries/SQL/HTTP ms, include cost, timed hook-callback
+     *                              cost, enqueued asset count - from component_stats.
+     *                              NULL include/hook/assets = the run predates evidence
+     *                              capture; report unknown, never zero.
+     *   measurement  (deep runs)   the latest exclusion delta for (plugin, page), with
+     *                              confidence, output_identical and the version measured.
+     *
+     * Additive to the report schema; versioned independently.
+     *
+     * @return array|WP_Error
+     */
+    const PAGE_PLUGIN_USAGE_SCHEMA = 1;
+
+    /**
+     * The same normalisation SSPA_Community_Exporter::safe_version() applies when the
+     * sweep stamps plugin_impacts.plugin_version - duplicated here because that method
+     * is deliberately private to the exporter. Keep the two in step: a divergence
+     * makes measured_version comparisons fail on formatting and silently blocks
+     * consumers' promotions.
+     */
+    private static function comparable_version($version) {
+        $version = trim((string) $version);
+        return preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $version) ? $version : null;
+    }
+
+    public static function page_plugin_usage($run_id = 0) {
+        global $wpdb;
+        $run_id = $run_id ? (int) $run_id : self::latest_done_run_id();
+        if (!$run_id) {
+            return new WP_Error('sspa_no_run', __('No completed analysis run found. Run an analysis first.', 'super-speedy-performance-analysis'));
+        }
+        $run = SSPA_Run_Controller::run_row($run_id);
+        if (!$run) {
+            return new WP_Error('sspa_no_run', __('Run not found.', 'super-speedy-performance-analysis'));
+        }
+
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $all_plugins = get_plugins();
+        $slug_to_file = SSPA_Dependency_Map::slug_to_file();
+        $groups = SSPA_Dependency_Map::must_exclude_together();
+
+        // Latest measured impact per plugin x page, normal cache mode - one indexed pass.
+        $impacts = array(); // "plugin|page_key" => row
+        // Pages whose LATEST sweep found its own baselines unstable (output_identical
+        // sentinel 2): byte-identity was unobtainable when it mattered, so the page is
+        // exported as dynamic regardless of what this run's samples thought.
+        $swept_dynamic = array(); // page_key => true
+        $page_newest = array();   // page_key => created of the page's newest impact row
+        foreach ($wpdb->get_results($wpdb->prepare(
+            "SELECT plugin, plugin_version, page_key, delta_ttfb_ms, noise_floor_ms, output_identical, confidence, created
+             FROM %i WHERE object_cache_mode = 'normal' AND method = 'single_out' AND blog_id = %d
+             ORDER BY id DESC LIMIT 2000",
+            SSPA_Schema::table('plugin_impacts'),
+            get_current_blog_id()
+        ), ARRAY_A) as $row) {
+            $key = $row['plugin'] . '|' . $row['page_key'];
+            if (!isset($page_newest[$row['page_key']])) {
+                // Rows arrive newest-first, so the first row seen for a page carries its
+                // most recent sweep's timestamp; only sentinel rows from THAT sweep may
+                // mark the page dynamic - stale sentinels from an older, noisier era
+                // must not pin a since-stabilised page.
+                $page_newest[$row['page_key']] = $row['created'];
+            }
+            if (!isset($impacts[$key])) {
+                $impacts[$key] = $row;
+                if (2 === (int) $row['output_identical'] && $row['created'] === $page_newest[$row['page_key']]) {
+                    $swept_dynamic[$row['page_key']] = true;
+                }
+            }
+        }
+
+        // Full-set profiles of this run (baseline plugin set, normal cache mode), plus
+        // their component attribution.
+        $profiles = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, page_key, url, variant, method, page_gen_ms, samples, created
+             FROM %i WHERE run_id = %d AND plugin_set_hash = '' AND object_cache_mode = 'normal' AND method = 'GET'
+             ORDER BY id ASC",
+            SSPA_Schema::table('profiles'),
+            $run_id
+        ), ARRAY_A);
+
+        $stats_by_profile = array();
+        if ($profiles) {
+            $ids = implode(',', array_map('intval', wp_list_pluck($profiles, 'id')));
+            foreach ($wpdb->get_results($wpdb->prepare(
+                "SELECT profile_id, component, query_count, sql_ms, http_ms, mail_ms, include_ms, hook_ms, assets_count
+                 FROM %i WHERE profile_id IN ($ids)",
+                SSPA_Schema::table('component_stats')
+            ), ARRAY_A) as $s) {
+                $stats_by_profile[(int) $s['profile_id']][$s['component']] = $s;
+            }
+        }
+
+        $reasons = array();
+        $has_evidence_columns = false;
+        $has_impacts = (bool) $impacts;
+        $classifications = array(); // slug => verdict, classified once
+        $pages = array();
+
+        foreach ($profiles as $p) {
+            $stats = isset($stats_by_profile[(int) $p['id']]) ? $stats_by_profile[(int) $p['id']] : array();
+            $plugins = array();
+            foreach ($slug_to_file as $slug => $file) {
+                if ('super-speedy-performance-analysis' === $slug) {
+                    continue;
+                }
+                if (!isset($classifications[$slug])) {
+                    $classifications[$slug] = SSPA_Unload_Safety::classify($slug);
+                }
+                $s = isset($stats[$slug]) ? $stats[$slug] : null;
+                if ($s && null !== $s['include_ms']) {
+                    $has_evidence_columns = true;
+                }
+                $impact = isset($impacts[$slug . '|' . $p['page_key']]) ? $impacts[$slug . '|' . $p['page_key']] : null;
+                $plugins[] = array(
+                    'plugin' => $slug,
+                    'file' => $file,
+                    // Normalised with the SAME rule the sweep's version stamp uses
+                    // (community exporter safe_version), so a consumer's strict
+                    // string compare of the two can never fail on formatting alone.
+                    'version' => isset($all_plugins[$file]['Version'])
+                        ? self::comparable_version($all_plugins[$file]['Version']) : null,
+                    'classification' => $classifications[$slug]['classification'],
+                    'classification_reasons' => $classifications[$slug]['reasons'],
+                    'group' => isset($groups[$slug]) ? $groups[$slug] : array(),
+                    'evidence' => array(
+                        // attributed=false means "no instrument saw this plugin do anything";
+                        // with include_ms NULL as well, the run predates evidence capture and
+                        // the truthful reading is UNKNOWN, not idle.
+                        'attributed' => null !== $s,
+                        'query_count' => $s ? (int) $s['query_count'] : 0,
+                        'sql_ms' => $s ? round((float) $s['sql_ms'], 1) : 0.0,
+                        'http_ms' => $s ? round((float) $s['http_ms'], 1) : 0.0,
+                        'mail_ms' => $s ? round((float) $s['mail_ms'], 1) : 0.0,
+                        'include_ms' => ($s && null !== $s['include_ms']) ? round((float) $s['include_ms'], 2) : null,
+                        'hook_ms' => ($s && null !== $s['hook_ms']) ? round((float) $s['hook_ms'], 2) : null,
+                        'assets_count' => ($s && null !== $s['assets_count']) ? (int) $s['assets_count'] : null,
+                    ),
+                    'impact' => $impact ? array(
+                        'delta_generation_ms' => null !== $impact['delta_ttfb_ms'] ? round((float) $impact['delta_ttfb_ms'], 1) : null,
+                        'noise_floor_ms' => null !== $impact['noise_floor_ms'] ? round((float) $impact['noise_floor_ms'], 1) : null,
+                        'confidence' => $impact['confidence'],
+                        // Sentinel 2 (sweep baselines unstable) exports as null here;
+                        // its page-level meaning travels via output_stable=false.
+                        'output_identical' => (null !== $impact['output_identical'] && 2 !== (int) $impact['output_identical'])
+                            ? (bool) $impact['output_identical'] : null,
+                        'measured_version' => $impact['plugin_version'],
+                        'measured_at' => $impact['created'],
+                    ) : null,
+                );
+            }
+            // Does this page's (normalised) output hold still between fetches? A REAL
+            // page with rotating products or dynamic sections legitimately varies, and
+            // a consumer must know: byte-identity evidence (output_identical) is
+            // structurally unobtainable there, so any decision gated on it needs a
+            // different bar. true = stable, false = varies, null = not enough samples.
+            $stable_hashes = array();
+            foreach ((array) json_decode((string) $p['samples'], true) as $s) {
+                if (is_array($s) && !empty($s['body_hash'])) {
+                    $stable_hashes[] = (string) $s['body_hash'];
+                }
+            }
+            $output_stable = count($stable_hashes) >= 2 ? (1 === count(array_unique($stable_hashes))) : null;
+            // The sweep's verdict outranks this run's samples: if the LATEST deep scan
+            // of this page found its own baselines unstable, byte-identity is
+            // unobtainable in practice and consumers must use their dynamic-page bar.
+            if (isset($swept_dynamic[$p['page_key']])) {
+                $output_stable = false;
+            }
+
+            $pages[] = array(
+                'page_key' => $p['page_key'],
+                'url' => $p['url'],
+                'variant' => $p['variant'],
+                // Median server generation time from this run's full-set profile, so a
+                // consumer can prioritise pages by how slow they actually are.
+                'generation_ms' => null !== $p['page_gen_ms'] ? round((float) $p['page_gen_ms'], 1) : null,
+                'output_stable' => $output_stable,
+                'profiled_at' => $p['created'],
+                'plugins' => $plugins,
+            );
+        }
+
+        if (!$pages) {
+            $reasons[] = 'no_full_set_profiles_in_run';
+        }
+        if (!$has_evidence_columns && $pages) {
+            $reasons[] = 'run_predates_evidence_capture';
+        }
+        if (!$has_impacts) {
+            $reasons[] = 'no_deep_run_yet';
+        }
+
+        return array(
+            'schema' => self::PAGE_PLUGIN_USAGE_SCHEMA,
+            'generated_at' => gmdate('c'),
+            'run' => array(
+                'id' => (int) $run['id'],
+                'type' => $run['run_type'],
+                'started' => $run['started'],
+                'finished' => $run['finished'],
+            ),
+            'complete' => !$reasons,
+            'incomplete_reasons' => $reasons,
+            'pages' => $pages,
+        );
+    }
+
     public static function impacts() {
         global $wpdb;
         $out = array();

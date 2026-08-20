@@ -215,6 +215,67 @@
       "polylang",
       "translatepress-multilingual",
       "weglot"
+    ],
+    "payments": [
+      "woocommerce-payments",
+      "woocommerce-gateway-stripe",
+      "woocommerce-paypal-payments",
+      "woocommerce-square",
+      "mollie-payments-for-woocommerce",
+      "klarna-payments-for-woocommerce",
+      "woo-vipps"
+    ],
+    "commerce-core": [
+      "woocommerce",
+      "easy-digital-downloads",
+      "woocommerce-subscriptions",
+      "affiliate-wp",
+      "affiliatewp",
+      "woocommerce-bookings",
+      "yith-woocommerce-request-a-quote"
+    ],
+    "membership": [
+      "paid-memberships-pro",
+      "memberpress",
+      "restrict-content-pro",
+      "ultimate-member",
+      "members",
+      "wp-members",
+      "simple-membership",
+      "lifterlms",
+      "sfwd-lms",
+      "sensei-lms"
+    ],
+    "consent": [
+      "cookie-law-info",
+      "cookie-notice",
+      "complianz-gdpr",
+      "gdpr-cookie-compliance",
+      "cookiebot",
+      "cookieyes-gdpr-cookie-banner",
+      "borlabs-cookie",
+      "real-cookie-banner",
+      "age-gate"
+    ],
+    "redirects": [
+      "redirection",
+      "eps-301-redirects",
+      "simple-301-redirects",
+      "safe-redirect-manager"
+    ],
+    "anti-spam": [
+      "akismet",
+      "antispam-bee",
+      "cleantalk-spam-protect",
+      "wp-armour"
+    ],
+    "asset-optimiser": [
+      "perfmatters",
+      "autoptimize",
+      "wp-optimize",
+      "flying-press",
+      "speed-booster-pack",
+      "flying-scripts"
     ]
   },
   "fragile": [

@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '2.1';
+    const DB_VERSION = '2.2';
 
     const LOCK_OPTION = 'sspa_schema_lock';
 
@@ -132,6 +132,9 @@ class SSPA_Schema {
             mail_ms float NOT NULL DEFAULT 0,
             cache_hits int(11) NOT NULL DEFAULT 0,
             cache_misses int(11) NOT NULL DEFAULT 0,
+            include_ms float NULL,
+            hook_ms float NULL,
+            assets_count int(11) NULL,
             PRIMARY KEY  (id),
             KEY profile_id (profile_id),
             KEY run_component (run_id,component),
@@ -170,6 +173,7 @@ class SSPA_Schema {
             delta_mem_bytes bigint(20) NULL,
             delta_queries int(11) NULL,
             noise_floor_ms float NULL,
+            output_identical tinyint(1) NULL,
             confidence varchar(10) NOT NULL DEFAULT 'measured',
             baseline_run_id bigint(20) unsigned NULL,
             test_run_id bigint(20) unsigned NULL,

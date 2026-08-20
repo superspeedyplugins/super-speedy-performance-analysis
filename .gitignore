@@ -3,6 +3,7 @@
 node_modules/
 /.claude/
 /.codex/
+/.data/
 /.tests/scratch/
 
 # THIS REPO IS PUBLIC. The working documents below live in the private meta repo

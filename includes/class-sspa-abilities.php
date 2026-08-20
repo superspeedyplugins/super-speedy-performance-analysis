@@ -31,6 +31,7 @@ class SSPA_Abilities {
             self::CATEGORY . '/get-cache-safety-report',
             self::CATEGORY . '/get-findings',
             self::CATEGORY . '/get-plugin-impacts',
+            self::CATEGORY . '/get-page-plugin-usage',
             self::CATEGORY . '/get-site-metrics',
             self::CATEGORY . '/run-analysis',
             self::CATEGORY . '/run-deep-analysis',
@@ -244,6 +245,24 @@ class SSPA_Abilities {
             ),
             'permission_callback' => array(__CLASS__, 'can_manage'),
             'execute_callback' => array(__CLASS__, 'exec_get_impacts'),
+            'meta' => $readonly,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/get-page-plugin-usage', array(
+            'label' => __('Get page plugin usage', 'super-speedy-performance-analysis'),
+            'description' => __('Per profiled page, what every active plugin actually did there (queries, HTTP, mail, include/hook cost, enqueued assets), the latest measured exclusion delta with output-identity, and an unload-safety classification (never/review/candidate). Built for per-page plugin unloading decisions. classification=never must always win over measurements; NULL evidence fields mean unknown, not zero.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'run_id' => array('type' => 'integer', 'description' => __('Specific run id; defaults to the latest completed run.', 'super-speedy-performance-analysis')),
+                ),
+                'additionalProperties' => false,
+                'default' => array(),
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_get_page_plugin_usage'),
             'meta' => $readonly,
         ));
 
@@ -483,6 +502,10 @@ class SSPA_Abilities {
 
     public static function exec_get_archive_profile($input) {
         return SSPA_Report::archive_profile(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
+    }
+
+    public static function exec_get_page_plugin_usage($input) {
+        return SSPA_Report::page_plugin_usage(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_cache_safety_report($input) {

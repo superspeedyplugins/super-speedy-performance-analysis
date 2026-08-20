@@ -33,7 +33,7 @@ if (!$sspa_last_run_id) : ?>
     </div>
 
     <p class="description">
-        <?php esc_html_e('Attribution totals come from the last analysis (all profiled pages). Measured impact comes from Plugin Impact Analysis: every page re-measured with the plugin virtually disabled, in every cache mode. "adds" means the plugin costs you that much page-generation time; "saves" means pages got SLOWER without it - the plugin is speeding your site up. Click "per-page breakdown" for the full picture.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('Attribution totals come from the last analysis (all profiled pages). Measured impact comes from the Deep Impact Scan: every page re-measured with the plugin virtually disabled, in every cache mode. "adds" means the plugin costs you that much page-generation time; "saves" means pages got SLOWER without it - the plugin is speeding your site up. Click "per-page breakdown" for the full picture.', 'super-speedy-performance-analysis'); ?>
     </p>
     <p class="description">
         <?php esc_html_e('Careful with the SQL/query columns: they credit work to whichever component runs it. A plugin that REPLACES a slow feature (search, filtering) will show the queries it runs even when it is far faster than what it replaced - the measured impact is the true verdict on whether it costs or saves you time.', 'super-speedy-performance-analysis'); ?>
