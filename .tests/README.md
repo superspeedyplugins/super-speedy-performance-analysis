@@ -157,7 +157,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   Two fixture plugins are planted and removed by the case itself.
   The whole purchase then runs again against the CLASSIC shortcode checkout: the store is
   pointed at throwaway `[woocommerce_cart]`/`[woocommerce_checkout]` pages and put back
-  afterwards, so the block pages are never edited. Two assertions pin the nonce binding
+  afterwards, so the block pages are never edited. Its session cookie is renamed through
+  WooCommerce's public filter, proving cache/session plugins do not cause a false `no_session`.
+  Two assertions pin the nonce binding
   that path depends on - the place-order nonce must differ from both an unbound one and one
   minted as the current admin, while the `update-order-review` nonce must not.
 - `20-community-outbox.php` - privacy gate, immutable gzip outbox artefacts, retry scheduling,

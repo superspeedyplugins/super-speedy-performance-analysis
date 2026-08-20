@@ -1078,13 +1078,19 @@ class SSPA_Checkout_Flow {
 
     /** The cart session's customer id, read from the cookie WooCommerce set on our jar. */
     private static function session_customer_id($jar) {
+        $session_cookie = self::session_cookie_name();
         foreach ($jar['cookies'] as $name => $cookie) {
-            if (0 === strpos((string) $name, 'wp_woocommerce_session_')) {
+            if ($session_cookie === (string) $name) {
                 $id = strtok((string) $cookie->value, '|');
                 return $id ? $id : '';
             }
         }
         return '';
+    }
+
+    /** Follow WooCommerce's public cookie-name filter instead of assuming its core default. */
+    private static function session_cookie_name() {
+        return (string) apply_filters('woocommerce_cookie', 'wp_woocommerce_session_' . COOKIEHASH);
     }
 
     /**
@@ -1279,12 +1285,13 @@ class SSPA_Checkout_Flow {
         }
         $step = self::request($crawler, $page_key, $method, $url, $flags, $args);
 
+        $session_cookie = self::session_cookie_name();
         foreach ((array) $step['sample']['cookies'] as $cookie) {
             if (!is_object($cookie) || !isset($cookie->name)) {
                 continue;
             }
             $jar['cookies'][$cookie->name] = $cookie;
-            if (0 === strpos($cookie->name, 'wp_woocommerce_session_')) {
+            if ($session_cookie === (string) $cookie->name) {
                 // The customer id is the first field of the cookie value. Recorded so the
                 // session row this run created can be removed again afterwards.
                 $key = strtok((string) $cookie->value, '|');

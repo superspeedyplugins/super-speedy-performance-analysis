@@ -624,6 +624,24 @@ wp_cache_flush();
 
 sspa_t('classic' === SSPA_Checkout_Preflight::checkout_type(), 'shortcode checkout detected as classic');
 
+// Reproduce Cache Optimisation and any other session layer that uses WooCommerce's public
+// cookie-name filter. The checkout driver must follow the effective name, not assume core's
+// wp_woocommerce_session_* default, or it stops after a successful add-to-cart with no_session.
+$plant('sspa-renamed-session-cookie', <<<'PHP'
+<?php
+/** Plugin Name: SSPA Renamed Session Cookie (test fixture) */
+add_filter('woocommerce_cookie', function ($name) {
+    return 0 === strpos((string) $name, 'wp_woocommerce_session_')
+        ? str_replace('wp_woocommerce_session_', 'sspa_test_session_', (string) $name)
+        : $name;
+}, PHP_INT_MAX);
+PHP
+);
+sleep(3); // opcache revalidate_freq
+$effective_session_cookie = apply_filters('woocommerce_cookie', 'wp_woocommerce_session_' . COOKIEHASH);
+sspa_t(0 === strpos($effective_session_cookie, 'sspa_test_session_'),
+    'fixture genuinely renames WooCommerce session cookies through woocommerce_cookie');
+
 // The place-order nonce must be bound to the LOGGED-OUT loopback visitor's cart session,
 // not to this process. If a refactor drops either half of that binding these values
 // collapse together, and the run below stops completing.
@@ -741,3 +759,4 @@ if (false !== $shipping_method_id) {
 delete_option('sspa_test_mail_log');
 $remove('sspa-slow-integration');
 $remove('sspa-mail-observer');
+$remove('sspa-renamed-session-cookie');

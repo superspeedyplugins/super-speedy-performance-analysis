@@ -344,12 +344,19 @@ class SSPA_Traffic_Hot_Path {
                 return array('wc-session:', $customer_id);
             }
         }
+        $session_cookie = self::session_cookie_name();
         foreach ((array) $_COOKIE as $name => $value) {
-            if (strpos((string) $name, 'wp_woocommerce_session_') === 0 && is_string($value) && $value !== '') {
+            if ($session_cookie === (string) $name && is_string($value) && $value !== '') {
                 return array('wc-cookie:', $value);
             }
         }
         return null;
+    }
+
+    /** Follow WooCommerce's public cookie-name filter when the session object is unavailable. */
+    private static function session_cookie_name() {
+        $default = 'wp_woocommerce_session_' . (defined('COOKIEHASH') ? COOKIEHASH : '');
+        return function_exists('apply_filters') ? (string) apply_filters('woocommerce_cookie', $default) : $default;
     }
 
     private static function basket_non_empty() {
