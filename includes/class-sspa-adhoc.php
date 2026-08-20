@@ -105,6 +105,7 @@ class SSPA_Adhoc {
                 'loading' => __('Loading…', 'super-speedy-performance-analysis'),
                 'exporting' => __('Preparing export…', 'super-speedy-performance-analysis'),
                 'export_failed' => __('The page diagnostic could not be exported.', 'super-speedy-performance-analysis'),
+                'markdown_failed' => __('The Markdown report could not be exported.', 'super-speedy-performance-analysis'),
                 // The plugin-impact picker. Built client-side from the plan endpoint so the
                 // estimate can update as boxes are ticked, rather than after a round trip.
                 // NOTHING is preselected: choosing which plugins get excluded from test
@@ -146,7 +147,7 @@ class SSPA_Adhoc {
         // The checkout-flow panel reuses this popover's CSS wholesale; it only needs its
         // own script because the disclosure step has no equivalent here.
         if (self::checkout_flow_available() || self::on_settings_page()) {
-            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-checkout.js'), true);
+            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery', 'sspa-adhoc'), sspa_asset_version('includes/admin/js/sspa-checkout.js'), true);
             wp_localize_script('sspa-checkout', 'sspa_checkout', array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('sspa_admin'),

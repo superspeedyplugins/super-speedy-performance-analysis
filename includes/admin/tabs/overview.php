@@ -25,6 +25,11 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         </div>
         <div class="sspa-score-meta">
             <h2><?php esc_html_e('Top insights', 'super-speedy-performance-analysis'); ?></h2>
+            <p>
+                <button type="button" class="button sspa-markdown-download" data-kind="run" data-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Download Markdown', 'super-speedy-performance-analysis'); ?></button>
+                <button type="button" class="button sspa-markdown-copy" data-kind="run" data-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Copy Markdown', 'super-speedy-performance-analysis'); ?></button>
+                <span class="description sspa-markdown-status" aria-live="polite"></span>
+            </p>
             <?php
             $sspa_top = SSPA_Insights::top($sspa_last_run['id'], 5);
             if (!$sspa_top) {
@@ -196,6 +201,10 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <p>
                 <button type="button" class="button sspa-cache-safety-download" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Download cache optimisation analysis', 'super-speedy-performance-analysis'); ?></button>
                 <span class="description sspa-cache-safety-download-status" aria-live="polite"></span>
+            </p>
+            <p class="description">
+                <?php esc_html_e('Want me to implement this for you?', 'super-speedy-performance-analysis'); ?>
+                <a href="<?php echo esc_url(SSPA_Markdown_Export::CACHE_SERVICE_URL); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('View the full-page caching implementation service.', 'super-speedy-performance-analysis'); ?></a>
             </p>
             <p class="description"><?php esc_html_e('No traffic collector was used. This immediate report assesses implementation difficulty and hazards, not daily traffic or expected caching benefit.', 'super-speedy-performance-analysis'); ?></p>
         </div>

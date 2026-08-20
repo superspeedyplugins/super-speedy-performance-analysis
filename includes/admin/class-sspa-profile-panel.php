@@ -254,6 +254,11 @@ class SSPA_Profile_Panel {
         $html .= '<button type="button" class="sspa-adhoc-btn sspa-adhoc-export" data-profile-id="' . (int) $row['id'] . '" title="'
             . esc_attr__('Downloads the exact local diagnostic capture. It may contain URLs and SQL literals.', 'super-speedy-performance-analysis') . '">'
             . esc_html__('Export JSON', 'super-speedy-performance-analysis') . '</button>';
+        $html .= '<button type="button" class="sspa-adhoc-btn sspa-markdown-download" data-kind="page" data-id="' . (int) $row['id'] . '">'
+            . esc_html__('Download Markdown', 'super-speedy-performance-analysis') . '</button>';
+        $html .= '<button type="button" class="sspa-adhoc-btn sspa-markdown-copy" data-kind="page" data-id="' . (int) $row['id'] . '">'
+            . esc_html__('Copy Markdown', 'super-speedy-performance-analysis') . '</button>';
+        $html .= '<span class="sspa-markdown-status" aria-live="polite"></span>';
         $html .= '<span class="sspa-adhoc-badge ' . ($cached ? 'is-cached' : 'is-fresh') . '">'
             . esc_html($cached ? __('Stored result', 'super-speedy-performance-analysis') : __('Fresh result', 'super-speedy-performance-analysis'))
             . '</span>';

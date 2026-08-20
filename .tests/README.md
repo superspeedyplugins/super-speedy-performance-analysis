@@ -262,6 +262,11 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   variable path and query-value privacy, licence/update/telemetry/payment classification,
   fail-safe block verdicts, identical PHP/Abilities/WP-CLI surfaces, old-capture completeness
   reporting, and opt-in privacy-safe community evidence for superspeedy.org.
+- `47-markdown-export.php` - page, complete-site and checkout/order results produce the same
+  privacy-safe Markdown used by Download Markdown and Copy Markdown. Raw SQL literals, HTTP
+  query values, variable endpoint IDs and checkout fulfilment identifiers cannot leave in the
+  document; all three result surfaces expose both actions, and cache advice carries the optional
+  implementation-service link.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

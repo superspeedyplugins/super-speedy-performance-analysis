@@ -49,6 +49,7 @@ if (!$sspa_runs) : ?>
                 <th><?php esc_html_e('Findings', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Score', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Components measured', 'super-speedy-performance-analysis'); ?></th>
+                <th><?php esc_html_e('LLM report', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Share with community', 'super-speedy-performance-analysis'); ?></th>
             </tr>
         </thead>
@@ -92,6 +93,16 @@ if (!$sspa_runs) : ?>
                         </details>
                     <?php else : ?>
                         <span class="description"><?php esc_html_e('not recorded', 'super-speedy-performance-analysis'); ?></span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($sspa_shareable) :
+                        $sspa_markdown_kind = 'checkout' === $run['run_type'] ? 'checkout' : 'run'; ?>
+                        <button type="button" class="button button-small sspa-markdown-download" data-kind="<?php echo esc_attr($sspa_markdown_kind); ?>" data-id="<?php echo (int) $run['id']; ?>"><?php esc_html_e('Download Markdown', 'super-speedy-performance-analysis'); ?></button>
+                        <button type="button" class="button button-small sspa-markdown-copy" data-kind="<?php echo esc_attr($sspa_markdown_kind); ?>" data-id="<?php echo (int) $run['id']; ?>"><?php esc_html_e('Copy Markdown', 'super-speedy-performance-analysis'); ?></button>
+                        <span class="description sspa-markdown-status" aria-live="polite"></span>
+                    <?php else : ?>
+                        <span class="description">-</span>
                     <?php endif; ?>
                 </td>
                 <td class="sspa-share-run-cell" data-run-id="<?php echo (int) $run['id']; ?>">

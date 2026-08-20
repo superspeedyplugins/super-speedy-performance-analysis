@@ -271,6 +271,9 @@
 
 		var html = '<div class="sspa-adhoc-topbar sspa-adhoc-span">' +
 			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-ck-preflight">Run again</button>' +
+			'<button type="button" class="sspa-adhoc-btn sspa-markdown-download" data-kind="checkout" data-id="' + esc(d.run_id) + '">Download Markdown</button>' +
+			'<button type="button" class="sspa-adhoc-btn sspa-markdown-copy" data-kind="checkout" data-id="' + esc(d.run_id) + '">Copy Markdown</button>' +
+			'<span class="sspa-markdown-status" aria-live="polite"></span>' +
 			'<span class="sspa-adhoc-note">' + esc(d.created || '') + '</span>' +
 			'<a class="sspa-adhoc-open" href="' + esc(sspa_checkout.results_url) + '">Open in Performance Analysis &rarr;</a></div>';
 

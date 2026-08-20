@@ -294,6 +294,72 @@
 		});
 	});
 
+	// One server-generated Markdown document backs both actions. It contains the useful
+	// diagnostic evidence but removes raw query values, SQL literals and checkout identifiers
+	// before it reaches the browser.
+	function markdownExport(button, mode) {
+		var kind = String(button.data('kind') || '');
+		var id = Number(button.data('id')) || 0;
+		var original = button.text();
+		var status = button.siblings('.sspa-markdown-status').first();
+		button.prop('disabled', true).text(sspa_adhoc.i18n.exporting);
+		status.text('');
+		$.post(sspa_adhoc.ajaxurl, {
+			action: 'sspa_markdown_export',
+			nonce: sspa_adhoc.nonce,
+			kind: kind,
+			id: id
+		}, function (resp) {
+			if (!resp.success || !resp.data || !resp.data.markdown) {
+				button.prop('disabled', false).text(original);
+				window.alert(resp.data || sspa_adhoc.i18n.markdown_failed);
+				return;
+			}
+			if ('download' === mode) {
+				var blob = new Blob([resp.data.markdown], { type: 'text/markdown;charset=utf-8' });
+				var url = window.URL.createObjectURL(blob);
+				var link = document.createElement('a');
+				link.href = url;
+				link.download = resp.data.filename || ((sspa_adhoc.download_prefix || '') + 'sspa-analysis-' + id + '.md');
+				document.body.appendChild(link);
+				link.click();
+				link.remove();
+				window.URL.revokeObjectURL(url);
+				button.prop('disabled', false).text(original);
+				status.text('Downloaded.');
+				return;
+			}
+			function copied() {
+				button.prop('disabled', false).text(original);
+				status.text(sspa_adhoc.i18n.copied + '.');
+			}
+			function copyFailed() {
+				button.prop('disabled', false).text(original);
+				window.alert(sspa_adhoc.i18n.markdown_failed);
+			}
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(resp.data.markdown).then(copied).catch(copyFailed);
+				return;
+			}
+			var textarea = $('<textarea>').val(resp.data.markdown).css({ position: 'fixed', left: '-9999px' }).appendTo('body');
+			textarea[0].select();
+			var ok = document.execCommand('copy');
+			textarea.remove();
+			ok ? copied() : copyFailed();
+		}).fail(function () {
+			button.prop('disabled', false).text(original);
+			window.alert(sspa_adhoc.i18n.markdown_failed);
+		});
+	}
+
+	$(document).on('click', '.sspa-markdown-download', function () {
+		markdownExport($(this), 'download');
+	});
+
+	$(document).on('click', '.sspa-markdown-copy', function () {
+		markdownExport($(this), 'copy');
+	});
+
 	// ---- interactions on the server-rendered panel ----
 
 	// Untimed-remainder rows with no phase-scoped profiler data: jump to the By-function
