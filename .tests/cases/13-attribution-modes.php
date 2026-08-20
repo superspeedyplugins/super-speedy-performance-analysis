@@ -90,16 +90,30 @@ sspa_t(array_sum($owner) === array_sum($caller),
     'both modes account for the same total (' . array_sum($owner) . ')');
 
 // --- The N+1 finding must name the plugin, not WooCommerce ---
-$loop_components = $wpdb->get_col($wpdb->prepare(
-    'SELECT component FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d AND finding_type = 'query_loop'",
+$loop_rows = $wpdb->get_results($wpdb->prepare(
+    'SELECT component, evidence FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d AND finding_type = 'query_loop'",
     $run_id
-));
+), ARRAY_A);
+$loop_components = wp_list_pluck($loop_rows, 'component');
+$fixture_loop = null;
+foreach ($loop_rows as $loop_row) {
+    if ('sspa-caller-fixture' === $loop_row['component']) {
+        $fixture_loop = json_decode($loop_row['evidence'], true);
+        break;
+    }
+}
 // 70 iterations clears the query_hog_count threshold of 50, so this must actually fire -
-// and it must name the fixture, NOT woocommerce, or caller mode is not reaching the finding.
+// and it must name the fixture, with WooCommerce recorded as where those calls executed.
+// Do not reject every separate WooCommerce loop on the page: a standing test site can
+// legitimately expose one, and it says nothing about whether THIS fixture was attributed.
 sspa_t(in_array('sspa-caller-fixture', $loop_components, true),
-    'query_loop finding names the looping plugin, not woocommerce (' . implode(', ', $loop_components) . ')');
-sspa_t(!in_array('woocommerce', $loop_components, true),
-    'query_loop finding does not blame woocommerce for the plugin\'s loop');
+    'query_loop finding names the looping plugin (' . implode(', ', $loop_components) . ')');
+sspa_t(
+    is_array($fixture_loop)
+        && !empty($fixture_loop['ran_in']['woocommerce'])
+        && (int) $fixture_loop['ran_in']['woocommerce'] >= 70,
+    'the fixture finding records its 70 calls as running inside WooCommerce'
+);
 
 // --- Clean up ---
 deactivate_plugins('sspa-caller-fixture/sspa-caller-fixture.php');

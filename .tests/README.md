@@ -342,6 +342,10 @@ and asserts the item is left retryable with its exact bytes and hash intact. The
 the production URL and asserts the same submission UUID and hash receive a verified receipt.
 Expect the first phase to sit for up to 30 seconds waiting on the real connection timeout.
 
+Each production script registers a fresh one-use test installation and restores the site's
+ordinary installation UUID and collector credentials afterwards. Collector registrations are
+permanent, so this isolation makes repeated checks independent of historical production state.
+
 Any unrelated queued outbox items are paused for the duration and resumed afterwards, so a
 local queue can never be flushed to the production archive as a side effect. The script prints
 the submission UUID, receipt UUID and SHA-256, and never prints the installation secret or a
@@ -353,6 +357,10 @@ each - instead of a synthetic fixture. It uses the per-run consent path, so the 
 sharing setting stays off throughout, and it asserts that afterwards. Use it when the transport
 or the exporters change: the synthetic fixture is ~1 KB with one evidence record and will not
 notice a payload-size or evidence-volume problem.
+
+After diagnosing a failed processor outcome, a comma-separated third argument can repeat only
+the affected types without creating unnecessary permanent objects, for example
+`production spot,baseline`. Omitting it still checks all six types.
 
 Both scripts write real permanent objects to the production archive. Run them only from the
 disposable test site, and expect `processing_status=partial` while the production processor

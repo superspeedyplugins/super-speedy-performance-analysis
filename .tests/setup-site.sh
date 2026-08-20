@@ -45,7 +45,7 @@ cli plugin activate "$PLUGIN_SLUG" --quiet 2>/dev/null
 #
 # parallel-dev already gives each site its own WP_REDIS_DATABASE and WP_CACHE_KEY_SALT, so
 # sites cannot share a keyspace.
-if php -m 2>/dev/null | grep -qi '^redis$' && redis-cli ping >/dev/null 2>&1; then
+if php -r 'exit(extension_loaded("redis") ? 0 : 1);' 2>/dev/null && redis-cli ping >/dev/null 2>&1; then
     cli plugin install redis-cache --activate --quiet 2>/dev/null
     cli redis enable --quiet 2>/dev/null
 else

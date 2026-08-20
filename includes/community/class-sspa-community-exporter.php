@@ -438,7 +438,9 @@ class SSPA_Community_Exporter {
                 'page_class' => empty($row['page_key']) ? null : SSPA_Community_Privacy::page_class($row['page_key']),
                 'recommendation_key' => sanitize_key($row['recommendation_key']),
                 'confidence' => sanitize_key($row['confidence']),
-                'evidence' => SSPA_Community_Privacy::finding_evidence(is_array($raw) ? $raw : array()),
+                // The receiver contract requires a JSON object. An empty PHP array becomes
+                // [] instead of {}, which made privacy-emptied findings fail processing.
+                'evidence' => (object) SSPA_Community_Privacy::finding_evidence(is_array($raw) ? $raw : array()),
             ));
         }
     }

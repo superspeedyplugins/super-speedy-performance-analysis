@@ -8,6 +8,9 @@
 //   cli eval-file "$CONTAINER_PLUGIN_DIR/.tests/manual/live-production-runs.php" \
 //       https://collector.superspeedy.org production
 //
+// To repeat only selected types after diagnosing a processor failure, pass a comma-separated
+// third argument, for example: production spot,baseline
+//
 // live-production.php proves the transport with a ~1 KB synthetic fixture. This proves the
 // thing the plugin will actually do: take analyses this site really performed, of every type,
 // and get each one permanently archived with an explicit processing outcome. Payloads here are
@@ -17,6 +20,8 @@
 // Each analysis is a separate permanent object in the production archive.
 
 const SSPA_LIVE_RUNS_HOST = 'collector.superspeedy.org';
+
+require_once __DIR__ . '/production-test-identity.php';
 
 function sspa_runs_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
@@ -39,6 +44,15 @@ if (!in_array($optin_token, array('production', '--production'), true)) {
     sspa_runs_t(false, 'refusing to submit to production without the explicit `production` opt-in token');
     return;
 }
+$all_run_types = array('adhoc', 'spot', 'cache_impact', 'checkout', 'baseline', 'deep');
+$run_types = $all_run_types;
+if (!empty($args[2])) {
+    $run_types = array_values(array_unique(array_filter(array_map('sanitize_key', explode(',', (string) $args[2])))));
+    if (!$run_types || array_diff($run_types, $all_run_types)) {
+        sspa_runs_t(false, 'run types must be a comma-separated subset of: ' . implode(',', $all_run_types));
+        return;
+    }
+}
 
 $old_collector = get_option('sspa_collector_url', null);
 $old_optin = get_option('sspa_share_optin', null);
@@ -46,6 +60,7 @@ $outbox_table = SSPA_Schema::table('submission_outbox');
 $queued = array();
 $parked = array();
 $results = array();
+$identity_snapshot = sspa_production_test_identity_begin($collector);
 
 try {
     update_option('sspa_collector_url', $collector, false);
@@ -61,7 +76,7 @@ try {
         echo 'parked ' . count($parked) . " unrelated queued item(s)\n";
     }
 
-    foreach (array('adhoc', 'spot', 'cache_impact', 'checkout', 'baseline', 'deep') as $run_type) {
+    foreach ($run_types as $run_type) {
         $run_id = (int) $wpdb->get_var($wpdb->prepare(
             'SELECT id FROM ' . SSPA_Schema::table('runs') . "
              WHERE run_type = %s AND status = 'done'
@@ -170,4 +185,5 @@ try {
     } else {
         update_option('sspa_share_optin', $old_optin, false);
     }
+    sspa_production_test_identity_restore($identity_snapshot);
 }

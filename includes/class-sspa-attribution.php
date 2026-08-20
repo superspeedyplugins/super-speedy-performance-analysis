@@ -67,17 +67,33 @@ class SSPA_Attribution {
         }
 
         $rows = array();
-        foreach ($wpdb->get_results($wpdb->prepare(
+        $profiles = $wpdb->get_results($wpdb->prepare(
             'SELECT id, page_key, profile_blob FROM %i
              WHERE run_id = %d AND profile_blob IS NOT NULL',
             SSPA_Schema::table('profiles'),
             $run_id
-        ), ARRAY_A) as $profile) {
+        ), ARRAY_A);
+
+        // component_stats now also carries plugins whose boot/include/asset footprint was
+        // measured even when they ran no SQL or HTTP calls. Caller-mode reconstruction comes
+        // from those calls, so without explicitly carrying the zero-work rows across, changing
+        // attribution mode makes idle-but-loaded plugins disappear from the table entirely.
+        $stored_by_profile = array();
+        foreach ($wpdb->get_results($wpdb->prepare(
+            'SELECT profile_id, component, component_type FROM %i WHERE run_id = %d',
+            SSPA_Schema::table('component_stats'),
+            $run_id
+        ), ARRAY_A) as $stored) {
+            $stored_by_profile[(int) $stored['profile_id']][$stored['component']] = $stored['component_type'];
+        }
+
+        foreach ($profiles as $profile) {
             $capture = self::unpack($profile['profile_blob']);
             if ($capture === null) {
                 continue;
             }
-            foreach (self::aggregate_caller($capture) as $component => $agg) {
+            $caller = self::aggregate_caller($capture);
+            foreach ($caller as $component => $agg) {
                 $rows[] = array(
                     'profile_id' => (int) $profile['id'],
                     'page_key' => $profile['page_key'],
@@ -89,6 +105,23 @@ class SSPA_Attribution {
                     'slowest_query_ms' => $agg['slowest_ms'],
                     'http_ms' => $agg['http_ms'],
                     'ran_in' => self::top_executors($agg['ran_in']),
+                );
+            }
+            foreach ((array) (isset($stored_by_profile[(int) $profile['id']]) ? $stored_by_profile[(int) $profile['id']] : array()) as $component => $type) {
+                if (isset($caller[$component])) {
+                    continue;
+                }
+                $rows[] = array(
+                    'profile_id' => (int) $profile['id'],
+                    'page_key' => $profile['page_key'],
+                    'component' => $component,
+                    'component_type' => $type,
+                    'query_count' => 0,
+                    'sql_ms' => 0.0,
+                    'rows_returned' => 0,
+                    'slowest_query_ms' => 0.0,
+                    'http_ms' => 0.0,
+                    'ran_in' => array(),
                 );
             }
         }

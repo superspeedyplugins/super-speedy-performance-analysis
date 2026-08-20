@@ -94,6 +94,19 @@ $wpdb->insert(SSPA_Schema::table('findings'), array(
     'created' => $now,
 ));
 $finding_id = (int) $wpdb->insert_id;
+$wpdb->insert(SSPA_Schema::table('findings'), array(
+    'run_id' => $run_id,
+    'severity' => 'info',
+    'finding_type' => 'empty_detail',
+    'component' => 'woocommerce',
+    'page_key' => 'url-private-product-name',
+    // A legitimate finding can have no details left after the privacy allow-list.
+    'evidence' => wp_json_encode(array('private_internal_detail' => 'discarded')),
+    'recommendation_key' => 'empty_detail',
+    'confidence' => 'measured',
+    'created' => $now,
+));
+$empty_finding_id = (int) $wpdb->insert_id;
 
 $queued = SSPA_Community_Outbox::queue_run($run_id);
 sspa_outbox_t(!is_wp_error($queued), 'completed run queued locally');
@@ -117,6 +130,14 @@ if (!is_wp_error($queued)) {
     );
     sspa_outbox_t(in_array('sspa/page-profile', $types, true) && in_array('sspa/excimer-profile', $types, true), 'page and Excimer evidence included');
     sspa_outbox_t(in_array('sspa/plugin-toggle-spot', $types, true) && in_array('sspa/finding', $types, true), 'toggle and finding evidence included');
+    $object_payload = json_decode($json);
+    $empty_finding_evidence = null;
+    foreach ((array) ($object_payload->evidence ?? array()) as $item) {
+        if ('sspa/finding' === ($item->type ?? '') && 'empty_detail' === ($item->data->finding_type ?? '')) {
+            $empty_finding_evidence = $item->data->evidence ?? null;
+        }
+    }
+    sspa_outbox_t(is_object($empty_finding_evidence), 'a privacy-emptied finding serialises evidence as an object, not a JSON list');
     sspa_outbox_t(false === strpos($json, 'private-product-name') && false === strpos($json, 'private@example.com'), 'private URL fragments and SQL literals excluded');
 
     $again = SSPA_Community_Outbox::queue_run($run_id);
@@ -312,6 +333,7 @@ if (!is_wp_error($queued)) {
     $wpdb->delete(SSPA_Schema::table('submission_outbox'), array('id' => (int) $queued['id']));
 }
 $wpdb->delete(SSPA_Schema::table('findings'), array('id' => $finding_id));
+$wpdb->delete(SSPA_Schema::table('findings'), array('id' => $empty_finding_id));
 $wpdb->delete(SSPA_Schema::table('component_stats'), array('id' => $component_id));
 $wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $profile_id));
 $wpdb->delete(SSPA_Schema::table('runs'), array('id' => $run_id));

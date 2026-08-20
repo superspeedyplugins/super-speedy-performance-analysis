@@ -20,6 +20,8 @@ const SSPA_LIVE_PROD_HOST = 'collector.superspeedy.org';
 // Same host, discard port: a genuine connection failure with no mocking and no other host.
 const SSPA_LIVE_PROD_OUTAGE = 'https://collector.superspeedy.org:9';
 
+require_once __DIR__ . '/production-test-identity.php';
+
 function sspa_prod_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
     return (bool) $ok;
@@ -54,6 +56,7 @@ $run_id = 0;
 $profile_id = 0;
 $outbox_id = 0;
 $paused = array();
+$identity_snapshot = sspa_production_test_identity_begin($collector);
 
 try {
     // Never let an unrelated queued item be the one that goes to the production archive.
@@ -252,4 +255,5 @@ try {
     } else {
         update_option('sspa_share_optin', $old_optin, false);
     }
+    sspa_production_test_identity_restore($identity_snapshot);
 }
