@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.29.7
+ * Version: 0.29.8
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -16,8 +16,7 @@
 
 defined('ABSPATH') || exit;
 
-$plugin_data = get_file_data(__FILE__, array('Version' => 'Version'));
-define('SSPA_VERSION', $plugin_data['Version']);
+define('SSPA_VERSION', '0.29.8');
 define('SSPA_PLUGIN_FILE', __FILE__);
 define('SSPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSPA_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -39,7 +38,7 @@ require_once SSPA_PLUGIN_DIR . 'defines.php';
 // zip without submodules) the plugin still works - the admin page falls back to its own
 // top-level menu (see class-sspa-admin-page.php).
 $sspa_settings = SSPA_PLUGIN_DIR . 'super-speedy-settings/super-speedy-settings.php';
-if (file_exists($sspa_settings)) {
+if (is_admin() && !wp_doing_ajax() && file_exists($sspa_settings)) {
     require_once $sspa_settings;
 }
 
@@ -65,65 +64,18 @@ add_action('plugins_loaded', function () {
 }, -9998);
 // SSPA-SELFHOSTED-UPDATER-END
 
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-schema.php';
-require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-codes.php';
-require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-privacy.php';
-require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-helper.php';
-require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-collection.php';
-require_once SSPA_PLUGIN_DIR . 'includes/traffic/class-sspa-traffic-ajax.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-install.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-token.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-helper-files.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-catalogue.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-auth.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-security-detect.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-cache-recon.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-crawler.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-profile-store.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-attribution.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-explain.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-archive-types.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-archive-profile.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-tools.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-digests.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-demographics.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-site-characteristics.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-analysis-engine.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-http-api-report.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-dependency-map.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-unload-safety.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-probes.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-anonymiser.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-identity.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-schema.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-privacy.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-state.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-exporter.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-outbox.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-backfill.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-client.php';
-require_once SSPA_PLUGIN_DIR . 'includes/community/class-sspa-community-worker.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-submitter.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-rules-feed.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-run-controller.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-browser-transport.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-preflight.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-flow.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-adhoc.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-admin-save.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-workflow-analysis.php';
-require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-admin-page.php';
-require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-insights.php';
-require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-plugins-table.php';
-require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-profile-panel.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-report.php';
-require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-markdown-export.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-bootstrap.php';
+SSPA_Bootstrap::register();
 
 // Agent surfaces: Abilities API (WP 6.9+; MCP via the adapter plugin) and WP-CLI.
-if (function_exists('wp_register_ability')) {
-    require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-abilities.php';
-    SSPA_Abilities::init();
+$sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+$sspa_agent_request = (defined('WP_CLI') && WP_CLI)
+    || false !== strpos($sspa_request_uri, '/wp-json/')
+    || false !== strpos($sspa_request_uri, 'rest_route=');
+if ($sspa_agent_request && function_exists('wp_register_ability')) {
+    add_action('wp_abilities_api_categories_init', array('SSPA_Abilities', 'register_category'));
+    add_action('wp_abilities_api_init', array('SSPA_Abilities', 'register_abilities'));
+    add_filter('user_has_cap', array('SSPA_Abilities', 'grant_admin_caps'), 10, 3);
 }
 if (defined('WP_CLI') && WP_CLI) {
     require_once SSPA_PLUGIN_DIR . 'includes/cli/class-sspa-cli.php';
@@ -134,39 +86,8 @@ if (defined('WP_CLI') && WP_CLI) {
 
 register_activation_hook(__FILE__, array('SSPA_Install', 'activate'));
 register_deactivation_hook(__FILE__, array('SSPA_Install', 'deactivate'));
-add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));
-
-SSPA_Run_Controller::register();
-SSPA_Cache_Recon::register();
-SSPA_Traffic_Collection::register();
-SSPA_Traffic_Ajax::register();
-// Browser transport for runs whose preflight found loopbacks blocked (basic auth,
-// WAF, CDN): the driving admin's browser fetches the pages one request at a time.
-SSPA_Browser_Transport::init();
-SSPA_Community_Worker::register();
-SSPA_Probes::register();
-// Admin-bar "Analyse this page" runner: front end AND wp-admin, so registered outside
-// the is_admin() block below.
-SSPA_Adhoc::register();
-// Edit-screen companion to "Analyse this page": captures the actual POST/REST save request,
-// never the editor page WordPress loads afterwards.
-SSPA_Admin_Save::register();
-// Settings-page workflow picker: launches the selected object's real editor in a controlled,
-// same-origin frame and lets the admin-save profiler measure its no-change update request.
-SSPA_Workflow_Analysis::register();
-// The one profile panel, shared by the admin bar and the Pages tab. Registered outside the
-// is_admin() block for the same reason: admin-ajax requests from the front end land here too.
-SSPA_Profile_Panel::register();
-// Privacy-safe LLM hand-off for page, full-site and checkout results.
-SSPA_Markdown_Export::register();
-// Registered unconditionally, but inert unless the request carries a valid checkout-flow
-// token: this is what skips the payment gateway and stamps the payment boundary INSIDE
-// the flow's own loopback requests. Real traffic never reaches any of it.
-SSPA_Checkout_Flow::register();
 
 if (is_admin()) {
     add_action('admin_menu', array('SSPA_Admin_Page', 'addmenu'), 20);
-    // Cheap self-heal: reinstall helper files if missing or stale (secret/version change).
-    add_action('admin_init', array('SSPA_Helper_Files', 'ensure_installed'));
     SSPA_Admin_Page::register_toggle_prompt();
 }

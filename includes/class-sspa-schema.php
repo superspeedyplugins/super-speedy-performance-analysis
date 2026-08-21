@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Schema {
 
-    const DB_VERSION = '2.2';
+    const DB_VERSION = SSPA_DB_VERSION;
 
     const LOCK_OPTION = 'sspa_schema_lock';
 

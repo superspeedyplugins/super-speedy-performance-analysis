@@ -160,6 +160,9 @@ class SSPA_Browser_Transport {
         // newer token and records a bogus no_canary sample. First claimant owns the
         // run; others hold off and take over only when the owner has gone quiet.
         $driver = isset($_POST['driver']) ? sanitize_text_field(wp_unslash($_POST['driver'])) : '';
+        if (!$driver || !SSPA_Atomic_Claim::acquire('sspa_bt_driver_' . $run_id, 45, $driver)) {
+            wp_send_json_success(array('status' => 'busy', 'retry_in' => 15));
+        }
         if ($driver && !empty($queue['bt_driver']) && $queue['bt_driver'] !== $driver
             && (time() - (int) $queue['bt_driver_seen']) < 30) {
             wp_send_json_success(array('status' => 'busy', 'retry_in' => 15));
@@ -277,6 +280,18 @@ class SSPA_Browser_Transport {
                 'code' => 'sspa_desync',
             ));
         }
+
+        $record_key = 'sspa_bt_record_' . $run_id . '_' . $seq;
+        $record_owner = SSPA_Atomic_Claim::acquire($record_key, 120);
+        if (!$record_owner) {
+            wp_send_json_error(array(
+                'message' => __('That browser result is already being recorded.', 'super-speedy-performance-analysis'),
+                'code' => 'sspa_record_in_progress',
+            ), 409);
+        }
+        register_shutdown_function(function () use ($record_key, $record_owner) {
+            SSPA_Atomic_Claim::release($record_key, $record_owner);
+        });
 
         $pending = $bt['pending'];
         $job = $queue['jobs'][$queue['idx']];

@@ -33,6 +33,9 @@ class SSPA_Checkout_Flow {
     /** Meta key marking an object this plugin created. Nothing without it is ever deleted. */
     const TEMP_META = '_sspa_temp';
 
+    /** Marker value for the reusable hidden product owned by this plugin. */
+    const TEST_PRODUCT_MARKER = 'checkout_product';
+
     /** Called from the main plugin file, unconditionally. */
     public static function register() {
         add_action('plugins_loaded', array(__CLASS__, 'maybe_arm_request'), 1);
@@ -373,54 +376,54 @@ class SSPA_Checkout_Flow {
         return apply_filters('sspa_checkout_gateway_adapters', array());
     }
 
-    /**
-     * The cheapest purchasable, in-stock, simple product that NEEDS SHIPPING. A variable
-     * product needs a variation id to buy, so it makes a poor default; and a virtual or
-     * downloadable one skips shipping entirely, which would quietly drop zone matching,
-     * method instantiation and any live carrier API call out of the measurement - often
-     * the most expensive part of a real checkout. Falls back to a virtual product only
-     * when the store sells nothing physical.
-     *
-     * @return WC_Product|null
-     */
+    /** Return the plugin-owned hidden product; real catalogue inventory is never used. */
     public static function default_product($product_id = 0) {
-        if (!function_exists('wc_get_products')) {
+        unset($product_id); // retained in the signature for compatibility with older callers.
+        if (!class_exists('WC_Product_Simple')) {
             return null;
         }
-        $product_id = (int) $product_id;
-        if (!$product_id) {
-            $product_id = (int) sspa_get_option('checkout_product_id');
+        $ids = self::test_product_ids();
+        $product = $ids ? wc_get_product((int) $ids[0]) : null;
+        if (!$product) {
+            $product = new WC_Product_Simple();
         }
-        if ($product_id) {
-            // An explicitly chosen product that cannot be bought is a failure, not a cue
-            // to quietly buy something else: silently measuring a different product is a
-            // wrong answer that looks like a right one.
-            $product = wc_get_product($product_id);
-            return ($product && $product->is_purchasable() && $product->is_in_stock()) ? $product : null;
-        }
-        $candidates = wc_get_products(array(
-            'status' => 'publish',
-            'type' => 'simple',
-            'limit' => 50,
-            'stock_status' => 'instock',
+        $product->set_name(__('SSPA checkout test product', 'super-speedy-performance-analysis'));
+        $product->set_status('publish');
+        $product->set_catalog_visibility('hidden');
+        $product->set_regular_price('1.00');
+        $product->set_price('1.00');
+        $product->set_virtual(false);
+        $product->set_downloadable(false);
+        $product->set_manage_stock(false);
+        $product->set_stock_status('instock');
+        $product->set_tax_status('none');
+        $product->set_weight('0.1');
+        $product->update_meta_data(self::TEMP_META, self::TEST_PRODUCT_MARKER);
+        $product->save();
+        return $product;
+    }
+
+    private static function test_product_ids() {
+        return get_posts(array(
+            'post_type' => 'product',
+            'post_status' => array('publish', 'draft', 'private'),
+            'posts_per_page' => 1,
+            'fields' => 'ids',
+            'meta_key' => self::TEMP_META,
+            'meta_value' => self::TEST_PRODUCT_MARKER,
             'orderby' => 'ID',
             'order' => 'ASC',
         ));
-        $best = null;
-        $best_virtual = null;
-        foreach ($candidates as $product) {
-            if (!$product->is_purchasable() || !$product->is_in_stock() || '' === $product->get_price()) {
-                continue;
-            }
-            if ($product->needs_shipping()) {
-                if (!$best || (float) $product->get_price() < (float) $best->get_price()) {
-                    $best = $product;
-                }
-            } elseif (!$best_virtual || (float) $product->get_price() < (float) $best_virtual->get_price()) {
-                $best_virtual = $product;
+    }
+
+    /** Delete only the marked product created by this plugin. */
+    public static function delete_test_product() {
+        foreach (self::test_product_ids() as $product_id) {
+            $product = wc_get_product((int) $product_id);
+            if ($product && self::TEST_PRODUCT_MARKER === $product->get_meta(self::TEMP_META, true)) {
+                $product->delete(true);
             }
         }
-        return $best ? $best : $best_virtual;
     }
 
     /**
@@ -1512,13 +1515,10 @@ class SSPA_Checkout_Flow {
     }
 
     /**
-     * Cancelling before deleting is what should restore stock. Verify rather than assume
-     * (doc A8 item 1): if it did not, put it back and say that it was needed.
+     * Record the final quantity without ever restoring an absolute snapshot. The checkout
+     * product is plugin-owned and does not manage stock, so real inventory is untouched.
      */
     private static function verify_stock($product_id, &$result) {
-        if (null === $result['notes']['stock_before']) {
-            return; // stock is not managed for this product - nothing to restore
-        }
         if (function_exists('wc_delete_product_transients')) {
             wc_delete_product_transients($product_id);
         }
@@ -1527,12 +1527,6 @@ class SSPA_Checkout_Flow {
             return;
         }
         $after = $product->get_stock_quantity();
-        if (null !== $after && (int) $after !== (int) $result['notes']['stock_before']) {
-            wc_update_product_stock($product, (int) $result['notes']['stock_before'], 'set');
-            $result['notes']['stock_restored_manually'] = true;
-            $product = wc_get_product($product_id);
-            $after = $product ? $product->get_stock_quantity() : $after;
-        }
         $result['notes']['stock_after'] = $after;
     }
 

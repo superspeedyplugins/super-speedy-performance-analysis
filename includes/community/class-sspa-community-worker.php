@@ -24,7 +24,8 @@ class SSPA_Community_Worker {
     public static function run() {
         // Consent is enforced by SSPA_Community_Outbox::due(), which returns nothing but
         // explicitly shared analyses while the site-wide setting is off.
-        if (!self::lock()) {
+        $owner = self::lock();
+        if (!$owner) {
             return;
         }
         try {
@@ -63,20 +64,11 @@ class SSPA_Community_Worker {
                 SSPA_Community_Outbox::nudge(15);
             }
         } finally {
-            delete_option(self::LOCK_OPTION);
+            SSPA_Atomic_Claim::release(self::LOCK_OPTION, $owner);
         }
     }
 
     private static function lock() {
-        $now = time();
-        if (add_option(self::LOCK_OPTION, $now, '', false)) {
-            return true;
-        }
-        $existing = (int) get_option(self::LOCK_OPTION);
-        if ($existing && $existing > $now - self::LOCK_SECONDS) {
-            return false;
-        }
-        delete_option(self::LOCK_OPTION);
-        return add_option(self::LOCK_OPTION, $now, '', false);
+        return SSPA_Atomic_Claim::acquire(self::LOCK_OPTION, self::LOCK_SECONDS);
     }
 }

@@ -110,11 +110,10 @@ $active_plugins_before = get_option('active_plugins');
 sspa_t(in_array('sspa-slow-integration/sspa-slow-integration.php', $active_plugins_before, true)
     && in_array('sspa-mail-observer/sspa-mail-observer.php', $active_plugins_before, true), 'both fixtures active');
 
-// ---------------------------------------------------------------- a stock-managed product
+// ---------------------------------------------------------------- the plugin-owned product
 
-// The flow picks the cheapest purchasable, in-stock, SHIPPABLE product. Give that same
-// product managed stock so the stock-restore assertion has something to assert on: with
-// unmanaged stock it would pass vacuously.
+// The flow must never use a real catalogue product. Its own hidden physical product keeps
+// shipping hooks realistic while deliberately opting out of stock management.
 $target = SSPA_Checkout_Flow::default_product();
 if (!$target) {
     echo "FAIL: no purchasable product on the test site (run .tests/setup-site.sh)\n";
@@ -123,15 +122,9 @@ if (!$target) {
     return;
 }
 $target_id = $target->get_id();
-$restore_stock_settings = array(
-    'manage' => $target->get_manage_stock(),
-    'qty' => $target->get_stock_quantity(),
-);
-$target->set_manage_stock(true);
-$target->set_stock_quantity(25);
-$target->save();
 wc_delete_product_transients($target_id);
-sspa_t(true, 'target product: ' . $target->get_name() . " (#$target_id), stock managed at 25");
+sspa_t('hidden' === $target->get_catalog_visibility() && !$target->managing_stock(),
+    'target product: ' . $target->get_name() . " (#$target_id), hidden and stock-independent");
 
 // WooCommerce's sample import does not configure shipping. Add one real rest-of-world rate
 // so the block flow exercises select-shipping-rate instead of correctly recording that the
@@ -143,7 +136,7 @@ sspa_t(false !== $shipping_method_id, 'temporary flat-rate shipping method added
 // ---------------------------------------------------------------- 1. snapshots
 
 $orders_before = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
-$stock_before = (int) wc_get_product($target_id)->get_stock_quantity();
+$stock_before = wc_get_product($target_id)->get_stock_quantity();
 $sessions_before = (int) $wpdb->get_var("SELECT COUNT(*) FROM $sessions_table");
 $temp_meta_before = (int) $wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s",
@@ -231,13 +224,13 @@ sspa_t(isset($rows['flow-view-checkout']) && 200 === (int) $rows['flow-view-chec
 // ---------------------------------------------------------------- 4. zero residue
 
 $orders_after = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
-$stock_after = (int) wc_get_product($target_id)->get_stock_quantity();
+$stock_after = wc_get_product($target_id)->get_stock_quantity();
 $temp_meta_after = (int) $wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s",
     SSPA_Checkout_Flow::TEMP_META
 ));
 sspa_t($orders_after === $orders_before, "zero order residue ($orders_before -> $orders_after)");
-sspa_t($stock_after === $stock_before, "stock restored ($stock_before -> $stock_after)");
+sspa_t(null === $stock_before && null === $stock_after, 'test product never manages or restores stock');
 sspa_t($temp_meta_after === $temp_meta_before, "no _sspa_temp markers left ($temp_meta_before -> $temp_meta_after)");
 sspa_t(false === get_option(SSPA_Checkout_Flow::TEMP_OPTION, false), 'sspa_flow_temp cleared');
 
@@ -548,12 +541,12 @@ $remove('sspa-mail-api-mimic');
 delete_option('sspa_test_api_mail_log');
 wp_cache_flush();
 
-// ---------------------------------------------------------------- 13. named failures, nothing created
+// ---------------------------------------------------------------- 13. hostile product ids cannot select real inventory
 
 $orders_pre_fail = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
 
-// (a) An explicitly requested out-of-stock product refuses before anything is created,
-//     rather than quietly buying a different product.
+// A caller-supplied out-of-stock product id is ignored. The flow still buys the dedicated
+// SSPA product and cleans its temporary order, so real inventory cannot enter the run.
 $oos_id = wp_insert_post(array('post_type' => 'product', 'post_status' => 'publish', 'post_title' => 'SSPA out of stock fixture'));
 $oos = wc_get_product($oos_id);
 $oos->set_regular_price('9.99');
@@ -569,42 +562,18 @@ do {
     $s = SSPA_Run_Controller::status($fail_run);
 } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
 $fail_notes = json_decode((string) SSPA_Run_Controller::run_row($fail_run)['notes'], true);
-sspa_t(is_array($fail_notes) && 'no_product' === $fail_notes['outcome'],
-    'out-of-stock product produces a named failure (' . (is_array($fail_notes) ? $fail_notes['outcome'] : '?') . '), not a silent substitution');
-
-// (b) More units than exist: the Store API refuses the add-to-cart, which is the failure
-//     path that has to clean up after itself.
-$short_id = wp_insert_post(array('post_type' => 'product', 'post_status' => 'publish', 'post_title' => 'SSPA short stock fixture'));
-$short = wc_get_product($short_id);
-$short->set_regular_price('9.99');
-$short->set_manage_stock(true);
-$short->set_stock_quantity(1);
-$short->set_stock_status('instock');
-$short->save();
-wc_delete_product_transients($short_id);
-
-$short_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1, 'product_id' => $short_id, 'quantity' => 9));
-$deadline = time() + 120;
-do {
-    SSPA_Run_Controller::process_batch($short_run);
-    $s = SSPA_Run_Controller::status($short_run);
-} while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
-$short_notes = json_decode((string) SSPA_Run_Controller::run_row($short_run)['notes'], true);
-sspa_t(is_array($short_notes) && 'add_to_cart_failed' === $short_notes['outcome'],
-    'over-ordering produces add_to_cart_failed (' . (is_array($short_notes) ? $short_notes['outcome'] : '?') . ')');
-sspa_t(is_array($short_notes) && !empty($short_notes['flow']['error']),
-    'the failure carries the Store API\'s own error: ' . (isset($short_notes['flow']['error']) ? $short_notes['flow']['error'] : 'none'));
-sspa_t('failed' === SSPA_Run_Controller::run_row($short_run)['status'], 'a flow that never bought anything is a failed run, not a quiet one');
+sspa_t(is_array($fail_notes) && 'ok' === $fail_notes['outcome']
+    && $target_id === (int) $fail_notes['flow']['product_id'],
+    'caller-supplied product id cannot replace the dedicated product');
 
 $orders_post_fail = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
-sspa_t($orders_post_fail === $orders_pre_fail, "failed runs created nothing ($orders_pre_fail -> $orders_post_fail)");
-sspa_t((int) wc_get_product($short_id)->get_stock_quantity() === 1, 'failed run left stock alone');
+sspa_t($orders_post_fail === $orders_pre_fail, "hostile-id run left zero order residue ($orders_pre_fail -> $orders_post_fail)");
+sspa_t(0 === (int) wc_get_product($oos_id)->get_stock_quantity(), 'hostile-id run left the real product stock alone');
 
 // Remove them before the classic section: they are cheaper than the real target product,
 // so leaving them published would have the next run buy one of THEM, and the stock
 // assertions below would then be checking a product the run never touched.
 wp_delete_post($oos_id, true);
-wp_delete_post($short_id, true);
 wc_delete_product_transients($target_id);
 
 // ---------------------------------------------------------------- 14. the classic checkout
@@ -655,7 +624,7 @@ sspa_t(SSPA_Checkout_Flow::guest_nonce('update-order-review', 't_testcustomerid'
     === SSPA_Checkout_Flow::guest_nonce('update-order-review', ''), 'update-order-review stays bound to the logged-out uid');
 
 $orders_pre_classic = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
-$stock_pre_classic = (int) wc_get_product($target_id)->get_stock_quantity();
+$stock_pre_classic = wc_get_product($target_id)->get_stock_quantity();
 delete_option('sspa_test_mail_log');
 
 $classic_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1, 'mail_mode' => 'deliver'));
@@ -735,8 +704,8 @@ if (is_wp_error($classic_run)) {
 
     $orders_post_classic = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
     sspa_t($orders_post_classic === $orders_pre_classic, "classic zero order residue ($orders_pre_classic -> $orders_post_classic)");
-    sspa_t((int) wc_get_product($target_id)->get_stock_quantity() === $stock_pre_classic,
-        "classic stock restored ($stock_pre_classic -> " . (int) wc_get_product($target_id)->get_stock_quantity() . ')');
+    sspa_t(null === $stock_pre_classic && null === wc_get_product($target_id)->get_stock_quantity(),
+        'classic run leaves the dedicated product stock-independent');
     sspa_t(false === get_option(SSPA_Checkout_Flow::TEMP_OPTION, false), 'classic run cleared sspa_flow_temp');
 }
 
@@ -749,10 +718,6 @@ sspa_t('block' === SSPA_Checkout_Preflight::checkout_type(), 'store put back on 
 
 // ---------------------------------------------------------------- teardown
 
-$target = wc_get_product($target_id);
-$target->set_manage_stock($restore_stock_settings['manage']);
-$target->set_stock_quantity($restore_stock_settings['qty']);
-$target->save();
 if (false !== $shipping_method_id) {
     $shipping_zone->delete_shipping_method($shipping_method_id);
 }

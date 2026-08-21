@@ -4,6 +4,7 @@ defined('ABSPATH') || exit;
 global $wpdb;
 $sspa_runs = $wpdb->get_results($wpdb->prepare('SELECT * FROM %i ORDER BY id DESC LIMIT 50', SSPA_Schema::table('runs')), ARRAY_A);
 $sspa_optin = SSPA_Submitter::opted_in();
+$sspa_remove_on_uninstall = (bool) sspa_get_option('remove_data_on_uninstall');
 
 // Plain names for the analysis types, so the share control says what it would actually send.
 $sspa_type_labels = array(
@@ -22,6 +23,16 @@ $sspa_share_states = array(
     'permanent_failure' => __('Needs attention', 'super-speedy-performance-analysis'),
     'cancelled' => __('Paused', 'super-speedy-performance-analysis'),
 );
+
+?>
+<div class="sspa-history-toolbar" style="display:flex;justify-content:flex-end;margin:0 0 12px;">
+    <label>
+        <input type="checkbox" id="sspa-remove-data-on-uninstall" value="1" <?php checked($sspa_remove_on_uninstall); ?>>
+        <?php esc_html_e('Delete all SSPA data when the plugin is deleted', 'super-speedy-performance-analysis'); ?>
+    </label>
+    <span class="spinner" aria-hidden="true"></span>
+</div>
+<?php
 
 if (!$sspa_runs) : ?>
     <div class="sspa-placeholder">

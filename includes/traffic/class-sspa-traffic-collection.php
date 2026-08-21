@@ -49,13 +49,14 @@ class SSPA_Traffic_Collection {
         if (!isset($durations[$duration])) {
             return new WP_Error('sspa_traffic_duration', __('Choose 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));
         }
-        if (!self::start_lock()) {
+        $lock_owner = self::start_lock();
+        if (!$lock_owner) {
             return new WP_Error('sspa_traffic_start_busy', __('Another request is starting a traffic collection. Try again.', 'super-speedy-performance-analysis'));
         }
         try {
             return self::start_locked($duration, $trigger, $durations);
         } finally {
-            delete_option(self::START_LOCK);
+            SSPA_Atomic_Claim::release(self::START_LOCK, $lock_owner);
         }
     }
 
@@ -156,16 +157,7 @@ class SSPA_Traffic_Collection {
     }
 
     private static function start_lock() {
-        $now = time();
-        if (add_option(self::START_LOCK, $now, '', false)) {
-            return true;
-        }
-        $held = (int) get_option(self::START_LOCK);
-        if ($held && $held >= $now - 60) {
-            return false;
-        }
-        delete_option(self::START_LOCK);
-        return (bool) add_option(self::START_LOCK, $now, '', false);
+        return SSPA_Atomic_Claim::acquire(self::START_LOCK, 60);
     }
 
     private static function preflight_insert($collection_id) {

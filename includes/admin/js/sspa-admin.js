@@ -178,6 +178,22 @@ jQuery(document).on('click', '#sspa_main .sspa-goto-tab', function (e) {
 	sspa_click_tab(slug);
 });
 
+jQuery(document).on('change', '#sspa-remove-data-on-uninstall', function () {
+	var checkbox = jQuery(this).prop('disabled', true);
+	var spinner = checkbox.closest('.sspa-history-toolbar').find('.spinner').addClass('is-active');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_uninstall_setting',
+		nonce: sspa_admin.nonce,
+		enabled: checkbox.is(':checked') ? 1 : 0
+	}).fail(function () {
+		checkbox.prop('checked', !checkbox.is(':checked'));
+		alert('Could not save the uninstall setting.');
+	}).always(function () {
+		checkbox.prop('disabled', false);
+		spinner.removeClass('is-active');
+	});
+});
+
 // ---- Pages drill-down ----
 // Opens THE profile panel - the same one the admin bar's "Analyse this page" opens, rendered
 // by the same PHP partial. This used to build its own markup here with html += concatenation,

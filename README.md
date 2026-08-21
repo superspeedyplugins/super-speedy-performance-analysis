@@ -31,6 +31,9 @@ slow, and proves it.
 - **"Analyse this page"** in the admin toolbar profiles the exact URL you are looking at and
   shows where the time went in a results panel: request phases, per-plugin costs, slowest
   queries, all expandable in place.
+- **Checkout and order analysis never touches a catalogue product.** It reuses one hidden,
+  non-stock-managed SSPA product, follows only same-origin redirects and keeps TLS certificate
+  verification enabled while measuring the purchase and order-management requests.
 - **Function-level profiling** when the free `excimer` PHP extension is present: every
   profile gains a by-function breakdown with self and inclusive time, attributed to its
   plugin or theme - including inside theme template files. The Tools tab generates the exact
@@ -59,6 +62,10 @@ The whole plugin is drivable without the GUI:
   what to whitelist)
 - A writable `wp-content/` for the conditional `db.php` drop-in and mu-plugin loader, both
   inert for normal traffic and removed cleanly on uninstall
+
+The History tab includes an opt-in **Delete all SSPA data when the plugin is deleted** switch.
+When enabled, uninstall drops the profiling tables and removes SSPA options, transients,
+scheduled events, the hidden checkout product and the low-privilege test customer.
 
 ## Installation
 

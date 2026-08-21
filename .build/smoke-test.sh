@@ -127,12 +127,17 @@ if [ "$EDITION" = "wporg" ]; then
     esac
 fi
 
-# The updater must be inert in the wp.org edition and live in the full one.
-#
-# Read the global rather than firing plugins_loaded again: by the time `wp eval` runs, the
-# hook has already fired normally. Re-firing it registers the same slug with PUC twice,
-# which PUC treats as a fatal - a bug in the test, not the plugin.
+# The updater must be inert in the wp.org edition and live in the full one. WP-CLI is not an
+# admin request, so the full-edition check temporarily installs a smoke-only MU bootstrap that
+# defines WP_ADMIN before normal plugins load. This exercises the real admin-gated settings and
+# updater path instead of asserting an admin global in a non-admin process.
+if [ "$EDITION" = "full" ]; then
+    wpc eval 'wp_mkdir_p(WPMU_PLUGIN_DIR); file_put_contents(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php", "<?php if (!defined(\"WP_ADMIN\")) define(\"WP_ADMIN\", true);");' >/dev/null 2>&1
+fi
 UPD=$(wpc eval 'echo isset($GLOBALS["sspa_update_checker"]) ? "present" : "absent";' 2>&1)
+if [ "$EDITION" = "full" ]; then
+    wpc eval 'unlink(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php");' >/dev/null 2>&1
+fi
 case "$EDITION:$UPD" in
     wporg:absent) pass "update checker absent (correct for wp.org)" ;;
     full:present) pass "update checker built (correct for the self-hosted edition)" ;;
@@ -144,6 +149,24 @@ esac
 RUN=$(wpc sspa run --type=spot --pages=home 2>&1 | tail -2)
 echo "$RUN" | grep -q 'Success' && pass "analysis run completed: $(echo "$RUN" | tail -1)" \
                                 || fail "analysis run failed:"$'\n'"$RUN"
+
+# The opt-in uninstall path must remove tables and every other owned object, not row-delete
+# large tables or leave identities/test fixtures behind.
+OWNED=$(wpc eval '
+$p = SSPA_Checkout_Flow::default_product();
+$u = SSPA_Auth::test_customer_id();
+sspa_update_option("remove_data_on_uninstall", true);
+update_option("sspa_uninstall_probe", "present", false);
+echo (int) $p->get_id() . ":" . (int) $u;' 2>&1)
+wpc plugin uninstall "$SLUG" --deactivate >/dev/null 2>&1
+UNINSTALL=$(wpc eval '
+global $wpdb;
+$tables = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE %s", $wpdb->esc_like($wpdb->prefix . "sspa_") . "%"));
+$options = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE \"sspa\\_%\"");
+list($pid, $uid) = array_map("intval", explode(":", "'"$OWNED"'"));
+echo $tables . ":" . $options . ":" . (get_post($pid) ? 1 : 0) . ":" . (get_userdata($uid) ? 1 : 0);' 2>&1)
+[ "$UNINSTALL" = "0:0:0:0" ] && pass "opt-in uninstall drops tables and removes options, product and user" \
+                                  || fail "opt-in uninstall left owned data: $UNINSTALL"
 
 echo
 [ "$FAILED" -eq 0 ] && echo "=== SMOKE PASSED ($EDITION) ===" || echo "=== SMOKE FAILED ($EDITION) ==="

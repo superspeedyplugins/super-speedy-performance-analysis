@@ -1,9 +1,9 @@
 <?php
-// Measurements must not impose a client-side response timeout.
+// Measurements use a generous finite deadline, not WordPress's five-second default.
 //
 // This reproduces the customer symptom with the real crawler: the legacy timeout option is
 // deliberately set to 10 seconds, then a real page takes 12 seconds. Query Monitor can profile
-// that page because the server allows it to finish; Performance Analysis must do the same.
+// that page because the server allows it to finish; the 120-second profiling deadline must too.
 //
 // The second half forces a real WordPress HTTP transport failure through the crawler and profile
 // store, then renders the normal page panel. The transport's own explanation must survive all
@@ -60,7 +60,7 @@ function sspa_lt_adhoc($url) {
 
 $sspa_run = sspa_lt_adhoc($sspa_slow_url);
 if (is_wp_error($sspa_run)) {
-    echo 'FAIL: unbounded run started: ' . $sspa_run->get_error_message() . "\n";
+    echo 'FAIL: bounded slow run started: ' . $sspa_run->get_error_message() . "\n";
 } else {
     $sspa_row = $wpdb->get_row($wpdb->prepare(
         'SELECT id, page_gen_ms, samples FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d',
@@ -74,7 +74,7 @@ if (is_wp_error($sspa_run)) {
     $sspa_errors = array_filter((array) json_decode((string) $sspa_row['samples'], true), function ($sample) {
         return !empty($sample['error']);
     });
-    sspa_lt_t(0 === count($sspa_errors), 'all slow-page samples finish without a client timeout');
+    sspa_lt_t(0 === count($sspa_errors), 'all slow-page samples finish inside the 120-second deadline');
 }
 
 // A real crawler -> profile store -> result panel transport failure. The HTTP request is

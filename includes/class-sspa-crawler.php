@@ -11,33 +11,10 @@ class SSPA_Crawler {
     const WARMUPS = 1;
     const SAMPLES = 3;
 
-    /**
-     * Send a measurement request without imposing a client-side response deadline.
-     *
-     * WordPress defaults omitted timeouts to five seconds, and Requests clamps zero to
-     * one second in its cURL transport. cURL therefore needs an explicit zero applied
-     * after Requests configures the handle. The very large argument is the equivalent
-     * fallback for the streams transport, whose zero means "return immediately" rather
-     * than "wait indefinitely". Server, PHP, proxy and operating-system limits remain.
-     *
-     * @param string $url  Measurement URL.
-     * @param array  $args WordPress HTTP request arguments.
-     * @return array|WP_Error
-     */
+    /** Send one bounded measurement request. */
     public static function request($url, $args = array()) {
-        $args['timeout'] = 2147483647;
-        $disable_curl_timeout = static function ($handle, $request, $request_url) use ($url) {
-            if ($request_url === $url && defined('CURLOPT_TIMEOUT')) {
-                curl_setopt($handle, CURLOPT_TIMEOUT, 0);
-            }
-        };
-
-        add_action('http_api_curl', $disable_curl_timeout, PHP_INT_MAX, 3);
-        try {
-            return wp_remote_request($url, $args);
-        } finally {
-            remove_action('http_api_curl', $disable_curl_timeout, PHP_INT_MAX);
-        }
+        $args['timeout'] = isset($args['timeout']) ? max(1, (int) $args['timeout']) : 120;
+        return wp_remote_request($url, $args);
     }
 
     /**
@@ -331,7 +308,11 @@ class SSPA_Crawler {
             if (!$location || strpos($location, 'wp-login.php') !== false) {
                 break; // login bounce: hand to the blocked classifier below
             }
-            $current_url = (strpos($location, 'http') === 0) ? $location : home_url($location);
+            $next_url = (0 === strpos($location, '/')) ? home_url($location) : $location;
+            if (!self::same_origin($url, $next_url)) {
+                break;
+            }
+            $current_url = $next_url;
         }
 
         // Remove captures/markers written by redirecting hops - only the final hop counts.
@@ -395,7 +376,8 @@ class SSPA_Crawler {
         $response = self::request($hop_url, array(
             'method' => $method,
             'redirection' => 0,
-            'sslverify' => false,
+            'sslverify' => true,
+            'timeout' => 120,
             'headers' => $headers,
             'body' => $body,
             'cookies' => isset($args['cookies']) ? $args['cookies'] : array(),
@@ -438,13 +420,33 @@ class SSPA_Crawler {
         }
         $args = array(
             'redirection' => 0,
-            'sslverify' => false,
+            'sslverify' => true,
+            'timeout' => 120,
             'headers' => $headers,
         );
         if ($cookies) {
             $args['cookies'] = $cookies;
         }
         return self::request($url, $args);
+    }
+
+    /** Credentials and profiling tokens must never cross an origin boundary. */
+    private static function same_origin($trusted, $candidate) {
+        $a = wp_parse_url($trusted);
+        $b = wp_parse_url($candidate);
+        if (!is_array($a) || !is_array($b) || empty($a['scheme']) || empty($a['host']) || empty($b['scheme']) || empty($b['host'])) {
+            return false;
+        }
+        $port = function ($parts) {
+            if (isset($parts['port'])) {
+                return (int) $parts['port'];
+            }
+            return 'https' === strtolower($parts['scheme']) ? 443 : 80;
+        };
+        return strtolower($a['scheme']) === strtolower($b['scheme'])
+            && strtolower(rtrim($a['host'], '.')) === strtolower(rtrim($b['host'], '.'))
+            && $port($a) === $port($b)
+            && empty($b['user']) && empty($b['pass']);
     }
 
     public static function discard_capture($token_id) {

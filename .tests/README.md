@@ -282,6 +282,10 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   discovery, latest-modified target selection, both WooCommerce order transports, validated
   controlled-editor launches, and a real no-change REST save whose attempted mail is measured
   but suppressed before transport.
+- `52-release-hardening.php` - dedicated hidden checkout product, verified/bounded profiling
+  HTTP arguments, atomic owner leases, lazy anonymous bootstrap and the History uninstall
+  control. The build smoke separately proves opt-in uninstall drops every table and removes
+  owned options, the checkout product and test customer.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

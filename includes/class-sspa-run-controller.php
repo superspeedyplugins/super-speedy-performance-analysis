@@ -213,6 +213,18 @@ class SSPA_Run_Controller {
             self::record_state_capture_error($e->getMessage());
         }
 
+        $claim_key = 'sspa_active_run_' . get_current_blog_id();
+        $claim_owner = SSPA_Atomic_Claim::acquire($claim_key, 6 * HOUR_IN_SECONDS);
+        if (!$claim_owner) {
+            SSPA_Helper_Files::restore_held_dropin();
+            return new WP_Error('sspa_run_active', __('An analysis is already starting or running.', 'super-speedy-performance-analysis'));
+        }
+        if (self::active_run_id()) {
+            SSPA_Atomic_Claim::release($claim_key, $claim_owner);
+            SSPA_Helper_Files::restore_held_dropin();
+            return new WP_Error('sspa_run_active', __('An analysis is already running.', 'super-speedy-performance-analysis'));
+        }
+
         $component_inventory = SSPA_Community_Exporter::component_inventory_snapshot();
         $wpdb->insert(SSPA_Schema::table('runs'), array(
             'run_uuid' => wp_generate_uuid4(),
@@ -230,6 +242,11 @@ class SSPA_Run_Controller {
             'started' => gmdate('Y-m-d H:i:s'),
         ));
         $run_id = (int) $wpdb->insert_id;
+        if (!$run_id) {
+            SSPA_Atomic_Claim::release($claim_key, $claim_owner);
+            SSPA_Helper_Files::restore_held_dropin();
+            return new WP_Error('sspa_run_insert', __('The analysis run could not be created.', 'super-speedy-performance-analysis'));
+        }
 
         // Every run type needs a measurement-time site snapshot. Normal baseline/spot
         // completion refreshes it after the crawl; other run types retain this start snapshot.
@@ -247,6 +264,7 @@ class SSPA_Run_Controller {
             'started_at' => time(),
             'last_progress' => time(),
             'transport' => $transport,
+            'claim_owner' => $claim_owner,
         );
         if ('cache_impact' === $type) {
             $queue['oc_mode'] = $oc_mode;
@@ -837,7 +855,7 @@ class SSPA_Run_Controller {
 
         $queue = get_option('sspa_queue_' . $run_id);
         $checkout = (is_array($queue) && isset($queue['checkout'])) ? $queue['checkout'] : array();
-        delete_option('sspa_queue_' . $run_id);
+        self::delete_queue_and_claim($run_id);
         self::set_status($run_id, 'analysing');
 
         $result = isset($checkout['result']) ? $checkout['result'] : array();
@@ -1164,13 +1182,12 @@ class SSPA_Run_Controller {
             return;
         }
 
-        // Lock: option add is atomic; stale locks expire after 120s.
+        // Atomic owner lease: cron and admin AJAX must never execute the same job.
         $lock_key = 'sspa_lock_' . $run_id;
-        $existing = get_option($lock_key);
-        if ($existing && $existing > time() - 120) {
+        $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS);
+        if (!$lock_owner) {
             return;
         }
-        update_option($lock_key, time(), false);
 
         try {
             $queue = get_option('sspa_queue_' . $run_id);
@@ -1191,6 +1208,7 @@ class SSPA_Run_Controller {
             $deadline = microtime(true) + self::BATCH_SECONDS;
 
             while ($queue['idx'] < count($queue['jobs']) && microtime(true) < $deadline) {
+                SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS, $lock_owner);
                 $job = $queue['jobs'][$queue['idx']];
 
                 // Site-wide cache toggle: engages when the queue reaches its cache-off half.
@@ -1252,7 +1270,7 @@ class SSPA_Run_Controller {
                 wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
             }
         } finally {
-            delete_option($lock_key);
+            SSPA_Atomic_Claim::release($lock_key, $lock_owner);
         }
     }
 
@@ -1332,7 +1350,7 @@ class SSPA_Run_Controller {
         foreach (array_keys($hashes) as $hash) {
             delete_option('sspa_isolation_' . $hash);
         }
-        delete_option('sspa_queue_' . $run_id);
+        self::delete_queue_and_claim($run_id);
 
         $wpdb->update(SSPA_Schema::table('runs'), array(
             'status' => 'done',
@@ -1634,7 +1652,7 @@ class SSPA_Run_Controller {
     private static function finish_cache($run_id) {
         global $wpdb;
         SSPA_Helper_Files::restore_object_cache();
-        delete_option('sspa_queue_' . $run_id);
+        self::delete_queue_and_claim($run_id);
 
         // Verify the off half really ran without a persistent cache (from the captures).
         $verified = true;
@@ -1722,7 +1740,7 @@ class SSPA_Run_Controller {
     private static function finish($run_id) {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
-        delete_option('sspa_queue_' . $run_id);
+        self::delete_queue_and_claim($run_id);
         self::set_status($run_id, 'analysing');
 
         $demographics = SSPA_Demographics::snapshot($run_id);
@@ -1766,8 +1784,18 @@ class SSPA_Run_Controller {
         if (is_array($queue) && !empty($queue['bt']['temp_id'])) {
             SSPA_Probes::delete_temp((int) $queue['bt']['temp_id'], !empty($queue['bt']['temp_is_order']));
         }
-        delete_option('sspa_queue_' . $run_id);
+        self::delete_queue_and_claim($run_id, $queue);
         delete_option('sspa_deep_' . $run_id); // legacy pre-0.8 deep plans
+    }
+
+    private static function delete_queue_and_claim($run_id, $queue = null) {
+        if (!is_array($queue)) {
+            $queue = get_option('sspa_queue_' . (int) $run_id);
+        }
+        if (is_array($queue) && !empty($queue['claim_owner'])) {
+            SSPA_Atomic_Claim::release('sspa_active_run_' . get_current_blog_id(), $queue['claim_owner']);
+        }
+        delete_option('sspa_queue_' . (int) $run_id);
     }
 
     private static function fail($run_id, $note) {
@@ -2142,6 +2170,13 @@ class SSPA_Run_Controller {
             self::cancel($run_id);
         }
         wp_send_json_success();
+    }
+
+    public static function ajax_uninstall_setting() {
+        self::ajax_guard();
+        $enabled = !empty($_POST['enabled']);
+        sspa_update_option('remove_data_on_uninstall', $enabled);
+        wp_send_json_success(array('enabled' => $enabled));
     }
 
     /**

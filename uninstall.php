@@ -6,7 +6,56 @@ $sspa_options = get_option('sspa_options', array());
 if (!empty($sspa_options['remove_data_on_uninstall'])) {
     require_once __DIR__ . '/includes/class-sspa-schema.php';
     SSPA_Schema::drop_tables();
-    delete_option('sspa_options');
+
+    // Remove plugin-owned temporary WooCommerce objects before deleting their ledger.
+    $sspa_temp_entries = get_option('sspa_flow_temp', array());
+    foreach ((array) $sspa_temp_entries as $sspa_entry) {
+        $sspa_id = !empty($sspa_entry['id']) ? (int) $sspa_entry['id'] : 0;
+        if (!$sspa_id || empty($sspa_entry['type'])) {
+            continue;
+        }
+        if ('order' === $sspa_entry['type'] && function_exists('wc_get_order')) {
+            $sspa_order = wc_get_order($sspa_id);
+            if ($sspa_order && $sspa_order->get_meta('_sspa_temp', true)) {
+                $sspa_order->delete(true);
+            }
+        } elseif ('user' === $sspa_entry['type'] && get_user_meta($sspa_id, '_sspa_temp', true)) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user($sspa_id);
+        }
+    }
+
+    // The reusable hidden checkout product and low-privilege profiling customer.
+    $sspa_product_ids = get_posts(array(
+        'post_type' => 'product',
+        'post_status' => 'any',
+        'posts_per_page' => -1,
+        'fields' => 'ids',
+        'meta_key' => '_sspa_temp',
+        'meta_value' => 'checkout_product',
+    ));
+    foreach ($sspa_product_ids as $sspa_product_id) {
+        wp_delete_post((int) $sspa_product_id, true);
+    }
+    $sspa_test_users = get_users(array('meta_key' => 'sspa_test_account', 'meta_value' => '1', 'fields' => 'ID'));
+    if ($sspa_test_users) {
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        foreach ($sspa_test_users as $sspa_user_id) {
+            wp_delete_user((int) $sspa_user_id);
+        }
+    }
+
+    foreach (array('sspa_cleanup_event', 'sspa_submission_worker_event', 'sspa_traffic_collection_tick', 'sspa_process_batch_event') as $sspa_hook) {
+        wp_clear_scheduled_hook($sspa_hook);
+    }
+
+    global $wpdb;
+    foreach (array('sspa\\_%', '\\_transient\\_sspa\\_%', '\\_transient\\_timeout\\_sspa\\_%') as $sspa_like) {
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+            $sspa_like
+        ));
+    }
 }
 
 // Remove our helper files if present (installed from Phase 1 onwards). Signature-checked so
