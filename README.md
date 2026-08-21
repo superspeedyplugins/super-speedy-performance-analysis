@@ -67,11 +67,14 @@ The whole plugin is drivable without the GUI:
 2. Activate it through the Plugins menu.
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
-Or over SSH:
+Or install the public release zip directly over SSH with WP-CLI:
 
 ```
-wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --activate
+wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --force --activate
 ```
+
+`--force` replaces an existing or incomplete copy. If WP-CLI is deliberately being run as
+root, add `--allow-root` to the end of the command.
 
 ## Documentation
 
