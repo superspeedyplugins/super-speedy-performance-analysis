@@ -272,6 +272,12 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `48-excimer-prompts.php` - an Excimer phase remains expandable when wrapper-based phase
   attribution is empty, and measurements captured without Excimer link each missing
   function-level view to the Tools tab's server-specific installation instructions.
+- `50-admin-save.php` - profiles WordPress's real authenticated classic `post.php` update and
+  block-editor REST update, not the editor reload: a planted slow `save_post` callback must
+  appear in each `admin_save` write profile with full diagnostics, mail still runs normally,
+  and the classic transport token is removed before ordinary save callbacks see the submitted
+  fields. It also fetches real post, product and HPOS order editors and pins their control and
+  object-specific configuration.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

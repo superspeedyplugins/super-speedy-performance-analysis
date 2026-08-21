@@ -230,9 +230,30 @@
 		loadProfile(profileId);
 	}
 
+	function openStatus(message, detail) {
+		current = { profileId: 0, url: '' };
+		show();
+		body(
+			'<p class="sspa-adhoc-running"><span class="sspa-adhoc-spin"></span>' + esc(message || sspa_adhoc.i18n.running) + '</p>' +
+			(detail ? '<p class="sspa-adhoc-note">' + esc(detail) + '</p>' : '')
+		);
+	}
+
+	function openError(message) {
+		current = { profileId: 0, url: '' };
+		show();
+		renderError(message || sspa_adhoc.i18n.failed);
+	}
+
 	// The panel's public surface: the Pages tab opens it by profile id, and the settings
 	// page's Plugin Impact Analysis button opens the site-scoped plugin picker.
-	window.sspaPanel = { openProfile: openProfile, openUrl: openUrl, openImpactPicker: openImpactPicker };
+	window.sspaPanel = {
+		openProfile: openProfile,
+		openUrl: openUrl,
+		openImpactPicker: openImpactPicker,
+		openStatus: openStatus,
+		openError: openError
+	};
 
 	$(document).on('click', '#wp-admin-bar-sspa-adhoc > a', function (e) {
 		e.preventDefault();

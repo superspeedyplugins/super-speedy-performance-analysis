@@ -15,7 +15,10 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-if (empty($_SERVER['HTTP_X_SSPA_TOKEN']) || !defined('DB_USER')) {
+$sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
+    ? $_SERVER['HTTP_X_SSPA_TOKEN']
+    : (!empty($_POST['_sspa_profile_token']) ? $_POST['_sspa_profile_token'] : '');
+if (!$sspa_token_value || !defined('DB_USER')) {
     return;
 }
 if (defined('WP_INSTALLING') && WP_INSTALLING) {
@@ -51,14 +54,15 @@ if (!function_exists('sspa_token_verify')) {
 }
 
 $sspa_shim_tok = sspa_token_verify(
-    $_SERVER['HTTP_X_SSPA_TOKEN'],
+    $sspa_token_value,
     isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/',
     '%%SSPA_SECRET%%'
 );
 if (!$sspa_shim_tok) {
-    unset($sspa_shim_tok);
+    unset($sspa_shim_tok, $sspa_token_value);
     return;
 }
+unset($sspa_token_value);
 
 // Cache-impact runs: prevent the object-cache drop-in loading for this request only.
 // db.php is the only code that runs early enough to register this filter in time.

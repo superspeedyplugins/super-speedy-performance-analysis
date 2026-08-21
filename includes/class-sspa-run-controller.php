@@ -83,7 +83,7 @@ class SSPA_Run_Controller {
         // (unchanged, works headless); the admin's browser when loopbacks are provably
         // blocked and a browser is driving; a hard, MECHANISM-NAMING error otherwise.
         // Decided once, here - an in-flight run never switches transport.
-        $transport = self::decide_transport($type);
+        $transport = ('admin_save' === $type) ? 'interactive' : self::decide_transport($type);
         if (is_wp_error($transport)) {
             SSPA_Helper_Files::restore_held_dropin();
             return $transport;
@@ -120,6 +120,17 @@ class SSPA_Run_Controller {
             // key. Runs of this type are excluded from the Overview/Pages "latest
             // analysis" queries so a one-page check never replaces a full run.
             $job = SSPA_Adhoc::job_for(!empty($args['url']) ? $args['url'] : '');
+            if (is_wp_error($job)) {
+                SSPA_Helper_Files::restore_held_dropin();
+                return $job;
+            }
+            $jobs = array($job);
+        } elseif ('admin_save' === $type) {
+            $job = SSPA_Admin_Save::job_for(
+                !empty($args['url']) ? $args['url'] : '',
+                !empty($args['method']) ? $args['method'] : '',
+                !empty($args['admin_save_context']) ? (array) $args['admin_save_context'] : array()
+            );
             if (is_wp_error($job)) {
                 SSPA_Helper_Files::restore_held_dropin();
                 return $job;
@@ -241,7 +252,9 @@ class SSPA_Run_Controller {
             );
         }
         update_option('sspa_queue_' . $run_id, $queue, false);
-        wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
+        if ('admin_save' !== $type) {
+            wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
+        }
 
         return $run_id;
     }
@@ -1157,7 +1170,7 @@ class SSPA_Run_Controller {
             // browser (SSPA_Browser_Transport); this server-side pump - including the
             // belt-and-braces cron event that also lands here - must not loopback-crawl
             // a queue whose whole point is that loopbacks are blocked.
-            if (!empty($queue['transport']) && 'browser' === $queue['transport']) {
+            if (!empty($queue['transport']) && in_array($queue['transport'], array('browser', 'interactive'), true)) {
                 return;
             }
 

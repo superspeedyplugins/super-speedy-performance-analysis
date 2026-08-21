@@ -10,7 +10,10 @@
 if (!defined('ABSPATH')) {
     return;
 }
-if (empty($_SERVER['HTTP_X_SSPA_TOKEN'])) {
+$sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
+    ? $_SERVER['HTTP_X_SSPA_TOKEN']
+    : (!empty($_POST['_sspa_profile_token']) ? $_POST['_sspa_profile_token'] : '');
+if (!$sspa_token_value) {
     return;
 }
 
@@ -43,13 +46,19 @@ if (!function_exists('sspa_token_verify')) {
 }
 
 $sspa_tok = sspa_token_verify(
-    $_SERVER['HTTP_X_SSPA_TOKEN'],
+    $sspa_token_value,
     isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/',
     '%%SSPA_SECRET%%'
 );
 if (!$sspa_tok) {
+    unset($sspa_token_value);
     return;
 }
+
+// Classic wp-admin forms cannot set a request header, so their one-time token rides in a
+// hidden field. It is transport metadata, not post data: remove it before ordinary plugins
+// and save handlers load. PHP builds $_REQUEST separately, so both superglobals must be reset.
+unset($_POST['_sspa_profile_token'], $_REQUEST['_sspa_profile_token'], $sspa_token_value);
 
 // A profiled response must never be stored by any cache layer: it would be served to a
 // real visitor, and a stored copy answers later profiling requests without running PHP.

@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -111,6 +111,7 @@ require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-browser-transport.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-preflight.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-checkout-flow.php';
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-adhoc.php';
+require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-admin-save.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-admin-page.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-insights.php';
 require_once SSPA_PLUGIN_DIR . 'includes/admin/class-sspa-plugins-table.php';
@@ -146,6 +147,9 @@ SSPA_Probes::register();
 // Admin-bar "Analyse this page" runner: front end AND wp-admin, so registered outside
 // the is_admin() block below.
 SSPA_Adhoc::register();
+// Edit-screen companion to "Analyse this page": captures the actual POST/REST save request,
+// never the editor page WordPress loads afterwards.
+SSPA_Admin_Save::register();
 // The one profile panel, shared by the admin bar and the Pages tab. Registered outside the
 // is_admin() block for the same reason: admin-ajax requests from the front end land here too.
 SSPA_Profile_Panel::register();

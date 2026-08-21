@@ -31,9 +31,9 @@ if (!class_exists('SSPA_Capture')) {
             if (isset($flags['mail']) && 'c' === $flags['mail']) {
                 $this->mail_mode = 'construct';
             } elseif (isset($flags['mail']) && 'd' === $flags['mail']) {
-                // Deliver: the ONE mode that lets a profiled request send real mail. Only
-                // reachable from the checkout flow, whose tokens are minted after an
-                // administrator accepted the disclosure. Never the default anywhere else.
+                // Deliver: lets a profiled request send real mail. Reachable only from an
+                // explicitly accepted checkout flow or from the administrator's own real
+                // Update/Save action. Never the default for synthetic measurements.
                 $this->mail_mode = 'deliver';
             }
         }

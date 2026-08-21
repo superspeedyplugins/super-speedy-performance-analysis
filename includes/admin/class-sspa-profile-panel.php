@@ -269,6 +269,8 @@ class SSPA_Profile_Panel {
                 : __('profiled as a logged-out visitor', 'super-speedy-performance-analysis'));
         if ('adhoc' === $run_type) {
             $html .= ' · ' . esc_html__('one-page analysis', 'super-speedy-performance-analysis');
+        } elseif ('admin_save' === $run_type) {
+            $html .= ' · ' . esc_html__('update/save request only; editor reload excluded', 'super-speedy-performance-analysis');
         } elseif (in_array($run_type, array('baseline', 'spot'), true)) {
             $html .= ' · ' . esc_html__('from a full analysis', 'super-speedy-performance-analysis');
         }

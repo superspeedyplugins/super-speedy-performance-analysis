@@ -12,6 +12,7 @@ $sspa_type_labels = array(
     'deep' => __('deep impact scan', 'super-speedy-performance-analysis'),
     'cache_impact' => __('cache analysis', 'super-speedy-performance-analysis'),
     'adhoc' => __('page analysis', 'super-speedy-performance-analysis'),
+    'admin_save' => __('admin update/save analysis', 'super-speedy-performance-analysis'),
     'checkout' => __('checkout analysis', 'super-speedy-performance-analysis'),
 );
 $sspa_share_states = array(
