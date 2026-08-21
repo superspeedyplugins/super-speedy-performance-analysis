@@ -50,6 +50,7 @@ if (!class_exists('SSPA_Community_Outbox') || !class_exists('SSPA_Community_Work
 
 $old_collector = get_option('sspa_collector_url', null);
 $old_optin = get_option('sspa_share_optin', null);
+$old_consent_version = get_option('sspa_share_consent_version', null);
 $now = gmdate('Y-m-d H:i:s');
 $run_uuid = wp_generate_uuid4();
 $run_id = 0;
@@ -88,7 +89,7 @@ try {
                 'object_type' => 'post',
                 'transport' => 'classic',
                 'save_mode' => 'editor-update',
-                'mail_mode' => 'normal',
+                'mail_mode' => 'deliver',
             ),
         )),
         'started' => $now,
@@ -134,6 +135,7 @@ try {
     // Phase 1: queue while the collector is genuinely unreachable.
     update_option('sspa_collector_url', SSPA_LIVE_PROD_OUTAGE, false);
     update_option('sspa_share_optin', 1, false);
+    update_option('sspa_share_consent_version', SSPA_Community_Schema::CONSENT_VERSION, false);
 
     $queued = SSPA_Community_Outbox::queue_run($run_id);
     if (is_wp_error($queued)) {
@@ -275,6 +277,11 @@ try {
         delete_option('sspa_share_optin');
     } else {
         update_option('sspa_share_optin', $old_optin, false);
+    }
+    if (null === $old_consent_version) {
+        delete_option('sspa_share_consent_version');
+    } else {
+        update_option('sspa_share_consent_version', $old_consent_version, false);
     }
     sspa_production_test_identity_restore($identity_snapshot);
 }
