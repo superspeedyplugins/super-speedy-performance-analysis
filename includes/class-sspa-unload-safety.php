@@ -64,6 +64,9 @@ class SSPA_Unload_Safety {
         $by_category = self::category_index();
         $category = isset($by_category[$slug]) ? $by_category[$slug] : null;
 
+        if (self::is_cache_system($slug)) {
+            $reasons[] = 'cache-system';
+        }
         if (in_array($slug, SSPA_Rules::fragile(), true)) {
             $reasons[] = 'fragile';
         }
@@ -95,6 +98,22 @@ class SSPA_Unload_Safety {
             return array('classification' => 'candidate', 'reasons' => array('category:' . $category));
         }
         return array('classification' => 'review', 'reasons' => array($category ? 'category:' . $category : 'unknown-category'));
+    }
+
+    /** Cache infrastructure must observe every request and is never page-optional. */
+    public static function is_cache_system($slug) {
+        $slug = strtolower((string) $slug);
+        $known = array(
+            'redis-cache', 'redis-object-cache', 'wp-redis', 'object-cache-pro',
+            'memcached', 'memcached-redux', 'docket-cache', 'sqlite-object-cache',
+            'nginx-helper', 'varnish-http-purge', 'cloudflare', 'wp-cloudflare-page-cache',
+            'breeze', 'nitropack', 'wp-optimize', 'swift-performance', 'sg-cachepress',
+            'wp-rocket', 'w3-total-cache', 'litespeed-cache', 'wp-super-cache',
+            'wp-fastest-cache', 'cache-enabler', 'comet-cache', 'cachify',
+            'powered-cache', 'hummingbird-performance', 'batcache',
+        );
+        return in_array($slug, $known, true)
+            || (bool) preg_match('/(?:^|[-_])(?:cache|caching|redis|memcached|varnish)(?:[-_]|$)/', $slug);
     }
 
     /** slug => category name, inverted from the rules snapshot. */

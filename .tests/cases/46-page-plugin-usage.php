@@ -22,6 +22,11 @@ sspa_t('never' === $v['classification'], 'consent banner classifies never');
 $v = SSPA_Unload_Safety::classify('paid-memberships-pro');
 sspa_t('never' === $v['classification'], 'membership classifies never');
 
+foreach (array('redis-cache', 'object-cache-pro', 'wp-redis', 'nginx-helper', 'breeze', 'some-new-cache-engine') as $cache_slug) {
+    $v = SSPA_Unload_Safety::classify($cache_slug);
+    sspa_t('never' === $v['classification'], $cache_slug . ' cache infrastructure classifies never');
+}
+
 $v = SSPA_Unload_Safety::classify('super-speedy-performance-analysis');
 sspa_t('never' === $v['classification'], 'we classify ourselves never');
 
