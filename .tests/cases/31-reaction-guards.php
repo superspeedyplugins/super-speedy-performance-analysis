@@ -277,7 +277,7 @@ if (is_wp_error($sspa_sweep)) {
         'user_id' => 1,
     ));
     if (!is_wp_error($sspa_again)) {
-        $sspa_queue = get_option('sspa_queue_' . $sspa_again);
+        $sspa_queue = SSPA_Run_Queue::get($sspa_again);
         $sspa_grouped = false;
         foreach ((array) $sspa_queue['jobs'] as $sspa_job) {
             if (!empty($sspa_job['plugin']) && !empty($sspa_job['group']) && in_array('sspa-guard-reactor', (array) $sspa_job['group'], true)) {

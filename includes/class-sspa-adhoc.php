@@ -288,7 +288,7 @@ class SSPA_Adhoc {
         // An active adhoc run for this same URL? Tell the popover to reattach.
         $active = SSPA_Run_Controller::active_run_id();
         if ($active) {
-            $queue = get_option('sspa_queue_' . $active);
+            $queue = SSPA_Run_Queue::get($active);
             if (is_array($queue) && isset($queue['jobs'][0]['page_key']) && $queue['jobs'][0]['page_key'] === $job['page_key']) {
                 wp_send_json_success(array('running' => (int) $active));
             }

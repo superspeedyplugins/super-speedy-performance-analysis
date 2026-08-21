@@ -58,6 +58,8 @@ class SSPA_Schema {
         $traffic_rollups = self::table('traffic_rollups');
         $traffic_actor_work = self::table('traffic_actor_work');
         $traffic_reports = self::table('traffic_reports');
+        $run_queues = self::table('run_queues');
+        $run_jobs = self::table('run_jobs');
 
         dbDelta("CREATE TABLE $runs (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -191,6 +193,32 @@ class SSPA_Schema {
             PRIMARY KEY  (id),
             UNIQUE KEY token_id (token_id),
             KEY created (created)
+        ) $charset_collate;");
+
+        dbDelta("CREATE TABLE $run_queues (
+            run_id bigint(20) unsigned NOT NULL,
+            job_cursor int(10) unsigned NOT NULL DEFAULT 0,
+            total_jobs int(10) unsigned NOT NULL DEFAULT 0,
+            state_blob longtext NULL,
+            started_at datetime NOT NULL,
+            last_progress datetime NOT NULL,
+            PRIMARY KEY  (run_id)
+        ) $charset_collate;");
+
+        dbDelta("CREATE TABLE $run_jobs (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            run_id bigint(20) unsigned NOT NULL,
+            position int(10) unsigned NOT NULL,
+            status varchar(16) NOT NULL DEFAULT 'queued',
+            owner varchar(64) NULL,
+            lease_expires datetime NULL,
+            job_blob longtext NOT NULL,
+            created_at datetime NOT NULL,
+            started_at datetime NULL,
+            finished_at datetime NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY run_position (run_id,position),
+            KEY run_status (run_id,status,position)
         ) $charset_collate;");
 
         dbDelta("CREATE TABLE $site_metrics (
@@ -358,6 +386,7 @@ class SSPA_Schema {
         ) $charset_collate;");
 
         self::ensure_run_uuids();
+        SSPA_Run_Queue::discard_legacy_options();
 
         update_option('sspa_db_version', self::DB_VERSION);
     }
@@ -391,7 +420,7 @@ class SSPA_Schema {
 
     public static function drop_tables() {
         global $wpdb;
-        foreach (array('traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_events', 'traffic_collections', 'submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
+        foreach (array('run_jobs', 'run_queues', 'traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_events', 'traffic_collections', 'submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
             $table = self::table($name);
             $wpdb->query("DROP TABLE IF EXISTS $table");
         }

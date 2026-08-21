@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-define('SSPA_DB_VERSION', '2.2');
+define('SSPA_DB_VERSION', '2.3');
 
 // All plugin settings live in one option row (autoloaded: it is small and read on every
 // admin page). Profiling data lives in the sspa_* tables, never in options.

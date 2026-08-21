@@ -282,7 +282,7 @@ class SSPA_Run_Controller {
                 'result' => null,
             );
         }
-        update_option('sspa_queue_' . $run_id, $queue, false);
+        SSPA_Run_Queue::save($run_id, $queue);
         if ('admin_save' !== $type) {
             wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
         }
@@ -644,7 +644,7 @@ class SSPA_Run_Controller {
      * pages. Appends the jobs and returns true; false = nothing to confirm, finish.
      */
     private static function sweep_extend_phase2($run_id) {
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         if (!is_array($queue) || empty($queue['sweep']) || 1 !== (int) $queue['sweep']['phase']) {
             return false;
         }
@@ -661,7 +661,7 @@ class SSPA_Run_Controller {
         $queue['sweep']['phase'] = 2;
         $queue['sweep']['phase2_plugins'] = count($impacted);
         if (!$impacted) {
-            update_option('sspa_queue_' . $run_id, $queue, false);
+            SSPA_Run_Queue::save($run_id, $queue);
             return false;
         }
 
@@ -692,13 +692,13 @@ class SSPA_Run_Controller {
         }
         $jobs = self::sweep_block_jobs($sweep['page_jobs'], $plan);
         if (!$jobs) {
-            update_option('sspa_queue_' . $run_id, $queue, false);
+            SSPA_Run_Queue::save($run_id, $queue);
             return false;
         }
 
         $queue['jobs'] = array_merge($queue['jobs'], $jobs);
         $queue['last_progress'] = time();
-        update_option('sspa_queue_' . $run_id, $queue, false);
+        SSPA_Run_Queue::save($run_id, $queue);
         return true;
     }
 
@@ -853,7 +853,7 @@ class SSPA_Run_Controller {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
 
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         $checkout = (is_array($queue) && isset($queue['checkout'])) ? $queue['checkout'] : array();
         self::delete_queue_and_claim($run_id);
         self::set_status($run_id, 'analysing');
@@ -1191,7 +1191,7 @@ class SSPA_Run_Controller {
         }
 
         try {
-            $queue = get_option('sspa_queue_' . $run_id);
+            $queue = SSPA_Run_Queue::get($run_id);
             if (!is_array($queue)) {
                 self::fail($run_id, 'queue missing');
                 return;
@@ -1223,7 +1223,7 @@ class SSPA_Run_Controller {
                     self::process_checkout_job($run_id, $job, $queue);
                     $queue['idx']++;
                     $queue['last_progress'] = time();
-                    update_option('sspa_queue_' . $run_id, $queue, false);
+                    SSPA_Run_Queue::save($run_id, $queue);
                     $run = self::run_row($run_id);
                     if (!$run || 'crawling' !== $run['status']) {
                         return; // cancelled mid-batch
@@ -1241,7 +1241,7 @@ class SSPA_Run_Controller {
                         : SSPA_Probes::create_temp_copy($job['post_type']);
                     if (!$temp_id) {
                         $queue['idx']++; // nothing to duplicate on this site - skip quietly
-                        update_option('sspa_queue_' . $run_id, $queue, false);
+                        SSPA_Run_Queue::save($run_id, $queue);
                         continue;
                     }
                     $job['flags'] = array('wp' => $job['write'], 'tid' => (string) $temp_id, 'mail' => 'c');
@@ -1257,7 +1257,7 @@ class SSPA_Run_Controller {
                 }
                 $queue['idx']++;
                 $queue['last_progress'] = time();
-                update_option('sspa_queue_' . $run_id, $queue, false);
+                SSPA_Run_Queue::save($run_id, $queue);
 
                 $run = self::run_row($run_id);
                 if (!$run || 'crawling' !== $run['status']) {
@@ -1285,7 +1285,7 @@ class SSPA_Run_Controller {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
 
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         $sweep = (is_array($queue) && isset($queue['sweep'])) ? $queue['sweep'] : array();
         $hashes = isset($sweep['hashes']) ? $sweep['hashes'] : array();
 
@@ -1794,7 +1794,7 @@ class SSPA_Run_Controller {
 
     private static function cleanup_run_state($run_id) {
         SSPA_Digests::discard($run_id);
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         if (is_array($queue) && !empty($queue['sweep']['hashes'])) {
             foreach (array_keys($queue['sweep']['hashes']) as $hash) {
                 delete_option('sspa_isolation_' . $hash);
@@ -1811,12 +1811,12 @@ class SSPA_Run_Controller {
 
     private static function delete_queue_and_claim($run_id, $queue = null) {
         if (!is_array($queue)) {
-            $queue = get_option('sspa_queue_' . (int) $run_id);
+            $queue = SSPA_Run_Queue::get((int) $run_id);
         }
         if (is_array($queue) && !empty($queue['claim_owner'])) {
             SSPA_Atomic_Claim::release('sspa_active_run_' . get_current_blog_id(), $queue['claim_owner']);
         }
-        delete_option('sspa_queue_' . (int) $run_id);
+        SSPA_Run_Queue::delete((int) $run_id);
     }
 
     private static function fail($run_id, $note) {
@@ -1848,7 +1848,7 @@ class SSPA_Run_Controller {
         if (!$run) {
             return null;
         }
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         if (is_array($queue)) {
             $total = count($queue['jobs']);
             $idx = $queue['idx'];
@@ -1932,7 +1932,7 @@ class SSPA_Run_Controller {
         );
         foreach ($candidates as $r) {
             $run_id = (int) $r['id'];
-            $queue = get_option('sspa_queue_' . $run_id);
+            $queue = SSPA_Run_Queue::get($run_id);
             if (is_array($queue) && !empty($queue['last_progress'])) {
                 $idle = time() - (int) $queue['last_progress'];
                 if ($idle > 3 * HOUR_IN_SECONDS) {

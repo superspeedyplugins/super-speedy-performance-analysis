@@ -210,7 +210,7 @@ class SSPA_Admin_Save {
             $flags['mail'] = 'd';
         }
         $token = SSPA_Token::mint($job['url'], $flags);
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         $queue['interactive'] = array(
             'token_id' => $token['id'],
             'job' => $job,
@@ -218,7 +218,7 @@ class SSPA_Admin_Save {
             'mail_mode' => $mail_mode,
         );
         $queue['last_progress'] = time();
-        update_option('sspa_queue_' . $run_id, $queue, false);
+        SSPA_Run_Queue::save($run_id, $queue);
 
         return array(
             'run_id' => $run_id,
@@ -252,7 +252,7 @@ class SSPA_Admin_Save {
             return array('profile_id' => $existing, 'run_id' => $run_id);
         }
 
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         if (!is_array($queue) || empty($queue['interactive']['token_id'])
             || !hash_equals((string) $queue['interactive']['token_id'], $token_id)) {
             return new WP_Error('sspa_admin_save_token', __('The update/save measurement token does not match this run.', 'super-speedy-performance-analysis'));
@@ -291,7 +291,7 @@ class SSPA_Admin_Save {
         ));
         $queue['idx'] = 1;
         $queue['last_progress'] = time();
-        update_option('sspa_queue_' . $run_id, $queue, false);
+        SSPA_Run_Queue::save($run_id, $queue);
         SSPA_Run_Controller::complete_run($run_id, 'admin_save');
         return array('profile_id' => $profile_id, 'run_id' => $run_id);
     }

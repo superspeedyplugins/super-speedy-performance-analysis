@@ -289,6 +289,8 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `53-review-followup.php` - all eight admin tab containers remain while hidden tab data is
   deferred, permanent-failure grace retains a retry deadline, in-flight submissions reject
   conflicting admin changes, and cancellation consumes the run's digest snapshot.
+- `54-run-job-table.php` - immutable ordered job rows, small mutable cursor/state storage,
+  append-only phase extension, no queue option writes and terminal row cleanup.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

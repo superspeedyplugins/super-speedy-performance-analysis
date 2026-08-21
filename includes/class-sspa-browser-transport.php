@@ -83,7 +83,7 @@ class SSPA_Browser_Transport {
         if (!$run || 'crawling' !== $run['status']) {
             return new WP_Error('sspa_not_crawling', __('This analysis is not running.', 'super-speedy-performance-analysis'));
         }
-        $queue = get_option('sspa_queue_' . $run_id);
+        $queue = SSPA_Run_Queue::get($run_id);
         if (!is_array($queue) || empty($queue['jobs'])) {
             return new WP_Error('sspa_no_queue', __('The analysis queue is missing.', 'super-speedy-performance-analysis'));
         }
@@ -98,7 +98,7 @@ class SSPA_Browser_Transport {
 
     private static function save($run_id, $queue) {
         $queue['last_progress'] = time();
-        update_option('sspa_queue_' . $run_id, $queue, false);
+        SSPA_Run_Queue::save($run_id, $queue);
     }
 
     /**

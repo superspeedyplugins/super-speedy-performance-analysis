@@ -184,7 +184,7 @@ if (is_wp_error($sspa_sweep)) {
 } else {
     // The queued cell, read before any batch runs - a run this small empties its queue inside
     // the first batch, and the queue option is deleted when it finishes.
-    $sspa_queue = get_option('sspa_queue_' . $sspa_sweep);
+    $sspa_queue = SSPA_Run_Queue::get($sspa_sweep);
     $sspa_cell = null;
     foreach ((array) $sspa_queue['jobs'] as $sspa_job) {
         if (!empty($sspa_job['plugin'])) {
