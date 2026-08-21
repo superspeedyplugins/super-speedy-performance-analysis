@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.29.6
+Stable tag: 0.29.7
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -30,6 +30,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.29.7 (21st August 2026) =
+* Hardened the shared settings module and removed its Jetpack Autoloader dependency
 
 = 0.29 (21st August 2026) =
 * Added `Analyse update/save` to existing post, page, product, custom post type and HPOS order editors, profiling the real write request without including the subsequent editor reload
