@@ -57,6 +57,16 @@
 		});
 	}
 
+	// A completed opted-in save has just created an outbox row. Drain it while this browser is
+	// definitely present; the server returns immediately when sharing is off or nothing is due.
+	function driveSubmissions() {
+		ajax({ action: 'sspa_submission_tick', nonce: cfg.nonce }).then(function (response) {
+			if (response && response.success && response.data && response.data.more) {
+				window.setTimeout(driveSubmissions, 1500);
+			}
+		}).catch(function () {});
+	}
+
 	function prepare(url, method) {
 		var data = contextData();
 		data.action = 'sspa_admin_save_prepare';
@@ -89,6 +99,7 @@
 		}).then(function (response) {
 			if (response && response.success) {
 				window.sessionStorage.removeItem(STORAGE_KEY);
+				driveSubmissions();
 				if (workflow || prepared.workflow) {
 					notifyWorkflow('complete', {
 						profile_id: response.data.profile_id,

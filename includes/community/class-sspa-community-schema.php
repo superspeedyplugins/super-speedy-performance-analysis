@@ -22,7 +22,10 @@ class SSPA_Community_Schema {
     // every payload records which version was in force when it was built.
     // Version 3 adds normalised external HTTP endpoints and call-site evidence. It contains no
     // query values or site URLs, but it is still a wider disclosure than version 2.
-    const CONSENT_VERSION = 3;
+    // Version 4 adds a coarse admin-save classification: post/page/product/order/custom post
+    // type, classic/REST, real editor update/no-change workflow and mail handling mode. IDs,
+    // content and custom post type slugs remain forbidden.
+    const CONSENT_VERSION = 4;
     const MAX_COMPRESSED_BYTES = 33554432;
     const MAX_UNCOMPRESSED_BYTES = 268435456;
 
@@ -49,6 +52,7 @@ class SSPA_Community_Schema {
             'sspa/archive-profile' => 1,
             'sspa/plugin-toggle-spot' => 1,
             'sspa/adhoc-page-profile' => 1,
+            'sspa/admin-save' => 1,
             // Another plugin's own account of how it was configured when the run was measured,
             // published by that plugin through the `sspa_component_state` filter. Never read out
             // of another plugin's options by this one.

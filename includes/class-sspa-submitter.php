@@ -79,7 +79,9 @@ class SSPA_Submitter {
         if (!$run_id) {
             return new WP_Error('sspa_no_run', __('Run an analysis first - there is nothing to preview yet.', 'super-speedy-performance-analysis'));
         }
-        $payload = SSPA_Community_Exporter::build($run_id);
+        // A preview is the disclosure shown BEFORE consent, so it must use the current consent
+        // contract rather than whatever older version this site last accepted. Nothing is queued.
+        $payload = SSPA_Community_Exporter::build($run_id, null, null, 'manual');
         if (is_wp_error($payload)) {
             return $payload;
         }
@@ -110,8 +112,11 @@ class SSPA_Submitter {
             'sspa/plugin-impact' => __('plugin impact measurements', 'super-speedy-performance-analysis'),
             'sspa/cache-impact' => __('object cache measurements', 'super-speedy-performance-analysis'),
             'sspa/checkout-flow' => __('checkout step timings', 'super-speedy-performance-analysis'),
+            'sspa/order-management-flow' => __('order-management step timings', 'super-speedy-performance-analysis'),
+            'sspa/archive-profile' => __('archive query and index shapes', 'super-speedy-performance-analysis'),
             'sspa/plugin-toggle-spot' => __('plugin activation spot checks', 'super-speedy-performance-analysis'),
             'sspa/adhoc-page-profile' => __('single page timings', 'super-speedy-performance-analysis'),
+            'sspa/admin-save' => __('admin update/save workflow context', 'super-speedy-performance-analysis'),
             'sspa/component-state' => __('performance settings published by plugins that opted in', 'super-speedy-performance-analysis'),
             'sspa/http-call' => __('privacy-normalised outbound HTTP API call aggregates', 'super-speedy-performance-analysis'),
         );

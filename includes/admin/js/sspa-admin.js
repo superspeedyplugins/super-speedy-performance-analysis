@@ -549,6 +549,7 @@ jQuery(document).on('click', '.sspa-share-run', function () {
 			'Queued to share (this run only) - ' + resp.data.compressed_bytes + ' bytes. ' +
 			'<button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="' + resp.data.outbox_id + '">Preview data</button>'
 		);
+		sspa_drive_submissions();
 	}).fail(function () {
 		cell.find('.sspa-share-run-result').text('Could not share this analysis.');
 		btn.prop('disabled', false);
@@ -870,6 +871,7 @@ function sspa_runner_finish(status) {
 	// looking at, rather than throwing them back to Overview via a reload.
 	sspa_refresh_tabs(['overview', 'pages', 'plugins', 'history', 'share'], function () {
 		sspa_runner_dismiss();
+		sspa_drive_submissions();
 	});
 }
 

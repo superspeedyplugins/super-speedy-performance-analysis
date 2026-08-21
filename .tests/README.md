@@ -364,19 +364,20 @@ the submission UUID, receipt UUID and SHA-256, and never prints the installation
 presigned upload URL.
 
 `.tests/manual/live-production-runs.php` takes the same two arguments and the same host guard,
-but delivers one REAL analysis of every run type - the most recent completed unshared run of
-each - instead of a synthetic fixture. It uses the per-run consent path, so the site-wide
-sharing setting stays off throughout, and it asserts that afterwards. Use it when the transport
-or the exporters change: the synthetic fixture is ~1 KB with one evidence record and will not
+but delivers one REAL analysis of every run type, including admin update/save - the most recent
+completed unshared run of each - instead of a synthetic fixture. It uses the per-run consent
+path, so the site-wide sharing setting stays off throughout, and it asserts that afterwards.
+Use it when the transport or the exporters change: the synthetic fixture is small and will not
 notice a payload-size or evidence-volume problem.
 
 After diagnosing a failed processor outcome, a comma-separated third argument can repeat only
 the affected types without creating unnecessary permanent objects, for example
-`production spot,baseline`. Omitting it still checks all six types.
+`production spot,baseline`. Omitting it checks all seven types.
 
 Both scripts write real permanent objects to the production archive. Run them only from the
-disposable test site, and expect `processing_status=partial` while the production processor
-is 1.0 and the payload schema is 1.1.
+disposable test site. A payload containing only supported evidence must finish with
+`processing_status=complete`; `partial` means the manifest retained an explicitly unsupported
+record and needs inspection.
 
 ## Not yet covered (planned)
 

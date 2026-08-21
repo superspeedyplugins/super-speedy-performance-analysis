@@ -137,6 +137,7 @@ class SSPA_Admin_Save {
         $workflow_transport = !empty($context['workflow_transport']) && in_array($context['workflow_transport'], array('classic', 'rest'), true)
             ? $context['workflow_transport']
             : '';
+        $transport = $workflow_transport ? $workflow_transport : ($is_rest ? 'rest' : 'classic');
         return array(
             'url' => $url,
             'page_key' => 'admin-save-' . $key_type . ($workflow_transport ? '-' . $workflow_transport : ''),
@@ -146,7 +147,23 @@ class SSPA_Admin_Save {
             'object_type' => $object_type,
             'object_id' => !empty($context['object_id']) ? (int) $context['object_id'] : 0,
             'workflow_transport' => $workflow_transport,
+            'transport' => $transport,
         );
+    }
+
+    /** Coarse outbound classification. A custom post type's actual slug never leaves the site. */
+    private static function community_object_type($object_type) {
+        $object_type = sanitize_key($object_type);
+        if (in_array($object_type, array('post', 'page', 'product', 'order'), true)) {
+            return $object_type;
+        }
+        if (in_array($object_type, array('shop_order', 'shop_order_refund'), true)) {
+            return 'order';
+        }
+        if ('product_variation' === $object_type) {
+            return 'product';
+        }
+        return 'custom-post-type';
     }
 
     /** Arm a single, exact save request. Public so the e2e suite drives the real post.php path. */
@@ -170,6 +187,14 @@ class SSPA_Admin_Save {
             'method' => $job['method'],
             'admin_save_context' => $job,
             'trigger' => $trigger,
+            'share_context' => array(
+                'admin_save' => array(
+                    'object_type' => self::community_object_type($job['object_type']),
+                    'transport' => $job['transport'],
+                    'save_mode' => ('workflow' === $trigger) ? 'no-change' : 'editor-update',
+                    'mail_mode' => $mail_mode,
+                ),
+            ),
         ));
         if (is_wp_error($run_id)) {
             return $run_id;

@@ -13,11 +13,12 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
 <div class="sspa-placeholder">
     <h2><?php esc_html_e('Share with the community', 'super-speedy-performance-analysis'); ?></h2>
     <p><?php esc_html_e('Contribute your anonymised results to the community performance database at superspeedy.org. Together these submissions reveal which plugins are fast, which are slow, and which ignore your object cache - across thousands of real sites instead of one benchmark box.', 'super-speedy-performance-analysis'); ?></p>
-    <p><?php esc_html_e('Each completed baseline, page profile, plugin impact analysis, checkout flow, cache analysis and plugin-toggle spot-check is saved as its own versioned payload. This includes generic page classifications, aggregate timings, safe component identifiers and versions, measured deltas, findings, normalised query fingerprints and Excimer summaries when those records exist.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('Each completed baseline, page profile, plugin impact analysis, checkout flow, cache analysis, admin update/save analysis and plugin-toggle spot-check is saved as its own versioned payload. This includes generic page classifications, aggregate timings, safe component identifiers and versions, measured deltas, findings, normalised query fingerprints and Excimer summaries when those records exist.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Site characteristics travel as size bands, never exact counts: what kind of site this is (for example an online shop that also publishes), and roughly how much of everything it holds - posts, pages, products, orders in total and in the last 30 days, users, comments, database size and how many plugins are active. Bands are ranges such as "under 10,000", so a payload cannot say how many orders you took.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('A checkout analysis sends two separate records. The customer flow holds the ordered steps a shopper waits through, split at the payment; the order-management flow holds what you as the shop owner then wait through - opening the order and marking it completed - with its own total, so admin time is never mixed into the customer figure. Both carry step timings and status names only, never an order, product, customer or address.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('A plugin can also publish its own performance settings, so a measurement can be told apart from the same site measured with different settings. Only plugins that have deliberately opted in do this, and each one chooses exactly which of its settings to publish; this plugin never reads another plugin\'s options itself. Licence keys, credentials and anything you typed in free text are not published.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Outbound WordPress HTTP API calls are shared as aggregates: the responsible plugin, normalised external endpoint, method, timing, page class, likely purpose and whether blocking it could affect payments or order fulfilment. Query values, request contents, headers, cookies, account, install, order and payment identifiers are never included.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('An admin update/save analysis adds only whether the target was a post, page, product, order or unnamed custom post type; whether the classic form or REST editor saved it; whether it was a real editor update or a no-change Workflows run; and how mail was handled. Object IDs, titles, content and custom post type slugs are never included. Traffic Performance Analysis observations remain local and are not part of this consent.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Anonymisation happens in this plugin before the payload enters the local queue. Your domain, URLs, filesystem paths, raw SQL, credentials, emails, customer/order data and request contents are forbidden. A privacy validation failure prevents the payload from being queued or sent.', 'super-speedy-performance-analysis'); ?></p>
 
     <h3><?php esc_html_e('1. Share every analysis automatically', 'super-speedy-performance-analysis'); ?></h3>
@@ -28,7 +29,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         </label>
     </p>
     <p class="description">
-        <?php esc_html_e('Covers every full scan, spot check, plugin impact analysis, cache analysis, page analysis and checkout analysis, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('Covers every full scan, spot check, plugin impact analysis, cache analysis, page analysis, checkout analysis and admin update/save workflow, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
         <?php
         printf(
             /* translators: 1: current consent text version number, 2: accepted consent text version and date */
@@ -42,7 +43,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     </p>
     <?php if ($sspa_optin && $sspa_consent_version < SSPA_Community_Schema::CONSENT_VERSION) : ?>
         <p class="notice notice-info inline">
-            <?php esc_html_e('Sharing still uses the version you accepted and does not include outbound HTTP API aggregates. Switch sharing off and on again after reviewing the text above to include them.', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Sharing still uses the version you accepted and does not include the newer evidence described above. Switch sharing off and on again after reviewing this text to include it.', 'super-speedy-performance-analysis'); ?>
         </p>
     <?php endif; ?>
 
@@ -115,7 +116,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <?php endif; ?>
 
     <p>
-        <button type="button" class="button button-primary sspa-sharing-action" id="sspa-submit-now" <?php disabled(!$sspa_optin); ?>><?php esc_html_e('Queue latest run', 'super-speedy-performance-analysis'); ?></button>
+        <button type="button" class="button button-primary sspa-sharing-action" id="sspa-submit-now" <?php disabled(!$sspa_optin); ?>><?php esc_html_e('Share latest run now', 'super-speedy-performance-analysis'); ?></button>
     </p>
 
     <h3><?php esc_html_e('2. Or share individual analyses only', 'super-speedy-performance-analysis'); ?></h3>
@@ -183,7 +184,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
                 data-restart="<?php echo $sspa_backfill_restart ? '1' : '0'; ?>"
                 <?php disabled(!$sspa_optin); ?>
             >
-                <?php echo $sspa_backfill_restart ? esc_html__('Retry failed historical runs', 'super-speedy-performance-analysis') : esc_html__('Queue existing runs', 'super-speedy-performance-analysis'); ?>
+                <?php echo $sspa_backfill_restart ? esc_html__('Retry failed historical runs', 'super-speedy-performance-analysis') : esc_html__('Queue and send existing runs', 'super-speedy-performance-analysis'); ?>
             </button>
             <span id="sspa-backfill-status" class="description"></span>
         </p>

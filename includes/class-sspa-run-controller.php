@@ -156,6 +156,19 @@ class SSPA_Run_Controller {
                 $share_context['plugin_toggle'] = array('slug' => $slug, 'action' => $action);
             }
         }
+        if ('admin_save' === $type && !empty($args['share_context']['admin_save']) && is_array($args['share_context']['admin_save'])) {
+            $admin_save = $args['share_context']['admin_save'];
+            $object_type = isset($admin_save['object_type']) ? sanitize_key($admin_save['object_type']) : '';
+            $transport = isset($admin_save['transport']) ? sanitize_key($admin_save['transport']) : '';
+            $save_mode = isset($admin_save['save_mode']) ? sanitize_key($admin_save['save_mode']) : '';
+            $mail_mode = isset($admin_save['mail_mode']) ? sanitize_key($admin_save['mail_mode']) : '';
+            if (in_array($object_type, array('post', 'page', 'product', 'order', 'custom-post-type'), true)
+                && in_array($transport, array('classic', 'rest'), true)
+                && in_array($save_mode, array('editor-update', 'no-change'), true)
+                && in_array($mail_mode, array('deliver', 'construct', 'suppress'), true)) {
+                $share_context['admin_save'] = compact('object_type', 'transport', 'save_mode', 'mail_mode');
+            }
+        }
         // Everything below enriches the run for SHARING. None of it is what an analysis is for,
         // so none of it may stop one starting.
         //

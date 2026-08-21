@@ -23,6 +23,20 @@ class SSPA_Community_Privacy {
 
     public static function page_class($page_key, $variant = '') {
         $key = strtolower((string) $page_key);
+        if (0 === strpos($key, 'admin-save-')) {
+            $object_type = substr($key, strlen('admin-save-'));
+            $object_type = preg_replace('/-(?:classic|rest)$/', '', $object_type);
+            if (in_array($object_type, array('post', 'page', 'product', 'order'), true)) {
+                return 'admin-save-' . $object_type;
+            }
+            if (in_array($object_type, array('shop_order', 'shop_order_refund'), true)) {
+                return 'admin-save-order';
+            }
+            if ('product_variation' === $object_type) {
+                return 'admin-save-product';
+            }
+            return 'admin-save-custom-post-type';
+        }
         if (0 === strpos($key, 'url-')) {
             return ('admin' === $variant) ? 'custom-admin' : 'custom-frontend';
         }

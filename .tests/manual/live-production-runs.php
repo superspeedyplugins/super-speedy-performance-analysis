@@ -44,7 +44,7 @@ if (!in_array($optin_token, array('production', '--production'), true)) {
     sspa_runs_t(false, 'refusing to submit to production without the explicit `production` opt-in token');
     return;
 }
-$all_run_types = array('adhoc', 'spot', 'cache_impact', 'checkout', 'baseline', 'deep');
+$all_run_types = array('adhoc', 'spot', 'cache_impact', 'checkout', 'admin_save', 'baseline', 'deep');
 $run_types = $all_run_types;
 if (!empty($args[2])) {
     $run_types = array_values(array_unique(array_filter(array_map('sanitize_key', explode(',', (string) $args[2])))));
@@ -135,7 +135,7 @@ try {
         }
         sspa_runs_t(
             'archived' === ($status['storage_status'] ?? '')
-                && in_array($processing, array('complete', 'partial', 'unsupported'), true),
+                && 'complete' === $processing,
             sprintf('%s storage_status=%s processing_status=%s', $run_type, $status['storage_status'] ?? '(none)', $processing ?: '(none)')
         );
 

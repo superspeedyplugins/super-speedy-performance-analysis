@@ -89,7 +89,7 @@ class SSPA_Community_Exporter {
                 $evidence,
                 'sspa/page-profile',
                 $measurement_version,
-                self::page_profile($profile, $page_ref),
+                self::page_profile($profile, $page_ref, $consent_version),
                 $page_ref
             );
             if (isset($capture['profile']) && is_array($capture['profile'])) {
@@ -140,6 +140,9 @@ class SSPA_Community_Exporter {
                 'page_class' => SSPA_Community_Privacy::page_class($profiles[0]['page_key'], $profiles[0]['variant']),
                 'surface' => ('admin' === $profiles[0]['variant']) ? 'admin' : 'frontend',
             ));
+        }
+        if ('admin_save' === $run['run_type'] && $profiles && $consent_version >= 4) {
+            self::add_admin_save($evidence, $run, $profiles[0], $page_refs[(int) $profiles[0]['id']], $measurement_version);
         }
         self::add_toggle_context($evidence, $run, $measurement_version, $submission_uuid, $versions);
         self::add_component_state($evidence, $run, $measurement_version, $submission_uuid, $versions);
@@ -268,7 +271,7 @@ class SSPA_Community_Exporter {
         return $inventory;
     }
 
-    private static function page_profile($row, $page_ref) {
+    private static function page_profile($row, $page_ref, $consent_version) {
         $samples = json_decode((string) $row['samples'], true);
         $sample_summaries = array();
         foreach ((array) $samples as $sample) {
@@ -282,7 +285,11 @@ class SSPA_Community_Exporter {
         }
         return array(
             'page_profile_uuid' => $page_ref,
-            'page_class' => SSPA_Community_Privacy::page_class($row['page_key'], $row['variant']),
+            // Consent versions before 4 agreed to generic admin page classifications, not the
+            // more useful post/page/product/order save split introduced with admin-save@1.
+            'page_class' => ((int) $consent_version < 4 && 0 === strpos($row['page_key'], 'admin-save-'))
+                ? 'custom-admin'
+                : SSPA_Community_Privacy::page_class($row['page_key'], $row['variant']),
             'classification_version' => 1,
             'method' => in_array($row['method'], array('GET', 'POST'), true) ? $row['method'] : 'OTHER',
             'variant' => in_array($row['variant'], array('anon', 'admin', 'guest'), true) ? $row['variant'] : 'other',
@@ -297,6 +304,27 @@ class SSPA_Community_Exporter {
             'blocked' => !empty($row['blocked_by']),
             'incomplete' => (null === $row['page_gen_ms']),
         );
+    }
+
+    /** Link the measured page profile to the privacy-safe semantics of the write action. */
+    private static function add_admin_save(&$evidence, $run, $profile, $page_ref, $measurement_version) {
+        $context = json_decode((string) $run['share_context'], true);
+        $context = is_array($context) && !empty($context['admin_save']) && is_array($context['admin_save'])
+            ? $context['admin_save']
+            : array();
+        if (!$context) {
+            return;
+        }
+        self::add_evidence($evidence, 'sspa/admin-save', $measurement_version, array(
+            'page_profile_uuid' => $page_ref,
+            'page_class' => SSPA_Community_Privacy::page_class($profile['page_key'], 'admin'),
+            'object_type' => $context['object_type'],
+            'transport' => $context['transport'],
+            'save_mode' => $context['save_mode'],
+            'mail_mode' => $context['mail_mode'],
+            'editor_reload_measured' => false,
+            'evidence_class' => 'admin_save',
+        ));
     }
 
     private static function excimer_profile($profile, $page_ref, $submission_uuid, $versions) {

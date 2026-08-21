@@ -75,14 +75,22 @@ try {
     $wpdb->insert(SSPA_Schema::table('runs'), array(
         'run_uuid' => $run_uuid,
         'blog_id' => 1,
-        'run_type' => 'spot',
+        'run_type' => 'admin_save',
         'measurement_version' => 1,
-        'trigger_source' => 'integration_test',
+        'trigger_source' => 'adminbar',
         'status' => 'done',
         'plugin_set' => wp_json_encode(array('components' => array(
             array('type' => 'plugin', 'slug' => 'woocommerce', 'version' => '10.1.0'),
         ))),
         'plugin_set_hash' => md5('live-production-test'),
+        'share_context' => wp_json_encode(array(
+            'admin_save' => array(
+                'object_type' => 'post',
+                'transport' => 'classic',
+                'save_mode' => 'editor-update',
+                'mail_mode' => 'normal',
+            ),
+        )),
         'started' => $now,
         'finished' => $now,
     ));
@@ -105,10 +113,10 @@ try {
     ));
     $wpdb->insert(SSPA_Schema::table('profiles'), array(
         'run_id' => $run_id,
-        'page_key' => 'wc-cart',
-        'url' => home_url('/cart/'),
-        'method' => 'GET',
-        'variant' => 'anon',
+        'page_key' => 'admin-save-post',
+        'url' => admin_url('post.php'),
+        'method' => 'POST',
+        'variant' => 'admin-save',
         'plugin_set_hash' => md5('live-production-test'),
         'object_cache_mode' => 'normal',
         'samples' => wp_json_encode(array(array('wall_ms' => 82, 'code' => 200))),
@@ -136,6 +144,19 @@ try {
     $submission_uuid = $queued['submission_uuid'];
     $sha256 = $queued['payload_sha256'];
     $compressed_bytes = (int) $queued['compressed_bytes'];
+    $preview = json_decode(SSPA_Community_Outbox::preview($queued), true);
+    $admin_save_evidence = array_values(array_filter(
+        isset($preview['evidence']) && is_array($preview['evidence']) ? $preview['evidence'] : array(),
+        static function ($record) {
+            return isset($record['type']) && 'sspa/admin-save' === $record['type'];
+        }
+    ));
+    sspa_prod_t(
+        1 === count($admin_save_evidence)
+            && 'admin-save-post' === ($admin_save_evidence[0]['data']['page_class'] ?? '')
+            && 'classic' === ($admin_save_evidence[0]['data']['transport'] ?? ''),
+        'the production fixture contains the complete privacy-safe admin save evidence'
+    );
     sspa_prod_t(true, 'analysis queued a payload with the collector unreachable (' . $compressed_bytes . ' compressed bytes)');
 
     echo "attempting the unreachable collector (this waits for a real connection failure)...\n";
@@ -212,8 +233,8 @@ try {
             'the collector returns the same receipt UUID'
         );
         sspa_prod_t(
-            in_array($processing, array('complete', 'partial', 'unsupported'), true),
-            'the manifest worker recorded an explicit outcome: processing_status=' . ($processing ?: '(none)')
+            'complete' === $processing,
+            'the manifest worker accepted every submitted record: processing_status=' . ($processing ?: '(none)')
         );
     }
 

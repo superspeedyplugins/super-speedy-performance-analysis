@@ -177,6 +177,32 @@ if (is_wp_error($prepared)) {
         sspa_workflow_t((int) $profile['mail_count'] >= 1 && 'suppress' === $capture['mail']['mode'], 'suppressed mail attempts remain visible in the profile');
         sspa_workflow_t(!get_option('sspa_workflow_fixture_delivered') && !get_option('sspa_workflow_fixture_transport_reached'), 'suppressed workflow mail never reaches a transport');
         sspa_workflow_t($before->post_title === $after->post_title && $before->post_content === $after->post_content, 'the save exercises update hooks without changing content or needing restoration');
+
+        $payload = SSPA_Community_Exporter::build(
+            (int) $prepared['run_id'],
+            wp_generate_uuid4(),
+            SSPA_Community_Schema::canonical_time(),
+            'manual'
+        );
+        $save_evidence = null;
+        if (is_array($payload)) {
+            foreach ((array) $payload['evidence'] as $record) {
+                if ('sspa/admin-save' === $record['type']) {
+                    $save_evidence = $record;
+                    break;
+                }
+            }
+        }
+        sspa_workflow_t(
+            is_array($save_evidence)
+            && 'admin-save-custom-post-type' === $save_evidence['data']['page_class']
+            && 'custom-post-type' === $save_evidence['data']['object_type']
+            && 'rest' === $save_evidence['data']['transport']
+            && 'no-change' === $save_evidence['data']['save_mode']
+            && 'suppress' === $save_evidence['data']['mail_mode']
+            && false === strpos(wp_json_encode($save_evidence), 'sspa_book'),
+            'the shared workflow identifies a no-change custom-post-type save without exposing its private slug'
+        );
     }
 }
 

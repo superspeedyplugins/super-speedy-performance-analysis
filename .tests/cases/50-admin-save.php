@@ -8,6 +8,24 @@ function sspa_admin_save_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
 }
 
+function sspa_admin_save_evidence($run_id, $type) {
+    $payload = SSPA_Community_Exporter::build(
+        (int) $run_id,
+        wp_generate_uuid4(),
+        SSPA_Community_Schema::canonical_time(),
+        'manual'
+    );
+    if (is_wp_error($payload)) {
+        return $payload;
+    }
+    foreach ((array) $payload['evidence'] as $record) {
+        if ($type === $record['type']) {
+            return $record;
+        }
+    }
+    return null;
+}
+
 if (!class_exists('SSPA_Admin_Save')) {
     echo "FAIL: the admin update/save profiler is not registered\n";
     return;
@@ -185,6 +203,22 @@ if (is_wp_error($prepared)) {
         sspa_admin_save_t((float) $profile['page_gen_ms'] >= 650, 'the real slow save callback is inside the profile (' . $profile['page_gen_ms'] . 'ms)');
         sspa_admin_save_t(is_array($capture) && !empty($capture['boot']['segments']), 'the save has full request-phase diagnostics');
         sspa_admin_save_t((int) $profile['mail_count'] >= 1 && (int) get_option('sspa_admin_save_fixture_mail') === 1, 'mail ran normally and was measured');
+
+        $page_evidence = sspa_admin_save_evidence($prepared['run_id'], 'sspa/page-profile');
+        $save_evidence = sspa_admin_save_evidence($prepared['run_id'], 'sspa/admin-save');
+        sspa_admin_save_t(
+            is_array($page_evidence) && 'admin-save-post' === $page_evidence['data']['page_class'],
+            'the shared page profile keeps the post-save classification instead of collapsing to custom-admin'
+        );
+        sspa_admin_save_t(
+            is_array($save_evidence)
+            && 'post' === $save_evidence['data']['object_type']
+            && 'classic' === $save_evidence['data']['transport']
+            && 'editor-update' === $save_evidence['data']['save_mode']
+            && 'deliver' === $save_evidence['data']['mail_mode']
+            && false === $save_evidence['data']['editor_reload_measured'],
+            'the shared classic save records its privacy-safe workflow context'
+        );
     }
 
     wp_cache_delete('sspa_admin_save_fixture_seen', 'options');
@@ -239,6 +273,26 @@ if (is_wp_error($rest_prepared)) {
         $rest_profile = SSPA_Profile_Panel::profile_row($rest_finished['profile_id']);
         sspa_admin_save_t('POST' === $rest_profile['method'], 'the REST action is stored as a write profile');
         sspa_admin_save_t((float) $rest_profile['page_gen_ms'] >= 650, 'the REST profile contains the same real save cascade (' . $rest_profile['page_gen_ms'] . 'ms)');
+        $rest_evidence = sspa_admin_save_evidence($rest_prepared['run_id'], 'sspa/admin-save');
+        sspa_admin_save_t(
+            is_array($rest_evidence)
+            && 'post' === $rest_evidence['data']['object_type']
+            && 'rest' === $rest_evidence['data']['transport'],
+            'the shared REST save is distinct from the classic form transport'
+        );
+
+        $stored_consent = get_option('sspa_share_consent_version', null);
+        update_option('sspa_share_consent_version', 3, false);
+        $preview = SSPA_Submitter::dry_run_preview();
+        if (null === $stored_consent) {
+            delete_option('sspa_share_consent_version');
+        } else {
+            update_option('sspa_share_consent_version', $stored_consent, false);
+        }
+        sspa_admin_save_t(
+            !is_wp_error($preview) && false !== strpos($preview, 'sspa/admin-save'),
+            'the pre-consent preview shows the complete current payload rather than the older accepted version'
+        );
     }
 }
 
