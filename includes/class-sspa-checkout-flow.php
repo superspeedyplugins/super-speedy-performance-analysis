@@ -1428,8 +1428,8 @@ class SSPA_Checkout_Flow {
             self::force_delete_order($order_id);
         }
         self::forget_orders($result['order_ids']);
-        $result['notes']['orders_deleted'] = count($result['order_ids']);
         $result['notes']['orders_left'] = self::orders_still_present($result['order_ids']);
+        $result['notes']['orders_deleted'] = count($result['order_ids']) - $result['notes']['orders_left'];
         return $step;
     }
 
@@ -1506,7 +1506,9 @@ class SSPA_Checkout_Flow {
         foreach ($user_ids as $user_id) {
             if (get_user_meta($user_id, self::TEMP_META, true)) {
                 wp_delete_user($user_id);
-                $deleted++;
+                if (!get_userdata($user_id)) {
+                    $deleted++;
+                }
             }
         }
         self::forget_temp_entries('user', $user_ids);

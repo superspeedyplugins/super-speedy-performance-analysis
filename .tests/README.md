@@ -286,6 +286,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   HTTP arguments, atomic owner leases, lazy anonymous bootstrap and the History uninstall
   control. The build smoke separately proves opt-in uninstall drops every table and removes
   owned options, the checkout product and test customer.
+- `53-review-followup.php` - all eight admin tab containers remain while hidden tab data is
+  deferred, permanent-failure grace retains a retry deadline, in-flight submissions reject
+  conflicting admin changes, and cancellation consumes the run's digest snapshot.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

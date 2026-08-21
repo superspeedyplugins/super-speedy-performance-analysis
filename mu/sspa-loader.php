@@ -85,7 +85,13 @@ if (!empty($sspa_tok['flags']['bl'])) {
 }
 
 // Single use: add_option is an INSERT - the second attempt with the same token fails.
-if (!add_option('sspa_used_' . $sspa_tok['id'], time(), '', false)) {
+$sspa_used_key = 'sspa_used_' . $sspa_tok['id'];
+$sspa_used = $wpdb->query($wpdb->prepare(
+    "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
+    $sspa_used_key,
+    (string) time()
+));
+if (1 !== (int) $sspa_used) {
     header('X-SSPA-Replay: 1');
     return;
 }

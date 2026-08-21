@@ -901,6 +901,7 @@ class SSPA_Run_Controller {
             'finished' => gmdate('Y-m-d H:i:s'),
             'notes' => wp_json_encode($notes),
         ), array('id' => $run_id));
+        SSPA_Digests::discard($run_id);
         SSPA_Community_Outbox::on_terminal_run($run_id);
     }
 
@@ -1371,6 +1372,7 @@ class SSPA_Run_Controller {
                 'fatal_cells' => array_values($fatal_cells),
             )),
         ), array('id' => $run_id));
+        SSPA_Digests::discard($run_id);
         SSPA_Community_Outbox::on_terminal_run($run_id);
     }
 
@@ -1445,7 +1447,9 @@ class SSPA_Run_Controller {
             }
 
             $b = $baselines[$key]['p'];
-            $gate = $baselines[$key]['gate'];
+            // A stable baseline does not make a noisy excluded cell trustworthy. Use the
+            // uncertainty from both populations and only claim a measured delta outside it.
+            $gate = max($baselines[$key]['gate'], self::noise_gate($p['samples']));
             $delta_gen = (float) $b['page_gen_ms'] - (float) $p['page_gen_ms'];
             $deltas[] = array(
                 'slug' => $slug,
@@ -1655,7 +1659,8 @@ class SSPA_Run_Controller {
         self::delete_queue_and_claim($run_id);
 
         // Verify the off half really ran without a persistent cache (from the captures).
-        $verified = true;
+        $verified = null;
+        $verification_invalid = false;
         $off_profiles = $wpdb->get_results($wpdb->prepare(
             "SELECT profile_blob FROM %i WHERE run_id = %d AND object_cache_mode = 'disabled'",
             SSPA_Schema::table('profiles'),
@@ -1663,9 +1668,18 @@ class SSPA_Run_Controller {
         ), ARRAY_A);
         foreach ($off_profiles as $p) {
             $capture = $p['profile_blob'] ? json_decode((string) @gzuncompress($p['profile_blob']), true) : null;
-            if (is_array($capture) && !empty($capture['cache']['persistent'])) {
-                $verified = false;
+            if (!is_array($capture) || !isset($capture['cache']) || !array_key_exists('persistent', $capture['cache'])) {
+                $verification_invalid = true;
+                continue;
             }
+            if (!empty($capture['cache']['persistent'])) {
+                $verified = false;
+            } elseif (null === $verified) {
+                $verified = true;
+            }
+        }
+        if (!$off_profiles || $verification_invalid) {
+            $verified = null;
         }
 
         $rows = $wpdb->get_results($wpdb->prepare(
@@ -1728,11 +1742,17 @@ class SSPA_Run_Controller {
         }
 
         $wpdb->update(SSPA_Schema::table('runs'), array(
-            'status' => $verified ? 'done' : 'failed',
+            'status' => true === $verified ? 'done' : 'failed',
             'finished' => $now,
-            'notes' => wp_json_encode(array('type' => 'cache_impact', 'verified' => $verified, 'components' => $components)),
+            'notes' => wp_json_encode(array(
+                'type' => 'cache_impact',
+                'verified' => $verified,
+                'verification' => true === $verified ? 'verified' : (false === $verified ? 'failed' : 'unknown'),
+                'components' => $components,
+            )),
         ), array('id' => $run_id));
-        if ($verified) {
+        SSPA_Digests::discard($run_id);
+        if (true === $verified) {
             SSPA_Community_Outbox::on_terminal_run($run_id);
         }
     }
@@ -1773,6 +1793,7 @@ class SSPA_Run_Controller {
     }
 
     private static function cleanup_run_state($run_id) {
+        SSPA_Digests::discard($run_id);
         $queue = get_option('sspa_queue_' . $run_id);
         if (is_array($queue) && !empty($queue['sweep']['hashes'])) {
             foreach (array_keys($queue['sweep']['hashes']) as $hash) {

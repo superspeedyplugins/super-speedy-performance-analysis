@@ -164,5 +164,5 @@ $posts_after = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts}");
 $orders_after = function_exists('wc_get_orders') ? count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all'))) : 0;
 sspa_t($posts_after === $posts_before, "zero post residue ($posts_before -> $posts_after)");
 sspa_t($orders_after === $orders_before, "zero order residue ($orders_before -> $orders_after)");
-$temp_left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_sspa_temp'");
-sspa_t(0 === $temp_left, 'no _sspa_temp markers left behind');
+$temp_left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_sspa_temp' AND meta_value <> 'checkout_product'");
+sspa_t(0 === $temp_left, 'no transient _sspa_temp markers left behind');

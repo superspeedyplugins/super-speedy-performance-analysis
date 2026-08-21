@@ -8,6 +8,7 @@ class SSPA_Traffic_Helper {
     const FILE = 'sspa-traffic-observer.php';
     const STOPPED_FILE = 'sspa-traffic-observer.stopped';
     const LOCK_OPTION = 'sspa_traffic_helper_lock';
+    private static $lock_owner = '';
 
     public static function path() {
         return WPMU_PLUGIN_DIR . '/' . self::FILE;
@@ -33,7 +34,7 @@ class SSPA_Traffic_Helper {
         try {
             return self::install_unlocked($config);
         } finally {
-            delete_option(self::LOCK_OPTION);
+            self::unlock();
         }
     }
 
@@ -106,7 +107,7 @@ class SSPA_Traffic_Helper {
 
     public static function remove($force = false) {
         if ($force) {
-            delete_option(self::LOCK_OPTION);
+            self::unlock();
             return self::remove_unlocked();
         }
         if (!self::lock()) {
@@ -115,7 +116,7 @@ class SSPA_Traffic_Helper {
         try {
             return self::remove_unlocked();
         } finally {
-            delete_option(self::LOCK_OPTION);
+            self::unlock();
         }
     }
 
@@ -136,16 +137,15 @@ class SSPA_Traffic_Helper {
     }
 
     private static function lock() {
-        $now = time();
-        if (add_option(self::LOCK_OPTION, $now, '', false)) {
-            return true;
+        self::$lock_owner = SSPA_Atomic_Claim::acquire(self::LOCK_OPTION, 30);
+        return (bool) self::$lock_owner;
+    }
+
+    private static function unlock() {
+        if (self::$lock_owner) {
+            SSPA_Atomic_Claim::release(self::LOCK_OPTION, self::$lock_owner);
+            self::$lock_owner = '';
         }
-        $held = (int) get_option(self::LOCK_OPTION);
-        if ($held && $held >= $now - 30) {
-            return false;
-        }
-        delete_option(self::LOCK_OPTION);
-        return (bool) add_option(self::LOCK_OPTION, $now, '', false);
     }
 
     public static function state() {

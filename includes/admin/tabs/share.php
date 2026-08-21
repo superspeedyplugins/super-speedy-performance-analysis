@@ -218,6 +218,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
             </thead>
             <tbody>
             <?php foreach ($sspa_history as $entry) : ?>
+                <?php $sspa_entry_in_flight = in_array($entry['phase'], array('reserving', 'uploading', 'completing'), true); ?>
                 <tr>
                     <td><code><?php echo esc_html($entry['run_type']); ?></code><br><small><?php echo esc_html($entry['run_started']); ?> UTC</small></td>
                     <td><strong><?php echo esc_html($entry['state']); ?></strong><br><small><?php echo esc_html($entry['phase']); ?></small></td>
@@ -233,10 +234,10 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
                     </td>
                     <td>
                         <button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="<?php echo (int) $entry['id']; ?>"><?php esc_html_e('Preview', 'super-speedy-performance-analysis'); ?></button>
-                        <?php if (in_array($entry['state'], array('retry', 'permanent_failure'), true)) : ?>
+                        <?php if (!$sspa_entry_in_flight && in_array($entry['state'], array('retry', 'permanent_failure'), true)) : ?>
                             <button type="button" class="button button-small sspa-outbox-action sspa-sharing-action" data-operation="retry" data-outbox-id="<?php echo (int) $entry['id']; ?>" <?php disabled(!$sspa_optin); ?>><?php esc_html_e('Retry now', 'super-speedy-performance-analysis'); ?></button>
                         <?php endif; ?>
-                        <?php if (in_array($entry['state'], array('pending', 'retry', 'permanent_failure'), true)) : ?>
+                        <?php if (!$sspa_entry_in_flight && in_array($entry['state'], array('pending', 'retry', 'permanent_failure'), true)) : ?>
                             <button type="button" class="button button-small sspa-outbox-action" data-operation="pause" data-outbox-id="<?php echo (int) $entry['id']; ?>"><?php esc_html_e('Pause', 'super-speedy-performance-analysis'); ?></button>
                         <?php elseif ('cancelled' === $entry['state']) : ?>
                             <button type="button" class="button button-small sspa-outbox-action sspa-sharing-action" data-operation="resume" data-outbox-id="<?php echo (int) $entry['id']; ?>" <?php disabled(!$sspa_optin); ?>><?php esc_html_e('Resume', 'super-speedy-performance-analysis'); ?></button>

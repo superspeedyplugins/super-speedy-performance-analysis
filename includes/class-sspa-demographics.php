@@ -13,6 +13,11 @@ class SSPA_Demographics {
 
     public static function snapshot($run_id = 0) {
         global $wpdb;
+        $previous_id = $run_id ? (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT site_metrics_id FROM %i WHERE id = %d',
+            SSPA_Schema::table('runs'),
+            (int) $run_id
+        )) : 0;
 
         $post_counts = array();
         foreach (get_post_types(array('public' => true), 'names') as $pt) {
@@ -113,6 +118,9 @@ class SSPA_Demographics {
 
         if ($run_id) {
             $wpdb->update(SSPA_Schema::table('runs'), array('site_metrics_id' => $metrics_id), array('id' => $run_id));
+            if ($previous_id && $previous_id !== $metrics_id) {
+                $wpdb->delete(SSPA_Schema::table('site_metrics'), array('id' => $previous_id));
+            }
         }
 
         return array('id' => $metrics_id, 'metrics' => $metrics, 'sector' => $sector);

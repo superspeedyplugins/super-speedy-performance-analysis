@@ -79,7 +79,11 @@ function sspa_click_tab(slug) {
 	jQuery('#sspa_main .nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
 	jQuery('#sspa_main .nav-tab-wrapper .nav-tab[data-tab="' + slug + '"]').addClass('nav-tab-active').focus();
 	jQuery('#sspa_main div.tab-contents').css('display', 'none');
-	jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').css('display', 'block');
+	var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').css('display', 'block');
+	if (panel.attr('data-sspa-tab-loaded') === '0' && panel.attr('data-sspa-tab-loading') !== '1') {
+		panel.attr('data-sspa-tab-loading', '1');
+		sspa_refresh_tabs([slug]);
+	}
 }
 
 // ---- Attribution mode: swap the table, never reload the page ----
@@ -156,15 +160,29 @@ jQuery(function () {
 // position and any open drill-down, so every action that changes server state re-renders
 // only the tabs it affected.
 function sspa_refresh_tabs(tabs, done) {
+	tabs = tabs.filter(function (slug) {
+		var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]');
+		return panel.length && (panel.attr('data-sspa-tab-loaded') === '1' || panel.attr('data-sspa-tab-loading') === '1');
+	});
+	if (!tabs.length) {
+		if (done) { done(null); }
+		return;
+	}
 	jQuery.post(ajaxurl, { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') }, function (resp) {
 		if (resp.success && resp.data.tabs) {
 			Object.keys(resp.data.tabs).forEach(function (slug) {
-				jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').html(resp.data.tabs[slug]);
+				jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]')
+					.html(resp.data.tabs[slug])
+					.attr('data-sspa-tab-loaded', '1')
+					.removeAttr('data-sspa-tab-loading');
 			});
 			jQuery('#sspa-runner').attr('data-active-run', resp.data.active_run || 0);
 		}
 		if (done) { done(resp); }
 	}).fail(function () {
+		tabs.forEach(function (slug) {
+			jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').removeAttr('data-sspa-tab-loading');
+		});
 		if (done) { done(null); }
 	});
 }
@@ -383,7 +401,7 @@ jQuery(document).on('click', '.sspa-impact-details', function (e) {
 		}
 		var rows = resp.data.rows;
 		var modeOrder = ['normal', 'disabled', 'prime', 'warm'];
-		var modeLabels = { normal: 'Standard (cache warm)', disabled: 'No object cache', prime: 'Cache priming', warm: 'Warm cache' };
+		var modeLabels = { normal: 'Standard (cache warm)', disabled: 'No object cache', prime: 'First sample (ambient cache)', warm: 'Warm cache' };
 		var modes = modeOrder.filter(function (m) {
 			return rows.some(function (r) { return r.object_cache_mode === m; });
 		});

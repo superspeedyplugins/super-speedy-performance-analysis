@@ -19,8 +19,7 @@ class SSPA_Token {
     public static function secret() {
         $secret = get_option('sspa_secret');
         if (!$secret) {
-            $secret = bin2hex(random_bytes(32));
-            add_option('sspa_secret', $secret, '', false);
+            $secret = SSPA_Atomic_Claim::create_value('sspa_secret', bin2hex(random_bytes(32)));
         }
         return $secret;
     }

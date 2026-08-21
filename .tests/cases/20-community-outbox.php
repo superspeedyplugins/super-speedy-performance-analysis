@@ -151,9 +151,11 @@ if (!is_wp_error($queued)) {
     sspa_outbox_t(null === $double_claim, 'a second worker cannot claim a row already in flight');
     sspa_outbox_t(1 === (int) SSPA_Community_Outbox::get($queued['id'])['attempts'], 'the lost claim did not consume an attempt');
 
-    // The claim also has to respect terminal state, not just the attempt number. A worker
-    // holding a snapshot taken before the owner paused or delivered the row must not be able
-    // to drag it back into the send cycle.
+    // An admin cannot mutate an in-flight attempt underneath its worker. Once that worker
+    // reaches a retry state, pausing is allowed; a stale snapshot still cannot resurrect it.
+    $inflight_pause = SSPA_Community_Outbox::pause($queued['id']);
+    sspa_outbox_t(is_wp_error($inflight_pause) && 'sspa_outbox_in_flight' === $inflight_pause->get_error_code(), 'an in-flight row rejects an admin pause');
+    SSPA_Community_Outbox::failed($queued['id'], new WP_Error('test_pause_boundary', 'retry'), false);
     SSPA_Community_Outbox::pause($queued['id']);
     $stale_snapshot = SSPA_Community_Outbox::get($queued['id']);
     $stale_snapshot['state'] = 'pending';

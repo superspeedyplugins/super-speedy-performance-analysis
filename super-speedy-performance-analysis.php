@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.29.8
+ * Version: 0.29.9
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -12,11 +12,13 @@
  * Requires at least: 6.2
  * Tested up to: 7.0
  * Requires PHP: 7.4
+ * WC requires at least: 8.2
+ * WC tested up to: 11.0.1
  */
 
 defined('ABSPATH') || exit;
 
-define('SSPA_VERSION', '0.29.8');
+define('SSPA_VERSION', '0.29.9');
 define('SSPA_PLUGIN_FILE', __FILE__);
 define('SSPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSPA_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -66,6 +68,13 @@ add_action('plugins_loaded', function () {
 
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-bootstrap.php';
 SSPA_Bootstrap::register();
+
+add_action('before_woocommerce_init', function () {
+    if (class_exists('Automattic\\WooCommerce\\Utilities\\FeaturesUtil')) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('cart_checkout_blocks', __FILE__, true);
+    }
+});
 
 // Agent surfaces: Abilities API (WP 6.9+; MCP via the adapter plugin) and WP-CLI.
 $sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';

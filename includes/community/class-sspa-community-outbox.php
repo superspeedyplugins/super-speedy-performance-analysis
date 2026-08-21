@@ -288,13 +288,13 @@ class SSPA_Community_Outbox {
         $wpdb->update(self::table(), array(
             'state' => $state,
             'phase' => $state,
-            'next_attempt' => $permanent ? null : gmdate('Y-m-d H:i:s', time() + $delay),
+            'next_attempt' => ('permanent_failure' === $state) ? null : gmdate('Y-m-d H:i:s', time() + $delay),
             'last_http_status' => $http_status ? (int) $http_status : null,
             'last_error_code' => substr($code, 0, 64),
             'last_error_detail' => substr(wp_strip_all_tags($detail), 0, 255),
         ), array('id' => (int) $id));
         self::event($id, $state, $state, $attempt, $code);
-        if (!$permanent) {
+        if ('retry' === $state) {
             self::nudge($delay);
         }
     }
@@ -339,6 +339,9 @@ class SSPA_Community_Outbox {
     public static function retry_now($id) {
         global $wpdb;
         $row = self::get($id);
+        if ($row && self::is_in_flight($row)) {
+            return new WP_Error('sspa_outbox_in_flight', __('That submission is currently being delivered.', 'super-speedy-performance-analysis'));
+        }
         if (!$row || !in_array($row['state'], array('retry', 'permanent_failure'), true)) {
             return new WP_Error('sspa_outbox_not_retryable', __('That submission is not waiting for a retry.', 'super-speedy-performance-analysis'));
         }
@@ -357,6 +360,9 @@ class SSPA_Community_Outbox {
     public static function pause($id) {
         global $wpdb;
         $row = self::get($id);
+        if ($row && self::is_in_flight($row)) {
+            return new WP_Error('sspa_outbox_in_flight', __('That submission is currently being delivered.', 'super-speedy-performance-analysis'));
+        }
         if (!$row || !in_array($row['state'], array('pending', 'retry', 'permanent_failure'), true)) {
             return new WP_Error('sspa_outbox_not_pausable', __('That submission cannot be paused.', 'super-speedy-performance-analysis'));
         }
@@ -399,6 +405,10 @@ class SSPA_Community_Outbox {
         $schedule = array(900, 3600, 21600, 86400);
         $base = isset($schedule[$attempt - 1]) ? $schedule[$attempt - 1] : DAY_IN_SECONDS;
         return $base + wp_rand(0, max(60, (int) floor($base * 0.1)));
+    }
+
+    private static function is_in_flight($row) {
+        return in_array($row['phase'], array('reserving', 'uploading', 'completing'), true);
     }
 
     private static function event($outbox_id, $state, $phase, $attempt, $reason) {

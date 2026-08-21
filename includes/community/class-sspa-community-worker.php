@@ -7,7 +7,7 @@ defined('ABSPATH') || exit;
 class SSPA_Community_Worker {
 
     const LOCK_OPTION = 'sspa_submission_worker_lock';
-    const LOCK_SECONDS = 300;
+    const LOCK_SECONDS = 600;
 
     public static function register() {
         add_action('sspa_submission_worker_event', array(__CLASS__, 'run'));

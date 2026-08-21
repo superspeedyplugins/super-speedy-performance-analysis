@@ -4,6 +4,18 @@ defined('ABSPATH') || exit;
 /** Database-backed owner leases for work that must have exactly one executor. */
 class SSPA_Atomic_Claim {
 
+    public static function create_value($key, $value) {
+        global $wpdb;
+        $wpdb->query($wpdb->prepare(
+            "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
+            $key,
+            maybe_serialize($value)
+        ));
+        wp_cache_delete($key, 'options');
+        wp_cache_delete('notoptions', 'options');
+        return get_option($key);
+    }
+
     /**
      * Acquire or renew a lease. The unique option_name index is the arbitration point;
      * unlike add_option(), this never uses an upsert that can report two winners.

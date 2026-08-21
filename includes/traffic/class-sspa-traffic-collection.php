@@ -110,7 +110,8 @@ class SSPA_Traffic_Collection {
         } catch (Throwable $e) {
             $collection_key = '';
         }
-        if (!$collection_key || !add_option($key_option, $collection_key, '', true)) {
+        $stored_key = $collection_key ? SSPA_Atomic_Claim::create_value($key_option, $collection_key) : '';
+        if (!$collection_key || !is_string($stored_key) || !hash_equals($collection_key, $stored_key)) {
             self::rollback_start($collection_id, $key_option);
             return new WP_Error('sspa_traffic_key', __('Could not create the temporary collection key.', 'super-speedy-performance-analysis'));
         }

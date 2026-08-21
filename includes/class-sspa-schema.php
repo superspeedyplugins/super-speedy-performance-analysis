@@ -13,6 +13,7 @@ class SSPA_Schema {
     const DB_VERSION = SSPA_DB_VERSION;
 
     const LOCK_OPTION = 'sspa_schema_lock';
+    private static $lock_owner = '';
 
     public static function table($name) {
         global $wpdb;
@@ -27,20 +28,15 @@ class SSPA_Schema {
      * the second caller, and it expires so a fatal cannot wedge the upgrade forever.
      */
     private static function lock() {
-        $now = time();
-        if (add_option(self::LOCK_OPTION, $now, '', false)) {
-            return true;
-        }
-        $held = (int) get_option(self::LOCK_OPTION);
-        if ($held && $held > $now - 300) {
-            return false;
-        }
-        delete_option(self::LOCK_OPTION);
-        return (bool) add_option(self::LOCK_OPTION, $now, '', false);
+        self::$lock_owner = SSPA_Atomic_Claim::acquire(self::LOCK_OPTION, 300);
+        return (bool) self::$lock_owner;
     }
 
     private static function unlock() {
-        delete_option(self::LOCK_OPTION);
+        if (self::$lock_owner) {
+            SSPA_Atomic_Claim::release(self::LOCK_OPTION, self::$lock_owner);
+            self::$lock_owner = '';
+        }
     }
 
     public static function create_tables() {

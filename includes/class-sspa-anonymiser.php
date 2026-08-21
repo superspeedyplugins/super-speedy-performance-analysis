@@ -15,8 +15,7 @@ class SSPA_Anonymiser {
     public static function install_uuid() {
         $uuid = get_option('sspa_install_uuid');
         if (!$uuid) {
-            $uuid = wp_generate_uuid4();
-            add_option('sspa_install_uuid', $uuid, '', false);
+            $uuid = SSPA_Atomic_Claim::create_value('sspa_install_uuid', wp_generate_uuid4());
         }
         return $uuid;
     }

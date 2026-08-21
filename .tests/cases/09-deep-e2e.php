@@ -9,7 +9,9 @@ function sspa_t($ok, $label) {
 
 global $wpdb;
 
-// --- Plant the same bad plugin as 07 (its footer work costs ~1.5s+ on home) ---
+// --- Plant the same bad plugin as 07. Add a stable delay so the fixture remains outside
+// BOTH cells' measured noise floor on a busy test machine; confidence now correctly includes
+// comparison-cell variance rather than baseline variance alone. ---
 $bad_dir = WP_PLUGIN_DIR . '/sspa-bad-plugin';
 if (!is_dir($bad_dir)) {
     mkdir($bad_dir);
@@ -23,15 +25,8 @@ $bad_code = <<<'PHP'
 add_action('wp_footer', function () {
     global $wpdb;
     for ($i = 1; $i <= 60; $i++) {
-        $wpdb->get_var("SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_id = " . $i);
+        $wpdb->get_var("SELECT SLEEP(0.05)");
     }
-    $wpdb->get_results("SELECT meta_id, post_id, meta_key FROM {$wpdb->postmeta} LIMIT 600");
-    // Every alias bounded, for the reason case 07 records: unbounded this is O(posts^3), and
-    // the environment accumulates posts every time run-tests.sh reseeds the sample data. At
-    // 464 posts it reached 99.9 MILLION row combinations and took 82 SECONDS to serve the home
-    // page, so the source run blew its 180s deadline and the sweep never got to start -
-    // presenting as "deep run done: crawling" rather than as a slow fixture.
-    $wpdb->get_results("SELECT p1.ID FROM (SELECT ID FROM {$wpdb->posts} LIMIT 120) p1, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p2, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p3 ORDER BY rand() LIMIT 5");
 });
 PHP;
 file_put_contents($bad_dir . '/sspa-bad-plugin.php', $bad_code);

@@ -194,10 +194,15 @@ class SSPA_Admin_Page {
             </h2>
             <?php
             foreach (array_keys(self::tabs()) as $tab_id) {
-                echo '<div class="tab-contents" data-tab="' . esc_attr($tab_id) . '"' . ('overview' === $tab_id ? '' : ' style="display:none"') . '>';
-                $tab_file = SSPA_PLUGIN_DIR . 'includes/admin/tabs/' . $tab_id . '.php';
-                if (file_exists($tab_file)) {
-                    include $tab_file;
+                $loaded = 'overview' === $tab_id;
+                echo '<div class="tab-contents" data-tab="' . esc_attr($tab_id) . '" data-sspa-tab-loaded="' . ($loaded ? '1' : '0') . '"' . ($loaded ? '' : ' style="display:none"') . '>';
+                if ($loaded) {
+                    $tab_file = SSPA_PLUGIN_DIR . 'includes/admin/tabs/' . $tab_id . '.php';
+                    if (file_exists($tab_file)) {
+                        include $tab_file;
+                    }
+                } else {
+                    echo '<p class="sspa-tab-loading"><span class="spinner is-active"></span> ' . esc_html__('This tab loads when first opened.', 'super-speedy-performance-analysis') . '</p>';
                 }
                 echo '</div>';
             }

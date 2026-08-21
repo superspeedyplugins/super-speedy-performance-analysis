@@ -24,7 +24,9 @@ class SSPA_Crawler {
         $cookies = SSPA_Auth::cookies_for($job['variant'], $user_id);
         $is_baseline = ('baseline' === $job['page_key']);
 
-        // Sweep "prime" cells skip the warm-up on purpose: they measure the FIRST
+        // Sweep "prime" cells skip the warm-up on purpose: they measure the first sample
+        // in the site's ambient persistent-cache state. They do not claim a globally empty
+        // cache because purging a customer's shared object cache would be intrusive.
         // cache-enabled request. Sample count is per-job overridable for the same reason.
         $warmups = !empty($job['skip_warmup']) ? 0 : self::WARMUPS;
         $samples_wanted = isset($job['samples']) ? max(1, (int) $job['samples']) : self::SAMPLES;

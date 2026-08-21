@@ -118,7 +118,7 @@ class SSPA_Adhoc {
                 'select_blamed' => __('Select blamed', 'super-speedy-performance-analysis'),
                 'select_all' => __('Select every eligible plugin', 'super-speedy-performance-analysis'),
                 'select_none' => __('Clear', 'super-speedy-performance-analysis'),
-                'cache_modes' => __('Also measure with the object cache off and while it primes (three times the measurements, for the plugins that show an impact)', 'super-speedy-performance-analysis'),
+                'cache_modes' => __('Also measure with the object cache off and take a first sample in the site\'s ambient cache state (three times the measurements, for plugins that show an impact)', 'super-speedy-performance-analysis'),
                 /* translators: 1: number of plugins, 2: number of measurements, 3: estimated duration */
                 'estimate' => __('%1$s plugins × 1 page = %2$s measurements, about %3$s.', 'super-speedy-performance-analysis'),
                 /* translators: 1: number of plugins, 2: number of pages, 3: number of measurements, 4: estimated duration */
