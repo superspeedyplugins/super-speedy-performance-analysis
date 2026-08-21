@@ -379,12 +379,12 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/start-traffic-collection', array(
             'label' => __('Start experimental traffic collection', 'super-speedy-performance-analysis'),
-            'description' => __('Start the lightweight WooCommerce traffic observer for 24 hours, 72 hours or 7 days. Exact origin requests are retained for logged-in visitors and visitors with non-empty baskets; broad anonymous origin traffic is sampled. Returns the existing collection unchanged when the same duration is already active.', 'super-speedy-performance-analysis'),
+            'description' => __('Start the lightweight WooCommerce traffic observer for 1, 2, 4, 24 or 72 hours, or 7 days. Exact origin requests are retained for logged-in visitors and visitors with non-empty baskets; broad anonymous origin traffic is sampled. Returns the existing collection unchanged when the same duration is already active.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',
                 'properties' => array(
-                    'duration' => array('type' => 'string', 'enum' => array('24h', '72h', '7d'), 'default' => '24h'),
+                    'duration' => array('type' => 'string', 'enum' => array_keys(SSPA_Traffic_Collection::durations()), 'default' => '24h'),
                 ),
                 'additionalProperties' => false,
                 'default' => array(),

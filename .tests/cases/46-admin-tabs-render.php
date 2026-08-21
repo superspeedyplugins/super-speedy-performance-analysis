@@ -58,6 +58,16 @@ foreach ($sspa_tabs as $sspa_tab) {
 
     // A placeholder that never got substituted reads as a broken sentence to the user.
     sspa_t(!preg_match('/%[0-9]+\$[sd]/', $sspa_html), "$sspa_tab has no unsubstituted printf placeholder");
+
+    if ('traffic' === $sspa_tab) {
+        foreach (array('1h' => '1 hour', '2h' => '2 hours', '4h' => '4 hours') as $sspa_value => $sspa_label) {
+            sspa_t(
+                false !== strpos($sspa_html, 'value="' . $sspa_value . '"')
+                    && false !== strpos($sspa_html, '>' . $sspa_label . '<'),
+                "traffic tab offers the $sspa_label collection duration"
+            );
+        }
+    }
 }
 
 // The same class of mistake, checked at the source rather than in one rendered state: no

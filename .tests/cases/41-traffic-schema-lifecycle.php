@@ -23,8 +23,17 @@ sspa_tl_t('2.2' === SSPA_Schema::DB_VERSION && '2.2' === get_option('sspa_db_ver
 $event_columns = $wpdb->get_col('SHOW COLUMNS FROM ' . SSPA_Schema::table('traffic_events'));
 sspa_tl_t(in_array('automation_code', $event_columns, true) && in_array('ssf_protection_code', $event_columns, true), 'request rows have privacy-safe automation and SSF decision dimensions');
 
-$started = SSPA_Traffic_Collection::start('24h', 'test');
-sspa_tl_t(!is_wp_error($started) && !empty($started['active']), '24-hour collection starts after database pre-flight');
+$durations = SSPA_Traffic_Collection::durations();
+sspa_tl_t(
+    isset($durations['1h'], $durations['2h'], $durations['4h'])
+        && HOUR_IN_SECONDS === $durations['1h']
+        && 2 * HOUR_IN_SECONDS === $durations['2h']
+        && 4 * HOUR_IN_SECONDS === $durations['4h'],
+    'short collection durations map to one, two and four hours'
+);
+
+$started = SSPA_Traffic_Collection::start('1h', 'test');
+sspa_tl_t(!is_wp_error($started) && !empty($started['active']), 'one-hour collection starts after database pre-flight');
 if (is_wp_error($started)) {
     echo 'FAIL: start error: ' . $started->get_error_message() . "\n";
     return;
@@ -39,8 +48,11 @@ sspa_tl_t(false === strpos($observer, '%%SSPA_') && false !== strpos($observer, 
 sspa_tl_t($started['collection']['event_ceiling'] <= floor($started['collection']['disk_ceiling_bytes'] / SSPA_Traffic_Collection::CONSERVATIVE_EVENT_BYTES), 'event ceiling also respects conservative disk ceiling');
 sspa_tl_t($started['collection']['preflight_insert_ms_p95'] <= 5.0, 'database append pre-flight passed the 5 ms p95 ceiling');
 
-$same = SSPA_Traffic_Collection::start('24h', 'test');
-$conflict = SSPA_Traffic_Collection::start('72h', 'test');
+$actual_duration = strtotime($started['collection']['collect_until']) - strtotime($started['collection']['started_at']);
+sspa_tl_t(HOUR_IN_SECONDS === $actual_duration, 'one-hour collection ends exactly one hour after it starts');
+
+$same = SSPA_Traffic_Collection::start('1h', 'test');
+$conflict = SSPA_Traffic_Collection::start('2h', 'test');
 sspa_tl_t(!is_wp_error($same) && $id === (int) $same['collection']['id'], 'same-duration start is idempotent');
 sspa_tl_t(is_wp_error($conflict) && 'sspa_traffic_active_conflict' === $conflict->get_error_code(), 'different duration returns a conflict');
 
@@ -54,8 +66,8 @@ $deleted = SSPA_Traffic_Collection::delete($id);
 sspa_tl_t(!is_wp_error($deleted) && !get_option($key_option) && !SSPA_Traffic_Collection::get($id), 'explicit delete removes stopped collection rows and temporary key');
 sspa_tl_t((bool) has_action('wp_ajax_sspa_traffic_delete', array('SSPA_Traffic_Ajax', 'delete')), 'destructive deletion is available to administrators');
 
-$second = SSPA_Traffic_Collection::start('24h', 'test');
-sspa_tl_t(!is_wp_error($second), 'a later collection can start after the previous one stops');
+$second = SSPA_Traffic_Collection::start('4h', 'test');
+sspa_tl_t(!is_wp_error($second), 'a later four-hour collection can start after the previous one stops');
 if (!is_wp_error($second)) {
     $second_id = (int) $second['collection']['id'];
     $wpdb->update(SSPA_Schema::table('traffic_collections'), array('observer_version' => 0), array('id' => $second_id));

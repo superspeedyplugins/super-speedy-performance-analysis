@@ -93,7 +93,7 @@ The `get-cache-optimisation-analysis` ability returns the same versioned documen
 `wp sspa cache-scan` and `get-cache-safety-report` names remain compatibility aliases.
 
 On WooCommerce sites, an owner may explicitly start the experimental lightweight traffic
-collector for 24 hours, 72 hours or 7 days:
+collector for 1, 2, 4, 24 or 72 hours, or 7 days:
 
 ```bash
 wp sspa traffic start --duration=24h

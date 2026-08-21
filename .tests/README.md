@@ -249,9 +249,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   validator, while planted customer identity fields fail closed. Also pins the clearer immediate
   analysis GUI name and keeps the existing `sspa/shared-cache-safety-report@2` machine schema.
 - `41-traffic-schema-lifecycle.php` - all five additive traffic tables, database insert
-  pre-flight, collection HMAC key separation, generated active-only MU observer, duration
-  idempotency/conflict, normal outcome stop, emergency stop, plugin-update mismatch and proof
-  that an inactive collector performs no event write.
+  pre-flight, collection HMAC key separation, generated active-only MU observer, one/two/four-hour
+  duration scheduling and idempotency/conflict, normal outcome stop, emergency stop,
+  plugin-update mismatch and proof that an inactive collector performs no event write.
 - `42-traffic-hot-path.php` - a normal visitor request remains successful and appends one bounded
   request event, keyed paths are fixed-width, the hard event-id ceiling retires the MU observer,
   and the embedded timestamp prevents writes without WP-Cron.

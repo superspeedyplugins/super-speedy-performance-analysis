@@ -24,7 +24,14 @@ class SSPA_Traffic_Collection {
     }
 
     public static function durations() {
-        return array('24h' => DAY_IN_SECONDS, '72h' => 3 * DAY_IN_SECONDS, '7d' => 7 * DAY_IN_SECONDS);
+        return array(
+            '1h' => HOUR_IN_SECONDS,
+            '2h' => 2 * HOUR_IN_SECONDS,
+            '4h' => 4 * HOUR_IN_SECONDS,
+            '24h' => DAY_IN_SECONDS,
+            '72h' => 3 * DAY_IN_SECONDS,
+            '7d' => 7 * DAY_IN_SECONDS,
+        );
     }
 
     public static function start($duration = '24h', $trigger = 'admin') {
@@ -40,7 +47,7 @@ class SSPA_Traffic_Collection {
         }
         $durations = self::durations();
         if (!isset($durations[$duration])) {
-            return new WP_Error('sspa_traffic_duration', __('Choose 24h, 72h or 7d.', 'super-speedy-performance-analysis'));
+            return new WP_Error('sspa_traffic_duration', __('Choose 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));
         }
         if (!self::start_lock()) {
             return new WP_Error('sspa_traffic_start_busy', __('Another request is starting a traffic collection. Try again.', 'super-speedy-performance-analysis'));

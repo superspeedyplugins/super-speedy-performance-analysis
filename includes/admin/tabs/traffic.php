@@ -42,7 +42,10 @@ $sspa_traffic_has_woo = class_exists('WooCommerce');
         <p>
             <label for="sspa-traffic-duration"><?php esc_html_e('Duration', 'super-speedy-performance-analysis'); ?></label>
             <select id="sspa-traffic-duration">
-                <option value="24h"><?php esc_html_e('24 hours', 'super-speedy-performance-analysis'); ?></option>
+                <option value="1h"><?php esc_html_e('1 hour', 'super-speedy-performance-analysis'); ?></option>
+                <option value="2h"><?php esc_html_e('2 hours', 'super-speedy-performance-analysis'); ?></option>
+                <option value="4h"><?php esc_html_e('4 hours', 'super-speedy-performance-analysis'); ?></option>
+                <option value="24h" selected><?php esc_html_e('24 hours', 'super-speedy-performance-analysis'); ?></option>
                 <option value="72h"><?php esc_html_e('72 hours', 'super-speedy-performance-analysis'); ?></option>
                 <option value="7d"><?php esc_html_e('7 days', 'super-speedy-performance-analysis'); ?></option>
             </select>

@@ -8,7 +8,7 @@ class SSPA_Traffic_CLI {
      * Start a collection.
      *
      * [--duration=<duration>]
-     * : 24h (default), 72h or 7d.
+     * : 1h, 2h, 4h, 24h (default), 72h or 7d.
      *
      * [--format=<format>]
      * : table (default) or json.
