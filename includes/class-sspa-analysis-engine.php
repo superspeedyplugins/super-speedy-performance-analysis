@@ -565,6 +565,18 @@ class SSPA_Analysis_Engine {
         return isset($this->plans[$key]) ? $this->plans[$key] : null;
     }
 
+    /** Only persist evidence the database actually returned. */
+    private static function plan_evidence($plan) {
+        if (!is_array($plan)) {
+            return array('plan_note' => null);
+        }
+        return array(
+            'plan_note' => SSPA_Explain::summarise($plan),
+            'plan_steps' => isset($plan['steps']) ? $plan['steps'] : array(),
+            'relevant_indexes' => isset($plan['relevant_indexes']) ? $plan['relevant_indexes'] : array(),
+        );
+    }
+
     /**
      * Queries that are not slow enough to be flagged today but have no usable index, so they
      * degrade as the site grows. EXPLAIN is the only way to see these: on a small database a
@@ -590,13 +602,12 @@ class SSPA_Analysis_Engine {
                 'unindexed_query',
                 $plan['component'],
                 $plan['page_key'],
-                array(
+                array_merge(array(
                     'sql' => $plan['sql'],
                     'fp' => $plan['fp'],
                     'rows' => (int) $plan['est_rows'],
-                    'plan_note' => SSPA_Explain::summarise($plan),
                     'table' => $plan['table'],
-                ),
+                ), self::plan_evidence($plan)),
                 'unindexed_query'
             );
         }
@@ -672,7 +683,7 @@ class SSPA_Analysis_Engine {
                 'over_examining_query',
                 $owner['component'],
                 $owner['page_key'],
-                array(
+                array_merge(array(
                     'fp' => $owner['fp'],
                     'sql' => $owner['fp'],
                     'examined' => (int) $d['examined'],
@@ -682,7 +693,7 @@ class SSPA_Analysis_Engine {
                     'ms' => (float) $d['ms'],
                     'no_index' => (int) $d['no_index'],
                     'tmp_disk' => (int) $d['tmp_disk'],
-                ),
+                ), self::plan_evidence($this->plan_for($owner['fp']))),
                 'over_examining_query'
             );
         }
@@ -731,37 +742,18 @@ class SSPA_Analysis_Engine {
                 'archive_query_unindexed',
                 'core',
                 $entry['page_key'],
-                array(
+                array_merge(array(
                     'rows' => (int) $entry['found_rows'],
                     'ms' => (float) $entry['ms'],
                     'shape' => implode(', ', $columns),
                     'taxonomy' => $entry['taxonomy'],
                     'reasons' => array_values($plan_reasons),
-                    'plan_note' => $this->archive_plan_note($entry),
-                ),
+                ), self::plan_evidence(isset($entry['explain']) ? $entry['explain'] : null)),
                 'slow_query_tax',
                 // The plan was read, not inferred. This is the one finding here that can say so.
                 !empty($entry['explain']) ? 'measured' : 'inferred'
             );
         }
-    }
-
-    private function archive_plan_note($entry) {
-        $parts = array();
-        if (!empty($entry['explain']['filesort'])) {
-            $parts[] = __('sorts the results in memory or on disk (filesort)', 'super-speedy-performance-analysis');
-        }
-        if (!empty($entry['explain']['scan'])) {
-            $parts[] = __('reads the table with no usable index', 'super-speedy-performance-analysis');
-        }
-        if (!empty($entry['explain']['est_rows'])) {
-            $parts[] = sprintf(
-                /* translators: %s: number of rows */
-                __('MySQL expects to examine about %s rows', 'super-speedy-performance-analysis'),
-                number_format((int) $entry['explain']['est_rows'])
-            );
-        }
-        return implode('; ', $parts);
     }
 
     private function add($severity, $type, $component, $page_key, $evidence, $rec_key, $confidence = 'inferred') {
@@ -830,7 +822,7 @@ class SSPA_Analysis_Engine {
                 'slow_query',
                 $f['component'],
                 $f['page_key'],
-                $f + array('shape' => $shape, 'plan_note' => SSPA_Explain::summarise($plan)),
+                array_merge($f, array('shape' => $shape), self::plan_evidence($plan)),
                 'slow_query_' . $shape
             );
         }
@@ -889,7 +881,7 @@ class SSPA_Analysis_Engine {
                 'big_result_set',
                 $f['component'],
                 $f['page_key'],
-                $f + array('plan_note' => SSPA_Explain::summarise($this->plan_for($f['fp']))),
+                array_merge($f, self::plan_evidence($this->plan_for($f['fp']))),
                 'big_result_set'
             );
         }
@@ -1171,9 +1163,20 @@ class SSPA_Analysis_Engine {
     private function duplicate_functionality() {
         $active = isset($this->demographics['metrics']['active_plugins']) ? $this->demographics['metrics']['active_plugins'] : array();
         foreach (SSPA_Rules::categories() as $category => $slugs) {
+            // Offering several payment methods is normal WooCommerce configuration, not
+            // duplicate functionality. A feed must not be able to reintroduce this false rule.
+            if ('payments' === $category) {
+                continue;
+            }
             $overlap = array_values(array_intersect($slugs, $active));
             if (count($overlap) > 1) {
-                $this->add('warn', 'duplicate_functionality', null, null, array('category' => $category, 'plugins' => $overlap), 'duplicate_functionality');
+                // Activation proves only that the products are present. It does not prove that
+                // their page-cache, minification, script-delay or other modules are enabled.
+                $this->add('info', 'duplicate_functionality', null, null, array(
+                    'category' => $category,
+                    'plugins' => $overlap,
+                    'configuration_checked' => false,
+                ), 'potential_overlap_review', 'heuristic');
             }
         }
     }

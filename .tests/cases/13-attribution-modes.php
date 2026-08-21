@@ -51,12 +51,21 @@ sspa_t($status === 'done', 'spot run completed: ' . $status);
 // --- The chain must actually materialise, or caller mode is inert ---
 $chained = 0;
 $example = '';
+$event_ids_complete = true;
 foreach ($wpdb->get_results($wpdb->prepare(
     'SELECT profile_blob FROM ' . SSPA_Schema::table('profiles') . ' WHERE run_id = %d AND profile_blob IS NOT NULL',
     $run_id
 )) as $p) {
     $capture = json_decode(gzuncompress($p->profile_blob), true);
+    $event_ids = array();
     foreach ((array) (isset($capture['sql']['queries']) ? $capture['sql']['queries'] : array()) as $q) {
+        $event_id = isset($q['event_id']) ? $q['event_id'] : '';
+        if ('' === $event_id || isset($event_ids[$event_id])) {
+            $event_ids_complete = false;
+        }
+        if ('' !== $event_id) {
+            $event_ids[$event_id] = true;
+        }
         if (!empty($q['chain']) && count($q['chain']) > 1) {
             $chained++;
             if ($example === '') {
@@ -66,6 +75,7 @@ foreach ($wpdb->get_results($wpdb->prepare(
     }
 }
 sspa_t($chained > 0, "cross-component chains captured ($chained queries) e.g. $example");
+sspa_t($event_ids_complete, 'every captured SQL execution has a stable unique event identity');
 
 // --- The modes must disagree, in the right direction ---
 $owner = array();

@@ -429,6 +429,9 @@ if (!class_exists('SSPA_Capture')) {
                 $dupes[$fp]['ms'] += $e['ms'];
                 $full = isset($keep_full[$i]) || $e['ms'] >= self::FULL_SQL_MS || $e['rows'] >= self::FULL_SQL_ROWS || $e['err'];
                 $queries[] = array(
+                    // Stable within this capture. One execution gets one ID regardless of how
+                    // many components appear in its attribution chain.
+                    'event_id' => 'q-' . ($i + 1),
                     'sql' => $full ? $e['sql'] : null,
                     'fp' => sspa_sql_fingerprint($e['sql']),
                     'ms' => round($e['ms'], 3),

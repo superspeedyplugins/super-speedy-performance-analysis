@@ -236,7 +236,8 @@ class SSPA_Insights {
                 break;
             case 'duplicate_functionality':
                 /* translators: 1: number of plugins, 2: plugin category, 3: comma-separated plugin names */
-                $headline = sprintf(__('%1$d overlapping %2$s plugins active: %3$s', 'super-speedy-performance-analysis'), count($e['plugins']), $e['category'], implode(', ', $e['plugins']));
+                $headline = sprintf(__('%1$d potentially overlapping %2$s plugins active: %3$s', 'super-speedy-performance-analysis'), count($e['plugins']), $e['category'], implode(', ', $e['plugins']));
+                $detail = __('Their module configuration was not inspected. Review enabled capabilities before deciding whether anything genuinely overlaps.', 'super-speedy-performance-analysis');
                 break;
             case 'isolation_reaction':
                 // The one finding where the site owner needs to be told what was ATTEMPTED,

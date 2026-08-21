@@ -50,7 +50,8 @@ class SSPA_Explain {
     }
 
     /**
-     * @return array|null {access_type, key, possible_keys, est_rows, filtered, extra, scan}
+     * @return array|null Worst-step compatibility fields plus every plan step and the existing
+     *                    indexes for each table named by the SELECT.
      *                    Null when the query could not be explained.
      */
     public static function explain($sql) {
@@ -74,6 +75,7 @@ class SSPA_Explain {
         $worst = null;
         $est_total = 0;
         $extras = array();
+        $steps = array();
         foreach ($rows as $row) {
             $est = isset($row['rows']) ? (int) $row['rows'] : 0;
             $est_total = $est_total ? $est_total * max($est, 1) : max($est, 1);
@@ -83,6 +85,17 @@ class SSPA_Explain {
             if ($worst === null || $est > (int) $worst['rows']) {
                 $worst = $row;
             }
+            $steps[] = array(
+                'table' => isset($row['table']) ? (string) $row['table'] : null,
+                'access_type' => isset($row['type']) ? (string) $row['type'] : null,
+                'possible_keys' => (isset($row['possible_keys']) && $row['possible_keys'] !== null) ? (string) $row['possible_keys'] : null,
+                'key' => (isset($row['key']) && $row['key'] !== null) ? (string) $row['key'] : null,
+                'key_length' => (isset($row['key_len']) && $row['key_len'] !== null) ? (string) $row['key_len'] : null,
+                'reference' => (isset($row['ref']) && $row['ref'] !== null) ? (string) $row['ref'] : null,
+                'estimated_rows' => $est,
+                'filtered' => isset($row['filtered']) ? (float) $row['filtered'] : null,
+                'extra' => !empty($row['Extra']) ? (string) $row['Extra'] : null,
+            );
         }
         if ($worst === null) {
             return null;
@@ -103,7 +116,67 @@ class SSPA_Explain {
             'scan' => (in_array($type, self::$scan_types, true) && empty($worst['key'])),
             'filesort' => (stripos($extra, 'Using filesort') !== false),
             'temporary' => (stripos($extra, 'Using temporary') !== false),
+            'steps' => $steps,
+            'relevant_indexes' => self::relevant_indexes($sql),
         );
+    }
+
+    /**
+     * Existing index definitions for tables explicitly named by this SELECT. This is bounded
+     * to the query's own FROM/JOIN tables and never scans index metadata for the whole database.
+     */
+    private static function relevant_indexes($sql) {
+        global $wpdb;
+
+        preg_match_all('/\b(?:FROM|JOIN)\s+((?:`?[A-Za-z0-9_]+`?\.)?`?[A-Za-z0-9_]+`?)/i', (string) $sql, $matches);
+        $tables = array();
+        foreach ((array) (isset($matches[1]) ? $matches[1] : array()) as $identifier) {
+            $identifier = str_replace('`', '', (string) $identifier);
+            if (!preg_match('/^(?:[A-Za-z0-9_]+\.)?[A-Za-z0-9_]+$/', $identifier)) {
+                continue;
+            }
+            $parts = explode('.', $identifier, 2);
+            $table = end($parts);
+            $tables[$table] = $identifier;
+        }
+
+        $out = array();
+        foreach ($tables as $table => $identifier) {
+            $quoted = implode('.', array_map(function ($part) {
+                return '`' . str_replace('`', '``', $part) . '`';
+            }, explode('.', $identifier)));
+            $suppress = $wpdb->suppress_errors(true);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- identifier is restricted above to letters, digits, underscore and one optional database separator, then identifier-quoted.
+            $rows = $wpdb->get_results('SHOW INDEX FROM ' . $quoted, ARRAY_A);
+            $wpdb->suppress_errors($suppress);
+            if (!$rows) {
+                continue;
+            }
+            $indexes = array();
+            foreach ($rows as $row) {
+                $name = isset($row['Key_name']) ? (string) $row['Key_name'] : 'unknown';
+                if (!isset($indexes[$name])) {
+                    $indexes[$name] = array(
+                        'name' => $name,
+                        'unique' => isset($row['Non_unique']) ? !(bool) $row['Non_unique'] : false,
+                        'columns' => array(),
+                        'prefix_lengths' => array(),
+                    );
+                }
+                $sequence = max(1, (int) (isset($row['Seq_in_index']) ? $row['Seq_in_index'] : count($indexes[$name]['columns']) + 1));
+                $indexes[$name]['columns'][$sequence] = isset($row['Column_name']) ? (string) $row['Column_name'] : '';
+                $indexes[$name]['prefix_lengths'][$sequence] = isset($row['Sub_part']) && $row['Sub_part'] !== null ? (int) $row['Sub_part'] : null;
+            }
+            foreach ($indexes as &$index) {
+                ksort($index['columns']);
+                ksort($index['prefix_lengths']);
+                $index['columns'] = array_values($index['columns']);
+                $index['prefix_lengths'] = array_values($index['prefix_lengths']);
+            }
+            unset($index);
+            $out[$table] = array_values($indexes);
+        }
+        return $out;
     }
 
     /**

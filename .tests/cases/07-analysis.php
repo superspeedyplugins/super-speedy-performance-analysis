@@ -159,6 +159,46 @@ $demo = SSPA_Demographics::latest();
 sspa_t($demo && $demo['sector'] === 'e-commerce', 'sector inferred as e-commerce (' . $demo['sector'] . ')');
 sspa_t($demo && $demo['metrics']['post_counts']['product'] > 10, 'product count captured');
 
+// Category membership is not proof of duplicate functionality. Multiple payment methods are
+// normal, and asset optimiser activation alone cannot prove which modules overlap.
+$wpdb->query($wpdb->prepare(
+    'DELETE FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d AND finding_type = 'duplicate_functionality'",
+    $run_id
+));
+$overlap_demo = $demo;
+$overlap_demo['metrics']['active_plugins'] = array(
+    'woocommerce-gateway-stripe',
+    'woocommerce-paypal-payments',
+    'perfmatters',
+    'wp-optimize',
+);
+$overlap_engine = new SSPA_Analysis_Engine();
+$overlap_engine->analyse($run_id, $overlap_demo);
+$overlaps = $wpdb->get_results($wpdb->prepare(
+    'SELECT severity, evidence, recommendation_key FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d AND finding_type = 'duplicate_functionality'",
+    $run_id
+), ARRAY_A);
+$payment_overlap = false;
+$asset_review = null;
+foreach ($overlaps as $overlap) {
+    $overlap_evidence = json_decode($overlap['evidence'], true);
+    if ('payments' === ($overlap_evidence['category'] ?? '')) {
+        $payment_overlap = true;
+    }
+    if ('asset-optimiser' === ($overlap_evidence['category'] ?? '')) {
+        $asset_review = array($overlap, $overlap_evidence);
+    }
+}
+sspa_t(!$payment_overlap, 'Stripe plus PayPal is not treated as duplicate functionality');
+sspa_t(
+    $asset_review
+        && 'info' === $asset_review[0]['severity']
+        && 'potential_overlap_review' === $asset_review[0]['recommendation_key']
+        && array_key_exists('configuration_checked', $asset_review[1])
+        && false === $asset_review[1]['configuration_checked'],
+    'asset optimiser activation produces a qualified configuration review, not removal advice'
+);
+
 // --- Clean up ---
 deactivate_plugins('sspa-bad-plugin/sspa-bad-plugin.php');
 unlink($bad_dir . '/sspa-bad-plugin.php');

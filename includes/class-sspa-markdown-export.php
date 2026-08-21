@@ -4,7 +4,7 @@ defined('ABSPATH') || exit;
 /** Privacy-safe Markdown reports intended for hand-off to an LLM or developer. */
 class SSPA_Markdown_Export {
 
-    const SCHEMA = 1;
+    const SCHEMA = 2;
     const CACHE_SERVICE_URL = 'https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/';
 
     public static function register() {
@@ -51,13 +51,26 @@ class SSPA_Markdown_Export {
         $profile = (array) $data['profile'];
         $capture = is_array($data['capture']) ? $data['capture'] : array();
         $page_key = isset($profile['page_key']) ? $profile['page_key'] : 'page-' . $profile_id;
+        $queries = isset($capture['sql']['queries']) ? (array) $capture['sql']['queries'] : array();
+        $query_groups = self::aggregate_queries($queries);
         $lines = self::header('Page performance analysis', 'page', $profile_id);
-        $lines[] = '## Measurement';
+        self::diagnostic_summary($lines, $profile, $query_groups, isset($data['findings']) ? $data['findings'] : array());
+        $lines[] = '## Measurement context';
         $lines[] = '';
         $lines[] = '- Page: `' . self::code($page_key) . '`';
         $lines[] = '- URL: `' . self::code(self::safe_url(isset($profile['url']) ? $profile['url'] : '')) . '`';
         $lines[] = '- Request: `' . self::code((isset($profile['method']) ? $profile['method'] : 'GET') . ' / ' . (isset($profile['variant']) ? $profile['variant'] : 'unknown')) . '`';
         $lines[] = '- Measured: ' . self::plain(isset($profile['created']) ? $profile['created'] . ' UTC' : 'unknown');
+        if (!empty($data['run'])) {
+            $lines[] = '- Run type: `' . self::code(isset($data['run']['type']) ? $data['run']['type'] : 'unknown') . '`';
+            $lines[] = '- Measurement version: `' . (int) (isset($data['run']['measurement_version']) ? $data['run']['measurement_version'] : 0) . '`';
+        }
+        $generated_by = isset($data['generated_by']) && is_array($data['generated_by']) ? $data['generated_by'] : array();
+        $lines[] = '- WordPress: `' . self::code(isset($generated_by['wordpress']) ? $generated_by['wordpress'] : 'unknown') . '`';
+        $lines[] = '- PHP: `' . self::code(isset($generated_by['php']) ? $generated_by['php'] : 'unknown') . '`';
+        if (!empty($data['run']['components'])) {
+            $lines[] = '- Measured components: `' . self::code(implode('`, `', array_map(array(__CLASS__, 'component_name'), (array) $data['run']['components']))) . '`';
+        }
         $transport_errors = array();
         foreach ((array) (isset($profile['samples']) ? $profile['samples'] : array()) as $sample) {
             if (!empty($sample['error'])) {
@@ -86,8 +99,9 @@ class SSPA_Markdown_Export {
         }
 
         self::findings($lines, isset($data['findings']) ? $data['findings'] : array());
-        self::components($lines, isset($capture['components']) ? $capture['components'] : array());
-        self::queries($lines, isset($capture['sql']['queries']) ? $capture['sql']['queries'] : array());
+        self::components($lines, isset($capture['components']) ? $capture['components'] : array(), isset($profile['sql_count']) ? $profile['sql_count'] : null);
+        self::queries($lines, $queries, $query_groups);
+        self::query_plan_evidence($lines, isset($data['findings']) ? $data['findings'] : array());
         self::raw_http($lines, isset($capture['http']['calls']) ? $capture['http']['calls'] : array());
         self::impacts($lines, isset($data['measured_plugin_impacts']) ? $data['measured_plugin_impacts'] : array());
         self::help($lines);
@@ -222,8 +236,11 @@ class SSPA_Markdown_Export {
             if (!empty($finding['page_key'])) {
                 $lines[] = '- Page: `' . self::code($finding['page_key']) . '`';
             }
+            if (!empty($finding['confidence'])) {
+                $lines[] = '- Confidence: `' . self::code($finding['confidence']) . '`';
+            }
             if (!empty($finding['detail'])) {
-                if (!empty($finding['evidence']['sql']) || false !== strpos((string) $finding['type'], 'query')) {
+                if (!empty($finding['evidence']['fp']) || !empty($finding['evidence']['sql'])) {
                     $sql = !empty($finding['evidence']['fp']) ? $finding['evidence']['fp'] : (isset($finding['evidence']['sql']) ? $finding['evidence']['sql'] : $finding['detail']);
                     $lines[] = '- Query fingerprint: `' . self::code(self::sql_fingerprint($sql)) . '`';
                     if (!empty($finding['evidence']['plan_note'])) {
@@ -240,7 +257,7 @@ class SSPA_Markdown_Export {
         }
     }
 
-    private static function components(&$lines, $components) {
+    private static function components(&$lines, $components, $headline_query_count = null) {
         $lines[] = '## Component attribution';
         $lines[] = '';
         if (!$components) {
@@ -248,26 +265,62 @@ class SSPA_Markdown_Export {
             $lines[] = '';
             return;
         }
-        $lines[] = '| Component | SQL | Queries | HTTP |';
-        $lines[] = '|---|---:|---:|---:|';
+        $lines[] = '- Attribution shown: **Code owner**. Cost is charged to the component whose code executed the work.';
+        $component_query_count = 0;
+        $has_all_query_counts = true;
+        foreach ((array) $components as $stats) {
+            if (isset($stats['query_count'])) {
+                $component_query_count += (int) $stats['query_count'];
+            } elseif (isset($stats['sql_count'])) {
+                $component_query_count += (int) $stats['sql_count'];
+            } else {
+                $has_all_query_counts = false;
+            }
+        }
+        if ($has_all_query_counts && null !== $headline_query_count) {
+            $lines[] = '- Query-count reconciliation: ' . $component_query_count . ' attributed of ' . (int) $headline_query_count . ' measured (' . ($component_query_count === (int) $headline_query_count ? 'complete' : 'incomplete') . ').';
+        }
+        $lines[] = '';
+        $lines[] = '| Component | SQL | Queries | Rows returned | HTTP |';
+        $lines[] = '|---|---:|---:|---:|---:|';
         foreach ((array) $components as $component => $stats) {
-            $lines[] = '| `' . self::code($component) . '` | ' . self::ms(isset($stats['sql_ms']) ? $stats['sql_ms'] : null) . ' | ' . self::number(isset($stats['sql_count']) ? $stats['sql_count'] : null) . ' | ' . self::ms(isset($stats['http_ms']) ? $stats['http_ms'] : null) . ' |';
+            $query_count = isset($stats['query_count']) ? $stats['query_count'] : (isset($stats['sql_count']) ? $stats['sql_count'] : null);
+            $lines[] = '| `' . self::code($component) . '` | ' . self::ms(isset($stats['sql_ms']) ? $stats['sql_ms'] : null) . ' | ' . self::number($query_count) . ' | ' . self::number(isset($stats['rows']) ? $stats['rows'] : null) . ' | ' . self::ms(isset($stats['http_ms']) ? $stats['http_ms'] : null) . ' |';
         }
         $lines[] = '';
     }
 
-    private static function queries(&$lines, $queries) {
-        $lines[] = '## Slow SQL fingerprints';
+    private static function queries(&$lines, $queries, $groups = null) {
+        $lines[] = '## Dominant SQL groups';
         $lines[] = '';
         if (!$queries) {
             $lines[] = 'No retained query fingerprints were stored.';
             $lines[] = '';
             return;
         }
+        $groups = is_array($groups) ? $groups : self::aggregate_queries($queries);
+        $lines[] = '- Attribution mode: **Code owner**';
+        $lines[] = '- Call counts represent distinct captured SQL events; groups do not duplicate one event across an attribution chain.';
+        $lines[] = '';
+        $lines[] = '| Component | Query fingerprint | Calls | Total | Worst | Rows returned | Caller | Via |';
+        $lines[] = '|---|---|---:|---:|---:|---:|---|---|';
+        foreach (array_slice($groups, 0, 15) as $group) {
+            $lines[] = '| `' . self::code($group['component']) . '` | `' . self::code($group['fingerprint']) . '` | ' . (int) $group['calls'] . ' | ' . self::ms($group['total_ms']) . ' | ' . self::ms($group['worst_ms']) . ' | ' . self::number($group['rows']) . ' | `' . self::code(self::safe_origin($group['caller'])) . '` | `' . self::code($group['via'] ? $group['via'] : '-') . '` |';
+        }
+        $lines[] = '';
+
+        $lines[] = '### Retained SQL executions';
+        $lines[] = '';
+        $lines[] = '| Event | Time | Rows | Code owner | Caller | Via | Attribution chain |';
+        $lines[] = '|---|---:|---:|---|---|---|---|';
         usort($queries, function ($a, $b) { return (float) $b['ms'] <=> (float) $a['ms']; });
-        foreach (array_slice($queries, 0, 10) as $query) {
-            $fingerprint = self::sql_fingerprint(!empty($query['fp']) ? $query['fp'] : (isset($query['sql']) ? $query['sql'] : ''));
-            $lines[] = '- ' . self::ms(isset($query['ms']) ? $query['ms'] : null) . ' by `' . self::code(isset($query['component']) ? $query['component'] : 'unknown') . '`: `' . self::code($fingerprint) . '`';
+        foreach (array_slice($queries, 0, 15) as $index => $query) {
+            $chain = array();
+            foreach ((array) (isset($query['chain']) ? $query['chain'] : array()) as $component) {
+                $parts = explode(':', (string) $component, 2);
+                $chain[] = count($parts) > 1 ? $parts[1] : $parts[0];
+            }
+            $lines[] = '| `' . self::code(isset($query['event_id']) ? $query['event_id'] : 'legacy-' . ($index + 1)) . '` | ' . self::ms(isset($query['ms']) ? $query['ms'] : null) . ' | ' . self::number(isset($query['rows']) ? $query['rows'] : null) . ' | `' . self::code(isset($query['component']) ? $query['component'] : 'unknown') . '` | `' . self::code(self::safe_origin(isset($query['caller']) ? $query['caller'] : 'unknown')) . '` | `' . self::code(!empty($query['via']) ? $query['via'] : '-') . '` | `' . self::code($chain ? implode(' -> ', $chain) : '-') . '` |';
         }
         $lines[] = '';
     }
@@ -394,8 +447,162 @@ class SSPA_Markdown_Export {
     private static function help(&$lines) {
         $lines[] = '## Optional implementation help';
         $lines[] = '';
-        $lines[] = 'This report is designed to be enough for you or your developer to act on. If you would rather have the cache work implemented and tested for you, Dave offers a [WooCommerce full-page caching implementation service](' . self::CACHE_SERVICE_URL . ').';
+        $lines[] = 'Use the evidence-sufficiency statement above where one is present. Confirm missing origin, plan and index evidence before changing query code or database schema.';
         $lines[] = '';
+        $lines[] = 'If you would rather have the cache work implemented and tested for you, Dave offers a [WooCommerce full-page caching implementation service](' . self::CACHE_SERVICE_URL . ').';
+        $lines[] = '';
+    }
+
+    private static function diagnostic_summary(&$lines, $profile, $groups, $findings) {
+        $lines[] = '## Diagnostic summary';
+        $lines[] = '';
+        if (!$groups) {
+            $lines[] = '- Outcome: No retained SQL group was available to identify dominant database work.';
+        } else {
+            $dominant = $groups[0];
+            $sql_ms = isset($profile['sql_ms']) ? (float) $profile['sql_ms'] : 0.0;
+            $generation_ms = isset($profile['page_gen_ms']) ? (float) $profile['page_gen_ms'] : 0.0;
+            $lines[] = '- Outcome: `' . self::code($dominant['component']) . '` dominated the measured retained SQL time.';
+            $lines[] = '- Dominant component: `' . self::code($dominant['component']) . '`';
+            $lines[] = '- Measured contribution: ' . self::ms($dominant['total_ms']) . ' across ' . (int) $dominant['calls'] . ' matching query executions';
+            $lines[] = '- Share of page SQL: ' . ($sql_ms > 0 ? number_format(($dominant['total_ms'] / $sql_ms) * 100, 1) . '%' : 'not calculated');
+            $lines[] = '- Share of request generation: ' . ($generation_ms > 0 ? number_format(($dominant['total_ms'] / $generation_ms) * 100, 1) . '%' : 'not calculated');
+        }
+        $sufficiency = self::evidence_sufficiency($findings);
+        $lines[] = '- Evidence sufficiency: **' . $sufficiency['level'] . '**. ' . $sufficiency['detail'];
+        $lines[] = '';
+    }
+
+    private static function evidence_sufficiency($findings) {
+        $has_plan = false;
+        $has_indexes = false;
+        $has_source = false;
+        foreach ((array) $findings as $finding) {
+            $evidence = isset($finding['evidence']) && is_array($finding['evidence']) ? $finding['evidence'] : array();
+            $has_plan = $has_plan || !empty($evidence['plan_steps']);
+            $has_indexes = $has_indexes || !empty($evidence['relevant_indexes']);
+            $has_source = $has_source || (!empty($evidence['source_file']) && !empty($evidence['source_line']));
+        }
+        if ($has_plan && $has_indexes && $has_source) {
+            return array('level' => 'enough to implement', 'detail' => 'The stored evidence includes a complete plan, relevant indexes and a source location; validate the proposed change against production data before applying it.');
+        }
+        $missing = array();
+        if (!$has_plan) {
+            $missing[] = 'complete join plan';
+        }
+        if (!$has_indexes) {
+            $missing[] = 'relevant existing indexes';
+        }
+        if (!$has_source) {
+            $missing[] = 'exact query source';
+        }
+        return array('level' => 'enough to triage', 'detail' => 'Additional evidence required before implementation: ' . implode(', ', $missing) . '.');
+    }
+
+    private static function aggregate_queries($queries) {
+        $groups = array();
+        $seen_events = array();
+        foreach ((array) $queries as $index => $query) {
+            $event_id = !empty($query['event_id']) ? (string) $query['event_id'] : 'legacy-' . $index;
+            if (isset($seen_events[$event_id])) {
+                continue;
+            }
+            $seen_events[$event_id] = true;
+            $fingerprint = self::sql_fingerprint(!empty($query['fp']) ? $query['fp'] : (isset($query['sql']) ? $query['sql'] : ''));
+            $component = isset($query['component']) ? (string) $query['component'] : 'unknown';
+            $key = SSPA_Attribution::MODE_CODE_OWNER . '|' . $component . '|' . md5($fingerprint);
+            if (!isset($groups[$key])) {
+                $groups[$key] = array(
+                    'mode' => SSPA_Attribution::MODE_CODE_OWNER,
+                    'component' => $component,
+                    'fingerprint' => $fingerprint,
+                    'calls' => 0,
+                    'total_ms' => 0.0,
+                    'worst_ms' => 0.0,
+                    'rows' => 0,
+                    'caller' => 'unknown',
+                    'via' => null,
+                );
+            }
+            $ms = isset($query['ms']) ? (float) $query['ms'] : 0.0;
+            $groups[$key]['calls']++;
+            $groups[$key]['total_ms'] += $ms;
+            $groups[$key]['rows'] += (int) (isset($query['rows']) ? $query['rows'] : 0);
+            if ($ms >= $groups[$key]['worst_ms']) {
+                $groups[$key]['worst_ms'] = $ms;
+                $groups[$key]['caller'] = isset($query['caller']) ? $query['caller'] : 'unknown';
+                $groups[$key]['via'] = isset($query['via']) ? $query['via'] : null;
+            }
+        }
+        $groups = array_values($groups);
+        usort($groups, function ($a, $b) { return $b['total_ms'] <=> $a['total_ms']; });
+        return $groups;
+    }
+
+    private static function query_plan_evidence(&$lines, $findings) {
+        $lines[] = '### Query-plan evidence';
+        $lines[] = '';
+        $plan = array();
+        foreach ((array) $findings as $finding) {
+            $evidence = isset($finding['evidence']) && is_array($finding['evidence']) ? $finding['evidence'] : array();
+            if (!empty($evidence['plan_note']) || !empty($evidence['plan_steps']) || !empty($evidence['relevant_indexes']) || isset($evidence['examined']) || !empty($evidence['source_file'])) {
+                $plan = $evidence;
+                break;
+            }
+        }
+        $lines[] = '- Confidence: measured query timing' . (!empty($plan['plan_steps']) ? '; optimiser-estimated plan rows' : '; no optimiser plan retained');
+        $lines[] = '- Summary: ' . (!empty($plan['plan_note']) ? self::safe_detail($plan['plan_note']) : 'not captured');
+        $lines[] = '- Relevant existing indexes: ' . (!empty($plan['relevant_indexes']) ? self::plain(self::indexes_summary($plan['relevant_indexes'])) : 'not captured');
+        $lines[] = '- Complete join plan: ' . (!empty($plan['plan_steps']) ? count($plan['plan_steps']) . ' step(s) captured' : 'not captured');
+        $lines[] = '- Actual rows examined: ' . (isset($plan['examined']) ? self::number($plan['examined']) . ' measured by matched performance-schema evidence' : 'not captured');
+        $lines[] = '- Source location: ' . (!empty($plan['source_file']) ? '`' . self::code(self::safe_origin($plan['source_file']) . (!empty($plan['source_line']) ? ':' . (int) $plan['source_line'] : '')) . '`' : 'not captured');
+        $lines[] = '- Active hook/callback: ' . (!empty($plan['hook']) ? '`' . self::code($plan['hook']) . '`' : 'not captured');
+        $lines[] = '- Next action: ' . (!empty($plan['plan_steps']) && !empty($plan['relevant_indexes']) ? 'trace the initiating callback and compare the query shape with the retained index definitions.' : 'capture the complete plan, relevant indexes and initiating callback before changing schema or query code.');
+        $lines[] = '';
+        if (!empty($plan['plan_steps'])) {
+            $lines[] = '#### Complete EXPLAIN plan';
+            $lines[] = '';
+            $lines[] = '| Table | Access | Possible keys | Selected key | Key length | Reference | Estimated rows | Filtered | Extra |';
+            $lines[] = '|---|---|---|---|---:|---|---:|---:|---|';
+            foreach ((array) $plan['plan_steps'] as $step) {
+                $lines[] = '| `' . self::code(isset($step['table']) ? $step['table'] : '-') . '` | `' . self::code(isset($step['access_type']) ? $step['access_type'] : '-') . '` | `' . self::code(!empty($step['possible_keys']) ? $step['possible_keys'] : '-') . '` | `' . self::code(!empty($step['key']) ? $step['key'] : '-') . '` | ' . self::plain(isset($step['key_length']) && null !== $step['key_length'] ? $step['key_length'] : '-') . ' | `' . self::code(!empty($step['reference']) ? $step['reference'] : '-') . '` | ' . self::number(isset($step['estimated_rows']) ? $step['estimated_rows'] : null) . ' | ' . self::plain(isset($step['filtered']) && null !== $step['filtered'] ? number_format((float) $step['filtered'], 1) . '%' : '-') . ' | ' . self::plain(!empty($step['extra']) ? $step['extra'] : '-') . ' |';
+            }
+            $lines[] = '';
+        }
+        if (!empty($plan['relevant_indexes'])) {
+            $lines[] = '#### Relevant existing indexes';
+            $lines[] = '';
+            $lines[] = '| Table | Index | Unique | Ordered columns | Prefix lengths |';
+            $lines[] = '|---|---|---|---|---|';
+            foreach ((array) $plan['relevant_indexes'] as $table => $indexes) {
+                foreach ((array) $indexes as $index) {
+                    $prefixes = array_map(function ($prefix) { return null === $prefix ? '-' : (string) (int) $prefix; }, (array) (isset($index['prefix_lengths']) ? $index['prefix_lengths'] : array()));
+                    $lines[] = '| `' . self::code($table) . '` | `' . self::code(isset($index['name']) ? $index['name'] : 'unknown') . '` | ' . (!empty($index['unique']) ? 'yes' : 'no') . ' | `' . self::code(implode(', ', isset($index['columns']) ? (array) $index['columns'] : array())) . '` | `' . self::code($prefixes ? implode(', ', $prefixes) : '-') . '` |';
+                }
+            }
+            $lines[] = '';
+        }
+    }
+
+    private static function indexes_summary($indexes) {
+        $out = array();
+        foreach ((array) $indexes as $table => $table_indexes) {
+            foreach ((array) $table_indexes as $index) {
+                $out[] = $table . '.' . (isset($index['name']) ? $index['name'] : 'unknown') . '(' . implode(', ', isset($index['columns']) ? (array) $index['columns'] : array()) . ')' . (!empty($index['unique']) ? ' unique' : '');
+            }
+        }
+        return implode('; ', $out);
+    }
+
+    private static function safe_origin($value) {
+        $value = (string) $value;
+        foreach (array(defined('ABSPATH') ? ABSPATH : '', defined('WP_CONTENT_DIR') ? WP_CONTENT_DIR : '') as $root) {
+            if ($root) {
+                $value = str_replace(rtrim($root, '/\\') . '/', '', $value);
+            }
+        }
+        $value = preg_replace('#(?:[A-Za-z]:)?/(?:[^\s:/]+/)+([^\s:/]+\.php)(?::\d+)?#', '[path removed]/$1', $value);
+        return self::plain($value);
     }
 
     private static function result($stem, $lines) {

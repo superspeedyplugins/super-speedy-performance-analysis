@@ -23,7 +23,18 @@ sspa_t(!SSPA_Explain::is_explainable("SELECT 1; DROP TABLE {$wpdb->posts}"), 'mu
 $posts_before = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts}");
 $plan = SSPA_Explain::explain("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status = 'publish'");
 sspa_t(is_array($plan) && isset($plan['access_type']), 'indexed query explained: type=' . ($plan ? $plan['access_type'] : '?'));
+$step_fields = array('table', 'access_type', 'possible_keys', 'key', 'key_length', 'reference', 'estimated_rows', 'filtered', 'extra');
+$complete_step = is_array($plan) && !empty($plan['steps']);
+foreach ($step_fields as $step_field) {
+    $complete_step = $complete_step && array_key_exists($step_field, $plan['steps'][0]);
+}
+sspa_t($complete_step, 'complete EXPLAIN step fields retained, including null database values');
+sspa_t(is_array($plan) && !empty($plan['relevant_indexes'][$wpdb->posts][0]['columns']), 'relevant existing index columns retained in order');
 sspa_t($posts_before === (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts}"), 'EXPLAIN changed no data');
+
+$join = SSPA_Explain::explain("SELECT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE p.post_status = 'publish'");
+sspa_t(is_array($join) && count($join['steps']) >= 2, 'every table in a join plan is retained (' . (is_array($join) && isset($join['steps']) ? count($join['steps']) : 0) . ' steps)');
+sspa_t(is_array($join) && isset($join['relevant_indexes'][$wpdb->posts], $join['relevant_indexes'][$wpdb->postmeta]), 'relevant indexes captured for every parsed join table');
 
 // An unindexed scan: post_content has no index, so this must be a full table scan.
 $scan = SSPA_Explain::explain("SELECT ID FROM {$wpdb->posts} WHERE post_content LIKE '%zzz-no-such-content-zzz%'");
@@ -78,6 +89,8 @@ sspa_t(count($findings) > 0, 'unindexed_query findings raised (' . count($findin
 
 $named = false;
 $has_note = false;
+$has_steps = false;
+$has_indexes = false;
 foreach ($findings as $f) {
     $e = json_decode($f['evidence'], true);
     if ($f['component'] === 'sspa-explain-fixture') {
@@ -86,9 +99,17 @@ foreach ($findings as $f) {
     if (!empty($e['plan_note'])) {
         $has_note = true;
     }
+    if (!empty($e['plan_steps'])) {
+        $has_steps = true;
+    }
+    if (!empty($e['relevant_indexes'])) {
+        $has_indexes = true;
+    }
 }
 sspa_t($named, 'the fixture plugin is named for its own unindexed query');
 sspa_t($has_note, 'findings carry the plain-English plan note');
+sspa_t($has_steps, 'findings retain the complete EXPLAIN plan');
+sspa_t($has_indexes, 'findings retain relevant existing index metadata');
 
 // The recommendation copy must exist, or the insight renders with a bare key as its title.
 $rec = SSPA_Rules::recommendation('unindexed_query');

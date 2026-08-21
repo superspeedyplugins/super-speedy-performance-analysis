@@ -76,16 +76,43 @@ $capture = array(
     'schema' => 3,
     'overview' => array('is_admin' => true),
     'components' => array(
-        'synthetic-slow-plugin' => array('sql_ms' => 310, 'sql_count' => 45, 'http_ms' => 240),
+        'synthetic-slow-plugin' => array('sql_ms' => 310, 'query_count' => 45, 'rows' => 12, 'http_ms' => 240),
     ),
-    'sql' => array('queries' => array(array(
-        'sql' => "SELECT * FROM wp_options WHERE option_value = '$secret' AND option_id = 987654321",
-        'fp' => 'SELECT * FROM wp_options WHERE option_value = ? AND option_id = ?',
-        'component' => 'synthetic-slow-plugin',
-        'caller' => 'Synthetic_Slow_Plugin::load',
-        'ms' => 310,
-        'rows' => 1,
-    ))),
+    'sql' => array('queries' => array(
+        array(
+            'event_id' => 'q-1',
+            'sql' => "SELECT * FROM wp_options WHERE option_value = '$secret' AND option_id = 987654321",
+            'fp' => 'SELECT * FROM wp_options WHERE option_value = ? AND option_id = ?',
+            'component' => 'synthetic-slow-plugin',
+            'caller' => '/srv/www/private/site/wp-content/plugins/synthetic-loop-plugin/src/Save.php:41 Synthetic_Slow_Plugin::save',
+            'via' => 'synthetic-api-plugin',
+            'chain' => array('plugin:synthetic-slow-plugin', 'plugin:synthetic-loop-plugin'),
+            'ms' => 120,
+            'rows' => 5,
+        ),
+        array(
+            'event_id' => 'q-2',
+            'sql' => null,
+            'fp' => 'SELECT * FROM wp_options WHERE option_value = ? AND option_id = ?',
+            'component' => 'synthetic-slow-plugin',
+            'caller' => 'Synthetic_Slow_Plugin::save',
+            'via' => 'synthetic-api-plugin',
+            'chain' => array('plugin:synthetic-slow-plugin', 'plugin:synthetic-loop-plugin'),
+            'ms' => 100,
+            'rows' => 4,
+        ),
+        array(
+            'event_id' => 'q-3',
+            'sql' => null,
+            'fp' => 'SELECT * FROM wp_options WHERE option_value = ? AND option_id = ?',
+            'component' => 'synthetic-slow-plugin',
+            'caller' => 'Synthetic_Slow_Plugin::save',
+            'via' => 'synthetic-api-plugin',
+            'chain' => array('plugin:synthetic-slow-plugin', 'plugin:synthetic-loop-plugin'),
+            'ms' => 90,
+            'rows' => 3,
+        ),
+    )),
     'http' => array('count' => 1, 'total_ms' => 240, 'calls' => array(array(
         'scheme' => 'https',
         'url' => 'licence.vendor.example/orders/987654321/check',
@@ -119,14 +146,40 @@ $wpdb->insert(SSPA_Schema::table('findings'), array(
     'confidence' => 'measured',
     'created' => gmdate('Y-m-d H:i:s'),
 ));
+$wpdb->insert(SSPA_Schema::table('findings'), array(
+    'run_id' => $baseline_run,
+    'severity' => 'warn',
+    'finding_type' => 'query_loop',
+    'component' => 'synthetic-loop-plugin',
+    'page_key' => 'wp-admin-synthetic',
+    'evidence' => wp_json_encode(array(
+        'query_count' => 45,
+        'sql_ms' => 310,
+        'rows' => 12,
+        'ran_in' => array('synthetic-api-plugin' => 45),
+    )),
+    'recommendation_key' => 'query_loop',
+    'confidence' => 'inferred',
+    'created' => gmdate('Y-m-d H:i:s'),
+));
 $page = SSPA_Markdown_Export::build('page', $profile_id);
 $site = SSPA_Markdown_Export::build('run', $baseline_run);
 
 sspa_markdown_t(!is_wp_error($page) && '.md' === substr($page['filename'], -3), 'a page result produces a downloadable .md file');
 sspa_markdown_t(!is_wp_error($site) && '.md' === substr($site['filename'], -3), 'a complete-site run produces a downloadable .md file');
 if (!is_wp_error($page) && !is_wp_error($site)) {
-    sspa_markdown_t(false !== strpos($page['markdown'], '<!-- sspa/llm-report@1 -->'), 'the LLM report schema is explicit');
-    sspa_markdown_t(false !== strpos($page['markdown'], '## Headline metrics') && false !== strpos($page['markdown'], '## Slow SQL fingerprints'), 'the page document carries measured metrics and SQL evidence');
+    sspa_markdown_t(false !== strpos($page['markdown'], '<!-- sspa/llm-report@2 -->'), 'the LLM report schema is explicit and structurally versioned');
+    sspa_markdown_t(false !== strpos($page['markdown'], '## Diagnostic summary') && false !== strpos($page['markdown'], '## Dominant SQL groups'), 'the page document leads with a mechanical diagnosis and aggregated SQL evidence');
+    sspa_markdown_t(false !== strpos($page['markdown'], '| `synthetic-slow-plugin` | 310.0 ms | 45 | 12 | 240.0 ms |'), 'component query_count and returned rows are exported');
+    sspa_markdown_t(false !== strpos($page['markdown'], '| `synthetic-slow-plugin` | `SELECT * FROM wp_options WHERE option_value = ? AND option_id = ?` | 3 | 310.0 ms | 120.0 ms | 12 |'), 'matching retained queries aggregate into one group with calls, total, worst and rows');
+    sspa_markdown_t(false !== strpos($page['markdown'], 'Synthetic_Slow_Plugin::save') && false !== strpos($page['markdown'], 'synthetic-api-plugin') && false !== strpos($page['markdown'], 'Code owner'), 'caller, via and attribution mode are represented');
+    sspa_markdown_t(false === strpos($page['markdown'], '/srv/www/private'), 'absolute caller paths are not exported');
+    sspa_markdown_t(false !== strpos($page['markdown'], 'synthetic-loop-plugin\'s own code') && false !== strpos($page['markdown'], '45 inside synthetic-api-plugin'), 'query-loop prose keeps possessive apostrophes and measured numbers intact');
+    sspa_markdown_t(false === strpos($page['markdown'], '?s own code'), 'narrative query-loop evidence is not SQL-fingerprinted');
+    sspa_markdown_t(false !== strpos($page['markdown'], '- Confidence: `measured`') && false !== strpos($page['markdown'], '- Confidence: `inferred`'), 'finding confidence is explicit');
+    sspa_markdown_t(false !== strpos($page['markdown'], '- WordPress: `' . get_bloginfo('version') . '`') && false !== strpos($page['markdown'], '- PHP: `' . PHP_VERSION . '`') && false !== strpos($page['markdown'], '`synthetic-slow-plugin 1.2.3`'), 'environment and measured component versions are exported');
+    sspa_markdown_t(false !== strpos($page['markdown'], 'Relevant existing indexes: not captured') && false !== strpos($page['markdown'], 'Complete join plan: not captured'), 'missing plan and index evidence is stated rather than invented');
+    sspa_markdown_t(false !== strpos($page['markdown'], 'enough to triage') && false === strpos($page['markdown'], 'designed to be enough for you or your developer to act on'), 'evidence sufficiency no longer makes a blanket implementation claim');
     sspa_markdown_t(false !== strpos($site['markdown'], '## Outbound WordPress HTTP API inventory'), 'the site document carries the stable HTTP API inventory');
     sspa_markdown_t(false !== strpos($site['markdown'], 'licence.vendor.example/orders/{id}/check'), 'HTTP endpoint path identifiers are normalised');
     $combined = $page['markdown'] . $site['markdown'];
@@ -190,7 +243,11 @@ $wpdb->insert(SSPA_Schema::table('findings'), array(
 ob_start();
 include SSPA_PLUGIN_DIR . 'includes/admin/tabs/overview.php';
 $overview = ob_get_clean();
-sspa_markdown_t(false !== strpos($overview, 'data-kind="run"') && false !== strpos($overview, 'Download Markdown') && false !== strpos($overview, 'Copy Markdown'), 'the latest complete-site result offers both Markdown actions');
+$analysis_start = strpos($overview, 'id="sspa-run-panel"');
+$analysis_end = false === $analysis_start ? false : strpos($overview, '</div>', $analysis_start);
+$analysis_html = (false !== $analysis_start && false !== $analysis_end) ? substr($overview, $analysis_start, $analysis_end - $analysis_start) : '';
+sspa_markdown_t(false !== strpos($analysis_html, 'data-kind="run"') && false !== strpos($analysis_html, 'Download Markdown') && false !== strpos($analysis_html, 'Copy Markdown'), 'the Analysis panel itself offers both Markdown actions');
+sspa_markdown_t(false !== $analysis_start && $analysis_start < strpos($overview, 'sspa-score-row') && $analysis_start < strpos($overview, '>Health<'), 'the Analysis panel is the first Overview panel');
 sspa_markdown_t(false !== strpos($overview, SSPA_Markdown_Export::CACHE_SERVICE_URL), 'cache optimisation shows the implementation-service link');
 
 ob_start();

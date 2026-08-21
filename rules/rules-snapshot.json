@@ -58,11 +58,11 @@
     },
     "query_loop": {
       "title": "Queries in a loop",
-      "body": "A high query count from one component usually means queries inside a loop (N+1). The count grows as your content grows, so this gets slower every month. The component should batch its lookups or cache the results."
+      "body": "The measured query count is high. Inspect the initiating caller and attribution chain for an N+1 loop, then confirm whether batching or caching is appropriate."
     },
     "dupe_queries": {
       "title": "Duplicate queries",
-      "body": "The same query ran repeatedly in one page load - the component is missing basic result caching. Cheap to fix for the developer; report it or replace the plugin."
+      "body": "The same query ran repeatedly in one page load. Inspect the initiating caller to determine whether request-local caching, batching or another change is appropriate."
     },
     "slow_http": {
       "title": "Blocking HTTP call during page load",
@@ -82,7 +82,11 @@
     },
     "duplicate_functionality": {
       "title": "Overlapping plugins",
-      "body": "Multiple active plugins provide the same functionality; each adds queries and RAM to every page. Keep one, remove the rest."
+      "body": "These active plugins are in the same broad capability category. Their configuration was not inspected, so review which modules are enabled before deciding whether any functionality overlaps."
+    },
+    "potential_overlap_review": {
+      "title": "Review potentially overlapping configuration",
+      "body": "These active plugins are in the same broad capability category, but activation alone does not prove that the same modules are enabled. Review their settings; do not remove a plugin based on this finding alone."
     },
     "blocking_mail": {
       "title": "Slow email construction",
@@ -215,15 +219,6 @@
       "polylang",
       "translatepress-multilingual",
       "weglot"
-    ],
-    "payments": [
-      "woocommerce-payments",
-      "woocommerce-gateway-stripe",
-      "woocommerce-paypal-payments",
-      "woocommerce-square",
-      "mollie-payments-for-woocommerce",
-      "klarna-payments-for-woocommerce",
-      "woo-vipps"
     ],
     "commerce-core": [
       "woocommerce",
