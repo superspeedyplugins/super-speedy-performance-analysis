@@ -452,3 +452,66 @@
 #sspa_main .sspa-payload-summary p:last-child {
 	margin-bottom: 0;
 }
+
+/* Controlled save workflows. The editor frame must remain rendered because classic editor
+   controls report as hidden when an ancestor is display:none, but it stays off-screen. */
+#sspa_main .sspa-workflow-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+	gap: 18px;
+	margin-top: 18px;
+}
+
+#sspa_main .sspa-workflow-card {
+	margin: 0;
+	padding: 18px 20px;
+}
+
+#sspa_main .sspa-workflow-card h2 {
+	margin-top: 0;
+}
+
+#sspa_main .sspa-workflow-fields {
+	display: grid;
+	gap: 12px;
+	margin: 18px 0;
+}
+
+#sspa_main .sspa-workflow-fields label,
+#sspa_main .sspa-workflow-fields label > strong,
+#sspa_main .sspa-workflow-fields label > .description {
+	display: block;
+}
+
+#sspa_main .sspa-workflow-fields select {
+	width: 100%;
+	max-width: none;
+	margin-top: 4px;
+}
+
+#sspa_main .sspa-workflow-mail {
+	display: block;
+	margin: 0 0 18px;
+}
+
+#sspa_main .sspa-workflow-mail .description {
+	display: block;
+	margin-left: 24px;
+}
+
+#sspa_main #sspa-workflow-status {
+	margin-left: 8px;
+}
+
+#sspa_main #sspa-workflow-status.sspa-workflow-error {
+	color: #b32d2e;
+}
+
+#sspa_main #sspa-workflow-frame {
+	position: fixed;
+	left: -10000px;
+	top: 0;
+	width: 1200px;
+	height: 900px;
+	border: 0;
+}

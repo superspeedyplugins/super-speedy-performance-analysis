@@ -278,6 +278,10 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   and the classic transport token is removed before ordinary save callbacks see the submitted
   fields. It also fetches real post, product and HPOS order editors and pins their control and
   object-specific configuration.
+- `51-workflow-analysis.php` - the settings-page Workflows tab: automatic public-CPT
+  discovery, latest-modified target selection, both WooCommerce order transports, validated
+  controlled-editor launches, and a real no-change REST save whose attempted mail is measured
+  but suppressed before transport.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

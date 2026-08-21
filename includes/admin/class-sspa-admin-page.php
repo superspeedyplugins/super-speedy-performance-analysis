@@ -143,11 +143,27 @@ class SSPA_Admin_Page {
             'copied' => __('Copied', 'super-speedy-performance-analysis'),
         ));
         wp_enqueue_style('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-admin.css', array(), sspa_asset_version('includes/admin/css/sspa-admin.css'));
+        wp_enqueue_script('sspa-workflows', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-workflows.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-workflows.js'), true);
+        wp_localize_script('sspa-workflows', 'sspa_workflows', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('sspa_admin'),
+            'i18n' => array(
+                'loading' => __('Loading the latest items…', 'super-speedy-performance-analysis'),
+                'ready' => __('Ready. The selected item will be saved with its current values.', 'super-speedy-performance-analysis'),
+                'launching' => __('Loading the controlled editor…', 'super-speedy-performance-analysis'),
+                'running' => __('Saving and profiling the update request…', 'super-speedy-performance-analysis'),
+                'complete' => __('Save profiled. Opening the result…', 'super-speedy-performance-analysis'),
+                'no_targets' => __('No editable items were found for this content type.', 'super-speedy-performance-analysis'),
+                'no_transports' => __('No supported save transport was found.', 'super-speedy-performance-analysis'),
+                'failed' => __('The workflow could not be started.', 'super-speedy-performance-analysis'),
+            ),
+        ));
     }
 
     private static function tabs() {
         return array(
             'overview' => __('Overview', 'super-speedy-performance-analysis'),
+            'workflows' => __('Workflows', 'super-speedy-performance-analysis'),
             'pages' => __('Pages', 'super-speedy-performance-analysis'),
             'plugins' => __('Plugins', 'super-speedy-performance-analysis'),
             'history' => __('History', 'super-speedy-performance-analysis'),

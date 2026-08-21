@@ -8,6 +8,16 @@
 	var rawFetch = window.fetch ? window.fetch.bind(window) : null;
 	var armedFetch = null;
 	var STORAGE_KEY = 'sspa_admin_save_pending';
+	var workflow = cfg.workflow && cfg.workflow.active ? cfg.workflow : null;
+
+	function notifyWorkflow(type, data) {
+		if (!workflow && !(data && data.workflow)) {
+			return;
+		}
+		if (window.parent && window.parent !== window) {
+			window.parent.postMessage(Object.assign({ source: 'sspa-workflow', type: type }, data || {}), window.location.origin);
+		}
+	}
 
 	function status(message, detail) {
 		if (window.sspaPanel && window.sspaPanel.openStatus) {
@@ -16,6 +26,10 @@
 	}
 
 	function error(message) {
+		if (workflow) {
+			notifyWorkflow('error', { message: message });
+			return;
+		}
 		if (window.sspaPanel && window.sspaPanel.openError) {
 			window.sspaPanel.openError(message);
 		} else {
@@ -49,6 +63,11 @@
 		data.nonce = cfg.nonce;
 		data.url = url;
 		data.method = method;
+		if (workflow) {
+			data.mail_mode = workflow.mail_mode || 'suppress';
+			data.trigger = 'workflow';
+			data.workflow_transport = workflow.transport || '';
+		}
 		return ajax(data).then(function (response) {
 			if (!response || !response.success) {
 				var detail = response && response.data ? response.data : {};
@@ -70,7 +89,13 @@
 		}).then(function (response) {
 			if (response && response.success) {
 				window.sessionStorage.removeItem(STORAGE_KEY);
-				if (window.sspaPanel) {
+				if (workflow || prepared.workflow) {
+					notifyWorkflow('complete', {
+						profile_id: response.data.profile_id,
+						run_id: response.data.run_id,
+						workflow: true
+					});
+				} else if (window.sspaPanel) {
 					window.sspaPanel.openProfile(response.data.profile_id);
 				}
 				return response.data;
@@ -157,7 +182,7 @@
 		};
 	}
 
-	function classicControl() {
+	function classicControl(allowHidden) {
 		var selectors = [
 			'#publish:enabled',
 			'button.save_order:enabled',
@@ -165,7 +190,11 @@
 			'input[name="save"]:enabled'
 		];
 		for (var i = 0; i < selectors.length; i++) {
-			var found = $(selectors[i]).filter(':visible').first();
+			var found = $(selectors[i]);
+			if (!allowHidden) {
+				found = found.filter(':visible');
+			}
+			found = found.first();
 			if (found.length && found[0].form) {
 				return found[0];
 			}
@@ -180,7 +209,7 @@
 		}
 		var target = new URL(form.getAttribute('action') || window.location.href, window.location.href).href;
 		var method = String(form.getAttribute('method') || 'POST').toUpperCase();
-		status(cfg.i18n.saving, cfg.i18n.detail);
+		status(cfg.i18n.saving, workflow ? cfg.i18n.workflow_detail : cfg.i18n.detail);
 		prepare(target, method).then(function (prepared) {
 			var field = form.querySelector('input[name="' + cfg.field_name + '"]');
 			if (!field) {
@@ -193,7 +222,8 @@
 			window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
 				run_id: prepared.run_id,
 				token_id: prepared.token_id,
-				started: Date.now()
+				started: Date.now(),
+				workflow: !!workflow
 			}));
 			submitter.click();
 		}).catch(function (e) {
@@ -218,6 +248,34 @@
 		}, 15000);
 	}
 
+	// A workflow REST save must issue a request even when the editor has no dirty fields.
+	// An empty update reaches the real controller and fires its normal save cascade without
+	// SSPA changing a title, taxonomy or meta value merely to make the editor look dirty.
+	function workflowRestSave() {
+		if (!workflow || !workflow.rest_url || !window.wp || !window.wp.apiFetch || !rawFetch) {
+			error(cfg.i18n.no_control);
+			return;
+		}
+		status(cfg.i18n.saving, cfg.i18n.workflow_detail);
+		armedFetch = { started: Date.now() };
+		window.wp.apiFetch({
+			url: workflow.rest_url,
+			method: 'POST',
+			data: {}
+		}).catch(function (e) {
+			if (armedFetch) {
+				armedFetch = null;
+			}
+			error((e && e.message) || cfg.i18n.failed);
+		});
+		window.setTimeout(function () {
+			if (armedFetch) {
+				armedFetch = null;
+				error(cfg.i18n.no_request);
+			}
+		}, 15000);
+	}
+
 	$(document).on('click', '#wp-admin-bar-sspa-admin-save > a', function (event) {
 		event.preventDefault();
 		var submitter = classicControl();
@@ -231,11 +289,16 @@
 	// A classic save has already redirected by the time this script runs again. The token id
 	// in sessionStorage identifies the capture; no timings from this editor reload are used.
 	var pendingRaw = window.sessionStorage.getItem(STORAGE_KEY);
+	var resumedPending = false;
 	if (pendingRaw) {
 		try {
 			var pending = JSON.parse(pendingRaw);
 			if (pending.run_id && pending.token_id && Date.now() - pending.started < 10 * 60 * 1000) {
-				status(cfg.i18n.saving, cfg.i18n.detail);
+				resumedPending = true;
+				if (pending.workflow) {
+					workflow = { active: true };
+				}
+				status(cfg.i18n.saving, pending.workflow ? cfg.i18n.workflow_detail : cfg.i18n.detail);
 				finish(pending, { code: 302, duration_ms: 0 }).catch(function (e) {
 					error(e.message || cfg.i18n.failed);
 				});
@@ -245,5 +308,20 @@
 		} catch (e) {
 			window.sessionStorage.removeItem(STORAGE_KEY);
 		}
+	}
+
+	if (workflow && !resumedPending) {
+		window.setTimeout(function () {
+			if ('rest' === workflow.transport) {
+				workflowRestSave();
+				return;
+			}
+			var submitter = classicControl(true);
+			if (!submitter) {
+				error(cfg.i18n.no_control);
+				return;
+			}
+			classicSave(submitter);
+		}, 0);
 	}
 })(jQuery);

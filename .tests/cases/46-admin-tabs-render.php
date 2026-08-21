@@ -19,12 +19,12 @@ function sspa_t($ok, $label) {
 global $wpdb;
 wp_set_current_user(1);
 
-$sspa_tabs = array('overview', 'pages', 'plugins', 'history', 'traffic', 'share');
+$sspa_tabs = array('overview', 'workflows', 'pages', 'plugins', 'history', 'traffic', 'share');
 
 // A tab that renders almost nothing is a broken tab, not a passing one. These floors are
 // well under the real sizes (2.5k-10k) but well over an error page or an empty string.
 $sspa_min_bytes = array(
-    'overview' => 2000, 'pages' => 800, 'plugins' => 1500,
+    'overview' => 2000, 'workflows' => 1200, 'pages' => 800, 'plugins' => 1500,
     'history' => 1500, 'traffic' => 800, 'share' => 2000,
 );
 

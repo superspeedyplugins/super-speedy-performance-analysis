@@ -73,10 +73,13 @@ class SSPA_Admin_Save {
         wp_enqueue_script(
             'sspa-admin-save',
             SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin-save.js',
-            array('jquery', 'sspa-adhoc'),
+            array('jquery', 'sspa-adhoc', 'wp-api-fetch'),
             sspa_asset_version('includes/admin/js/sspa-admin-save.js'),
             true
         );
+        $workflow = class_exists('SSPA_Workflow_Analysis')
+            ? SSPA_Workflow_Analysis::editor_config($context)
+            : array('active' => false);
         wp_localize_script('sspa-admin-save', 'sspa_admin_save', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
@@ -84,9 +87,11 @@ class SSPA_Admin_Save {
             'screen_id' => $context['screen_id'],
             'object_type' => $context['object_type'],
             'object_id' => $context['object_id'],
+            'workflow' => $workflow,
             'i18n' => array(
                 'saving' => __('Saving and profiling the update request…', 'super-speedy-performance-analysis'),
                 'detail' => __('This is the real save. Normal emails, webhooks and integrations still run. The editor reload is not measured.', 'super-speedy-performance-analysis'),
+                'workflow_detail' => __('This is a no-change save through the selected editor transport. Update hooks and integrations run; email delivery follows the Workflows tab setting.', 'super-speedy-performance-analysis'),
                 'no_control' => __('No supported Update/Save control was found on this editor.', 'super-speedy-performance-analysis'),
                 'no_request' => __('The editor did not send an update request. Make a change, then try again.', 'super-speedy-performance-analysis'),
                 'failed' => __('The update/save request could not be profiled.', 'super-speedy-performance-analysis'),
@@ -129,19 +134,32 @@ class SSPA_Admin_Save {
             $object_type = 'order';
         }
         $key_type = substr($object_type ? $object_type : 'content', 0, 48);
+        $workflow_transport = !empty($context['workflow_transport']) && in_array($context['workflow_transport'], array('classic', 'rest'), true)
+            ? $context['workflow_transport']
+            : '';
         return array(
             'url' => $url,
-            'page_key' => 'admin-save-' . $key_type,
+            'page_key' => 'admin-save-' . $key_type . ($workflow_transport ? '-' . $workflow_transport : ''),
             'variant' => 'admin',
             'method' => $method,
             'screen_id' => !empty($context['screen_id']) ? sanitize_key($context['screen_id']) : '',
             'object_type' => $object_type,
             'object_id' => !empty($context['object_id']) ? (int) $context['object_id'] : 0,
+            'workflow_transport' => $workflow_transport,
         );
     }
 
     /** Arm a single, exact save request. Public so the e2e suite drives the real post.php path. */
-    public static function prepare($url, $method, $context = array()) {
+    public static function prepare($url, $method, $context = array(), $options = array()) {
+        $mail_mode = isset($options['mail_mode']) ? sanitize_key($options['mail_mode']) : 'deliver';
+        if (!in_array($mail_mode, array('deliver', 'construct', 'suppress'), true)) {
+            return new WP_Error('sspa_admin_save_mail', __('That mail mode is not supported.', 'super-speedy-performance-analysis'));
+        }
+        $trigger = isset($options['trigger']) && 'workflow' === sanitize_key($options['trigger']) ? 'workflow' : 'adminbar';
+        $workflow_transport = isset($options['workflow_transport']) ? sanitize_key($options['workflow_transport']) : '';
+        if (in_array($workflow_transport, array('classic', 'rest'), true)) {
+            $context['workflow_transport'] = $workflow_transport;
+        }
         $job = self::job_for($url, $method, $context);
         if (is_wp_error($job)) {
             return $job;
@@ -151,19 +169,28 @@ class SSPA_Admin_Save {
             'url' => $job['url'],
             'method' => $job['method'],
             'admin_save_context' => $job,
-            'trigger' => 'adminbar',
+            'trigger' => $trigger,
         ));
         if (is_wp_error($run_id)) {
             return $run_id;
         }
 
-        // Deliver mode observes the real mail path without altering it. Suppressing mail here
-        // would make an update/save profile a measurement of a different action.
-        $token = SSPA_Token::mint($job['url'], array('v' => 'admin', 'mail' => 'd', 'as' => '1'));
+        // The edit-screen button stays in deliver mode: it profiles the administrator's real
+        // action without changing it. The Workflows tab defaults to suppress because that is a
+        // deliberate synthetic no-change save; mail attempts are still counted and attributed.
+        $flags = array('v' => 'admin', 'as' => '1');
+        if ('construct' === $mail_mode) {
+            $flags['mail'] = 'c';
+        } elseif ('deliver' === $mail_mode) {
+            $flags['mail'] = 'd';
+        }
+        $token = SSPA_Token::mint($job['url'], $flags);
         $queue = get_option('sspa_queue_' . $run_id);
         $queue['interactive'] = array(
             'token_id' => $token['id'],
             'job' => $job,
+            'flags' => $flags,
+            'mail_mode' => $mail_mode,
         );
         $queue['last_progress'] = time();
         update_option('sspa_queue_' . $run_id, $queue, false);
@@ -175,6 +202,7 @@ class SSPA_Admin_Save {
             'header_name' => SSPA_Token::HEADER,
             'field_name' => self::FIELD_NAME,
             'page_key' => $job['page_key'],
+            'mail_mode' => $mail_mode,
         );
     }
 
@@ -205,6 +233,9 @@ class SSPA_Admin_Save {
             return new WP_Error('sspa_admin_save_token', __('The update/save measurement token does not match this run.', 'super-speedy-performance-analysis'));
         }
         $job = $queue['interactive']['job'];
+        $flags = !empty($queue['interactive']['flags']) && is_array($queue['interactive']['flags'])
+            ? $queue['interactive']['flags']
+            : array('v' => 'admin', 'mail' => 'd', 'as' => '1');
         $code = isset($report['code']) ? (int) $report['code'] : 200;
         $duration = isset($report['duration_ms']) ? max(0, (float) $report['duration_ms']) : 0;
         $sample = SSPA_Crawler::evaluate_sample(array(
@@ -215,7 +246,7 @@ class SSPA_Admin_Save {
             'error' => null,
             'error_message' => null,
             'cookies_present' => true,
-        ), $token_id, array('v' => 'admin', 'mail' => 'd', 'as' => '1'));
+        ), $token_id, $flags);
         if (empty($sample['capture'])) {
             return new WP_Error('sspa_admin_save_pending', __('The save completed but its diagnostic capture is not ready yet.', 'super-speedy-performance-analysis'));
         }
@@ -256,6 +287,11 @@ class SSPA_Admin_Save {
                 'screen_id' => isset($_POST['screen_id']) ? sanitize_key(wp_unslash($_POST['screen_id'])) : '',
                 'object_type' => isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '',
                 'object_id' => isset($_POST['object_id']) ? (int) $_POST['object_id'] : 0,
+            ),
+            array(
+                'mail_mode' => isset($_POST['mail_mode']) ? sanitize_key(wp_unslash($_POST['mail_mode'])) : 'deliver',
+                'trigger' => isset($_POST['trigger']) ? sanitize_key(wp_unslash($_POST['trigger'])) : 'adminbar',
+                'workflow_transport' => isset($_POST['workflow_transport']) ? sanitize_key(wp_unslash($_POST['workflow_transport'])) : '',
             )
         );
         if (is_wp_error($prepared)) {
