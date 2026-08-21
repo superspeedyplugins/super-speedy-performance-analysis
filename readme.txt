@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.0.3
+Stable tag: 0.29.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -31,7 +31,27 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Changelog ==
 
-= 0.23.6 (18th August 2026) =
+= 0.29 (21st August 2026) =
+* Added `Analyse update/save` to existing post, page, product, custom post type and HPOS order editors, profiling the real write request without including the subsequent editor reload
+
+= 0.28 (20th-21st August 2026) =
+* Fixed renamed WooCommerce session cookies being missed during checkout analysis and experimental traffic collection
+* Preserved plugins with measured boot or asset costs when switching a report to caller attribution, even when they ran no SQL or HTTP calls
+* Added WooCommerce popularity ordering to the archive profile contract
+
+= 0.27 (20th August 2026) =
+* Added privacy-safe Markdown downloads and clipboard copies for page, full-site and checkout reports
+* Added expandable Excimer sampling details and server-specific installation guidance wherever function-level samples are unavailable
+
+= 0.26 (19th-20th August 2026) =
+* Added per-page plugin usage and unload-safety evidence, including boot cost, asset counts, output changes, dependencies and fail-safe classifications
+
+= 0.25 (19th August 2026) =
+* Removed the measurement request timeout so unusually slow pages can finish and be diagnosed instead of losing their profile
+* Added a privacy-safe outbound WordPress HTTP API inventory with endpoint ownership, timing, purpose and fail-safe blocking classifications
+
+= 0.24 (18th August 2026) =
+* Added traffic opportunity estimates and before/after comparisons projected to 24 hours
 * Updated `super-speedy-settings` to 1.8.0, restoring the official WordPress MCP Adapter
 
 = 0.23 (14th August 2026) =
