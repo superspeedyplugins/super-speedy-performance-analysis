@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.29.15
+ * Version: 0.30.0
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -18,7 +18,11 @@
 
 defined('ABSPATH') || exit;
 
-define('SSPA_VERSION', '0.29.10');
+// Read from the plugin header rather than duplicated, because the two drifted: the header
+// said 0.29.15 while this constant still said 0.29.10, and this constant is what the Markdown
+// export, the generated helper files and the download filenames tell the user they are running.
+$sspa_header = get_file_data(__FILE__, array('Version' => 'Version'), 'plugin');
+define('SSPA_VERSION', '' !== $sspa_header['Version'] ? $sspa_header['Version'] : '0.0.0');
 define('SSPA_PLUGIN_FILE', __FILE__);
 define('SSPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSPA_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -28,42 +32,37 @@ require_once SSPA_PLUGIN_DIR . 'defines.php';
 // SSPA-SELFHOSTED-UPDATER-START
 // Everything between these two markers is DELETED by .build/build.sh when it builds the
 // wordpress.org edition. wordpress.org forbids a bundled updater that phones home, and PCP
-// errors on the mere mention of PucFactory - the class_exists() guard below is not enough,
-// because the check is a string scan, not a reachability analysis. The markers keep that a
-// mechanical deletion rather than a second copy of this file that would drift.
+// errors on the mere mention of the update checker, so the markers keep that a mechanical
+// deletion rather than a second copy of this file that would drift.
 //
-// Shared settings/menu/PUC framework, loaded for the shared Super Speedy menu and the
-// bundled update-checker library. Deliberately NOT registered via SuperSpeedySettings::init():
-// this plugin is free (no licence key, so no licence table and no auth-server gated download)
-// and init() would register its own update checker for our slug - PUC fatals when the same
-// slug is registered twice, and we register ours below. If the submodule is missing (e.g. a
-// zip without submodules) the plugin still works - the admin page falls back to its own
-// top-level menu (see class-sspa-admin-page.php).
+// The shared settings submodule owns BOTH the Super Speedy menu and the update checker, and
+// this plugin registers with it exactly like every other Super Speedy plugin.
+//
+// It used to build its own update checker instead, and skip registration, because
+// registering would have made the submodule build a SECOND checker for this slug and the
+// checker fatals on a duplicate. The cost of that was invisible until 22 August 2026: on a
+// site where this is the ONLY Super Speedy plugin, nothing ever registered, so the shared
+// menu was never created and the whole Super Speedy dashboard - the plugin range, the
+// licence table, the panel that leads it - did not exist for exactly the audience the free
+// GitHub edition brings in. One checker, owned by the submodule, fixes both.
+//
+// If the submodule is absent - a git clone without --recurse-submodules, or the wordpress.org
+// build - there is deliberately NO update checker at all, and the admin page falls back to
+// its own top-level menu (see class-sspa-admin-page.php). A second updater implementation
+// living here for that case is exactly what this change removes: an install that cannot
+// check for updates should be re-cloned with its submodules, not quietly served by a
+// different code path that nobody tests.
 $sspa_settings = SSPA_PLUGIN_DIR . 'super-speedy-settings/super-speedy-settings.php';
 if (is_admin() && !wp_doing_ajax() && file_exists($sspa_settings)) {
     require_once $sspa_settings;
-}
-
-// Updates come from superspeedyplugins.com, same metadata convention as the paid plugins
-// (/assets/plugins/<slug>.json) but with an ungated download_url because this plugin is free.
-// Not GitHub: the repo is private for now.
-//
-// Deferred to plugins_loaded on purpose. Since settings 1.5.0 the submodule entrypoint is
-// only a facade: it queues itself as a candidate and the winning copy's core - which is what
-// actually requires the PUC library - loads at plugins_loaded -9999. Building here at include
-// time therefore always found PucFactory absent and built nothing at all, so run just after
-// the core at -9998. The class_exists guard stays: a zip without the submodule must still
-// activate, simply without update checks.
-add_action('plugins_loaded', function () {
-    if (!class_exists('SuperSpeedy\\PluginUpdateChecker\\v5\\PucFactory')) {
-        return;
+    if (class_exists('SuperSpeedySettings_1_0')) {
+        SuperSpeedySettings_1_0::init(array(
+            'plugin_slug' => 'super-speedy-performance-analysis',
+            'version'     => SSPA_VERSION,
+            'file'        => __FILE__,
+        ));
     }
-    $GLOBALS['sspa_update_checker'] = \SuperSpeedy\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-        'https://www.superspeedyplugins.com/assets/plugins/super-speedy-performance-analysis.json',
-        SSPA_PLUGIN_DIR . 'super-speedy-performance-analysis.php',
-        'super-speedy-performance-analysis'
-    );
-}, -9998);
+}
 // SSPA-SELFHOSTED-UPDATER-END
 
 require_once SSPA_PLUGIN_DIR . 'includes/class-sspa-bootstrap.php';
