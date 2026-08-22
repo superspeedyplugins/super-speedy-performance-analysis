@@ -387,6 +387,10 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                 // A deliberate site setting, not a permissions problem. Saying "not writable"
                 // here would send the user to chmod something that is not the cause.
                 esc_html_e('not installed - this site sets DISALLOW_FILE_MODS, which forbids plugins from writing files', 'super-speedy-performance-analysis');
+            } elseif (isset($sspa_health['mu_reason']) && 'stale' === $sspa_health['mu_reason']) {
+                // Writable, just not refreshed yet. Telling someone to chmod a directory that
+                // is already writable is the worst kind of wrong advice.
+                esc_html_e('out of date - it will be refreshed the next time an analysis runs', 'super-speedy-performance-analysis');
             } else {
                 esc_html_e('not installed - wp-content/mu-plugins is not writable', 'super-speedy-performance-analysis');
             }

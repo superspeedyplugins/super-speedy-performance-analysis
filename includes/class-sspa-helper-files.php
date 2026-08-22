@@ -309,10 +309,34 @@ class SSPA_Helper_Files {
     }
 
     public static function health() {
+        // The loader carries the plugin version, so it goes stale on every update - and a
+        // plugin update does NOT fire the activation hook, so nothing would rewrite it until
+        // the next analysis run. Refresh it here, on our own screen, rather than reporting a
+        // stale file as a broken install. Cheap: a comparison, and a write only when it
+        // actually differs.
+        self::ensure_installed();
+
         $mu_content = self::generate('mu/sspa-loader.php');
-        $mu_ok = file_exists(self::mu_path()) && file_get_contents(self::mu_path()) === $mu_content;
+        $mu_exists = file_exists(self::mu_path());
+        $mu_ok = $mu_exists && file_get_contents(self::mu_path()) === $mu_content;
+
+        // Why it is not installed decides what the user is told to do about it. "Not
+        // writable" sends someone to chmod a directory that may be fine.
+        $mu_reason = 'ok';
+        if (!$mu_ok) {
+            if (self::file_mods_blocked()) {
+                $mu_reason = 'file_mods_blocked';
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write.
+            } elseif (!is_writable(WPMU_PLUGIN_DIR) && !($mu_exists && is_writable(self::mu_path()))) {
+                $mu_reason = 'not_writable';
+            } else {
+                $mu_reason = 'stale';
+            }
+        }
+
         return array(
             'mu' => $mu_ok,
+            'mu_reason' => $mu_reason,
             // Distinct from "not writable": the owner has forbidden file writes, which is a
             // configuration choice, not a permissions fault. The UI must say which it is.
             'file_mods_blocked' => self::file_mods_blocked(),
