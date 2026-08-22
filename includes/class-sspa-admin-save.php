@@ -57,7 +57,8 @@ class SSPA_Admin_Save {
         }
         $bar->add_node(array(
             'id' => 'sspa-admin-save',
-            'title' => '<span class="ab-icon dashicons dashicons-update" style="top:2px"></span>' . esc_html__('Analyse update/save', 'super-speedy-performance-analysis'),
+            'parent' => 'sspa-measure',
+            'title' => esc_html__('Analyse update/save', 'super-speedy-performance-analysis'),
             'href' => '#',
             'meta' => array(
                 'title' => __('Save the current edits and profile the write request itself, excluding the editor reload', 'super-speedy-performance-analysis'),

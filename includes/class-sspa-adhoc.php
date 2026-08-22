@@ -45,7 +45,8 @@ class SSPA_Adhoc {
         }
         $bar->add_node(array(
             'id' => 'sspa-adhoc',
-            'title' => '<span class="ab-icon dashicons dashicons-performance" style="top:2px"></span>' . esc_html__('Analyse this page', 'super-speedy-performance-analysis'),
+            'parent' => 'sspa-measure', // the PA menu, see class-sspa-admin-bar.php
+            'title' => esc_html__('Analyse this page', 'super-speedy-performance-analysis'),
             'href' => '#',
             'meta' => array('title' => __('Profile this URL with Super Speedy Performance Analysis', 'super-speedy-performance-analysis')),
         ));
@@ -55,7 +56,8 @@ class SSPA_Adhoc {
         if (self::checkout_flow_available()) {
             $bar->add_node(array(
                 'id' => 'sspa-checkout',
-                'title' => '<span class="ab-icon dashicons dashicons-cart" style="top:2px"></span>' . esc_html__('Analyse checkout & order flow', 'super-speedy-performance-analysis'),
+                'parent' => 'sspa-measure',
+                'title' => esc_html__('Analyse checkout & order flow', 'super-speedy-performance-analysis'),
                 'href' => '#',
                 'meta' => array('title' => __('Measure a real purchase and handling the order afterwards - viewing it and marking it completed', 'super-speedy-performance-analysis')),
             ));
