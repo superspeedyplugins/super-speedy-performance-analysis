@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.35.0
+Stable tag: 0.35.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -32,6 +32,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.35.1 (22nd August 2026) =
+* Updated super-speedy-settings to the latest version
 
 = 0.29.7 (21st August 2026) =
 * Hardened the shared settings module and removed its Jetpack Autoloader dependency
