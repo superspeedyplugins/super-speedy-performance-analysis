@@ -294,7 +294,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
         $sspa_deep_notes = is_array($sspa_deep_notes) ? $sspa_deep_notes : array(); ?>
     <div class="sspa-placeholder">
-        <h2><?php esc_html_e('Latest Plugin Impact Scan', 'super-speedy-performance-analysis'); ?></h2>
+        <h2><?php esc_html_e('Latest Plugin Impact Analysis', 'super-speedy-performance-analysis'); ?></h2>
         <p>
             <?php
             printf(

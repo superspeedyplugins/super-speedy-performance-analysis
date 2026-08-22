@@ -246,7 +246,7 @@
 	}
 
 	// The panel's public surface: the Pages tab opens it by profile id, and the settings
-	// page's Plugin Impact Scan button opens the site-scoped plugin picker.
+	// page's Plugin Impact Analysis button opens the site-scoped plugin picker.
 	window.sspaPanel = {
 		openProfile: openProfile,
 		openUrl: openUrl,
@@ -254,6 +254,29 @@
 		openStatus: openStatus,
 		openError: openError
 	};
+
+	// Deep link. Another screen - the shared Super Speedy dashboard - can send someone here
+	// with the right tool primed: ?sspa_open=page|checkout|save clicks the matching admin-bar
+	// entry once the DOM is ready.
+	//
+	// It only OPENS the panel. Nothing is measured and nothing is bought: the page panel shows
+	// a stored result, and checkout opens its pre-flight, which still needs the human press.
+	// A link on another screen must never be able to start a real purchase.
+	$(function () {
+		var want = (window.location.search.match(/[?&]sspa_open=([a-z]+)/) || [])[1];
+		if (!want) {
+			return;
+		}
+		var targets = {
+			page: '#wp-admin-bar-sspa-adhoc > a',
+			checkout: '#wp-admin-bar-sspa-checkout > a',
+			save: '#wp-admin-bar-sspa-admin-save > a'
+		};
+		var target = targets[want] ? $(targets[want]) : $();
+		if (target.length) {
+			target.trigger('click');
+		}
+	});
 
 	$(document).on('click', '#wp-admin-bar-sspa-adhoc > a', function (e) {
 		e.preventDefault();
@@ -459,7 +482,7 @@
 
 	// ---- plugin impact: the picker ----
 	// One picker, two scopes. From the page panel it plans "measure plugins on this page";
-	// from the settings page's Plugin Impact Scan button it plans the site-wide sweep.
+	// from the settings page's Plugin Impact Analysis button it plans the site-wide sweep.
 	// NOTHING is preselected in either: measuring a plugin means excluding it from test
 	// requests, another plugin can react to that, and which plugins that risk is acceptable
 	// for is the site owner's call - made here, knowing what is about to happen.
@@ -489,7 +512,7 @@
 		fetchPlan($(this).data('profile-id'), $('#sspa-adhoc-impact .sspa-adhoc-plan'));
 	});
 
-	// The settings page's Plugin Impact Scan button opens the same picker in the popover
+	// The settings page's Plugin Impact Analysis button opens the same picker in the popover
 	// shell, site-scoped. sspa-admin.js calls this.
 	function openImpactPicker() {
 		current = { profileId: 0, url: '' };

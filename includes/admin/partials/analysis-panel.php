@@ -59,7 +59,7 @@ defined('ABSPATH') || exit;
         </button>
         <?php if ($sspa_last_run) : ?>
         <button type="button" class="button" id="sspa-run-deep"<?php disabled((bool) $sspa_active_run); ?>>
-            <?php esc_html_e('Run Plugin Impact Scan', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Run Plugin Impact Analysis', 'super-speedy-performance-analysis'); ?>
         </button>
         <?php if (wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php')) : ?>
         <button type="button" class="button" id="sspa-run-cache"<?php disabled((bool) $sspa_active_run); ?>>
@@ -73,7 +73,7 @@ defined('ABSPATH') || exit;
     </p>
     <?php if ($sspa_last_run) : ?>
     <p class="description">
-        <?php esc_html_e('The Plugin Impact Scan opens a chooser first: nothing is measured until you pick the plugins yourself, and the number of measurements and a time estimate are shown before anything starts. Each chosen plugin is then re-measured with that plugin excluded FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation or deactivation hooks. Choosing every plugin runs the two-phase sweep: a cheap screen of each plugin on its busiest pages first, then the full treatment only for the plugins that showed a measurable impact. Start it, walk away - the floating monitor shows exactly where it is up to. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('The Plugin Impact Analysis opens a chooser first: nothing is measured until you pick the plugins yourself, and the number of measurements and a time estimate are shown before anything starts. Each chosen plugin is then re-measured with that plugin excluded FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation or deactivation hooks. Choosing every plugin runs the two-phase sweep: a cheap screen of each plugin on its busiest pages first, then the full treatment only for the plugins that showed a measurable impact. Start it, walk away - the floating monitor shows exactly where it is up to. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic.', 'super-speedy-performance-analysis'); ?>
     </p>
     <?php endif; ?>
 </div>

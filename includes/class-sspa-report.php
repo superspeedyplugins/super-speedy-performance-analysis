@@ -27,6 +27,53 @@ class SSPA_Report {
      * @return array|WP_Error
      */
     /**
+     * The one line worth putting in front of someone: the slowest page in the last
+     * site-wide analysis, and the component costing the most on it.
+     *
+     * PUBLIC CONTRACT for the shared Super Speedy settings panel, so it must stay cheap -
+     * two indexed reads, no report build, no profile blobs unpacked. Returns null when
+     * there is no completed site-wide run to draw on.
+     *
+     * @return array{page_key:string,url:string,gen_ms:int,component:?string,component_ms:int}|null
+     */
+    public static function headline() {
+        global $wpdb;
+        $run_id = self::latest_done_run_id();
+        if (!$run_id) {
+            return null;
+        }
+        $profiles = SSPA_Schema::table('profiles');
+        $slowest = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, page_key, url, page_gen_ms FROM {$profiles}
+             WHERE run_id = %d AND page_gen_ms > 0
+             ORDER BY page_gen_ms DESC LIMIT 1",
+            $run_id
+        ), ARRAY_A);
+        if (!$slowest) {
+            return null;
+        }
+
+        // Worst component ON THAT PAGE, by the time we can attribute to it. Deliberately
+        // sql + http + include, not a guess at total PHP: those are measured.
+        $components = SSPA_Schema::table('component_stats');
+        $worst = $wpdb->get_row($wpdb->prepare(
+            "SELECT component, (sql_ms + http_ms + include_ms) AS cost
+             FROM {$components}
+             WHERE profile_id = %d AND component_type != 'core'
+             ORDER BY cost DESC LIMIT 1",
+            (int) $slowest['id']
+        ), ARRAY_A);
+
+        return array(
+            'page_key' => (string) $slowest['page_key'],
+            'url' => (string) $slowest['url'],
+            'gen_ms' => (int) round((float) $slowest['page_gen_ms']),
+            'component' => $worst ? (string) $worst['component'] : null,
+            'component_ms' => $worst ? (int) round((float) $worst['cost']) : 0,
+        );
+    }
+
+    /**
      * How many single-page analyses are stored.
      *
      * latest_done_run_id() deliberately ignores these, so a one-page check never replaces

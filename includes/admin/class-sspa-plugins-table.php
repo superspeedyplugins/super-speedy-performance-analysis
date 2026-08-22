@@ -192,7 +192,7 @@ class SSPA_Plugins_Table {
      */
     private static function impact_cell($c, $impact_rows, $version, $run_id) {
         if (!$impact_rows) {
-            return '<span class="sspa-badge">' . esc_html__('inferred - run a Plugin Impact Scan to measure', 'super-speedy-performance-analysis') . '</span>';
+            return '<span class="sspa-badge">' . esc_html__('inferred - run a Plugin Impact Analysis to measure', 'super-speedy-performance-analysis') . '</span>';
         }
 
         ob_start();
