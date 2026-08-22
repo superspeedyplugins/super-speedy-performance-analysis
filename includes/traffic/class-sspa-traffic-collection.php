@@ -42,9 +42,6 @@ class SSPA_Traffic_Collection {
         if (is_multisite()) {
             return new WP_Error('sspa_traffic_multisite', __('The experimental collector is not available on multisite yet because inactive subsites must remain completely untouched.', 'super-speedy-performance-analysis'));
         }
-        if (!class_exists('WooCommerce')) {
-            return new WP_Error('sspa_traffic_no_woocommerce', __('The first experimental collector requires WooCommerce.', 'super-speedy-performance-analysis'));
-        }
         $durations = self::durations();
         if (!isset($durations[$duration])) {
             return new WP_Error('sspa_traffic_duration', __('Choose 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));

@@ -224,6 +224,23 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <?php if (!empty($sspa_a['sql'])) : ?>
                 <pre class="sspa-insight-sql"><?php echo esc_html($sspa_a['sql']); ?></pre>
             <?php endif; ?>
+            <?php
+            // The SQL above is the manual fix. Scalability Pro manages autoloading for you,
+            // which is the same job done continuously rather than once - so it belongs here,
+            // next to the finding, rather than as a banner somewhere. Only shown when the
+            // plugin is not already doing it.
+            if (!function_exists('wpi_getIndexes')) :
+                ?>
+                <p class="description">
+                    <?php
+                    printf(
+                        /* translators: %s: link to the Scalability Pro product page. */
+                        esc_html__('Prefer not to run this by hand every time the site changes? %s includes an options manager that loads what your site actually uses and unloads what it does not, keeping this list under control as plugins come and go.', 'super-speedy-performance-analysis'),
+                        '<a href="' . esc_url('https://www.superspeedyplugins.com/product/scalability-pro/?utm_source=sspa&utm_content=autoload') . '" target="_blank" rel="noopener">' . esc_html__('Scalability Pro', 'super-speedy-performance-analysis') . '</a>'
+                    );
+                    ?>
+                </p>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -277,7 +294,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
         $sspa_deep_notes = is_array($sspa_deep_notes) ? $sspa_deep_notes : array(); ?>
     <div class="sspa-placeholder">
-        <h2><?php esc_html_e('Latest Deep Impact Scan', 'super-speedy-performance-analysis'); ?></h2>
+        <h2><?php esc_html_e('Latest Plugin Impact Scan', 'super-speedy-performance-analysis'); ?></h2>
         <p>
             <?php
             printf(

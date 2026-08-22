@@ -8,12 +8,15 @@ $sspa_traffic_has_woo = class_exists('WooCommerce');
 ?>
 <div class="sspa-placeholder sspa-traffic-panel" data-active="<?php echo $sspa_traffic_active ? '1' : '0'; ?>" data-collection-id="<?php echo $sspa_traffic_collection ? (int) $sspa_traffic_collection['id'] : 0; ?>">
     <h2><?php esc_html_e('Traffic collector', 'super-speedy-performance-analysis'); ?> <span class="sspa-status sspa-status-blocked"><?php esc_html_e('Experimental', 'super-speedy-performance-analysis'); ?></span></h2>
-    <p><?php esc_html_e('Observe anonymous WooCommerce traffic reaching WordPress, with exact request coverage for logged-in visitors and visitors with non-empty baskets. Broad anonymous origin traffic is sampled.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('Observe the anonymous traffic reaching WordPress, with exact request coverage for logged-in visitors and, on a shop, visitors with non-empty baskets. Broad anonymous origin traffic is sampled.', 'super-speedy-performance-analysis'); ?></p>
     <p class="description"><?php esc_html_e('This is an experimental collector, not the finished Traffic Performance Analysis. The observations download is provided so its measurements, gaps and overhead can be reviewed while the design evolves.', 'super-speedy-performance-analysis'); ?></p>
 
     <?php if (!$sspa_traffic_has_woo) : ?>
-        <div class="notice notice-warning inline"><p><?php esc_html_e('The first collector requires WooCommerce.', 'super-speedy-performance-analysis'); ?></p></div>
-    <?php elseif (is_multisite()) : ?>
+        <?php // Not a blocker. Only the commerce funnel needs WooCommerce; requests, timings,
+              // cohorts and automation classification are collected on any WordPress site. ?>
+        <div class="notice notice-info inline"><p><?php esc_html_e('WooCommerce is not active on this site, so the commerce funnel - baskets, orders and revenue exposure - will be empty. Everything else is collected as normal.', 'super-speedy-performance-analysis'); ?></p></div>
+    <?php endif; ?>
+    <?php if (is_multisite()) : ?>
         <div class="notice notice-warning inline"><p><?php esc_html_e('Traffic collection is deliberately unavailable on multisite until an inactive subsite can remain completely untouched.', 'super-speedy-performance-analysis'); ?></p></div>
     <?php endif; ?>
 

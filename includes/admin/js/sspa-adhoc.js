@@ -246,7 +246,7 @@
 	}
 
 	// The panel's public surface: the Pages tab opens it by profile id, and the settings
-	// page's Plugin Impact Analysis button opens the site-scoped plugin picker.
+	// page's Plugin Impact Scan button opens the site-scoped plugin picker.
 	window.sspaPanel = {
 		openProfile: openProfile,
 		openUrl: openUrl,
@@ -459,7 +459,7 @@
 
 	// ---- plugin impact: the picker ----
 	// One picker, two scopes. From the page panel it plans "measure plugins on this page";
-	// from the settings page's Plugin Impact Analysis button it plans the site-wide sweep.
+	// from the settings page's Plugin Impact Scan button it plans the site-wide sweep.
 	// NOTHING is preselected in either: measuring a plugin means excluding it from test
 	// requests, another plugin can react to that, and which plugins that risk is acceptable
 	// for is the site owner's call - made here, knowing what is about to happen.
@@ -489,7 +489,7 @@
 		fetchPlan($(this).data('profile-id'), $('#sspa-adhoc-impact .sspa-adhoc-plan'));
 	});
 
-	// The settings page's Plugin Impact Analysis button opens the same picker in the popover
+	// The settings page's Plugin Impact Scan button opens the same picker in the popover
 	// shell, site-scoped. sspa-admin.js calls this.
 	function openImpactPicker() {
 		current = { profileId: 0, url: '' };
