@@ -383,31 +383,56 @@ class SSPA_Admin_Bar {
             : sprintf(__('Purged %1$s for %2$s.', 'super-speedy-performance-analysis'), $cache['name'], $url);
     }
 
-    /** Our own transients, and nothing else. */
+    /**
+     * Transient clearing, honest about where transients actually live.
+     *
+     * With a persistent object cache in play, WordPress keeps transients THERE and not in
+     * the options table, so a DELETE finds nothing and reporting "cleared 0" would be a lie
+     * about work that the object cache flush then did anyway. Each path therefore says what
+     * it really did. Found the hard way on a Redis-backed test site, 22 August 2026.
+     */
     private static function clear_our_caches() {
         global $wpdb;
-        $rows = $wpdb->query(
+        $rows = (int) $wpdb->query(
             "DELETE FROM {$wpdb->options}
              WHERE option_name REGEXP '^_(site_)?transient(_timeout)?_(superspeedy_changes_|superspeedy_l_|ssp_|sspa_)'"
         );
+        if (wp_using_ext_object_cache()) {
+            wp_cache_flush();
+            return $rows
+                ? sprintf(
+                    /* translators: %d: number of stale database rows also removed. */
+                    __('This site keeps transients in its object cache, so that was flushed. %d stale database row(s) were removed as well.', 'super-speedy-performance-analysis'),
+                    $rows
+                )
+                : __('This site keeps transients in its object cache, so that was flushed.', 'super-speedy-performance-analysis');
+        }
         wp_cache_flush();
         return sprintf(
             /* translators: %d: number of database rows removed. */
-            _n('Cleared %d Super Speedy cache row.', 'Cleared %d Super Speedy cache rows.', (int) $rows, 'super-speedy-performance-analysis'),
-            (int) $rows
+            _n('Cleared %d Super Speedy cache row.', 'Cleared %d Super Speedy cache rows.', $rows, 'super-speedy-performance-analysis'),
+            $rows
         );
     }
 
     private static function clear_all_transients() {
         global $wpdb;
-        $rows = $wpdb->query(
+        $rows = (int) $wpdb->query(
             "DELETE FROM {$wpdb->options} WHERE option_name REGEXP '^_(site_)?transient(_timeout)?_'"
         );
+        if (wp_using_ext_object_cache()) {
+            wp_cache_flush();
+            return sprintf(
+                /* translators: %d: number of stale database rows also removed. */
+                __('This site keeps transients in its object cache, so the whole object cache was flushed. %d stale database row(s) were removed as well. Plugins will refill as pages are hit.', 'super-speedy-performance-analysis'),
+                $rows
+            );
+        }
         wp_cache_flush();
         return sprintf(
             /* translators: %d: number of database rows removed. */
-            _n('Cleared %d transient row. Plugins will refill them as pages are hit.', 'Cleared %d transient rows. Plugins will refill them as pages are hit.', (int) $rows, 'super-speedy-performance-analysis'),
-            (int) $rows
+            _n('Cleared %d transient row. Plugins will refill them as pages are hit.', 'Cleared %d transient rows. Plugins will refill them as pages are hit.', $rows, 'super-speedy-performance-analysis'),
+            $rows
         );
     }
 
