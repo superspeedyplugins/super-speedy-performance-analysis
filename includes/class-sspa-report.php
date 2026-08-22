@@ -26,6 +26,32 @@ class SSPA_Report {
     /**
      * @return array|WP_Error
      */
+    /**
+     * Cheap headline for another plugin's UI: the latest score and when it was measured.
+     *
+     * PUBLIC CONTRACT. The shared Super Speedy settings page calls this on every page
+     * load to render its Performance Analysis panel, so it must stay two small queries
+     * and must never build a full report. Returns null when nothing has been analysed.
+     *
+     * @return array{run_id:int,score:?int,finished:?string}|null
+     */
+    public static function summary() {
+        $run_id = self::latest_done_run_id();
+        if (!$run_id) {
+            return null;
+        }
+        $run = SSPA_Run_Controller::run_row($run_id);
+        if (!$run) {
+            return null;
+        }
+        $notes = json_decode((string) $run['notes'], true);
+        return array(
+            'run_id' => (int) $run['id'],
+            'score' => is_array($notes) && isset($notes['score']) ? (int) $notes['score'] : null,
+            'finished' => isset($run['finished']) ? $run['finished'] : null,
+        );
+    }
+
     public static function build($run_id = 0) {
         global $wpdb;
         $run_id = $run_id ? (int) $run_id : self::latest_done_run_id();
