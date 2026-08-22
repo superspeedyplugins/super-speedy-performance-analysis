@@ -27,7 +27,12 @@ peak RAM.
 A page profiler shows you a page render, in your browser, on a GET request. A checkout is
 none of those things. It is a chain of authenticated POSTs and redirects, with a payment
 gateway in the middle and a status transition afterwards that fires half your plugin list.
-Nobody watches that sequence end to end, which is exactly why it is where the surprises live.
+
+Debuggers that do follow ajax and REST requests report them as a summary in the response
+headers - total time, memory, PHP errors, redirect call stacks - not as a query list with the
+plugin responsible for each one. And a summary per request is still not the thing you need,
+which is the **whole sequence, timed as one flow, split where the money is taken**. Nobody
+watches that end to end, which is exactly why it is where the surprises live.
 
 Two more things make the numbers real rather than indicative:
 

@@ -43,6 +43,8 @@ WordPress Abilities API surface on WordPress 6.9+.
 - Something specific is slow: [[Per-Page-Analysis]]
 - The whole site is slow and you do not know why: [[Your-First-Analysis]], then [[Plugin-Impact-Analysis]]
 - Your shop feels slow at the till: [[Checkout-and-Order-Flow-Analysis]]
+- You want to cache pages for logged-in customers and users with baskets: [[Cache-Optimisation-Analysis]]
+- Editing a post or product takes forever to save: [[Update-and-Save-Analysis]]
 - You want the deepest possible detail: [[Server-Capabilities]]
 - Something is not working: [[Troubleshooting]]
 - Where this is going, and how to influence it: [[Roadmap]]
