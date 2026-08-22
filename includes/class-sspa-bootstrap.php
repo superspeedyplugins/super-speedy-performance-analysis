@@ -88,6 +88,9 @@ class SSPA_Bootstrap {
                 add_action('plugins_loaded', array('SSPA_Checkout_Flow', 'maybe_arm_request'), 1);
             }
         }
+        // Synthetic measurement accounts are refused the credential login path.
+        SSPA_Auth::register();
+
         // The PA menu is registered first (80) so the analysis nodes below can hang off it.
         SSPA_Admin_Bar::register();
         add_action('admin_bar_menu', array('SSPA_Adhoc', 'admin_bar_node'), 90);

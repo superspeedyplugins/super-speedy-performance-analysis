@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis Loader
  * Description: Arms the SSPA profiler for requests carrying a valid signed profiling token. Inert for all other traffic. Installed and removed automatically by the Super Speedy Performance Analysis plugin.
  * Author: Dave Hilditch
- * Version: %%SSPA_VERSION%%
+ * Version: %%SSPA_MU_VERSION%%
  */
 
 // TEMPLATE: placeholders are replaced at install time by SSPA_Helper_Files.

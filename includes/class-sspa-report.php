@@ -27,6 +27,22 @@ class SSPA_Report {
      * @return array|WP_Error
      */
     /**
+     * How many single-page analyses are stored.
+     *
+     * latest_done_run_id() deliberately ignores these, so a one-page check never replaces
+     * the site-wide numbers on Overview. That makes "nothing analysed yet" a lie for
+     * someone who has just analysed a page, which is why callers need this to tell the
+     * two states apart. One COUNT, and only asked when there is no site-wide run.
+     */
+    public static function page_analysis_count() {
+        global $wpdb;
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM %i WHERE status = 'done' AND run_type = 'adhoc'",
+            SSPA_Schema::table('runs')
+        ));
+    }
+
+    /**
      * Cheap headline for another plugin's UI: the latest score and when it was measured.
      *
      * PUBLIC CONTRACT. The shared Super Speedy settings page calls this on every page

@@ -26,9 +26,13 @@ class SSPA_Helper_Files {
         if ($content === false) {
             return false;
         }
+        // The installed files carry THEIR OWN version, not the plugin's: a patch release
+        // that touches neither of them must not rewrite them. The byte comparison in
+        // health() still forces a rewrite when the secret or the plugin path changes,
+        // which is a different thing and must keep working.
         return str_replace(
-            array('%%SSPA_VERSION%%', '%%SSPA_SECRET%%', '%%SSPA_PLUGIN_DIR%%'),
-            array(SSPA_VERSION, SSPA_Token::secret(), addslashes(trailingslashit(SSPA_PLUGIN_DIR))),
+            array('%%SSPA_VERSION%%', '%%SSPA_MU_VERSION%%', '%%SSPA_DROPIN_VERSION%%', '%%SSPA_SECRET%%', '%%SSPA_PLUGIN_DIR%%'),
+            array(SSPA_VERSION, SSPA_MU_VERSION, SSPA_DROPIN_VERSION, SSPA_Token::secret(), addslashes(trailingslashit(SSPA_PLUGIN_DIR))),
             $content
         );
     }

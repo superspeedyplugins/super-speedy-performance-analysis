@@ -8,7 +8,7 @@
  * that records row counts, errors and backtraces per query.
  *
  * Installed and removed automatically by the Super Speedy Performance Analysis plugin.
- * Version: %%SSPA_VERSION%%
+ * Version: %%SSPA_DROPIN_VERSION%%
  */
 
 // TEMPLATE: placeholders are replaced at install time by SSPA_Helper_Files.

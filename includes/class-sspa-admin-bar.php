@@ -95,25 +95,42 @@ class SSPA_Admin_Bar {
         self::group_share($bar, $summary);
     }
 
-    /** A. The analysis actions. The two JS-driven ones are added by their own classes. */
+    /**
+     * A. The analysis actions, in the order you reach for them.
+     *
+     * The group is declared EMPTY here and filled at priority 90/91 by SSPA_Adhoc (analyse
+     * this page, analyse checkout) and SSPA_Admin_Save (analyse update/save), so those land
+     * first. The report entry goes in a group of its own, declared afterwards, because
+     * "run your first site analysis" is the least urgent thing in the menu and should not
+     * sit above the button you actually came for.
+     */
     private static function group_measure($bar, $summary) {
         $bar->add_group(array('id' => 'sspa-measure', 'parent' => 'sspa-menu'));
+        $bar->add_group(array('id' => 'sspa-report', 'parent' => 'sspa-menu'));
 
         if (is_array($summary)) {
             $bar->add_node(array(
                 'id' => 'sspa-open-report',
-                'parent' => 'sspa-measure',
+                'parent' => 'sspa-report',
                 'title' => __('Open the full report', 'super-speedy-performance-analysis'),
                 'href' => admin_url('admin.php?page=sspa'),
             ));
-        } else {
-            $bar->add_node(array(
-                'id' => 'sspa-first-run',
-                'parent' => 'sspa-measure',
-                'title' => __('Run your first analysis', 'super-speedy-performance-analysis'),
-                'href' => admin_url('admin.php?page=sspa'),
-            ));
+            return;
         }
+
+        // No site-wide run. Page analyses are stored separately and deliberately do not
+        // produce a site score, so say which one is missing rather than "nothing yet".
+        $pages = class_exists('SSPA_Report') && method_exists('SSPA_Report', 'page_analysis_count')
+            ? SSPA_Report::page_analysis_count()
+            : 0;
+        $bar->add_node(array(
+            'id' => 'sspa-first-run',
+            'parent' => 'sspa-report',
+            'title' => $pages
+                ? __('Run a site-wide analysis for a score', 'super-speedy-performance-analysis')
+                : __('Run your first site analysis', 'super-speedy-performance-analysis'),
+            'href' => admin_url('admin.php?page=sspa'),
+        ));
     }
 
     /**
