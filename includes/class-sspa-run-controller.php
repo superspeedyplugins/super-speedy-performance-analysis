@@ -12,7 +12,6 @@ class SSPA_Run_Controller {
     const BATCH_SECONDS = 15;
 
     /** Caught reactions waiting to be shown to the site owner, cleared when he dismisses. */
-    const REACTION_NOTICE_OPTION = 'sspa_reaction_notice';
 
     public static function register() {
         add_action('sspa_process_batch_event', array(__CLASS__, 'process_batch'));
@@ -1600,17 +1599,9 @@ class SSPA_Run_Controller {
         }
         if ($notes) {
             update_option(SSPA_Dependency_Map::LEARNED_OPTION, $learned, false);
-            // 4. an admin notice, because a sweep can finish while nobody is looking at the
-            //    analysis screen and "a plugin tried to switch itself off on your live site"
-            //    is not something to leave sitting in a tab he might not open.
-            $seen = (array) get_option(self::REACTION_NOTICE_OPTION, array());
-            foreach ($notes as $note) {
-                $seen[$note['excluded'] . '|' . $note['reactor']] = array(
-                    'excluded' => $note['excluded'],
-                    'reactor' => $note['reactor'],
-                );
-            }
-            update_option(self::REACTION_NOTICE_OPTION, $seen, false);
+            // Deliberately no admin notice. The guard refusing the change is the whole
+            // point, and it already happened; announcing it on unrelated wp-admin screens
+            // is noise. The evidence stays where it belongs, in the analysis itself.
         }
         return $notes;
     }
