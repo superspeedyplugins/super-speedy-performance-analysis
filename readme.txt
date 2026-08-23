@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 0.35.6
+Stable tag: 0.35.7
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -35,15 +35,36 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 = 0.35.4 (23rd August 2026) =
 * Fixed `Analyse update/save` being hidden by the block editor's fullscreen mode and the Workflows item picker remaining on `Loading latest item…`
-
-= 0.35.3 (23rd August 2026) =
 * Added the GitHub wiki, with a publish script
-
-= 0.35.2 (23rd August 2026) =
 * Fixed the admin bar always reporting excimer as not installed
-
-= 0.35.1 (22nd August 2026) =
 * Updated super-speedy-settings to the latest version
+
+= 0.34 (22nd August 2026) =
+* Plugin Impact Analysis is the name used throughout, matching page, checkout and order editing performance analysis
+* The shared Super Speedy dashboard shows the slowest page measured and the component costing the most on it
+* A link can open a tool ready to run rather than only landing on the page: `?sspa_open=page`, `checkout` or `save` opens the panel or the pre-flight, and never starts a measurement on its own
+
+= 0.33 (22nd August 2026) =
+* The traffic collector runs on any WordPress site, with only the commerce funnel needing WooCommerce, instead of refusing to start without it
+* The autoloaded options finding offers Scalability Pro's options manager for anyone who would rather not run the generated SQL by hand every time the site changes
+
+= 0.32 (22nd August 2026) =
+* The mu-plugin loader and the `db.php` drop-in carry their own version numbers, so an ordinary release stops rewriting files it has not changed
+* The synthetic account used to measure a page as a logged-in customer cannot be logged into at all: no password login, no password reset and no application passwords, while the five-minute cookie the profiler mints still works
+* A site with page analyses but no site-wide run is told which measurement is missing rather than that nothing has been analysed
+* The analysis actions come first in the Performance Analysis menu
+
+= 0.31 (22nd August 2026) =
+* Added the Performance Analysis admin-bar menu: analyse this page, analyse checkout, analyse update/save, the caches worth clearing before measuring, and one line each on the object cache, excimer and MySQL digests
+* Any analysis can be downloaded as a privacy-safe Markdown report from the menu, for a developer, a host or an LLM
+* Clearing caches reports what it actually did on a site that keeps its transients in a persistent object cache, instead of reporting nothing cleared
+* The Health box refreshes the profiler loader when it is out of date rather than reporting it as not installed, and tells apart out of date, not writable, and a site that sets `DISALLOW_FILE_MODS`
+
+= 0.30 (22nd August 2026) =
+* The Super Speedy menu and the update checker come from the shared settings module, so a site running only Performance Analysis gets the full Super Speedy dashboard
+* Updates are free and need no licence key, and come from the public release
+* Where the settings module is absent there is deliberately no update checker, and the plugin falls back to its own top-level menu
+* The plugin version is read from its own header, so the version named in reports, generated files and download filenames cannot drift from the one you installed
 
 = 0.29.7 (21st August 2026) =
 * Hardened the shared settings module and removed its Jetpack Autoloader dependency
