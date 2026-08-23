@@ -73,10 +73,7 @@ class SSPA_Admin_Bar {
         $summary = self::summary();
         $score = (is_array($summary) && null !== $summary['score']) ? (int) $summary['score'] : null;
 
-        $label = '<span class="ab-icon sspa-bolt" aria-hidden="true">&#9889;</span>'
-            . '<span class="ab-label">PA'
-            . (null === $score ? '' : ' <span class="sspa-bar-score">' . esc_html($score) . '</span>')
-            . '</span>';
+        $label = '<span class="ab-label">' . esc_html__('Performance Analysis', 'super-speedy-performance-analysis') . '</span>';
 
         $bar->add_node(array(
             'id' => 'sspa-menu',
@@ -571,8 +568,6 @@ class SSPA_Admin_Bar {
         }
         ?>
         <style>
-        #wpadminbar .sspa-bolt { font-size: 15px; line-height: 1; top: 2px; margin-right: 4px; }
-        #wpadminbar #wp-admin-bar-sspa-menu .sspa-bar-score { font-weight: 600; }
         #wpadminbar .sspa-bar-heading { text-transform: uppercase; font-size: 10px; letter-spacing: .05em; opacity: .6; }
         #wpadminbar .sspa-bar-warn { color: #ffb900; }
         #wpadminbar .sspa-bar-on { color: #46b450; font-weight: 600; }
