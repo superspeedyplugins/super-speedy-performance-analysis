@@ -112,6 +112,7 @@ $editor_response = SSPA_Crawler::request(admin_url('post.php?post=' . $post_id .
 $editor_html = is_wp_error($editor_response) ? '' : wp_remote_retrieve_body($editor_response);
 sspa_admin_save_t(false !== strpos($editor_html, 'wp-admin-bar-sspa-admin-save'), 'the existing-object editor shows Analyse update/save');
 sspa_admin_save_t(false !== strpos($editor_html, 'sspa-admin-save.js'), 'the editor loads the save transport driver');
+sspa_admin_save_t(false !== strpos($editor_html, 'editor_button') && false !== strpos($editor_html, 'Analyse update/save'), 'the block editor receives its own fullscreen-safe Analyse update/save control');
 
 $product_ids = get_posts(array('post_type' => 'product', 'post_status' => 'publish', 'numberposts' => 1, 'fields' => 'ids'));
 if ($product_ids) {

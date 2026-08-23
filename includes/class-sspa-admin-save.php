@@ -91,6 +91,8 @@ class SSPA_Admin_Save {
             'workflow' => $workflow,
             'i18n' => array(
                 'saving' => __('Saving and profiling the update request…', 'super-speedy-performance-analysis'),
+                'editor_button' => __('Analyse update/save', 'super-speedy-performance-analysis'),
+                'editor_button_title' => __('Save the current edits and profile the write request itself', 'super-speedy-performance-analysis'),
                 'detail' => __('This is the real save. Normal emails, webhooks and integrations still run. The editor reload is not measured.', 'super-speedy-performance-analysis'),
                 'workflow_detail' => __('This is a no-change save through the selected editor transport. Update hooks and integrations run; email delivery follows the Workflows tab setting.', 'super-speedy-performance-analysis'),
                 'no_control' => __('No supported Update/Save control was found on this editor.', 'super-speedy-performance-analysis'),

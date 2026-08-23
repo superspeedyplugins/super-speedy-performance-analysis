@@ -212,8 +212,20 @@ $settings_response = SSPA_Crawler::request(admin_url('admin.php?page=sspa#workfl
 ));
 $settings_html = is_wp_error($settings_response) ? '' : wp_remote_retrieve_body($settings_response);
 sspa_workflow_t(false !== strpos($settings_html, 'data-tab="workflows"'), 'the settings page has a Workflows tab');
-sspa_workflow_t(false !== strpos($settings_html, 'sspa-workflow-object-type'), 'the Workflows tab renders the target picker');
-sspa_workflow_t(false !== strpos($settings_html, 'sspa-ck-open'), 'the Workflows tab includes checkout analysis');
+$tab_response = SSPA_Crawler::request(admin_url('admin-ajax.php'), array(
+    'sslverify' => false,
+    'cookies' => $request_cookies,
+    'method' => 'POST',
+    'body' => array(
+        'action' => 'sspa_render_tab',
+        'nonce' => wp_create_nonce('sspa_admin'),
+        'tabs' => 'workflows',
+    ),
+));
+$tab_payload = is_wp_error($tab_response) ? array() : json_decode(wp_remote_retrieve_body($tab_response), true);
+$workflow_html = isset($tab_payload['data']['tabs']['workflows']) ? $tab_payload['data']['tabs']['workflows'] : '';
+sspa_workflow_t(false !== strpos($workflow_html, 'sspa-workflow-object-type'), 'opening the lazy Workflows tab renders the target picker');
+sspa_workflow_t(false !== strpos($workflow_html, 'sspa-ck-open'), 'the rendered Workflows tab includes checkout analysis');
 
 $sessions->destroy($session_token);
 unset($_COOKIE[LOGGED_IN_COOKIE], $_COOKIE[AUTH_COOKIE], $_COOKIE[SECURE_AUTH_COOKIE]);

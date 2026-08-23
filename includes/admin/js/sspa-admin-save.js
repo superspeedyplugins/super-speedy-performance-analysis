@@ -287,7 +287,7 @@
 		}, 15000);
 	}
 
-	$(document).on('click', '#wp-admin-bar-sspa-admin-save > a', function (event) {
+	function runEditorSave(event) {
 		event.preventDefault();
 		var submitter = classicControl();
 		if (submitter) {
@@ -295,7 +295,36 @@
 			return;
 		}
 		blockSave();
-	});
+	}
+
+	$(document).on('click', '#wp-admin-bar-sspa-admin-save > a, .sspa-admin-save-editor-button', runEditorSave);
+
+	// Gutenberg's fullscreen mode deliberately hides the WordPress admin bar. Put the same
+	// action in the block editor header so the profiler remains reachable without changing the
+	// administrator's editor preference. Gutenberg can rebuild this header, so restore the
+	// button after React removes it rather than assuming the first render is permanent.
+	function addBlockEditorButton() {
+		if (!$('body').hasClass('block-editor-page') || $('.sspa-admin-save-editor-button').length) {
+			return;
+		}
+		var toolbar = $('.editor-header__toolbar, .edit-post-header-toolbar').first();
+		if (!toolbar.length) {
+			return;
+		}
+		$('<button>', {
+			type: 'button',
+			'class': 'components-button is-compact sspa-admin-save-editor-button',
+			text: cfg.i18n.editor_button,
+			title: cfg.i18n.editor_button_title,
+			'aria-label': cfg.i18n.editor_button_title
+		}).appendTo(toolbar);
+	}
+
+	if (window.MutationObserver) {
+		var editorObserver = new MutationObserver(addBlockEditorButton);
+		editorObserver.observe(document.body, { childList: true, subtree: true });
+	}
+	addBlockEditorButton();
 
 	// A classic save has already redirected by the time this script runs again. The token id
 	// in sessionStorage identifies the capture; no timings from this editor reload are used.

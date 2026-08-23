@@ -98,9 +98,25 @@
 
 	$(document).on('change', '#sspa-workflow-object-type', loadTargets);
 	$(document).on('click', '#sspa-workflow-run', run);
+
+	function initialisePicker() {
+		var picker = $('#sspa-workflow-object-type');
+		if (!picker.length || picker.data('sspa-workflow-initialised')) {
+			return;
+		}
+		picker.data('sspa-workflow-initialised', true);
+		loadTargets();
+	}
+
+	// The Workflows tab is fetched only when it is first opened, so its picker usually does
+	// not exist at document-ready time. Observe the tab container and initialise as soon as
+	// the AJAX-rendered controls arrive. Re-rendered controls are new nodes and initialise too.
 	$(function () {
-		if ($('#sspa-workflow-object-type').length) {
-			loadTargets();
+		initialisePicker();
+		var root = document.getElementById('sspa_main');
+		if (root && window.MutationObserver) {
+			var workflowObserver = new MutationObserver(initialisePicker);
+			workflowObserver.observe(root, { childList: true, subtree: true });
 		}
 	});
 })(jQuery);
