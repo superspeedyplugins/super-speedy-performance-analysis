@@ -134,7 +134,27 @@ fi
 if [ "$EDITION" = "full" ]; then
     wpc eval 'wp_mkdir_p(WPMU_PLUGIN_DIR); file_put_contents(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php", "<?php if (!defined(\"WP_ADMIN\")) define(\"WP_ADMIN\", true);");' >/dev/null 2>&1
 fi
-UPD=$(wpc eval 'echo isset($GLOBALS["sspa_update_checker"]) ? "present" : "absent";' 2>&1)
+UPD=$(wpc eval '
+if (!class_exists("SuperSpeedySettings")) {
+    echo "absent";
+    return;
+}
+$instance_property = new ReflectionProperty("SuperSpeedySettings", "instance");
+if (PHP_VERSION_ID < 80100) {
+    $instance_property->setAccessible(true);
+}
+$instance = $instance_property->getValue();
+if (!$instance || !property_exists($instance, "update_checkers")) {
+    echo "absent";
+    return;
+}
+$checker_property = new ReflectionProperty(get_class($instance), "update_checkers");
+if (PHP_VERSION_ID < 80100) {
+    $checker_property->setAccessible(true);
+}
+$checkers = $checker_property->getValue($instance);
+echo isset($checkers["super-speedy-performance-analysis"]) ? "present" : "absent";
+' 2>&1)
 if [ "$EDITION" = "full" ]; then
     wpc eval 'unlink(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php");' >/dev/null 2>&1
 fi
