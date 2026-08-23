@@ -271,7 +271,13 @@ class SSPA_Admin_Bar {
             'href' => admin_url('admin.php?page=sspa&tab=tools'),
         ));
 
-        $excimer = class_exists('SSPA_Excimer') && SSPA_Excimer::available();
+        // Ask the extension directly rather than through SSPA_Excimer::available().
+        // SSPA_Excimer lives in profiler/, which SSPA_Bootstrap::autoload() does not search,
+        // and the profiler is only required on a token-verified request - so on an ordinary
+        // admin page class_exists() is ALWAYS false and this indicator would report "not
+        // installed" on a server where excimer is installed and working. Same two checks
+        // SSPA_Excimer::available() makes, without needing the class to be loadable.
+        $excimer = extension_loaded('excimer') && class_exists('ExcimerProfiler');
         $bar->add_node(array(
             'id' => 'sspa-state-excimer',
             'parent' => 'sspa-state',
