@@ -1,6 +1,6 @@
 # Security Plugins and Profiling Requests
 
-Super Speedy Performance Analysis profiles your site by sending requests from your server to itself ("loopbacks"). Each carries a signed, single-use token; wp-admin pages are profiled using a short-lived cookie for your own admin account.
+Super Speedy Performance Analysis profiles your site by sending requests from your server to itself ("loopbacks"). [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) describes what those requests measure. Each carries a signed, single-use token; wp-admin pages are profiled using a short-lived cookie for your own admin account.
 
 Security plugins sometimes block these requests - to them, a server IP presenting an admin cookie can look suspicious. When that happens the analysis DOES NOT fail: blocked pages are marked, the run continues, and a finding tells you which security layer blocked it.
 
@@ -29,3 +29,8 @@ When this happens, identify the security plugin responsible for the current mess
 After adding or configuring one explicit integration, re-run the checkout flow. If another security layer then blocks the request, the new error identifies the next integration to handle. Continue until WooCommerce creates the temporary order and the order-management steps can run. Each integration must leave protection enabled for normal customer requests.
 
 For example, Simple CAPTCHA with Cloudflare Turnstile provides a documented disable filter. SSPA applies it only to the signed synthetic checkout request, so Turnstile remains active for real customers. If a security plugin provides no suitably narrow bypass, follow its allowlisting guidance or temporarily configure it yourself for the test rather than having SSPA silently deactivate the whole plugin.
+
+## Further reading
+
+- [Quick Start Guide](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/quick-start-guide/) - running your first analysis
+- [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - what the profiling requests are actually doing

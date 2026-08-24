@@ -1,6 +1,6 @@
 # Methodology
 
-Credibility is the product, so here is exactly how measurement works.
+Credibility is the product, so here is exactly how measurement works. For what the resulting findings mean, see [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/).
 
 ## Sampling
 
@@ -12,9 +12,9 @@ For profiling requests only, a conditional `db.php` drop-in swaps in an instrume
 
 Full SQL is kept locally only for the slowest/biggest queries; everything else is stored as a normalised fingerprint with all values stripped.
 
-## Isolation (Deep Analysis - the two-phase sweep)
+## Isolation (Plugin Impact Analysis - the two-phase sweep)
 
-Deep Analysis measures each plugin by re-profiling pages with that one plugin **virtually disabled for the test requests only** - a per-request filter, not a real deactivation. Visitors always get the full site; no activation/deactivation hooks fire. A response canary verifies the override applied before a measurement counts. Eligibility is dependency-aware: plugins that other active plugins require, and fragile plugins (security etc), are never excluded behind your back.
+Plugin Impact Analysis measures each plugin by re-profiling pages with that one plugin **virtually disabled for the test requests only** - a per-request filter, not a real deactivation. Visitors always get the full site; no activation/deactivation hooks fire. A response canary verifies the override applied before a measurement counts. Eligibility is dependency-aware: plugins that other active plugins require, and fragile plugins (security etc), are never excluded behind your back.
 
 It runs in **two phases**, so thoroughness does not mean measuring everything everywhere:
 
@@ -34,3 +34,9 @@ With Redis/Memcached present, pages are profiled with the object cache on and of
 ## What is never done
 
 Profiled requests never send email (recipients are stripped before any transport work), never change your live plugin set, and - unless you explicitly enable write profiles - never write anything. Write profiles use temporary duplicates that are deleted immediately after measurement.
+
+## Further reading
+
+- [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) - reading the findings the method produces
+- [Installing the Optional Profiling Extras](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/setup-server/installing-profiling-extensions/) - what the optional extras add to the measurement
+- [The Archive Query Profile](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/features/archive-query-profile/) - the contract for the archive half of a run

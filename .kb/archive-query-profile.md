@@ -20,7 +20,7 @@ An index carrying the term columns **and** the sort column together removes that
 (post_type, post_status, taxonomy, topterm_id, post_date)
 ```
 
-Which index your site needs depends on what your theme and plugins actually sort by, and that is not knowable from any plugin's code. It has to be measured. That is what this profile is.
+Which index your site needs depends on what your theme and plugins actually sort by, and that is not knowable from any plugin's code. It has to be measured. That is what this profile is. [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) covers how the measurement itself works.
 
 ## Getting it
 
@@ -282,3 +282,8 @@ When a profile is shared with superspeedy.org, less again travels: row counts ar
 4. Honour per-column `order`; an index declared in the wrong direction will not be used.
 5. Do not treat an empty `archives[]` as "this site has no archives" without checking `pages_seen` and `predates_contract`.
 6. Configure from `worth_indexing` archives, not from every entry in `archives[]`. The rest are there so you can see the whole picture, not so you can act on all of it.
+
+## Further reading
+
+- [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - how the measurement behind the profile works
+- [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) - reading the rest of a run's findings

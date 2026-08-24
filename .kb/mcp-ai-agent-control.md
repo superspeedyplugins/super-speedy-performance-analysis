@@ -37,7 +37,7 @@ The namespace is `super-speedy-performance`.
 
 ## Recommended analysis workflow
 
-Start a normal analysis, poll `get-status`, then read the full report, findings and site metrics. Use deep analysis only when baseline evidence identifies suspects or when you deliberately scope the run to selected plugins/pages. Compare like with like and report measured changes, not generic performance claims.
+Start a normal analysis, poll `get-status`, then read the full report, findings and site metrics. Use the plugin impact analysis (`run-deep-analysis`) only when baseline evidence identifies suspects or when you deliberately scope the run to selected plugins/pages. Compare like with like and report measured changes, not generic performance claims. [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) explains how to read what comes back.
 
 Traffic collection is a separate observational workflow. Start it for an explicit duration, poll status, stop it when appropriate and read the observations. Explain retention and privacy choices before submitting any result.
 
@@ -66,7 +66,12 @@ Stored-run retention and deletion are not exposed as abilities. Deleting measure
 - If an execute ability is denied, enable execute access for the dedicated agent.
 - If a run is active, poll it rather than starting another.
 - If checkout is refused, run the pre-flight and pass `confirm: true`; live side effects remain off unless explicitly enabled.
-- If a deep run is too expensive, scope suspects/pages and disable cache-mode expansion when the comparison does not need it.
+- If a plugin impact run is too expensive, scope suspects/pages and disable cache-mode expansion when the comparison does not need it.
 
 :::related{slugs="super-speedy-performance-analysis,super-speedy-archives,scalability-pro"}
 :::
+
+## Further reading
+
+- [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) - interpreting what the abilities return
+- [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - how a run produces its numbers

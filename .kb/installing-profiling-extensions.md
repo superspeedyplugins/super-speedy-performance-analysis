@@ -16,7 +16,7 @@ Go to **Super Speedy → Performance Analysis → Tools**. It reports what your 
 | Environment report | What your server supports, and the commands to enable the rest | Nothing | Always on |
 | `tideways_xhprof` / `xhprof`, `spx` | Detected and reported, so you can see what the server offers | A PHP extension | Detected, not read |
 
-**If you install one thing, install `excimer`.** It is the single biggest capability upgrade a site can make: without it a profile tells you which plugin spent the time, and with it the same profile names the function inside that plugin.
+**If you install one thing, install `excimer`.** It is the single biggest capability upgrade a site can make: without it a profile tells you which plugin spent the time, and with it the same profile names the function inside that plugin. [Function-Level Profiling](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/features/function-level-profiling/) shows what that view gives you.
 
 **Read the status column before you install anything.** The Tools tab detects everything in the table, including the extensions the plugin does not read, and labels each one accordingly, so it never claims to be using something it is not. Installing an extension in the bottom row gets your host's part done in advance; it will not change your analysis.
 
@@ -174,6 +174,12 @@ Super Speedy Performance Analysis **detects** it, but does not read its data: it
 
 **I installed the extension and the Tools tab still says Not installed.** Almost always PHP-FPM was not restarted, or the extension was enabled for the CLI but not for FPM. Check both ini directories, then restart PHP rather than reloading it.
 
-**My host will not install extensions.** That is common and it is not a fault in your setup. You still get the full analysis, plugin attribution and Deep Analysis measured impact, which is where the answer usually is. The extensions add function-level detail on top.
+**My host will not install extensions.** That is common and it is not a fault in your setup. You still get the full analysis, plugin attribution and Plugin Impact Analysis measured impact, which is where the answer usually is. The extensions add function-level detail on top.
 
 **Is the `GRANT` safe?** Yes. `SELECT` on `performance_schema` is read-only access to performance statistics. It grants nothing over your site's data and cannot modify anything.
+
+## Further reading
+
+- [Function-Level Profiling](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/features/function-level-profiling/) - what excimer gives you once it is installed
+- [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - how the measurements are made
+- [Quick Start Guide](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/quick-start-guide/) - running your first analysis

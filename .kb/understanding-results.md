@@ -2,7 +2,7 @@
 
 ## The site score
 
-100 minus penalties for findings (critical findings cost more than warnings). Above 80: healthy. 50-80: real problems worth fixing. Below 50: your visitors are feeling it.
+100 minus penalties for findings (critical findings cost more than warnings). [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) sets out exactly how the numbers are produced. Above 80: healthy. 50-80: real problems worth fixing. Below 50: your visitors are feeling it.
 
 ## Finding types
 
@@ -17,7 +17,7 @@
 
 ## Inferred vs measured
 
-Attribution from query backtraces is **inferred** - accurate, but circumstantial. Deep Analysis upgrades suspects to **measured**: the page is re-profiled with the plugin virtually disabled for the test requests only, and the difference is the plugin's proven cost. Anything below the measurement noise floor is honestly reported as "no measurable impact" - the plugin is not guilty on this site, whatever its reputation.
+Attribution from query backtraces is **inferred** - accurate, but circumstantial. Plugin Impact Analysis upgrades suspects to **measured**: the page is re-profiled with the plugin virtually disabled for the test requests only, and the difference is the plugin's proven cost. Anything below the measurement noise floor is honestly reported as "no measurable impact" - the plugin is not guilty on this site, whatever its reputation.
 
 A measured impact can be **negative** - shown as "saves Xms" in green. That means the page got *slower* when the plugin was excluded: the plugin is actively speeding your site up. This is normal for performance plugins that replace a slow core or WooCommerce feature (search, filtering, archives).
 
@@ -32,3 +32,9 @@ The **Measured impact** column is the antidote: it compares the real page with a
 - **baseline** - a near-empty request measuring your server's noise floor.
 - **mail-probe** - the cost of building (not sending) an email through your mail stack.
 - **write-save-product / write-order-processing** - opt-in: the full save/status-change hook cascade, measured against temporary objects that are deleted immediately after.
+
+## Further reading
+
+- [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - exactly how the numbers are produced
+- [Function-Level Profiling](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/features/function-level-profiling/) - go past the plugin name to the function inside it
+- [Quick Start Guide](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/quick-start-guide/) - running your first analysis
