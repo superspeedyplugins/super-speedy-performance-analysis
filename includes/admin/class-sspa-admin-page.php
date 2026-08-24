@@ -168,6 +168,17 @@ class SSPA_Admin_Page {
             }
             ?>
 
+            <footer class="sspa-admin-footer">
+                <div>
+                    <?php esc_html_e('Performance Analysis', 'super-speedy-performance-analysis'); ?>
+                    <span class="sspa-ver-chip">v<?php echo esc_html(SSPA_VERSION); ?></span>
+                </div>
+                <div>
+                    <?php esc_html_e('By', 'super-speedy-performance-analysis'); ?>
+                    <a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Super Speedy Plugins', 'super-speedy-performance-analysis'); ?></a>
+                </div>
+            </footer>
+
             <!-- Floating run monitor: visible on every tab while a run is active,
                  minimisable, survives page reloads (re-armed from the active run). -->
             <div id="sspa-runner" data-active-run="<?php echo esc_attr(SSPA_Run_Controller::active_run_id()); ?>" style="display:none">

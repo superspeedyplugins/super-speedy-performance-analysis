@@ -32,6 +32,32 @@
 	margin-top: 1em;
 }
 
+#sspa_main .sspa-admin-footer {
+	display: inline-flex;
+	flex-direction: column;
+	gap: 5px;
+	margin: 20px 0 8px;
+	padding-top: 10px;
+	border-top: 1px solid #dcdcde;
+	font-size: 11px;
+	line-height: 1.4;
+	color: #646970;
+}
+
+#sspa_main .sspa-admin-footer > div {
+	white-space: nowrap;
+}
+
+#sspa_main .sspa-admin-footer .sspa-ver-chip {
+	margin-left: 3px;
+	padding: 0 7px;
+	font-size: 10px;
+}
+
+#sspa_main .sspa-admin-footer a {
+	font-weight: 600;
+}
+
 #sspa_main .sspa-placeholder {
 	background: #fff;
 	border: 1px solid #c3c4c7;
