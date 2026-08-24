@@ -3,7 +3,7 @@ Contributors: dhilditch
 Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
-Tested up to: 7.0
+Tested up to: 7.1
 Stable tag: 0.35.9
 Requires PHP: 7.4
 License: GPLv3
@@ -33,7 +33,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Changelog ==
 
-= 0.35.4 (23rd August 2026) =
+= 0.35 (23rd-24th August 2026) =
+* Changed the top-level `Performance Analysis` admin-bar item to run `Analyse this page`, matching its first submenu action
+* Tested up to WordPress 7.1
 * Fixed `Analyse update/save` being hidden by the block editor's fullscreen mode and the Workflows item picker remaining on `Loading latest item…`
 * Added the GitHub wiki, with a publish script
 * Fixed the admin bar always reporting excimer as not installed
