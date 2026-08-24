@@ -2,7 +2,7 @@
 
 This is the definitive contract for the archive query profile: the structure Super Speedy Performance Analysis emits describing what your archive pages actually filter and sort by, and the database indexes that would make them fast. It is what Super Speedy Archives reads to configure itself, and it is stable enough to build against.
 
-If you only want to know what the feature does, the short version is this: your category, tag, shop, product-category, custom-post-type and custom-taxonomy archives each run a database query, and the plugin now records exactly how that query filters and sorts. From that it works out the one index that would serve both at once.
+If you only want to know what the feature does, the short version is this: your category, tag, shop, product-category, custom-post-type and custom-taxonomy archives each run a database query, and the plugin records exactly how that query filters and sorts. From that it works out the one index that would serve both at once.
 
 ## Why an archive is slow in the first place
 
@@ -117,7 +117,7 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
 | `schema` | Contract version. See above. |
 | `complete` | `false` when any profiled page failed, was blocked, hit the per-request cap, or predates the contract. **Treat `false` as insufficient evidence, never as "nothing needed".** |
 | `pages_seen` | Pages that contributed. |
-| `predates_contract` | Profiles from before this feature existed, which carry no archive data. Counted separately because "we did not look" and "there was nothing there" are different answers. |
+| `predates_contract` | Profiles from before this feature existed, which carry no archive data. Counted separately because "nothing was measured" and "there was nothing there" are different answers. |
 | `archives[]` | Every archive query that ran, whether or not it needs an index. |
 | `candidate_composites[]` | The indexes to create. The actionable output. |
 | `archives_worth_indexing` | How many of them clear both bars below. |
@@ -233,7 +233,7 @@ The type is not recoverable from the query. A cast in the SQL says what the quer
 | `absent` | The key holds no values. |
 | `skipped` | The sampling time budget ran out. |
 
-:::callout{variant="warning"}
+:::callout{variant="note" title="Do not auto-apply"}
 Never auto-apply a `mixed` or `low` verdict. `mixed` means the data itself disagrees - some rows numeric, some not - so either choice is wrong for part of your content. It is a data-quality finding in its own right and wants a human.
 :::
 
