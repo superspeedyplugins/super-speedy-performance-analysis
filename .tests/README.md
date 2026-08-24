@@ -291,6 +291,8 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   conflicting admin changes, and cancellation consumes the run's digest snapshot.
 - `54-run-job-table.php` - immutable ordered job rows, small mutable cursor/state storage,
   append-only phase extension, no queue option writes and terminal row cleanup.
+- `57-admin-bar-parent.php` - the top-level Performance Analysis admin-bar link performs the
+  first submenu action, Analyse this page, rather than navigating to the full report.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

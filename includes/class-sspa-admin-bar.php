@@ -78,7 +78,9 @@ class SSPA_Admin_Bar {
         $bar->add_node(array(
             'id' => 'sspa-menu',
             'title' => $label,
-            'href' => admin_url('admin.php?page=sspa'),
+            // The first child is the primary action. Keep the parent click aligned with it;
+            // the full report remains available as its own second menu item.
+            'href' => '#',
             'meta' => array(
                 'title' => null === $score
                     ? __('Super Speedy Performance Analysis - nothing analysed yet', 'super-speedy-performance-analysis')

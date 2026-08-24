@@ -278,7 +278,7 @@
 		}
 	});
 
-	$(document).on('click', '#wp-admin-bar-sspa-adhoc > a', function (e) {
+	$(document).on('click', '#wp-admin-bar-sspa-menu > a, #wp-admin-bar-sspa-adhoc > a', function (e) {
 		e.preventDefault();
 		var el = pop();
 		if (el.is(':visible')) {
