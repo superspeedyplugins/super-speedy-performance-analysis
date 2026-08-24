@@ -24,7 +24,7 @@ slow, and proves it.
 - **Plain-English findings**: the slowest queries and who ran them, queries fetching hundreds
   of rows, N+1 query loops, blocking HTTP calls during render, autoload bloat, queries with
   no usable index (via `EXPLAIN`) and more - each with a recommendation.
-- **Deep Analysis measures, rather than infers.** Suspects are virtually disabled for the
+- **Plugin Impact Analysis measures, rather than infers.** Suspects are virtually disabled for the
   plugin's own test requests only - visitors always get the full site, nothing is ever
   really deactivated - and each plugin's true cost is the measured difference. Plugins that
   speed your site up show up as measured savings.

@@ -37,7 +37,7 @@ sleep(3); // opcache
 $plugins_before = get_option('active_plugins');
 sspa_t(in_array('sspa-bad-plugin/sspa-bad-plugin.php', $plugins_before, true), 'bad plugin active');
 
-// --- Baseline spot run so deep analysis has findings to chew on ---
+// --- Baseline spot run so Plugin Impact Analysis has findings to investigate ---
 $run_id = SSPA_Run_Controller::start(array('type' => 'spot', 'page_keys' => array('home'), 'user_id' => 1));
 $deadline = time() + 180;
 do {

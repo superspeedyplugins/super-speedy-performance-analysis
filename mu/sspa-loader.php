@@ -64,7 +64,7 @@ unset($_POST['_sspa_profile_token'], $_REQUEST['_sspa_profile_token'], $sspa_tok
 // real visitor, and a stored copy answers later profiling requests without running PHP.
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-// A fatal on a profiled request - above all in deep analysis, where a plugin is
+// A fatal on a profiled request - above all in Plugin Impact Analysis, where a plugin is
 // virtually excluded and a dependant may break without it - is a MEASUREMENT RESULT
 // (the cell is reported unresolved), not a site emergency. Without this, core's fatal
 // handler emails the admin a "technical issue" recovery-mode warning blaming whichever
@@ -141,7 +141,7 @@ if (!defined('SAVEQUERIES')) {
     define('SAVEQUERIES', true);
 }
 
-// Virtual isolation override (deep analysis): the plugin stores {plugins: [files to
+// Virtual isolation override (Plugin Impact Analysis): the plugin stores {plugins: [files to
 // exclude], theme: slug|null} under a hash key; only token-bearing requests ever see the
 // filtered set. Real visitors are never affected and we fire no (de)activation hooks.
 if (!empty($sspa_tok['flags']['ps'])) {

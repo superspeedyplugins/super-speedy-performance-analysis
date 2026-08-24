@@ -216,6 +216,9 @@ if (!is_wp_error($checkout)) {
     sspa_markdown_t(false === strpos($checkout['markdown'], $secret) && false === strpos($checkout['markdown'], $private_email) && false === strpos($checkout['markdown'], '7654321') && false === strpos($checkout['markdown'], 'PRIVATE-ORDER-ABC') && false === strpos($checkout['markdown'], 'PRIVATE-COUPON'), 'checkout fulfilment identifiers stay out of the LLM document');
 }
 
+// History must use the customer-facing analysis name while the stored run type stays `deep`.
+sspa_markdown_run('deep', array('score' => 74, 'findings' => 0));
+
 // Every result surface exposes both actions, all backed by the service asserted above.
 $panel = SSPA_Profile_Panel::render($profile_id, array('cached' => true));
 sspa_markdown_t(is_string($panel) && false !== strpos($panel, 'sspa-markdown-download') && false !== strpos($panel, 'sspa-markdown-copy'), 'single-page results offer Download Markdown and Copy Markdown');
@@ -254,6 +257,8 @@ ob_start();
 include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
 $history = ob_get_clean();
 sspa_markdown_t(false !== strpos($history, 'data-kind="checkout"') && false !== strpos($history, 'data-kind="run"'), 'history exposes Markdown reports for site and checkout runs');
+sspa_markdown_t(false !== strpos($history, 'Share this Plugin Impact Analysis'), 'history names deep runs Plugin Impact Analysis');
+sspa_markdown_t(false === stripos($history, 'deep impact scan'), 'history does not expose the obsolete scan name');
 
 $checkout_js = file_get_contents(SSPA_PLUGIN_DIR . 'includes/admin/js/sspa-checkout.js');
 sspa_markdown_t(false !== strpos($checkout_js, 'data-kind="checkout"') && false !== strpos($checkout_js, 'Copy Markdown'), 'the completed checkout panel exposes both Markdown actions');

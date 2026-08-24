@@ -294,7 +294,7 @@ class SSPA_Run_Controller {
     const SWEEP_SCREEN_SAMPLES = 2;  // samples per screening cell (confirm uses 3)
 
     /**
-     * Deep analysis is a TWO-PHASE sweep:
+     * Plugin Impact Analysis is a TWO-PHASE sweep:
      *
      * Phase 1 (screen): every eligible plugin measured ONCE per page in one cache mode
      * ('normal' - the cache in its natural state) on a handful of pages - its top
@@ -1313,7 +1313,7 @@ class SSPA_Run_Controller {
                 $measured++;
             }
             // Record the version that was actually measured, not whatever is installed when
-            // someone later reads the row - a deep-analysis verdict belongs to one version.
+            // someone later reads the row - a Plugin Impact Analysis verdict belongs to one version.
             $is_theme = ('theme' === $d['slug']);
             $component = $is_theme ? get_stylesheet() : $d['slug'];
             $group = (isset($sweep['groups'][$d['slug']]) && is_array($sweep['groups'][$d['slug']]))

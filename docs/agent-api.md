@@ -149,9 +149,9 @@ in the Traffic tab and `wp sspa traffic delete`, not through MCP.
 `baseline` (server noise floor), `mail-probe` (mail construction cost), `write-*` (opt-in
 write cascades).
 
-### Impact (deep analysis)
+### Impact (Plugin Impact Analysis)
 
-Deep analysis is a two-phase sweep: every eligible plugin is screened on its busiest
+Plugin Impact Analysis is a two-phase sweep: every eligible plugin is screened on its busiest
 pages, and plugins showing measurable impact are then measured on every page plus extra
 cache modes. Expect one impact row per plugin per measured page per cache mode - many
 rows for impactful plugins, a few screening rows for innocent ones.
@@ -203,7 +203,7 @@ entry:
   assets_count} - attribution from this run's full-set profile. **NULL include_ms /
   hook_ms / assets_count mean the run predates evidence capture: report UNKNOWN, never
   zero.**
-- `impact` (nullable) - the latest deep-sweep measurement for this plugin on this
+- `impact` (nullable) - the latest Plugin Impact Analysis measurement for this plugin on this
   page: `delta_generation_ms`, `noise_floor_ms`, `confidence` (measured|none),
   `output_identical` (true = excluding the plugin changed no bytes of the normalised
   response; false = it did; null = unknowable), `measured_version`, `measured_at`.

@@ -233,7 +233,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/get-plugin-impacts', array(
             'label' => __('Get measured plugin impacts', 'super-speedy-performance-analysis'),
-            'description' => __('Per-plugin costs measured by the deep-analysis sweep: one row per plugin per page per cache mode, with generation-time, SQL, HTTP, query-count and memory deltas. Positive deltas = the plugin adds that much; negative = it SAVES that much (never call a negative delta slow). confidence=measured means proven by re-measurement; none means below the noise floor. Headline the warm (or normal) cache mode.', 'super-speedy-performance-analysis'),
+            'description' => __('Per-plugin costs measured by Plugin Impact Analysis: one row per plugin per page per cache mode, with generation-time, SQL, HTTP, query-count and memory deltas. Positive deltas = the plugin adds that much; negative = it SAVES that much (never call a negative delta slow). confidence=measured means proven by re-measurement; none means below the noise floor. Headline the warm (or normal) cache mode.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => $no_input,
             'output_schema' => array(

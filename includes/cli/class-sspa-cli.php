@@ -347,7 +347,7 @@ class SSPA_CLI {
     }
 
     /**
-     * List measured per-plugin impacts from deep-analysis runs.
+     * List measured per-plugin impacts from Plugin Impact Analysis runs.
      *
      * [--format=<format>]
      * : table (default) or json.

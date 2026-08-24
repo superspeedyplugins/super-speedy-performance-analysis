@@ -56,14 +56,14 @@ The report JSON (`wp sspa report`, or the `get-report` ability - schema in
   content), `dupe_queries`, `slow_http` (blocking remote calls), `cache_blind` (ignores
   Redis), `blocking_mail`, `security_block` (profiling was blocked - relay the whitelist
   advice).
-- `impacts` - only present after deep analysis: PROVEN per-plugin costs with a noise floor.
+- `impacts` - only present after Plugin Impact Analysis: PROVEN per-plugin costs with a noise floor.
 
 When summarising for the user: name the responsible plugin, quote the measured numbers,
 and include the recommendation. Do not soften "confidence: measured" findings - they were
 proven by re-measurement. Treat `confidence: inferred` as attribution, not proof, and
-offer deep analysis to confirm.
+offer Plugin Impact Analysis to confirm.
 
-## 4. Offer deep analysis (culprit isolation)
+## 4. Offer Plugin Impact Analysis (culprit isolation)
 
 If findings name suspect plugins, offer to prove their real cost:
 

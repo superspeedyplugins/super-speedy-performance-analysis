@@ -167,7 +167,7 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   against the receiver's golden Go vector, plus the completion and status canonical strings
   against the shapes the Go tests declare (those two have no golden signature on the Go side).
 - `21-community-evidence.php` - payload generation for every supported run type, including
-  page profiles, checkout flows, spot checks, deep scans and Excimer data.
+  page profiles, checkout flows, spot checks, Plugin Impact Analysis and Excimer data.
 - `22-community-backfill.php` - bounded historical backfill, consent metadata and exact
   per-outbox preview data.
 - `23-community-run-integration.php` - the join between the two: REAL runs of every type

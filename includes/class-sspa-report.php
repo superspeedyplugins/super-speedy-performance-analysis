@@ -451,7 +451,7 @@ class SSPA_Report {
                 }
             }
             $output_stable = count($stable_hashes) >= 2 ? (1 === count(array_unique($stable_hashes))) : null;
-            // The sweep's verdict outranks this run's samples: if the LATEST deep scan
+            // The sweep's verdict outranks this run's samples: if the latest Plugin Impact Analysis
             // of this page found its own baselines unstable, byte-identity is
             // unobtainable in practice and consumers must use their dynamic-page bar.
             if (isset($swept_dynamic[$p['page_key']])) {

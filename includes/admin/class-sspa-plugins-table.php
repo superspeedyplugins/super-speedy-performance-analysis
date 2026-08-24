@@ -185,7 +185,7 @@ class SSPA_Plugins_Table {
     /**
      * The Measured impact cell.
      *
-     * Deep-analysis verdicts come from the plugin's own most recent sweep, which can be weeks
+     * Plugin Impact Analysis verdicts come from the plugin's own most recent sweep, which can be weeks
      * older than the attribution run beside it. A stale verdict reads as current unless the
      * cell says when it was taken, so the date is not optional decoration: a plugin fixed and
      * updated since the sweep keeps showing its old cost with nothing to indicate that.
@@ -346,7 +346,7 @@ class SSPA_Plugins_Table {
         }
         if ($stale_run) {
             return '<br><small class="sspa-impact-stale">' . esc_html(sprintf(
-                /* translators: %s: date the deep analysis ran */
+                /* translators: %s: date Plugin Impact Analysis ran */
                 __('measured %s, before the analysis above - re-measure to trust this', 'super-speedy-performance-analysis'),
                 $when
             )) . '</small>';

@@ -18,7 +18,7 @@ Workflow:
 3. Read `wp sspa report` (JSON). Summarise for the user: lead with `score` and the
    `insights` array - each has a `headline` naming the responsible plugin, `evidence`
    numbers, and a `recommendation` you should quote.
-4. If findings name suspect plugins, offer deep analysis
+4. If findings name suspect plugins, offer Plugin Impact Analysis
    (`wp sspa run --type=deep`) and report the measured `impacts` - these are proven
    per-plugin costs, safe to state as fact. Explain that suspect plugins are disabled for
    the plugin's own test requests only; visitors are unaffected.

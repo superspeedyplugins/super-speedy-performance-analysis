@@ -32,7 +32,7 @@ if (!class_exists('SSPA_Component_Map')) {
          *
          * CALLER: the component that asked for the work. A plugin calling wc_get_product()
          * 200 times in a loop instead of one aggregate query is that plugin's fault, not
-         * WooCommerce's, and this is the mode that matches Deep Analysis - disable the
+         * WooCommerce's, and this is the mode that matches Plugin Impact Analysis - disable the
          * plugin and those calls disappear.
          *
          * CODE_OWNER: the component whose code actually ran. What you want when deciding

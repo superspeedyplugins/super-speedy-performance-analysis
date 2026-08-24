@@ -114,7 +114,7 @@ if (!is_wp_error($baseline)) {
     sspa_evidence_t(count(sspa_evidence_of_type($baseline, 'sspa/excimer-profile')) === 1, 'baseline contains Excimer functions, components and phases');
 }
 
-// Deep analysis with a scoped isolation impact.
+// Plugin Impact Analysis with a scoped isolation impact.
 $deep_id = sspa_evidence_run('deep');
 $run_ids[] = $deep_id;
 $profile_ids[] = sspa_evidence_profile($deep_id, 'shop', $capture);

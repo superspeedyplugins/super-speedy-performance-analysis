@@ -54,7 +54,7 @@
     },
     "big_result_set": {
       "title": "Large result set",
-      "body": "Queries returning hundreds of rows are the usual cause of high RAM per page view: every row is hydrated into PHP memory. If this component regularly fetches this much data, it is a prime suspect for deep analysis."
+      "body": "Queries returning hundreds of rows are the usual cause of high RAM per page view: every row is hydrated into PHP memory. If this component regularly fetches this much data, it is a prime suspect for Plugin Impact Analysis."
     },
     "query_loop": {
       "title": "Queries in a loop",
@@ -128,7 +128,7 @@
     },
     "checkout_component_cost": {
       "title": "One plugin owns a large share of your checkout",
-      "body": "This component accounted for a large share of the server time across the whole purchase. That is attribution from measured stack samples, not an isolation experiment - the decisive test is re-running the checkout flow with the plugin briefly deactivated on a staging copy. Per-plugin checkout isolation is planned for deep analysis."
+      "body": "This component accounted for a large share of the server time across the whole purchase. That is attribution from measured stack samples, not an isolation experiment - the decisive test is re-running the checkout flow with the plugin briefly deactivated on a staging copy. Per-plugin checkout isolation is planned for Plugin Impact Analysis."
     },
     "checkout_blocking_http": {
       "title": "Your checkout waits on an outside server",
