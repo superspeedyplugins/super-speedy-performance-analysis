@@ -2,8 +2,8 @@
 // Commerce flow evidence: the customer's wait and the shop owner's admin work leave as two
 // separate records, and a management sequence that did not finish says so.
 //
-// Case 33 proves the happy path against a REAL measured purchase - both steps, real timings,
-// real status transition. This case covers what a real run on a healthy store cannot produce
+// Case 33 proves the happy path against a REAL measured purchase: all four management actions,
+// real timings and real status transitions. This case covers what a healthy run cannot produce
 // on demand: a security layer blocking wp-admin, a run that only got as far as opening the
 // order, and a store measured before order management existed. The profile rows are inserted
 // directly because that is the only way to hold a run in those states, and they are inserted
@@ -52,7 +52,7 @@ function sspa_fe_step($run_id, $page_key, $args = array()) {
         // order. If any of it can reach a payload, it reaches it from here.
         'url' => admin_url('post.php?post=987654321234&action=edit&_wpnonce=abc123'),
         'method' => isset($args['method']) ? $args['method'] : 'GET',
-        'variant' => in_array($page_key, array('flow-view-order', 'flow-complete-order'), true) ? 'admin' : 'anon',
+        'variant' => in_array($page_key, array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), true) ? 'admin' : 'anon',
         'plugin_set_hash' => md5('flow-evidence'),
         'object_cache_mode' => 'normal',
         'samples' => wp_json_encode(array(array('wall_ms' => 100, 'code' => 200))),
@@ -100,12 +100,16 @@ sspa_fe_t(
     'its customer checkout evidence is unaffected, so historical runs still export'
 );
 
-// --- Both steps measured: the complete sequence ---
+// --- All four management actions measured: the complete sequence ---
 
 $sspa_full = sspa_fe_run(array_merge($sspa_fe_notes, array('flow' => array(
     'payment_mode' => 'no_payment',
     'complete_from_status' => 'processing',
     'complete_to_status' => 'completed',
+    'refund_from_status' => 'completed',
+    'refund_to_status' => 'refunded',
+    'trash_from_status' => 'refunded',
+    'trash_to_status' => 'trash',
 ))));
 sspa_fe_step($sspa_full, 'flow-preflight');
 sspa_fe_step($sspa_full, 'flow-view-cart');
@@ -113,32 +117,33 @@ sspa_fe_step($sspa_full, 'flow-place-order', array('method' => 'POST', 'gen_ms' 
 sspa_fe_step($sspa_full, 'flow-order-received', array('gen_ms' => 80.0));
 sspa_fe_step($sspa_full, 'flow-view-order', array('gen_ms' => 300.0));
 sspa_fe_step($sspa_full, 'flow-complete-order', array('gen_ms' => 500.0));
-sspa_fe_step($sspa_full, 'flow-delete-order', array('gen_ms' => 250.0));
+sspa_fe_step($sspa_full, 'flow-refund-order', array('gen_ms' => 350.0));
+sspa_fe_step($sspa_full, 'flow-trash-order', array('gen_ms' => 250.0));
 
 $sspa_mgmt = sspa_fe_evidence($sspa_full, 'sspa/order-management-flow');
 $sspa_flow = sspa_fe_evidence($sspa_full, 'sspa/checkout-flow');
-sspa_fe_t(is_array($sspa_mgmt) && 1 === count($sspa_mgmt) && 1 === $sspa_mgmt[0]['version'], 'order management leaves as its own v1 evidence record');
+sspa_fe_t(is_array($sspa_mgmt) && 1 === count($sspa_mgmt) && 2 === $sspa_mgmt[0]['version'], 'order management leaves as its own v2 evidence record');
 
 if (is_array($sspa_mgmt) && $sspa_mgmt && is_array($sspa_flow) && $sspa_flow) {
     $sspa_m = $sspa_mgmt[0]['data'];
     $sspa_c = $sspa_flow[0]['data'];
-    sspa_fe_t('complete' === $sspa_m['outcome'], 'both steps measured reports outcome complete (' . $sspa_m['outcome'] . ')');
+    sspa_fe_t('complete' === $sspa_m['outcome'], 'all four actions measured reports outcome complete (' . $sspa_m['outcome'] . ')');
     sspa_fe_t(
-        abs($sspa_m['management_ms'] - 800.0) < 0.5,
-        'the management total is view + complete only, 800ms (' . $sspa_m['management_ms'] . ')'
+        abs($sspa_m['management_ms'] - 1400.0) < 0.5,
+        'the management total covers view + complete + refund + Trash, 1400ms (' . $sspa_m['management_ms'] . ')'
     );
     sspa_fe_t('flow-complete-order' === $sspa_m['slowest_step'], 'the slowest MANAGEMENT step is named, not the run\'s slowest step (' . $sspa_m['slowest_step'] . ')');
     sspa_fe_t('hpos' === $sspa_m['order_storage'] && 'block' === $sspa_m['checkout_type'], 'the cohort controls travel with it');
     sspa_fe_t(
-        'processing' === $sspa_m['from_status'] && 'completed' === $sspa_m['to_status'],
-        'the status transition is recorded'
+        'processing' === $sspa_m['from_status'] && 'trash' === $sspa_m['to_status'],
+        'the complete lifecycle transition is recorded'
     );
 
     // The customer total: cart 120 + place-order 400 + order-received 80 = 600. Nothing from
-    // the admin screens, nothing from the cleanup delete.
+    // any of the admin actions.
     sspa_fe_t(
         abs($sspa_c['total_ms'] - 600.0) < 0.5,
-        'the customer total excludes both management steps AND the harness cleanup, 600ms (' . $sspa_c['total_ms'] . ')'
+        'the customer total excludes all management actions and the preflight harness, 600ms (' . $sspa_c['total_ms'] . ')'
     );
     $sspa_customer_classes = array();
     $sspa_harness_classes = array();
@@ -150,12 +155,12 @@ if (is_array($sspa_mgmt) && $sspa_mgmt && is_array($sspa_flow) && $sspa_flow) {
         }
     }
     sspa_fe_t(
-        !array_intersect(array('flow-view-order', 'flow-complete-order'), $sspa_customer_classes)
-        && !array_intersect(array('flow-view-order', 'flow-complete-order'), $sspa_harness_classes),
+        !array_intersect(array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), $sspa_customer_classes)
+        && !array_intersect(array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), $sspa_harness_classes),
         'no management step appears anywhere in the customer flow'
     );
     sspa_fe_t(
-        in_array('flow-preflight', $sspa_harness_classes, true) && in_array('flow-delete-order', $sspa_harness_classes, true),
+        array('flow-preflight') === $sspa_harness_classes,
         'the harness steps are exported, labelled as harness (' . implode(', ', $sspa_harness_classes) . ')'
     );
 }
@@ -196,6 +201,27 @@ if (is_array($sspa_partial_mgmt) && $sspa_partial_mgmt) {
     sspa_fe_t(false, 'a partial management sequence still produces evidence');
 }
 
+// --- All requests returned, but the order never reached Trash ---
+
+$sspa_untrashed = sspa_fe_run(array_merge($sspa_fe_notes, array('flow' => array(
+    'payment_mode' => 'no_payment',
+    'complete_from_status' => 'processing',
+    'complete_to_status' => 'completed',
+    'refund_to_status' => 'completed',
+    'trash_to_status' => 'completed',
+))));
+sspa_fe_step($sspa_untrashed, 'flow-place-order', array('method' => 'POST'));
+sspa_fe_step($sspa_untrashed, 'flow-view-order');
+sspa_fe_step($sspa_untrashed, 'flow-complete-order');
+sspa_fe_step($sspa_untrashed, 'flow-refund-order');
+sspa_fe_step($sspa_untrashed, 'flow-trash-order', array('code' => 500));
+$sspa_untrashed_mgmt = sspa_fe_evidence($sspa_untrashed, 'sspa/order-management-flow');
+sspa_fe_t(
+    is_array($sspa_untrashed_mgmt) && $sspa_untrashed_mgmt
+    && 'partial' === $sspa_untrashed_mgmt[0]['data']['outcome'],
+    'four attempted requests cannot report complete unless the final status is Trash'
+);
+
 // --- A store's own order status, which is named after its business ---
 
 $sspa_custom = sspa_fe_run(array(
@@ -224,7 +250,7 @@ if (is_array($sspa_custom_mgmt) && $sspa_custom_mgmt) {
 // --- Nothing identifying, in any of them ---
 
 $sspa_all = array();
-foreach (array($sspa_old, $sspa_full, $sspa_blocked, $sspa_partial, $sspa_custom) as $sspa_run_id) {
+foreach (array($sspa_old, $sspa_full, $sspa_blocked, $sspa_partial, $sspa_untrashed, $sspa_custom) as $sspa_run_id) {
     $sspa_built = SSPA_Community_Exporter::build($sspa_run_id);
     $sspa_all[] = is_wp_error($sspa_built) ? array('error' => $sspa_built->get_error_message()) : $sspa_built;
 }

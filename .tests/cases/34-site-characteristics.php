@@ -142,6 +142,8 @@ $sspa_wc_orders = wc_get_orders(array(
     'date_created' => '>' . gmdate('Y-m-d', time() - 30 * DAY_IN_SECONDS),
     'return' => 'ids',
     'limit' => -1,
+    'type' => 'shop_order',
+    'status' => array_keys(wc_get_order_statuses()),
 ));
 sspa_sc_t(
     'query_count' === $sspa_metrics['orders_30d_basis']

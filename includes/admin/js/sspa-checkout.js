@@ -82,10 +82,11 @@
 
 		html += '<p class="sspa-adhoc-note">Measuring your <strong>' +
 			('block' === inv.checkout_type ? 'block' : 'shortcode') + '</strong> checkout <strong>and what you do with the order after</strong>. ' +
-			'It checks out using the hidden, non-stock-managed SSPA test product, with every plugin on your site active, then <strong>opens the order in wp-admin and marks it completed</strong> &mdash; the two things you handle most. ' +
+			'It checks out using the hidden, non-stock-managed SSPA test product, with every plugin on your site active, then <strong>opens the order in wp-admin and marks it completed</strong>. ' +
 			'That is the point: a run that switches your integrations off measures a store nobody has. ' +
 			'Marking it completed sends the completed-order email and fires everything hooking order completion. ' +
-			'The order is <strong>cancelled and deleted</strong> afterwards. No catalogue product or stock is touched.</p>';
+			'It then records a full local refund and moves the order to <strong>Trash</strong>, where you can inspect or restore it. ' +
+			'No catalogue product, stock level or payment gateway refund is touched.</p>';
 
 		html += '<ul class="sspa-ck-list">';
 		if (inv.product) {
@@ -120,7 +121,7 @@
 				(inv.order_hooks_more ? ' and ' + inv.order_hooks_more + ' more' : '') + '</li>';
 		}
 		if (inv.creates_account) {
-			html += '<li>Guest checkout is disabled on this store, so the purchase <strong>creates a customer account</strong>. It is deleted again with the order.</li>';
+			html += '<li>Guest checkout is disabled on this store, so the purchase <strong>creates a customer account</strong>. The account is deleted after the run.</li>';
 		}
 		if (inv.needs_payment_filtered) {
 			html += '<li class="sspa-ck-warn">Another plugin already filters WooCommerce\'s "needs payment" checks. ' +
@@ -326,8 +327,8 @@
 		// subtotal, deliberately below the customer total - "your order screen takes 3s" is a
 		// real cost, but not one a customer waits through.
 		if (management.length) {
-			var transition = (d.complete_from_status && d.complete_to_status)
-				? ' (' + esc(d.complete_from_status) + ' &rarr; ' + esc(d.complete_to_status) + ')'
+			var transition = (d.management_from_status && d.management_to_status)
+				? ' (' + esc(d.management_from_status) + ' &rarr; ' + esc(d.management_to_status) + ')'
 				: '';
 			html += '<h3 class="sspa-ck-h">Order management &mdash; what YOU wait through handling the order' + transition + '</h3>' +
 				'<table class="sspa-adhoc-table sspa-ck-table">' + rows(management, max, d.slowest, 'management') +
@@ -402,12 +403,17 @@
 		// The safety report, stated rather than assumed.
 		var safety = d.notes && d.notes.safety;
 		if (safety) {
-			if ('failed' === d.status && 0 === Number(safety.orders_deleted) && 0 === Number(safety.orders_left)) {
+			var hasTrashReport = Object.prototype.hasOwnProperty.call(safety, 'orders_trashed');
+			if (!hasTrashReport) {
+				html += '<p class="sspa-adhoc-note"><strong>Cleanup:</strong> This older result permanently deleted ' +
+					esc(safety.orders_deleted || 0) + ' synthetic order' + (1 === Number(safety.orders_deleted) ? '' : 's') +
+					(safety.orders_left ? ' and <strong class="sspa-ck-warn">left ' + esc(safety.orders_left) + ' behind</strong>' : '') + '.</p>';
+			} else if ('failed' === d.status && 0 === Number(safety.orders_trashed) && 0 === Number(safety.orders_not_trashed)) {
 				html += '<p class="sspa-adhoc-note"><strong>Cleanup:</strong> No order was created, so there was no order, customer account or stock change to clean up.</p>';
 			} else {
 				html += '<p class="sspa-adhoc-note"><strong>Cleanup:</strong> ' +
-					esc(safety.orders_deleted) + ' order' + (1 === safety.orders_deleted ? '' : 's') + ' deleted, ' +
-					(safety.orders_left ? '<strong class="sspa-ck-warn">' + esc(safety.orders_left) + ' still present</strong>' : 'none left behind') +
+					esc(safety.orders_trashed) + ' order' + (1 === safety.orders_trashed ? '' : 's') + ' moved to Trash, ' +
+					(safety.orders_not_trashed ? '<strong class="sspa-ck-warn">' + esc(safety.orders_not_trashed) + ' could not be trashed</strong>' : 'none permanently deleted') +
 					(null === safety.stock_before
 						? '. This product does not use managed stock, so there was no stock level to restore'
 						: ', stock ' + esc(safety.stock_before) + ' &rarr; ' + esc(safety.stock_after) +
@@ -443,7 +449,7 @@
 		var elapsed = status && status.elapsed_seconds ? Math.round(status.elapsed_seconds) + 's' : '';
 		body('<p class="sspa-adhoc-running sspa-adhoc-span"><span class="sspa-adhoc-spin"></span>Buying something and measuring it' +
 			(elapsed ? ' <span class="sspa-adhoc-elapsed">' + esc(elapsed) + '</span>' : '') + '</p>' +
-			'<p class="sspa-adhoc-note sspa-adhoc-span">One purchase, start to finish, then the order is deleted again. Usually under a minute.</p>');
+			'<p class="sspa-adhoc-note sspa-adhoc-span">One purchase, then completion, full local refund and a move to WooCommerce Trash. Usually under a minute.</p>');
 	}
 
 	function drive(runId) {

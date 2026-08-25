@@ -45,7 +45,9 @@ class SSPA_Community_Schema {
             // The shop owner's post-sale work, kept as its own type rather than more steps on
             // the checkout flow: it measures a different person's time and must never be
             // added to what a customer waited through.
-            'sspa/order-management-flow' => 1,
+            // 2 adds the measured full-refund and move-to-Trash steps. Version 1 payloads
+            // remain immutable and readable by the collector.
+            'sspa/order-management-flow' => 2,
             // What the site's archives filter and order by, and the composite indexes that
             // would serve them. Shapes only - column names, index shapes, plan verdicts,
             // banded row counts. Meta key names are allowlisted; meta values never travel.

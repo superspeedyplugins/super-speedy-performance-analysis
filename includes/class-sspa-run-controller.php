@@ -843,10 +843,7 @@ class SSPA_Run_Controller {
         ));
     }
 
-    /**
-     * Checkout completion: findings pass, run notes, done. The flow itself already deleted
-     * its orders and verified stock in its own `finally`; this records what happened.
-     */
+    /** Checkout completion: findings pass, run notes, done. */
     private static function finish_checkout($run_id) {
         global $wpdb;
         SSPA_Helper_Files::restore_held_dropin();
@@ -871,8 +868,8 @@ class SSPA_Run_Controller {
             'findings' => $findings,
             // The safety report, stated rather than assumed: the panel prints these.
             'safety' => array(
-                'orders_deleted' => isset($flow_notes['orders_deleted']) ? (int) $flow_notes['orders_deleted'] : 0,
-                'orders_left' => isset($flow_notes['orders_left']) ? (int) $flow_notes['orders_left'] : 0,
+                'orders_trashed' => isset($flow_notes['orders_trashed']) ? (int) $flow_notes['orders_trashed'] : 0,
+                'orders_not_trashed' => isset($flow_notes['orders_not_trashed']) ? (int) $flow_notes['orders_not_trashed'] : 0,
                 'stock_before' => isset($flow_notes['stock_before']) ? $flow_notes['stock_before'] : null,
                 'stock_after' => isset($flow_notes['stock_after']) ? $flow_notes['stock_after'] : null,
                 'stock_restored_manually' => !empty($flow_notes['stock_restored_manually']),
@@ -2045,12 +2042,11 @@ class SSPA_Run_Controller {
 
     /**
      * Crash-safety net for the checkout flow: an order a crashed run left behind is
-     * cancelled (restoring stock) and deleted, provided it carries this plugin's own
-     * marker. Nothing without that marker is ever touched, whatever the option says.
+     * refunded locally and moved to Trash, provided it carries this plugin's own marker.
+     * Nothing without that marker is ever touched, whatever the option says.
      *
-     * Two nets, because an orphan order in a customer's store is the one outcome this
-     * feature must never produce: the ids the run recorded, and a sweep for marked orders
-     * older than an hour that no run ever got round to recording.
+     * Two nets cover both ids the run recorded and marked orders older than an hour that a
+     * crash prevented it recording. Neither net permanently deletes an order.
      */
     private static function sweep_flow_orders() {
         global $wpdb;
@@ -2073,7 +2069,7 @@ class SSPA_Run_Controller {
             if (isset($entry['type']) && 'user' === $entry['type']) {
                 self::delete_marked_user((int) $entry['id']);
             } else {
-                self::delete_marked_order((int) $entry['id']);
+                self::trash_marked_order((int) $entry['id']);
             }
         }
         if ($keep) {
@@ -2105,7 +2101,7 @@ class SSPA_Run_Controller {
             if ($created && $created->getTimestamp() > $cutoff) {
                 continue;
             }
-            self::delete_marked_order($id);
+            self::trash_marked_order($id);
         }
 
         // Marked customer accounts a crash orphaned (the store auto-creates one per
@@ -2137,15 +2133,18 @@ class SSPA_Run_Controller {
         wp_delete_user($user_id);
     }
 
-    private static function delete_marked_order($order_id) {
+    private static function trash_marked_order($order_id) {
         $order = wc_get_order($order_id);
-        if (!$order || !$order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
+        if (!$order || is_a($order, 'WC_Order_Refund') || !$order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
             return;
         }
-        if (!$order->has_status(array('cancelled', 'refunded'))) {
-            $order->update_status('cancelled'); // restores stock before the row goes
+        if (!$order->has_status('trash')) {
+            $refunded = SSPA_Checkout_Flow::refund_marked_order($order_id);
+            if (!$refunded || is_wp_error($refunded)) {
+                return;
+            }
         }
-        $order->delete(true);
+        SSPA_Checkout_Flow::trash_marked_order($order_id);
     }
 
     // ---------------- AJAX ----------------

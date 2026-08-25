@@ -82,20 +82,6 @@ class SSPA_Probes {
             exit;
         }
 
-        if ('del' === $ck && !empty($flags['oid'])) {
-            $order = function_exists('wc_get_order') ? wc_get_order((int) $flags['oid']) : null;
-            // The one check that must never be relaxed: no order without our own marker is
-            // ever deleted, whatever the flags say.
-            if ($order && $order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
-                if (!$order->has_status(array('cancelled', 'refunded'))) {
-                    $order->update_status('cancelled'); // so wc_maybe_increase_stock_levels runs
-                }
-                $order->delete(true); // HPOS-safe
-                self::done('flow-delete-order');
-            }
-            self::done('flow-delete-order-skipped');
-        }
-
         // Order-management flow: mark the order the checkout just created as completed,
         // inside a profiled request so the completion cascade - the completed-order email,
         // stock/download permissions and every plugin hooking `completed` - is measured, and
@@ -106,13 +92,36 @@ class SSPA_Probes {
         if ('complete' === $ck && !empty($flags['oid'])) {
             if (function_exists('wc_get_order')) {
                 $order = wc_get_order((int) $flags['oid']);
-                // Same inviolable rule as the delete probe: only ever an order carrying our
+                // Same inviolable rule as every lifecycle probe: only an order carrying our
                 // own marker, whatever the flags say.
                 if ($order && $order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
                     $order->update_status('completed', 'SSPA order-management flow');
                 }
             }
             self::done('flow-complete-order');
+        }
+
+        // Record a full WooCommerce refund without contacting a payment gateway. The
+        // dedicated test product has no managed stock, so there is nothing to restock.
+        if ('refund' === $ck && !empty($flags['oid'])) {
+            $refunded = SSPA_Checkout_Flow::refund_marked_order((int) $flags['oid']);
+            if (is_wp_error($refunded)) {
+                self::failed('flow-refund-order', $refunded->get_error_message());
+            }
+            if (!$refunded) {
+                self::failed('flow-refund-order', __('The marked order could not be refunded.', 'super-speedy-performance-analysis'));
+            }
+            self::done('flow-refund-order');
+        }
+
+        // Move the refunded order to WooCommerce Trash. This deliberately calls delete(false):
+        // delete(true) permanently removes the order and is never used by the flow.
+        if ('trash' === $ck && !empty($flags['oid'])) {
+            $trashed = SSPA_Checkout_Flow::trash_marked_order((int) $flags['oid'], false);
+            if (!$trashed) {
+                self::failed('flow-trash-order', __('The marked order was not fully refunded, so it was not moved to Trash.', 'super-speedy-performance-analysis'));
+            }
+            self::done('flow-trash-order');
         }
 
         if (!empty($flags['wp']) && !empty($flags['tid'])) {
@@ -146,6 +155,13 @@ class SSPA_Probes {
     private static function done($label) {
         header('Content-Type: text/plain');
         echo 'sspa-probe-ok:' . $label; // phpcs:ignore WordPress.Security.EscapeOutput
+        exit; // profiler capture still writes - it runs on PHP shutdown
+    }
+
+    private static function failed($label, $message) {
+        status_header(500);
+        header('Content-Type: text/plain');
+        echo 'sspa-probe-error:' . $label . ':' . sanitize_text_field($message); // phpcs:ignore WordPress.Security.EscapeOutput
         exit; // profiler capture still writes - it runs on PHP shutdown
     }
 

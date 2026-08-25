@@ -127,7 +127,12 @@ if ($product_ids) {
     );
 }
 
-$order_ids = function_exists('wc_get_orders') ? wc_get_orders(array('limit' => 1, 'return' => 'ids')) : array();
+$order_ids = function_exists('wc_get_orders') ? wc_get_orders(array(
+    'limit' => 1,
+    'return' => 'ids',
+    'type' => 'shop_order',
+    'status' => array_keys(wc_get_order_statuses()),
+)) : array();
 if ($order_ids) {
     $order_response = SSPA_Crawler::request(admin_url('admin.php?page=wc-orders&action=edit&id=' . $order_ids[0]), array(
         'sslverify' => false,

@@ -193,8 +193,13 @@ class SSPA_Markdown_Export {
         $lines[] = '- Mail constructed during measured steps: ' . (int) $flow['mail']['count'] . ' (' . self::ms($flow['mail']['ms']) . ')';
         $safety = isset($flow['notes']['safety']) && is_array($flow['notes']['safety']) ? $flow['notes']['safety'] : array();
         if ($safety) {
-            $lines[] = '- Synthetic orders deleted: ' . (int) (isset($safety['orders_deleted']) ? $safety['orders_deleted'] : 0);
-            $lines[] = '- Synthetic orders left: ' . (int) (isset($safety['orders_left']) ? $safety['orders_left'] : 0);
+            if (array_key_exists('orders_trashed', $safety)) {
+                $lines[] = '- Synthetic orders moved to Trash: ' . (int) $safety['orders_trashed'];
+                $lines[] = '- Synthetic orders not moved to Trash: ' . (int) (isset($safety['orders_not_trashed']) ? $safety['orders_not_trashed'] : 0);
+            } else {
+                $lines[] = '- Synthetic orders permanently deleted by this older run: ' . (int) (isset($safety['orders_deleted']) ? $safety['orders_deleted'] : 0);
+                $lines[] = '- Synthetic orders left by this older run: ' . (int) (isset($safety['orders_left']) ? $safety['orders_left'] : 0);
+            }
             $lines[] = '- Synthetic users deleted: ' . (int) (isset($safety['users_deleted']) ? $safety['users_deleted'] : 0);
             $lines[] = '- Synthetic users left: ' . (int) (isset($safety['users_left']) ? $safety['users_left'] : 0);
         }

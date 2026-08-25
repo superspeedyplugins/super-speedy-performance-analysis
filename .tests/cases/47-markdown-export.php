@@ -200,19 +200,26 @@ $checkout_run = sspa_markdown_run('checkout', array(
         'payment_mode' => 'no_payment',
         'complete_from_status' => 'processing',
         'complete_to_status' => 'completed',
+        'refund_from_status' => 'completed',
+        'refund_to_status' => 'refunded',
+        'trash_from_status' => 'refunded',
+        'trash_to_status' => 'trash',
         'error' => 'cURL error 28 fetching https://private.example.test/orders/7654321?token=' . $secret . '&email=' . rawurlencode($private_email),
     ),
-    'safety' => array('orders_deleted' => 1, 'orders_left' => 0, 'users_deleted' => 0, 'users_left' => 0),
+    'safety' => array('orders_trashed' => 1, 'orders_not_trashed' => 0, 'users_deleted' => 0, 'users_left' => 0),
 ));
 sspa_markdown_profile($checkout_run, 'flow-view-cart', $capture, array('gen_ms' => 300));
 sspa_markdown_profile($checkout_run, 'flow-place-order', $capture, array('method' => 'POST', 'gen_ms' => 700));
 sspa_markdown_profile($checkout_run, 'flow-order-received', $capture, array('gen_ms' => 150));
 sspa_markdown_profile($checkout_run, 'flow-view-order', $capture, array('gen_ms' => 450));
 sspa_markdown_profile($checkout_run, 'flow-complete-order', $capture, array('method' => 'POST', 'gen_ms' => 600));
+sspa_markdown_profile($checkout_run, 'flow-refund-order', $capture, array('method' => 'POST', 'gen_ms' => 500));
+sspa_markdown_profile($checkout_run, 'flow-trash-order', $capture, array('method' => 'POST', 'gen_ms' => 200));
 $checkout = SSPA_Markdown_Export::build('checkout', $checkout_run);
 sspa_markdown_t(!is_wp_error($checkout) && false !== strpos($checkout['markdown'], '## At risk before payment') && false !== strpos($checkout['markdown'], '## Order management'), 'checkout and order analysis exports both timing buckets');
 if (!is_wp_error($checkout)) {
     sspa_markdown_t(false !== strpos($checkout['markdown'], 'Failure detail: cURL error 28'), 'checkout transport failure detail remains available for diagnosis');
+    sspa_markdown_t(false !== strpos($checkout['markdown'], 'Synthetic orders moved to Trash: 1'), 'checkout cleanup reports the recoverable trashed order');
     sspa_markdown_t(false === strpos($checkout['markdown'], $secret) && false === strpos($checkout['markdown'], $private_email) && false === strpos($checkout['markdown'], '7654321') && false === strpos($checkout['markdown'], 'PRIVATE-ORDER-ABC') && false === strpos($checkout['markdown'], 'PRIVATE-COUPON'), 'checkout fulfilment identifiers stay out of the LLM document');
 }
 

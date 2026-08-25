@@ -1,8 +1,7 @@
 <?php
-// Order management, appended to the checkout flow (Dave's brief, 11th August 2026): after the
-// purchase, the flow views the order in wp-admin and marks it completed - the two things a
-// shop owner does most - measuring the order-edit screen and the completion cascade (the
-// completed-order email, stock/downloads and every plugin hooking `completed`).
+// Order management, appended to the checkout flow: after the purchase, the flow views the
+// order in wp-admin, marks it completed, issues a full local refund, then moves the order to
+// Trash. Every action is a separate profiled request and the order remains recoverable.
 //
 // Drives the REAL entry point - SSPA_Run_Controller::start(['type' => 'checkout']) plus the
 // batch loop - so the management steps are exercised exactly as a run does them, never
@@ -35,10 +34,18 @@ file_put_contents($sspa_om_dir . '/sspa-om-fixture.php', <<<'PHP'
 add_action('woocommerce_order_status_completed', function ($order_id) {
     update_option('sspa_om_completed_fired', (int) $order_id, false);
 }, 10, 1);
+add_action('woocommerce_order_fully_refunded', function ($order_id) {
+    update_option('sspa_om_refunded_fired', (int) $order_id, false);
+}, 10, 1);
+add_action('woocommerce_trash_order', function ($order_id) {
+    update_option('sspa_om_trashed_fired', (int) $order_id, false);
+}, 10, 1);
 PHP
 );
 activate_plugin('sspa-om-fixture/sspa-om-fixture.php');
 delete_option('sspa_om_completed_fired');
+delete_option('sspa_om_refunded_fired');
+delete_option('sspa_om_trashed_fired');
 wp_cache_flush();
 sleep(3); // opcache
 
@@ -63,10 +70,10 @@ $sspa_outcome = isset($sspa_notes['outcome']) ? $sspa_notes['outcome'] : 'unknow
 sspa_om_t('ok' === $sspa_outcome, 'the checkout succeeded, so there was an order to manage (' . $sspa_outcome . ')');
 
 if ('ok' === $sspa_outcome) {
-    // --- The two management steps exist, as admin ---
+    // --- The full management lifecycle exists, as admin ---
     $sspa_steps = $wpdb->get_results($wpdb->prepare(
         'SELECT page_key, variant, method, page_gen_ms FROM ' . SSPA_Schema::table('profiles') . "
-         WHERE run_id = %d AND page_key IN ('flow-view-order', 'flow-complete-order') ORDER BY id ASC",
+         WHERE run_id = %d AND page_key IN ('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order') ORDER BY id ASC",
         $sspa_run
     ), ARRAY_A);
     $sspa_by_key = array();
@@ -75,6 +82,8 @@ if ('ok' === $sspa_outcome) {
     }
     sspa_om_t(isset($sspa_by_key['flow-view-order']), 'the order-view step was measured');
     sspa_om_t(isset($sspa_by_key['flow-complete-order']), 'the mark-completed step was measured');
+    sspa_om_t(isset($sspa_by_key['flow-refund-order']), 'the refund step was measured');
+    sspa_om_t(isset($sspa_by_key['flow-trash-order']), 'the move-to-Trash step was measured');
     sspa_om_t(
         isset($sspa_by_key['flow-view-order']) && 'admin' === $sspa_by_key['flow-view-order']['variant'],
         'the order-view step ran as admin, not guest'
@@ -88,6 +97,12 @@ if ('ok' === $sspa_outcome) {
     wp_cache_delete('sspa_om_completed_fired', 'options');
     $sspa_fired = (int) get_option('sspa_om_completed_fired');
     sspa_om_t($sspa_fired > 0, 'the completed-order cascade fired during the run (order ' . $sspa_fired . ')');
+    wp_cache_delete('sspa_om_refunded_fired', 'options');
+    wp_cache_delete('sspa_om_trashed_fired', 'options');
+    $sspa_refunded = (int) get_option('sspa_om_refunded_fired');
+    $sspa_trashed = (int) get_option('sspa_om_trashed_fired');
+    sspa_om_t($sspa_fired > 0 && $sspa_fired === $sspa_refunded, 'the full-refund cascade fired for the completed order');
+    sspa_om_t($sspa_fired > 0 && $sspa_fired === $sspa_trashed, 'the trash cascade fired for the refunded order');
 
     // --- The transition is named honestly, processing -> completed on physical goods ---
     sspa_om_t(
@@ -98,10 +113,20 @@ if ('ok' === $sspa_outcome) {
         'completed' === (isset($sspa_notes['flow']['complete_to_status']) ? $sspa_notes['flow']['complete_to_status'] : null),
         'and completed after'
     );
+    sspa_om_t(
+        'completed' === (isset($sspa_notes['flow']['refund_from_status']) ? $sspa_notes['flow']['refund_from_status'] : null)
+        && 'refunded' === (isset($sspa_notes['flow']['refund_to_status']) ? $sspa_notes['flow']['refund_to_status'] : null),
+        'the completed order was fully refunded'
+    );
+    sspa_om_t(
+        'refunded' === (isset($sspa_notes['flow']['trash_from_status']) ? $sspa_notes['flow']['trash_from_status'] : null)
+        && 'trash' === (isset($sspa_notes['flow']['trash_to_status']) ? $sspa_notes['flow']['trash_to_status'] : null),
+        'the refunded order was moved to Trash'
+    );
 
     // --- The waterfall keeps management out of the customer total ---
     $sspa_wf = SSPA_Checkout_Flow::waterfall($sspa_run);
-    sspa_om_t(!empty($sspa_wf['management']) && count($sspa_wf['management']) >= 2, 'the waterfall has a management bucket with both steps');
+    sspa_om_t(!empty($sspa_wf['management']) && 4 === count($sspa_wf['management']), 'the waterfall has all four order-management steps');
     sspa_om_t($sspa_wf['management_ms'] > 0, 'the management bucket has measured time (' . $sspa_wf['management_ms'] . 'ms)');
     $sspa_detail_steps = array();
     foreach ((array) $sspa_wf['management'] as $sspa_management_step) {
@@ -110,14 +135,14 @@ if ('ok' === $sspa_outcome) {
         }
     }
     sspa_om_t(
-        in_array('flow-view-order', $sspa_detail_steps, true) && in_array('flow-complete-order', $sspa_detail_steps, true),
-        'both order-management rows expose expandable per-step component diagnostics'
+        !array_diff(array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), $sspa_detail_steps),
+        'all order-management rows expose expandable per-step component diagnostics'
     );
     // The panel labels the transition from these - they must be populated, not null (the flow
     // notes are nested under 'flow', an easy path to get wrong).
     sspa_om_t(
-        'processing' === $sspa_wf['complete_from_status'] && 'completed' === $sspa_wf['complete_to_status'],
-        'the waterfall exposes the transition for the panel label (' . var_export($sspa_wf['complete_from_status'], true) . ' -> ' . var_export($sspa_wf['complete_to_status'], true) . ')'
+        'processing' === $sspa_wf['management_from_status'] && 'trash' === $sspa_wf['management_to_status'],
+        'the waterfall exposes the full management lifecycle (' . var_export($sspa_wf['management_from_status'], true) . ' -> ' . var_export($sspa_wf['management_to_status'], true) . ')'
     );
     // The customer total is at-risk + secured only; management is separate.
     sspa_om_t(
@@ -135,7 +160,7 @@ if ('ok' === $sspa_outcome) {
     // checkout types told the owner their customer was waiting at "mark order completed".
     $sspa_management_finding_types = $wpdb->get_col($wpdb->prepare(
         'SELECT finding_type FROM ' . SSPA_Schema::table('findings') . "
-         WHERE run_id = %d AND page_key IN ('flow-view-order','flow-complete-order')",
+         WHERE run_id = %d AND page_key IN ('flow-view-order','flow-complete-order','flow-refund-order','flow-trash-order')",
         $sspa_run
     ));
     sspa_om_t(
@@ -149,7 +174,7 @@ if ('ok' === $sspa_outcome) {
         'the slow management recommendation is explicitly about staff time'
     );
     sspa_om_t(
-        'order_management_slow_step' === SSPA_Checkout_Flow::contextual_recommendation_key('flow-complete-order', 'checkout_slow_step')
+        'order_management_slow_step' === SSPA_Checkout_Flow::contextual_recommendation_key('flow-trash-order', 'checkout_slow_step')
         && 'checkout_slow_step' === SSPA_Checkout_Flow::contextual_recommendation_key('flow-place-order', 'checkout_slow_step'),
         'old saved findings are corrected on read without changing real checkout findings'
     );
@@ -170,7 +195,7 @@ if ('ok' === $sspa_outcome) {
         };
         $sspa_flow = $sspa_of('sspa/checkout-flow');
         $sspa_mgmt = $sspa_of('sspa/order-management-flow');
-        sspa_om_t(1 === count($sspa_mgmt) && 1 === $sspa_mgmt[0]['version'], 'order management is its own evidence record at v1');
+        sspa_om_t(1 === count($sspa_mgmt) && 2 === $sspa_mgmt[0]['version'], 'the full order lifecycle is its own evidence record at v2');
         sspa_om_t(1 === count($sspa_flow), 'the customer checkout flow is still exported separately');
 
         if ($sspa_mgmt && $sspa_flow) {
@@ -178,8 +203,8 @@ if ('ok' === $sspa_outcome) {
             $sspa_c = $sspa_flow[0]['data'];
             $sspa_classes = array_map(function ($s) { return $s['page_class']; }, (array) $sspa_m['steps']);
             sspa_om_t(
-                in_array('flow-view-order', $sspa_classes, true) && in_array('flow-complete-order', $sspa_classes, true),
-                'both management steps are in it (' . implode(', ', $sspa_classes) . ')'
+                !array_diff(array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), $sspa_classes),
+                'all management steps are in it (' . implode(', ', $sspa_classes) . ')'
             );
             // The measured time is no longer discarded on the way out, which was the whole
             // point: the local waterfall had it, the payload did not.
@@ -188,10 +213,10 @@ if ('ok' === $sspa_outcome) {
                 'it carries the management total (' . $sspa_m['management_ms'] . 'ms)'
             );
             sspa_om_t(
-                'processing' === $sspa_m['from_status'] && 'completed' === $sspa_m['to_status'],
+                'processing' === $sspa_m['from_status'] && 'trash' === $sspa_m['to_status'],
                 'and the status transition (' . var_export($sspa_m['from_status'], true) . ' -> ' . var_export($sspa_m['to_status'], true) . ')'
             );
-            sspa_om_t('complete' === $sspa_m['outcome'], 'a run that did both steps reports outcome complete (' . $sspa_m['outcome'] . ')');
+            sspa_om_t('complete' === $sspa_m['outcome'], 'a run that completed all four actions reports outcome complete (' . $sspa_m['outcome'] . ')');
             sspa_om_t(in_array($sspa_m['order_storage'], array('hpos', 'posts'), true), 'it records where orders live (' . var_export($sspa_m['order_storage'], true) . ')');
 
             // Every step points at its own page-profile evidence, so the receiver can join
@@ -212,7 +237,7 @@ if ('ok' === $sspa_outcome) {
             $sspa_customer_classes = array_map(function ($s) { return $s['page_class']; }, (array) $sspa_c['steps']);
             sspa_om_t(
                 !in_array('flow-view-order', $sspa_customer_classes, true)
-                && !in_array('flow-complete-order', $sspa_customer_classes, true),
+                && !array_intersect(array('flow-complete-order', 'flow-refund-order', 'flow-trash-order'), $sspa_customer_classes),
                 'the customer flow contains no management step'
             );
             sspa_om_t(
@@ -229,14 +254,21 @@ if ('ok' === $sspa_outcome) {
         }
     }
 
-    // --- Cleanup still deleted the order ---
+    // --- The order remains recoverable in Trash, with its refund attached ---
     $sspa_safety = isset($sspa_notes['safety']) ? $sspa_notes['safety'] : array();
     sspa_om_t(
-        isset($sspa_safety['orders_left']) && 0 === (int) $sspa_safety['orders_left'],
-        'the completed order was still deleted afterwards (' . (isset($sspa_safety['orders_left']) ? (int) $sspa_safety['orders_left'] : '?') . ' left)'
+        1 === (int) (isset($sspa_safety['orders_trashed']) ? $sspa_safety['orders_trashed'] : 0)
+        && 0 === (int) (isset($sspa_safety['orders_not_trashed']) ? $sspa_safety['orders_not_trashed'] : -1),
+        'the order was moved to Trash rather than permanently deleted'
     );
     if ($sspa_fired > 0) {
-        sspa_om_t(!wc_get_order($sspa_fired), 'the specific completed order no longer exists');
+        $sspa_trashed_order = wc_get_order($sspa_fired);
+        sspa_om_t($sspa_trashed_order && $sspa_trashed_order->has_status('trash'), 'the specific order still exists in Trash');
+        sspa_om_t(
+            $sspa_trashed_order && count($sspa_trashed_order->get_refunds()) === 1
+            && (float) $sspa_trashed_order->get_total_refunded() === (float) $sspa_trashed_order->get_total(),
+            'the trashed order retains its full refund record'
+        );
     }
 }
 
@@ -245,4 +277,6 @@ deactivate_plugins('sspa-om-fixture/sspa-om-fixture.php', true);
 @unlink($sspa_om_dir . '/sspa-om-fixture.php');
 @rmdir($sspa_om_dir);
 delete_option('sspa_om_completed_fired');
+delete_option('sspa_om_refunded_fired');
+delete_option('sspa_om_trashed_fired');
 sspa_om_t(!is_dir($sspa_om_dir), 'fixture removed');

@@ -127,7 +127,7 @@ measures one complete purchase instead, step by step, and splits the result at t
 boundary: time the customer can still abandon during, versus time after the sale is secured.
 
 **This buys something for real.** A real order is created, real order emails are sent and
-real integrations fire. The order is cancelled and deleted afterwards and stock is restored,
+real integrations fire. The order is completed, fully refunded locally and moved to Trash,
 but you must show the owner what it will set off and get their agreement first:
 
 ```bash

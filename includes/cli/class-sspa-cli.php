@@ -110,8 +110,8 @@ class SSPA_CLI {
      * what a customer waits through at each step, with the full plugin set active.
      *
      * This creates a real order, but never orders a catalogue product. Real emails are sent
-     * and real integrations fire unless their switches say otherwise; the order is cancelled
-     * and deleted afterwards. Use --dry-run first to see exactly what it would set off.
+     * and real integrations fire unless their switches say otherwise. The order is completed,
+     * fully refunded locally and moved to Trash. Use --dry-run first to see what it will do.
      *
      * ## OPTIONS
      *

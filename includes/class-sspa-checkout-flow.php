@@ -199,7 +199,7 @@ class SSPA_Checkout_Flow {
         }, PHP_INT_MAX);
 
         // Mark every order this request creates as ours, at the moment it is created, so
-        // the delete probe and the janitor can both prove an order is safe to remove.
+        // the lifecycle probes and janitor can prove it is safe to complete, refund and trash.
         add_action('woocommerce_new_order', array(__CLASS__, 'mark_temp_order'), PHP_INT_MIN);
         add_action('woocommerce_store_api_checkout_update_order_meta', array(__CLASS__, 'mark_temp_order'), PHP_INT_MIN);
 
@@ -582,8 +582,8 @@ class SSPA_Checkout_Flow {
 
         // Neither branch returns from inside the try: PHP evaluates a return value BEFORE
         // running finally, so an early `return $result` in there would hand back a copy
-        // taken before cleanup recorded anything - every failure path reporting "0 orders
-        // deleted" while having deleted one.
+        // taken before the safety pass recorded anything, which would make a failure path
+        // report no trashed order even when it had moved one.
         $user_id = isset($opts['user_id']) ? (int) $opts['user_id'] : 0;
         $ctx = compact('product', 'quantity', 'billing', 'shipping', 'email', 'payment_mode', 'cart_token', 'headers');
         try {
@@ -592,10 +592,12 @@ class SSPA_Checkout_Flow {
             } else {
                 self::run_block($crawler, $flags, $result, $ctx, $jar);
             }
-            // The order the checkout just created is now the order to manage: view it in
-            // wp-admin and mark it completed, the two things a shop owner does most. Only
-            // when the purchase succeeded and produced an order - there is nothing to manage
-            // otherwise - and never on a failed checkout, whose outcome is already recorded.
+            // Preserve the customer-facing order details before the management lifecycle
+            // changes its status and moves it to Trash.
+            self::capture_order_details($result);
+
+            // The order the checkout just created is now the order to manage: view it,
+            // complete it, refund it and move it to Trash. Only after a successful purchase.
             if ('ok' === $result['outcome'] && $result['order_ids']) {
                 self::run_order_management($crawler, $flags, $result, $user_id);
             }
@@ -603,16 +605,16 @@ class SSPA_Checkout_Flow {
             $result['outcome'] = 'exception';
             $result['notes']['error'] = $e->getMessage();
         } finally {
-            // Preserve the exact identifiers a fulfilment team may see before cleanup removes
-            // the local order. Integrations and webhooks can already have received it by then.
+            // A failure before the normal capture still records whatever order exists.
             self::capture_order_details($result);
-            // Cleanup runs here, never on the happy path: any failure after an order
-            // exists still deletes it.
-            $result['steps'][] = self::cleanup_step($crawler, $result, $flags);
+            // Safety net only. The successful path already measured refund and Trash as
+            // separate requests. A fatal or blocked management request must still leave the
+            // marked order recoverable in Trash rather than permanently deleting it.
+            self::ensure_orders_trashed($result);
             self::verify_stock($product->get_id(), $result);
             self::delete_sessions(array_merge(array($customer_id), $jar['session_keys']), $result);
             self::delete_temp_users($result);
-            // The (now deleted) order ids go in the notes so the analysis engine can
+            // The trashed order ids go in the notes so the analysis engine can
             // recognise a purge/cache plugin that fetched the ORDER's own permalink -
             // with HPOS that URL is /?p=<order id>, and matching the id is what makes
             // the detection deterministic.
@@ -622,7 +624,7 @@ class SSPA_Checkout_Flow {
         return $result;
     }
 
-    /** Store the real WooCommerce-facing order details before the temporary order is deleted. */
+    /** Store the real WooCommerce-facing order details before its status changes. */
     private static function capture_order_details(&$result) {
         if (empty($result['order_ids']) || !function_exists('wc_get_order')) {
             return;
@@ -744,8 +746,8 @@ class SSPA_Checkout_Flow {
         }
         $result['notes']['order_status'] = isset($json['status']) ? $json['status'] : null;
         // Read the total off the order itself: the checkout response schema carries the
-        // addresses and the payment result, not the totals. Read now, because the
-        // order is deleted in the finally below.
+        // addresses and the payment result, not the totals. Read it before the management
+        // lifecycle changes the order's status.
         $placed = wc_get_order((int) $json['order_id']);
         $result['notes']['order_total'] = $placed ? $placed->get_total() : null;
         $result['notes']['order_needed_shipping'] = $placed ? $placed->needs_shipping_address() : null;
@@ -907,18 +909,18 @@ class SSPA_Checkout_Flow {
     }
 
     /**
-     * Order management: the two things a shop owner does most, measured on the order the
-     * checkout just created (Dave's brief, 11th August 2026).
+     * Order management, measured on the order the checkout just created.
      *
      *  - view the order in wp-admin (how slow is the order-edit screen);
-     *  - mark it processing -> completed (the completed-order email, stock/download
-     *    permissions and every plugin hooking `completed` - the saleable "changing an order
-     *    to completed takes N seconds because plugin X does Y").
+     *  - mark it processing -> completed;
+     *  - create a full local refund without contacting the payment gateway;
+     *  - move the refunded order to WooCommerce Trash, where the operator can inspect or
+     *    restore it.
      *
      * Both run as the admin who started the run (their own cookies, no temporary admin
      * user), so the screen and the transition see what that admin would. The transition is
-     * performed inside a profiled probe request - the same mechanism the delete step uses -
-     * so its email is intercepted per the run's mail mode, exactly as a checkout email is.
+     * performed inside profiled probe requests, so email is handled according to the run's
+     * mail mode exactly as checkout email is.
      */
     private static function run_order_management($crawler, $flags, &$result, $user_id) {
         $order_id = (int) end($result['order_ids']);
@@ -926,6 +928,8 @@ class SSPA_Checkout_Flow {
         if (!$order) {
             $result['steps'][] = self::skipped_step('flow-view-order', __('no order to manage', 'super-speedy-performance-analysis'));
             $result['steps'][] = self::skipped_step('flow-complete-order', __('no order to manage', 'super-speedy-performance-analysis'));
+            $result['steps'][] = self::skipped_step('flow-refund-order', __('no order to manage', 'super-speedy-performance-analysis'));
+            $result['steps'][] = self::skipped_step('flow-trash-order', __('no order to manage', 'super-speedy-performance-analysis'));
             return;
         }
 
@@ -936,6 +940,8 @@ class SSPA_Checkout_Flow {
             $why = __('no admin session to view the order as', 'super-speedy-performance-analysis');
             $result['steps'][] = self::skipped_step('flow-view-order', $why);
             $result['steps'][] = self::skipped_step('flow-complete-order', $why);
+            $result['steps'][] = self::skipped_step('flow-refund-order', $why);
+            $result['steps'][] = self::skipped_step('flow-trash-order', $why);
             return;
         }
 
@@ -988,6 +994,43 @@ class SSPA_Checkout_Flow {
         }
         $fresh = wc_get_order($order_id);
         $result['notes']['complete_to_status'] = $fresh ? $fresh->get_status() : null;
+
+        // --- 14. issue a full local refund ---
+        $result['notes']['refund_from_status'] = $fresh ? $fresh->get_status() : null;
+        $refund_flags = array('v' => 'admin', 'ck' => 'refund', 'oid' => (string) $order_id);
+        if (!empty($flags['mail'])) {
+            $refund_flags['mail'] = $flags['mail'];
+        }
+        if (!empty($flags['ps'])) {
+            $refund_flags['ps'] = $flags['ps'];
+        }
+        $refund = self::request($crawler, 'flow-refund-order', 'GET', home_url('/?sspa_flow_probe=1'), $refund_flags, array('cookies' => $admin_cookies));
+        $refund['variant'] = 'admin';
+        $result['steps'][] = $refund;
+        $fresh = self::fresh_order($order_id);
+        $result['notes']['refund_to_status'] = $fresh ? $fresh->get_status() : null;
+
+        // --- 15. move it to WooCommerce Trash ---
+        $result['notes']['trash_from_status'] = $fresh ? $fresh->get_status() : null;
+        $trash_flags = array('v' => 'admin', 'ck' => 'trash', 'oid' => (string) $order_id);
+        if (!empty($flags['ps'])) {
+            $trash_flags['ps'] = $flags['ps'];
+        }
+        $trash = self::request($crawler, 'flow-trash-order', 'GET', home_url('/?sspa_flow_probe=1'), $trash_flags, array('cookies' => $admin_cookies));
+        $trash['variant'] = 'admin';
+        $result['steps'][] = $trash;
+        $fresh = self::fresh_order($order_id);
+        $result['notes']['trash_to_status'] = $fresh ? $fresh->get_status() : null;
+    }
+
+    /** Read an order after another PHP process changed it. */
+    private static function fresh_order($order_id) {
+        wp_cache_delete((int) $order_id, 'orders');
+        clean_post_cache((int) $order_id);
+        if (class_exists('WC_Cache_Helper')) {
+            WC_Cache_Helper::invalidate_cache_group('orders');
+        }
+        return wc_get_order((int) $order_id);
     }
 
     /**
@@ -1379,7 +1422,7 @@ class SSPA_Checkout_Flow {
      * Record an order the moment its id is known, BEFORE the next request goes out, and
      * mark it as ours from this process too. The in-request hook already marks it; doing
      * it here as well means a crash inside that request cannot leave an unmarked order
-     * that nothing is ever allowed to delete.
+     * that the recovery sweep cannot safely recognise.
      */
     private static function remember_order($order_id, &$result) {
         if (!$order_id || in_array($order_id, $result['order_ids'], true)) {
@@ -1399,55 +1442,85 @@ class SSPA_Checkout_Flow {
         }
     }
 
-    /**
-     * Delete every order this run created, measuring the delete cascade as we go - a slow
-     * delete is worth knowing about. Nobody waits for it, so the report keeps it below the
-     * customer-facing total (doc T9 rule 1).
-     */
-    private static function cleanup_step($crawler, &$result, $flags) {
-        if (!$result['order_ids']) {
-            return self::skipped_step('flow-delete-order', __('no order was created', 'super-speedy-performance-analysis'));
+    /** Create the full bookkeeping refund for one marked SSPA order, without a gateway call. */
+    public static function refund_marked_order($order_id) {
+        $order = function_exists('wc_get_order') ? wc_get_order($order_id) : null;
+        if (!$order || is_a($order, 'WC_Order_Refund') || !$order->get_meta(self::TEMP_META)) {
+            return false;
         }
-        $step = null;
-        foreach ($result['order_ids'] as $order_id) {
-            $del_flags = array('v' => 'guest', 'ck' => 'del', 'oid' => (string) $order_id);
-            if (!empty($flags['ps'])) {
-                $del_flags['ps'] = $flags['ps'];
+        $amount = (float) $order->get_remaining_refund_amount();
+        if ($order->has_status('refunded')) {
+            return true;
+        }
+        if ($amount <= 0) {
+            $order->update_status('refunded', __('SSPA measured full refund', 'super-speedy-performance-analysis'));
+            return true;
+        }
+        return wc_create_refund(array(
+            'amount' => $amount,
+            'reason' => __('SSPA measured full refund', 'super-speedy-performance-analysis'),
+            'order_id' => (int) $order_id,
+            'refund_payment' => false,
+            'restock_items' => false,
+        ));
+    }
+
+    /** Move one marked SSPA order to Trash. Permanent deletion is deliberately unavailable. */
+    public static function trash_marked_order($order_id, $remove_marker = true) {
+        $order_id = (int) $order_id;
+        $order = function_exists('wc_get_order') ? wc_get_order($order_id) : null;
+        if (!$order || is_a($order, 'WC_Order_Refund') || !$order->get_meta(self::TEMP_META)) {
+            return false;
+        }
+        // The lifecycle is deliberately ordered. Never hide an unrefunded order in Trash,
+        // even when a failed loopback or crash reaches the safety net out of sequence.
+        if ((float) $order->get_remaining_refund_amount() > 0
+            || (!$order->has_status('refunded') && !$order->has_status('trash'))) {
+            return false;
+        }
+        if (!$order->has_status('trash')) {
+            $order->delete(false);
+        }
+        $fresh = self::fresh_order($order_id);
+        if (!$fresh || !$fresh->has_status('trash')) {
+            return false;
+        }
+        if ($remove_marker && $fresh->get_meta(self::TEMP_META)) {
+            $fresh->delete_meta_data(self::TEMP_META);
+            $fresh->save_meta_data();
+        }
+        return true;
+    }
+
+    /**
+     * Final safety check for blocked or failed management requests. It never permanently
+     * deletes an order. Successful runs have already measured both actions in loopback.
+     */
+    private static function ensure_orders_trashed(&$result) {
+        $trashed = 0;
+        $not_trashed = 0;
+        foreach ((array) $result['order_ids'] as $order_id) {
+            $order = self::fresh_order($order_id);
+            if ($order && !$order->has_status('trash') && $order->get_meta(self::TEMP_META)) {
+                $refunded = self::refund_marked_order($order_id);
+                if (is_wp_error($refunded)) {
+                    $result['notes']['refund_error'] = $refunded->get_error_message();
+                }
             }
-            $one = self::request($crawler, 'flow-delete-order', 'GET', home_url('/?sspa_flow_probe=1'), $del_flags);
-            if (!$step) {
-                $step = $one; // the first delete is the measured one; the rest are the same work
+            if (self::trash_marked_order($order_id)) {
+                $trashed++;
+            } else {
+                $fresh = self::fresh_order($order_id);
+                if ($fresh && $fresh->has_status('trash')) {
+                    $trashed++;
+                } else {
+                    $not_trashed++;
+                }
             }
-            // Whatever the probe managed, make certain nothing is left: the probe runs in
-            // a request that can fatal, and an orphan order in a customer's store is the
-            // one outcome this feature must never produce.
-            self::force_delete_order($order_id);
         }
         self::forget_orders($result['order_ids']);
-        $result['notes']['orders_left'] = self::orders_still_present($result['order_ids']);
-        $result['notes']['orders_deleted'] = count($result['order_ids']) - $result['notes']['orders_left'];
-        return $step;
-    }
-
-    private static function force_delete_order($order_id) {
-        $order = function_exists('wc_get_order') ? wc_get_order($order_id) : null;
-        if (!$order || !$order->get_meta(self::TEMP_META)) {
-            return; // never delete an order without our own marker, whatever else says
-        }
-        if (!$order->has_status(array('cancelled', 'refunded'))) {
-            $order->update_status('cancelled'); // so wc_maybe_increase_stock_levels runs
-        }
-        $order->delete(true); // HPOS-safe
-    }
-
-    private static function orders_still_present($ids) {
-        $left = 0;
-        foreach ($ids as $id) {
-            if (function_exists('wc_get_order') && wc_get_order($id)) {
-                $left++;
-            }
-        }
-        return $left;
+        $result['notes']['orders_trashed'] = $trashed;
+        $result['notes']['orders_not_trashed'] = $not_trashed;
     }
 
     private static function forget_orders($ids) {
@@ -1759,7 +1832,8 @@ class SSPA_Checkout_Flow {
         $mail_untimed = 0;
         foreach ($rows as $row) {
             $key = $row['page_key'];
-            // Harness steps: the pre-flight probe and the admin cleanup. Their timing rows
+            // Harness steps: the pre-flight probe and the legacy permanent-delete cleanup
+            // used by older stored runs. Their timing rows
             // stay visible below the waterfall, but NOTHING they did may reach the
             // customer-facing panels - the component roll-up, the outbound-call list and
             // the mail totals all answer "what did the customer wait through", and the
@@ -1798,9 +1872,7 @@ class SSPA_Checkout_Flow {
                 'details' => self::step_details($capture),
             );
 
-            // Nobody waits for the cleanup, so it sits below the total and is excluded
-            // from it - measured because a slow delete cascade is worth knowing about,
-            // never added to the customer-facing figure.
+            // Legacy cleanup remains below the totals when an old run is viewed.
             if ($is_harness) {
                 $excluded[] = $entry;
                 continue;
@@ -1838,7 +1910,7 @@ class SSPA_Checkout_Flow {
             // (the customer has gone) nor secured checkout time. Its own bucket, kept out of
             // the customer-facing total, because "your order screen takes 3s" is a real cost
             // but not one a customer waits through.
-            if (in_array($key, array('flow-view-order', 'flow-complete-order'), true)) {
+            if (in_array($key, array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), true)) {
                 $management[] = $entry;
                 $management_ms += (float) $gen;
                 continue;
@@ -1871,8 +1943,18 @@ class SSPA_Checkout_Flow {
             // flow's own notes - not at the top level.
             'management' => $management,
             'management_ms' => round($management_ms, 1),
+            'management_from_status' => isset($notes['flow']['complete_from_status']) ? $notes['flow']['complete_from_status'] : null,
+            'management_to_status' => isset($notes['flow']['trash_to_status'])
+                ? $notes['flow']['trash_to_status']
+                : (isset($notes['flow']['refund_to_status'])
+                    ? $notes['flow']['refund_to_status']
+                    : (isset($notes['flow']['complete_to_status']) ? $notes['flow']['complete_to_status'] : null)),
             'complete_from_status' => isset($notes['flow']['complete_from_status']) ? $notes['flow']['complete_from_status'] : null,
             'complete_to_status' => isset($notes['flow']['complete_to_status']) ? $notes['flow']['complete_to_status'] : null,
+            'refund_from_status' => isset($notes['flow']['refund_from_status']) ? $notes['flow']['refund_from_status'] : null,
+            'refund_to_status' => isset($notes['flow']['refund_to_status']) ? $notes['flow']['refund_to_status'] : null,
+            'trash_from_status' => isset($notes['flow']['trash_from_status']) ? $notes['flow']['trash_from_status'] : null,
+            'trash_to_status' => isset($notes['flow']['trash_to_status']) ? $notes['flow']['trash_to_status'] : null,
             // Private manage-options result used by the admin UI, CLI and MCP. Community
             // evidence selects its fields explicitly and never receives these identifiers.
             'order_details' => array(
@@ -1918,6 +2000,8 @@ class SSPA_Checkout_Flow {
             'flow-order-received' => __('order received', 'super-speedy-performance-analysis'),
             'flow-view-order' => __('view order (wp-admin)', 'super-speedy-performance-analysis'),
             'flow-complete-order' => __('mark order completed', 'super-speedy-performance-analysis'),
+            'flow-refund-order' => __('refund order in full', 'super-speedy-performance-analysis'),
+            'flow-trash-order' => __('move order to Trash', 'super-speedy-performance-analysis'),
             'flow-delete-order' => __('delete order (admin cleanup)', 'super-speedy-performance-analysis'),
         );
         return isset($labels[$page_key]) ? $labels[$page_key] : $page_key;
@@ -1925,7 +2009,7 @@ class SSPA_Checkout_Flow {
 
     /** Correct old saved management findings when they are read after an upgrade. */
     public static function contextual_recommendation_key($page_key, $key) {
-        if (!in_array($page_key, array('flow-view-order', 'flow-complete-order'), true)) {
+        if (!in_array($page_key, array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), true)) {
             return $key;
         }
         $map = array(

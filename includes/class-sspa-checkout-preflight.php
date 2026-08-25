@@ -70,8 +70,8 @@ class SSPA_Checkout_Preflight {
             || (bool) has_filter('woocommerce_order_needs_payment');
         $out['payment_modes'] = SSPA_Checkout_Flow::payment_modes();
         // Guest checkout disabled means the store creates a customer ACCOUNT for the
-        // purchase. The run marks it at creation and deletes it with the order, but it is
-        // one more thing the run sets off, so the admin is told beforehand.
+        // purchase. The run marks and deletes that temporary account, while retaining the
+        // refunded order in Trash, so the admin is told beforehand.
         $out['creates_account'] = 'yes' !== get_option('woocommerce_enable_guest_checkout');
         // Simple Cloudflare Turnstile exposes this documented filter for trusted
         // programmatic requests. The flow uses it only inside its signed synthetic

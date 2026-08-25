@@ -86,7 +86,22 @@ sspa_workflow_t(!empty($targets) && (int) $targets[0]['id'] === (int) $latest_id
 $book_transports = wp_list_pluck(SSPA_Workflow_Analysis::transports('sspa_book', $latest_id), 'key');
 sspa_workflow_t(in_array('rest', $book_transports, true), 'a REST-enabled custom post type exposes its editor transport');
 
-$order_ids = function_exists('wc_get_orders') ? wc_get_orders(array('limit' => 1, 'return' => 'ids')) : array();
+$order_targets = SSPA_Workflow_Analysis::targets('order');
+$only_parent_orders = !empty($order_targets);
+foreach ($order_targets as $order_target) {
+    $target_order = wc_get_order((int) $order_target['id']);
+    if (!$target_order || is_a($target_order, 'WC_Order_Refund') || $target_order->has_status('trash')) {
+        $only_parent_orders = false;
+    }
+}
+sspa_workflow_t($only_parent_orders, 'the order picker excludes refund records and trashed synthetic orders');
+
+$order_ids = function_exists('wc_get_orders') ? wc_get_orders(array(
+    'limit' => 1,
+    'return' => 'ids',
+    'type' => 'shop_order',
+    'status' => array_keys(wc_get_order_statuses()),
+)) : array();
 if ($order_ids) {
     $order_transports = wp_list_pluck(SSPA_Workflow_Analysis::transports('order', $order_ids[0]), 'key');
     sspa_workflow_t(in_array('classic', $order_transports, true), 'the WooCommerce order picker exposes the classic form handler');

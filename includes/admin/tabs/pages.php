@@ -15,7 +15,7 @@ if (class_exists('WooCommerce')) : ?>
             <?php esc_html_e('Analyse checkout &amp; order flow', 'super-speedy-performance-analysis'); ?>
         </button>
         <span class="description">
-            <?php esc_html_e('Measures one real purchase AND handling the order afterwards - viewing it in wp-admin and marking it completed - with every plugin active. Order deleted afterwards. Shows you the disclosure first.', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Measures one real purchase and the work afterwards: view the order, mark it completed, refund it in full and move it to Trash, with every plugin active. Shows you the disclosure first.', 'super-speedy-performance-analysis'); ?>
         </span>
     </p>
 <?php endif;

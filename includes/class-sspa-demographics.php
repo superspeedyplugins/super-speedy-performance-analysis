@@ -45,6 +45,8 @@ class SSPA_Demographics {
                 'return' => 'ids',
                 'limit' => 1,
                 'paginate' => true,
+                'type' => 'shop_order',
+                'status' => array_keys(wc_get_order_statuses()),
             ));
             if (is_object($page) && isset($page->total)) {
                 $orders_30d = (int) $page->total;

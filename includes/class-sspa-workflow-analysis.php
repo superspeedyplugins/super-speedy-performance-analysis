@@ -62,6 +62,7 @@ class SSPA_Workflow_Analysis {
             $orders = wc_get_orders(array(
                 'limit' => $limit,
                 'return' => 'objects',
+                'type' => 'shop_order',
                 'status' => array_keys(wc_get_order_statuses()),
                 'orderby' => 'modified',
                 'order' => 'DESC',

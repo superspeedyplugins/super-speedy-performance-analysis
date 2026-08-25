@@ -725,7 +725,7 @@ class SSPA_Community_Exporter {
     }
 
     /**
-     * The shop owner's post-sale work: open the order, mark it completed.
+     * The shop owner's post-sale work: open, complete, fully refund and trash the order.
      *
      * Its own evidence type, and its own total. Checkout time is what a customer waits
      * through and can abandon during; this is administrative work after the money is taken.
@@ -773,16 +773,16 @@ class SSPA_Community_Exporter {
             }
         }
 
-        $from = self::order_status($waterfall['complete_from_status']);
-        $to = self::order_status($waterfall['complete_to_status']);
-        $both_steps = count($steps) >= 2;
+        $from = self::order_status($waterfall['management_from_status']);
+        $to = self::order_status($waterfall['management_to_status']);
+        $complete_sequence = count($steps) >= 4 && 'trash' === $to;
         if ('done' !== $run['status']) {
             $outcome = 'failed';
         } elseif ($blocked) {
             $outcome = 'blocked';
-        } elseif (!$both_steps || $incomplete || null === $to) {
+        } elseif (!$complete_sequence || $incomplete || null === $to) {
             // Attempted and measured something, but not the whole sequence - say which of the
-            // two it was rather than presenting a half-run as a clean one.
+            // actions ran rather than presenting a half-run as a clean one.
             $outcome = 'partial';
         } else {
             $outcome = 'complete';
@@ -800,7 +800,7 @@ class SSPA_Community_Exporter {
             'slowest_step' => $slowest ? SSPA_Community_Privacy::page_class($slowest['page_key'], 'admin') : null,
             'from_status' => $from,
             'to_status' => $to,
-            'methodology_version' => 1,
+            'methodology_version' => 2,
         ));
     }
 
@@ -819,7 +819,7 @@ class SSPA_Community_Exporter {
         }
         $known = array(
             'pending', 'processing', 'on-hold', 'completed', 'cancelled',
-            'refunded', 'failed', 'checkout-draft',
+            'refunded', 'trash', 'failed', 'checkout-draft',
         );
         return in_array($status, $known, true) ? $status : 'other';
     }

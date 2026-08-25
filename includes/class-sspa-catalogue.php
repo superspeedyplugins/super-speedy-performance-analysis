@@ -120,7 +120,12 @@ class SSPA_Catalogue {
                 $add('admin-orders', admin_url('edit.php?post_type=shop_order'), 'admin');
                 $add('admin-orders-search', admin_url('edit.php?post_type=shop_order&s=test'), 'admin');
             }
-            $orders = function_exists('wc_get_orders') ? wc_get_orders(array('limit' => 1, 'return' => 'ids')) : array();
+            $orders = function_exists('wc_get_orders') ? wc_get_orders(array(
+                'limit' => 1,
+                'return' => 'ids',
+                'type' => 'shop_order',
+                'status' => array_keys(wc_get_order_statuses()),
+            )) : array();
             if ($orders) {
                 $order_id = (int) $orders[0];
                 $edit_url = $hpos

@@ -56,7 +56,8 @@ class SSPA_Community_Privacy {
             'write-order-processing', 'flow-preflight', 'flow-view-product', 'flow-add-to-cart',
             'flow-view-cart', 'flow-cart-api', 'flow-update-customer', 'flow-update-order-review',
             'flow-select-shipping', 'flow-view-checkout', 'flow-checkout-draft', 'flow-place-order',
-            'flow-order-received', 'flow-view-order', 'flow-complete-order', 'flow-delete-order', 'flow',
+            'flow-order-received', 'flow-view-order', 'flow-complete-order', 'flow-refund-order',
+            'flow-trash-order', 'flow-delete-order', 'flow',
         );
         return in_array($key, $known, true) ? $key : (('admin' === $variant) ? 'custom-admin' : 'custom-frontend');
     }

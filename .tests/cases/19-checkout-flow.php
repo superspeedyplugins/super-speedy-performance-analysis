@@ -73,8 +73,8 @@ add_action('init', function () {
 // - a fetch of the ORDER's own permalink (/?p=<order id>) - the HPOS purge signature
 // - a fetch of /amp/ with no AMP plugin installed - the phantom-AMP purge signature
 // - a call that times out (1.4s endpoint, 1s timeout) - the failing self-fetch signature
-// Plus one on CANCELLATION: that fires during the harness's own delete step and must
-// never surface in the customer-facing outbound list or the roll-up.
+// Plus one on cancellation. The current lifecycle never cancels or permanently deletes its
+// order, so this remains a guard against old cleanup behaviour returning unnoticed.
 add_action('woocommerce_payment_complete', function ($order_id) {
     wp_remote_get(home_url('/?sspa_test_slow=1&n=1&order=' . (int) $order_id), array('timeout' => 10));
     wp_remote_get(home_url('/?sspa_test_slow=1&n=2&order=' . (int) $order_id), array('timeout' => 10));
@@ -200,7 +200,10 @@ $expected = array(
     'flow-checkout-draft' => 'GET',
     'flow-place-order' => 'POST',
     'flow-order-received' => 'GET',
-    'flow-delete-order' => 'GET',
+    'flow-view-order' => 'GET',
+    'flow-complete-order' => 'GET',
+    'flow-refund-order' => 'GET',
+    'flow-trash-order' => 'GET',
 );
 foreach ($expected as $key => $method) {
     if (!isset($rows[$key])) {
@@ -221,7 +224,7 @@ foreach ($expected as $key => $method) {
 sspa_t(isset($rows['flow-view-checkout']) && 200 === (int) $rows['flow-view-checkout']['response_code'],
     'checkout page rendered a real cart (200, not a redirect to an empty cart)');
 
-// ---------------------------------------------------------------- 4. zero residue
+// ---------------------------------------------------------------- 4. recoverable order, no active residue
 
 $orders_after = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
 $stock_after = wc_get_product($target_id)->get_stock_quantity();
@@ -229,7 +232,7 @@ $temp_meta_after = (int) $wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s",
     SSPA_Checkout_Flow::TEMP_META
 ));
-sspa_t($orders_after === $orders_before, "zero order residue ($orders_before -> $orders_after)");
+sspa_t($orders_after === $orders_before + 2, "one recoverable order and its refund were retained ($orders_before -> $orders_after records)");
 sspa_t(null === $stock_before && null === $stock_after, 'test product never manages or restores stock');
 sspa_t($temp_meta_after === $temp_meta_before, "no _sspa_temp markers left ($temp_meta_before -> $temp_meta_after)");
 sspa_t(false === get_option(SSPA_Checkout_Flow::TEMP_OPTION, false), 'sspa_flow_temp cleared');
@@ -247,14 +250,21 @@ sspa_t(isset($flow['order_status']) && in_array($flow['order_status'], array('pr
     'order reached a payment_complete status (' . (isset($flow['order_status']) ? $flow['order_status'] : '?') . '), not a leftover draft');
 sspa_t(!empty($flow['order_total']) && (float) $flow['order_total'] > 0,
     'order total stayed real (' . (isset($flow['order_total']) ? $flow['order_total'] : '?') . ') - the no-payment mode did not zero the cart');
-sspa_t(isset($flow['orders_deleted']) && $flow['orders_deleted'] >= 1 && 0 === (int) $flow['orders_left'],
-    'safety report: ' . (int) $flow['orders_deleted'] . ' deleted, ' . (int) $flow['orders_left'] . ' left');
+sspa_t(1 === (int) $notes['safety']['orders_trashed'] && 0 === (int) $notes['safety']['orders_not_trashed'],
+    'safety report: one order moved to Trash and none permanently deleted');
+$recoverable = !empty($flow['order_id']) ? wc_get_order((int) $flow['order_id']) : null;
+sspa_t($recoverable && $recoverable->has_status('trash'), 'the measured order remains recoverable in WooCommerce Trash');
+sspa_t(
+    $recoverable && 1 === count($recoverable->get_refunds())
+    && (float) $recoverable->get_total_refunded() === (float) $recoverable->get_total(),
+    'the recoverable order keeps its full local refund'
+);
 sspa_t(
     !empty($flow['email']) && is_email($flow['email'])
     && !empty($flow['order_id']) && !empty($flow['order_number'])
     && isset($flow['coupon_codes']) && is_array($flow['coupon_codes'])
     && !empty($flow['items'][0]['name']) && (int) $flow['quantity'] === (int) $flow['items'][0]['quantity'],
-    'fulfilment identifiers survive local order cleanup'
+    'fulfilment identifiers survive the measured order lifecycle'
 );
 
 // ---------------------------------------------------------------- 6. mail behaviour matches the mode
@@ -346,12 +356,12 @@ sspa_t(
     && $waterfall['order_details']['items'] === $flow['items'],
     'the local result payload exposes the exact order details rendered in the overlay'
 );
-// Nobody waits for the cleanup, so it is measured but excluded from the customer figure.
+// Legacy cleanup rows stay excluded when an old stored run is viewed.
 $excluded_keys = array();
 foreach ($waterfall['excluded'] as $row) {
     $excluded_keys[] = $row['page_key'];
 }
-sspa_t(in_array('flow-delete-order', $excluded_keys, true), 'the delete step is excluded from the customer-facing total');
+sspa_t(!in_array('flow-delete-order', $excluded_keys, true), 'the current run contains no permanent-delete cleanup step');
 sspa_t(abs(($waterfall['at_risk_ms'] + $waterfall['secured_ms']) - $waterfall['total_ms']) < 0.5, 'the two halves add up to the total');
 
 // ---------------------------------------------------------------- 11. findings
@@ -396,8 +406,8 @@ foreach (array(
 }
 
 // The waterfall's customer-facing panels must contain NOTHING from the harness steps.
-// The fixture makes a call during cancellation - i.e. during our delete step - and it
-// must not appear; the two payment_complete calls must, with query keys and a trace.
+// The fixture would make a call during cancellation. The lifecycle must never cancel, and
+// only the payment_complete calls should appear, with query keys and a trace.
 $wf_check = SSPA_Checkout_Flow::waterfall($run_id);
 $harness_leak = 0;
 $fixture_calls = 0;
@@ -422,11 +432,22 @@ sspa_t(5 === $fixture_calls, "all customer-facing fixture calls listed ($fixture
 sspa_t($has_q, 'outbound calls keep their query-string keys');
 sspa_t($has_trace, 'outbound calls carry the calling function');
 $rollup_steps = array();
-foreach ((array) (isset($wf_check['profile']['components'][0]['by_step']) ? $wf_check['profile']['components'][0]['by_step'] : array()) as $step_key => $unused_ms) {
-    $rollup_steps[] = $step_key;
+foreach ((array) (isset($wf_check['profile']['components']) ? $wf_check['profile']['components'] : array()) as $component_rollup) {
+    foreach ((array) (isset($component_rollup['by_step']) ? $component_rollup['by_step'] : array()) as $step_key => $unused_ms) {
+        $rollup_steps[$step_key] = true;
+    }
 }
+$rollup_steps = array_keys($rollup_steps);
 sspa_t(!in_array('flow-delete-order', $rollup_steps, true) && !in_array('flow-preflight', $rollup_steps, true),
     'the component roll-up excludes the harness steps');
+if (!empty($wf_check['profile']['components'])) {
+    sspa_t(
+        !array_diff(array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), $rollup_steps),
+        'the component roll-up includes every measured order-management action'
+    );
+} else {
+    echo "SKIP: no function-level component roll-up without Excimer\n";
+}
 
 // ---------------------------------------------------------------- 12. payment-mode safety
 //
@@ -546,7 +567,7 @@ wp_cache_flush();
 $orders_pre_fail = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
 
 // A caller-supplied out-of-stock product id is ignored. The flow still buys the dedicated
-// SSPA product and cleans its temporary order, so real inventory cannot enter the run.
+// SSPA product and trashes its temporary order, so real inventory cannot enter the run.
 $oos_id = wp_insert_post(array('post_type' => 'product', 'post_status' => 'publish', 'post_title' => 'SSPA out of stock fixture'));
 $oos = wc_get_product($oos_id);
 $oos->set_regular_price('9.99');
@@ -567,7 +588,7 @@ sspa_t(is_array($fail_notes) && 'ok' === $fail_notes['outcome']
     'caller-supplied product id cannot replace the dedicated product');
 
 $orders_post_fail = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
-sspa_t($orders_post_fail === $orders_pre_fail, "hostile-id run left zero order residue ($orders_pre_fail -> $orders_post_fail)");
+sspa_t($orders_post_fail === $orders_pre_fail + 2, "hostile-id run retained only its recoverable order and refund ($orders_pre_fail -> $orders_post_fail records)");
 sspa_t(0 === (int) wc_get_product($oos_id)->get_stock_quantity(), 'hostile-id run left the real product stock alone');
 
 // Remove them before the classic section: they are cheaper than the real target product,
@@ -665,7 +686,10 @@ if (is_wp_error($classic_run)) {
         'flow-view-checkout' => 'GET',
         'flow-place-order' => 'POST',
         'flow-order-received' => 'GET',
-        'flow-delete-order' => 'GET',
+        'flow-view-order' => 'GET',
+        'flow-complete-order' => 'GET',
+        'flow-refund-order' => 'GET',
+        'flow-trash-order' => 'GET',
     );
     foreach ($classic_expected as $key => $method) {
         if (!isset($classic_rows[$key])) {
@@ -683,8 +707,13 @@ if (is_wp_error($classic_run)) {
         'classic order total stayed real (' . $classic_notes['flow']['order_total'] . ')');
     sspa_t(in_array($classic_notes['flow']['order_status'], array('processing', 'completed', 'on-hold'), true),
         'classic order reached a payment_complete status (' . $classic_notes['flow']['order_status'] . ')');
-    sspa_t(1 === (int) $classic_notes['safety']['orders_deleted'] && 0 === (int) $classic_notes['safety']['orders_left'],
-        'classic run deleted its order (' . (int) $classic_notes['safety']['orders_deleted'] . ' deleted, ' . (int) $classic_notes['safety']['orders_left'] . ' left)');
+    sspa_t(1 === (int) $classic_notes['safety']['orders_trashed'] && 0 === (int) $classic_notes['safety']['orders_not_trashed'],
+        'classic run moved its refunded order to Trash without permanent deletion');
+    $classic_order = !empty($classic_notes['flow']['order_id']) ? wc_get_order((int) $classic_notes['flow']['order_id']) : null;
+    sspa_t(
+        $classic_order && $classic_order->has_status('trash') && 1 === count($classic_order->get_refunds()),
+        'classic order remains recoverable with its refund attached'
+    );
 
     $classic_capture = !empty($classic_rows['flow-place-order']['profile_blob'])
         ? json_decode((string) @gzuncompress($classic_rows['flow-place-order']['profile_blob']), true)
@@ -703,7 +732,7 @@ if (is_wp_error($classic_run)) {
     sspa_t(count($classic_mail) >= 1, 'classic run sent order emails for real (' . count($classic_mail) . ')');
 
     $orders_post_classic = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 'status' => 'all')));
-    sspa_t($orders_post_classic === $orders_pre_classic, "classic zero order residue ($orders_pre_classic -> $orders_post_classic)");
+    sspa_t($orders_post_classic === $orders_pre_classic + 2, "classic retained its recoverable order and refund ($orders_pre_classic -> $orders_post_classic records)");
     sspa_t(null === $stock_pre_classic && null === wc_get_product($target_id)->get_stock_quantity(),
         'classic run leaves the dedicated product stock-independent');
     sspa_t(false === get_option(SSPA_Checkout_Flow::TEMP_OPTION, false), 'classic run cleared sspa_flow_temp');

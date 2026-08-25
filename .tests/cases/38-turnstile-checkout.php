@@ -90,7 +90,11 @@ if (is_wp_error($run_id)) {
     sspa_turnstile_t($run && 'done' === $run['status'], 'checkout completes with Turnstile validation active');
     sspa_turnstile_t(isset($notes['outcome']) && 'ok' === $notes['outcome'], 'flow outcome is ok, not place_order_failed');
     sspa_turnstile_t(!empty($notes['flow']['human_verification_bypassed']), 'result records the request-scoped human-verification bypass');
-    sspa_turnstile_t(!empty($notes['safety']) && 0 === (int) $notes['safety']['orders_left'], 'temporary order is removed');
+    sspa_turnstile_t(
+        !empty($notes['safety']) && 1 === (int) $notes['safety']['orders_trashed']
+        && 0 === (int) $notes['safety']['orders_not_trashed'],
+        'temporary order is refunded and moved to Trash'
+    );
 }
 
 if (false !== $method_id) {
@@ -100,4 +104,3 @@ deactivate_plugins($slug . '/' . $slug . '.php');
 @unlink($dir . '/' . $slug . '.php');
 @rmdir($dir);
 wp_cache_flush();
-

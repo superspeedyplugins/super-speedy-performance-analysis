@@ -147,8 +147,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `12-agents.php` - Abilities API + WP-CLI surfaces and the report schema.
 - `19-checkout-flow.php` - one complete purchase through
   `SSPA_Run_Controller::start(['type' => 'checkout'])`: every step profiled with the right
-  method, the cart and checkout pages rendering a real cart, zero order/stock/session
-  residue, fulfilment identifiers retained for the local overlay after cleanup, the payment
+  method, the cart and checkout pages rendering a real cart, no active order/stock/session
+  residue, a fully refunded order retained in WooCommerce Trash, fulfilment identifiers kept
+  for the local overlay, the payment
   boundary marked and the waterfall split at it, the pre-flight
   inventory naming a planted integration, a planted blocking HTTP call caught and
   attributed, mail really delivered in deliver mode, the Excimer roll-up, and both named
@@ -225,19 +226,20 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   query arg must NOT be `sspa_`-prefixed - the catalogue matcher strips `sspa_*` keys and the
   run would file under `home` and measure the catalogue URL without the sleep.
 
-- `33-order-management.php` - the order-management steps the checkout flow appends (view order
-  in wp-admin, mark processing -> completed). Drives the real `start(['type' => 'checkout'])`
-  path; asserts both steps measured, the view ran as admin and rendered, a fixture hooking
-  `woocommerce_order_status_completed` fired inside the measured step, the transition was
-  processing -> completed, the waterfall's `management` bucket holds both steps with real time
+- `33-order-management.php` - the order-management lifecycle the checkout flow appends: view
+  the order in wp-admin, mark processing -> completed, refund it in full without contacting the
+  gateway, then move it to Trash. Drives the real `start(['type' => 'checkout'])` path; asserts
+  all four actions are measured, their WooCommerce hooks fire for the same order, and the
+  waterfall's `management` bucket holds all four with real time
   and expandable per-step component diagnostics, management findings never use customer-checkout wording,
-  while the customer `total_ms` excludes them, and the completed order was still deleted. Gotcha:
+  while the customer `total_ms` excludes them. It also proves the refund stays attached to the
+  recoverable trashed order. Gotcha:
   the transition runs in the loopback, so the flow must bust its order cache (`wp_cache_delete($id,
   'orders')` + `clean_post_cache`) before reading the resulting status or it reads back stale.
 
 - `38-turnstile-checkout.php` - plants Cloudflare Turnstile's documented bypass contract
   and both WooCommerce checkout validation surfaces, then proves the real synthetic checkout
-  completes, records the scoped bypass and removes its temporary order.
+  completes, records the scoped bypass and moves its refunded temporary order to Trash.
 - `39-cache-safety.php` - the shared-cache safety scan keeps cookie/nonce names but
   never their values, recognises existing Type A/Type B coverage and private surfaces, ignores
   source-code comments, separates edge cookies, records nonce containers, scores repeated

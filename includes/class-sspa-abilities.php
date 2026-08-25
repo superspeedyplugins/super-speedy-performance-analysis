@@ -333,7 +333,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/run-checkout-flow', array(
             'label' => __('Measure the checkout flow with the plugin-owned test product', 'super-speedy-performance-analysis'),
-            'description' => __('Measure a checkout and the order-handling workflow using the hidden, non-stock-managed SSPA test product. THIS CREATES A REAL ORDER, but never orders a catalogue product. The MCP-safe defaults suppress mail, integrations and webhooks; each can be enabled explicitly. The order is cancelled and deleted afterwards. Call with dry_run first, show the pre-flight inventory to the site owner, then pass confirm:true for a real run. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
+            'description' => __('Measure a checkout and the order-handling workflow using the hidden, non-stock-managed SSPA test product. THIS CREATES A REAL ORDER, but never orders a catalogue product. The MCP-safe defaults suppress mail, integrations and webhooks; each can be enabled explicitly. The order is completed, fully refunded without contacting a payment gateway, then moved to Trash for inspection or recovery. Call with dry_run first, show the pre-flight inventory to the site owner, then pass confirm:true for a real run. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',

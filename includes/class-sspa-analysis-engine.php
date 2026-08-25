@@ -93,8 +93,7 @@ class SSPA_Analysis_Engine {
      * pages, one sample per step and no baseline, so the page heuristics either do not
      * apply or would compare against nothing.
      *
-     * Steps nobody waits for - the pre-flight probe and the admin cleanup - are excluded
-     * from every total here, exactly as they are in the panel (doc T9 rule 1).
+     * The pre-flight probe and legacy permanent-delete cleanup are excluded from every total.
      *
      * @param array|null $inventory The pre-flight inventory, when one was gathered.
      * @param array      $flow_notes The flow's run notes (order ids, checkout type ...).
@@ -259,7 +258,7 @@ class SSPA_Analysis_Engine {
     }
 
     private function is_order_management_step($page_key) {
-        return in_array($page_key, array('flow-view-order', 'flow-complete-order'), true);
+        return in_array($page_key, array('flow-view-order', 'flow-complete-order', 'flow-refund-order', 'flow-trash-order'), true);
     }
 
     /** The component that spent most SQL+HTTP time in one step, so a finding can name it. */
