@@ -544,12 +544,16 @@ class SSPA_Profile_Panel {
             return '';
         }
         arsort($rows);
-        $html = '<h4>' . esc_html__('PHP cost per plugin', 'super-speedy-performance-analysis')
-            . ' <small>' . esc_html__('file loading + hook callbacks', 'super-speedy-performance-analysis') . '</small></h4>';
+        $html = '<h4>' . esc_html__('Directly attributed PHP time by plugin', 'super-speedy-performance-analysis')
+            . ' <small>' . esc_html__('bootstrap timer: file loading + directly timed hook callbacks', 'super-speedy-performance-analysis') . '</small></h4>';
+        $html .= '<p class="sspa-adhoc-note"><strong>'
+            . esc_html__('Measurement boundary:', 'super-speedy-performance-analysis') . '</strong> '
+            . esc_html__('These figures are not the plugin\'s total impact. This timer measures plugin file loading and callbacks whose execution begins in that plugin; work triggered inside WordPress core or another component is reported where it ran. Compare this with Measured plugin impact on this page below, which comes from separate controlled requests with the plugin excluded.', 'super-speedy-performance-analysis')
+            . '</p>';
         $html .= '<table class="sspa-adhoc-table sspa-adhoc-num3">';
         $html .= '<tr class="sspa-adhoc-hrow"><td>' . esc_html__('Plugin', 'super-speedy-performance-analysis') . '</td><td>'
-            . esc_html__('Load', 'super-speedy-performance-analysis') . '</td><td>' . esc_html__('Hooks', 'super-speedy-performance-analysis')
-            . '</td><td>' . esc_html__('Total', 'super-speedy-performance-analysis') . '</td></tr>';
+            . esc_html__('Direct load', 'super-speedy-performance-analysis') . '</td><td>' . esc_html__('Direct hooks', 'super-speedy-performance-analysis')
+            . '</td><td>' . esc_html__('Direct measured', 'super-speedy-performance-analysis') . '</td></tr>';
         foreach (array_slice($rows, 0, 15, true) as $component => $ms) {
             $load = isset($includes[$component]) ? (float) $includes[$component] : 0;
             $html .= '<tr><td><code>' . esc_html($component) . '</code></td>'

@@ -34,6 +34,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.35 (23rd-24th August 2026) =
+* Relabelled direct PHP attribution so its bootstrap-timer boundary cannot be mistaken for a plugin's total causal impact
 * Changed the top-level `Performance Analysis` admin-bar item to run `Analyse this page`, matching its first submenu action
 * Tested up to WordPress 7.1
 * Fixed `Analyse update/save` being hidden by the block editor's fullscreen mode and the Workflows item picker remaining on `Loading latest item…`

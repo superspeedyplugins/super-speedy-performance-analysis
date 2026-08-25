@@ -67,7 +67,7 @@ if (!is_string($sspa_html)) {
 // Every section, including the ones that previously existed in only one of the two views.
 $sspa_sections = array(
     'Where the PHP time went' => 'request phases (was: both)',
-    'PHP cost per plugin' => 'per-plugin PHP cost (was: Pages tab only)',
+    'Directly attributed PHP time by plugin' => 'bounded bootstrap-timer measurements (was: Pages tab only)',
     'Slowest hook callbacks' => 'slowest hook callbacks (was: Pages tab only)',
     'By component, on this page' => 'per-component attribution (was: Pages tab only)',
     'Slowest queries' => 'slowest queries (was: both)',
@@ -77,6 +77,18 @@ $sspa_sections = array(
 foreach ($sspa_sections as $sspa_needle => $sspa_label) {
     sspa_panel_t(false !== strpos($sspa_html, $sspa_needle), 'panel shows ' . $sspa_label);
 }
+
+// Direct attribution is one measuring instrument, not an estimate of the plugin's total
+// causal impact. The labels must make that boundary impossible to miss, especially when work
+// triggered by a plugin executes inside WordPress core and therefore belongs to the core row.
+sspa_panel_t(false === strpos($sspa_html, 'PHP cost per plugin'), 'panel does not call direct attribution total plugin cost');
+sspa_panel_t(false === strpos($sspa_html, '>Total<'), 'direct-attribution table has no invented total column');
+sspa_panel_t(false !== strpos($sspa_html, 'Direct measured'), 'direct-attribution table labels its measured subtotal');
+sspa_panel_t(
+    false !== strpos($sspa_html, 'These figures are not the plugin&#039;s total impact')
+    && false !== strpos($sspa_html, 'work triggered inside WordPress core or another component is reported where it ran'),
+    'panel states the direct timer boundary and points away from a causal-total interpretation'
+);
 
 // Both attribution modes, in the markup, ready to swap without a round trip.
 sspa_panel_t(
