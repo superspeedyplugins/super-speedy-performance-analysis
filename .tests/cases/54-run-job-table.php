@@ -3,6 +3,14 @@ defined('ABSPATH') || exit;
 function sspa_54_t($ok, $message) { echo ($ok ? 'PASS  ' : 'FAIL  ') . $message . "\n"; }
 global $wpdb;
 $run_id = 540000 + wp_rand(1, 9999);
+$wpdb->insert(SSPA_Schema::table('runs'), array(
+    'id' => $run_id,
+    'run_uuid' => wp_generate_uuid4(),
+    'blog_id' => get_current_blog_id(),
+    'run_type' => 'baseline',
+    'status' => 'crawling',
+    'started' => gmdate('Y-m-d H:i:s'),
+));
 $queue = array('jobs' => array(
     array('page_key' => 'one', 'url' => home_url('/one'), 'variant' => 'anon'),
     array('page_key' => 'two', 'url' => home_url('/two'), 'variant' => 'anon'),
@@ -23,3 +31,4 @@ SSPA_Run_Queue::save($run_id, $queue);
 sspa_54_t(3 === (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id=%d', SSPA_Schema::table('run_jobs'), $run_id)), 'phase extension appends one job row');
 SSPA_Run_Queue::delete($run_id);
 sspa_54_t(0 === (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id=%d', SSPA_Schema::table('run_jobs'), $run_id)), 'terminal cleanup removes queue rows');
+$wpdb->delete(SSPA_Schema::table('runs'), array('id' => $run_id));

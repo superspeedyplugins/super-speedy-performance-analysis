@@ -1178,21 +1178,30 @@ class SSPA_Run_Controller {
     public static function process_batch($run_id) {
         $run_id = (int) $run_id;
         $run = self::run_row($run_id);
-        if (!$run || 'crawling' !== $run['status']) {
+        if (!$run || !in_array($run['status'], array('crawling', 'cancelling'), true)) {
             return;
         }
 
         // Atomic owner lease: cron and admin AJAX must never execute the same job.
-        $lock_key = 'sspa_lock_' . $run_id;
+        $lock_key = self::run_lock_key($run_id);
         $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS);
         if (!$lock_owner) {
             return;
         }
 
         try {
+            $run = self::run_row($run_id);
+            if ($run && 'cancelling' === $run['status']) {
+                self::finalize_cancelled_locked($run_id);
+                return;
+            }
+            if (!$run || 'crawling' !== $run['status']) {
+                return;
+            }
+
             $queue = SSPA_Run_Queue::get($run_id);
             if (!is_array($queue)) {
-                self::fail($run_id, 'queue missing');
+                self::fail($run_id, 'queue missing', $lock_owner);
                 return;
             }
 
@@ -1222,7 +1231,10 @@ class SSPA_Run_Controller {
                     self::process_checkout_job($run_id, $job, $queue);
                     $queue['idx']++;
                     $queue['last_progress'] = time();
-                    SSPA_Run_Queue::save($run_id, $queue);
+                    if (!SSPA_Run_Queue::save($run_id, $queue)) {
+                        self::finalize_cancellation_if_requested($run_id);
+                        return;
+                    }
                     $run = self::run_row($run_id);
                     if (!$run || 'crawling' !== $run['status']) {
                         return; // cancelled mid-batch
@@ -1240,7 +1252,10 @@ class SSPA_Run_Controller {
                         : SSPA_Probes::create_temp_copy($job['post_type']);
                     if (!$temp_id) {
                         $queue['idx']++; // nothing to duplicate on this site - skip quietly
-                        SSPA_Run_Queue::save($run_id, $queue);
+                        if (!SSPA_Run_Queue::save($run_id, $queue)) {
+                            self::finalize_cancellation_if_requested($run_id);
+                            return;
+                        }
                         continue;
                     }
                     $job['flags'] = array('wp' => $job['write'], 'tid' => (string) $temp_id, 'mail' => 'c');
@@ -1256,7 +1271,10 @@ class SSPA_Run_Controller {
                 }
                 $queue['idx']++;
                 $queue['last_progress'] = time();
-                SSPA_Run_Queue::save($run_id, $queue);
+                if (!SSPA_Run_Queue::save($run_id, $queue)) {
+                    self::finalize_cancellation_if_requested($run_id);
+                    return;
+                }
 
                 $run = self::run_row($run_id);
                 if (!$run || 'crawling' !== $run['status']) {
@@ -1264,7 +1282,12 @@ class SSPA_Run_Controller {
                 }
             }
 
-            if ($queue['idx'] >= count($queue['jobs'])) {
+            $run = self::run_row($run_id);
+            if ($run && 'cancelling' === $run['status']) {
+                self::finalize_cancelled_locked($run_id);
+            } elseif (!$run || 'crawling' !== $run['status']) {
+                return;
+            } elseif ($queue['idx'] >= count($queue['jobs'])) {
                 self::complete_run($run_id, $run['run_type']);
             } else {
                 wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
@@ -1810,27 +1833,97 @@ class SSPA_Run_Controller {
         SSPA_Run_Queue::delete((int) $run_id);
     }
 
-    private static function fail($run_id, $note) {
+    private static function fail($run_id, $note, $lock_owner = '') {
         global $wpdb;
+        $lock_key = self::run_lock_key($run_id);
+        $owns_lock = (bool) $lock_owner;
+        if (!$owns_lock) {
+            $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS);
+            if (!$lock_owner) {
+                return false;
+            }
+        }
+
         $run = self::run_row($run_id);
-        SSPA_Helper_Files::restore_held_dropin();
-        SSPA_Helper_Files::restore_object_cache();
-        self::cleanup_run_state($run_id);
-        $wpdb->update(SSPA_Schema::table('runs'), array(
-            'status' => 'failed',
-            'finished' => gmdate('Y-m-d H:i:s'),
-            'notes' => $note,
-        ), array('id' => $run_id));
-        if ($run && 'checkout' === $run['run_type']) {
-            SSPA_Community_Outbox::on_terminal_run($run_id);
+        try {
+            if ($run && 'cancelling' === $run['status']) {
+                self::finalize_cancelled_locked($run_id);
+                return true;
+            }
+            SSPA_Helper_Files::restore_held_dropin();
+            SSPA_Helper_Files::restore_object_cache();
+            self::cleanup_run_state($run_id);
+            $wpdb->query($wpdb->prepare(
+                "UPDATE %i SET status='failed',finished=%s,notes=%s WHERE id=%d AND status IN ('queued','crawling','running','analysing')",
+                SSPA_Schema::table('runs'),
+                gmdate('Y-m-d H:i:s'),
+                $note,
+                $run_id
+            ));
+            if ($run && 'checkout' === $run['run_type']) {
+                SSPA_Community_Outbox::on_terminal_run($run_id);
+            }
+            return true;
+        } finally {
+            if (!$owns_lock) {
+                SSPA_Atomic_Claim::release($lock_key, $lock_owner);
+            }
         }
     }
 
     public static function cancel($run_id) {
+        global $wpdb;
+        $run_id = (int) $run_id;
+        if ($run_id <= 0) {
+            return true;
+        }
+
+        // This is only cancellation intent. Queue deletion and release of shared
+        // profiling state happen later, while owning the worker's one per-run lock.
+        $wpdb->query($wpdb->prepare(
+            "UPDATE %i SET status='cancelling' WHERE id=%d AND status IN ('queued','crawling','running','analysing')",
+            SSPA_Schema::table('runs'),
+            $run_id
+        ));
+        wp_clear_scheduled_hook('sspa_process_batch_event', array($run_id));
+
+        $lock_key = self::run_lock_key($run_id);
+        $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS);
+        if (!$lock_owner) {
+            return false;
+        }
+        try {
+            $run = self::run_row($run_id);
+            if (!$run || !in_array($run['status'], array('cancelling', 'cancelled'), true)) {
+                return true;
+            }
+            self::finalize_cancelled_locked($run_id);
+            return true;
+        } finally {
+            SSPA_Atomic_Claim::release($lock_key, $lock_owner);
+        }
+    }
+
+    private static function run_lock_key($run_id) {
+        return 'sspa_lock_' . (int) $run_id;
+    }
+
+    private static function finalize_cancellation_if_requested($run_id) {
+        $run = self::run_row($run_id);
+        if ($run && 'cancelling' === $run['status']) {
+            self::finalize_cancelled_locked($run_id);
+            return true;
+        }
+        return false;
+    }
+
+    /** Finalise only while the caller owns run_lock_key(). */
+    private static function finalize_cancelled_locked($run_id) {
         SSPA_Helper_Files::restore_held_dropin();
         SSPA_Helper_Files::restore_object_cache();
         self::cleanup_run_state($run_id);
         self::set_status($run_id, 'cancelled', true);
+        wp_clear_scheduled_hook('sspa_process_batch_event', array((int) $run_id));
     }
 
     public static function status($run_id) {
@@ -1918,11 +2011,17 @@ class SSPA_Run_Controller {
         // makes no progress after 3 hours is failed.
         $runs = SSPA_Schema::table('runs');
         $candidates = $wpdb->get_results(
-            "SELECT id, status, started FROM $runs WHERE status IN ('queued','crawling','analysing')",
+            "SELECT id, status, started FROM $runs WHERE status IN ('queued','crawling','analysing','cancelling')",
             ARRAY_A
         );
         foreach ($candidates as $r) {
             $run_id = (int) $r['id'];
+            if ('cancelling' === $r['status']) {
+                // Cron may finish a cancellation after a crashed owner's lease expires,
+                // but it must never requeue or restart that run's profiling work.
+                self::cancel($run_id);
+                continue;
+            }
             $queue = SSPA_Run_Queue::get($run_id);
             if (is_array($queue) && !empty($queue['last_progress'])) {
                 $idle = time() - (int) $queue['last_progress'];

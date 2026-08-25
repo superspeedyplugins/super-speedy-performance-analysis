@@ -11,6 +11,7 @@ class SSPA_Traffic_Collection {
     const OUTCOME_SECONDS = 259200;
     const CONSERVATIVE_EVENT_BYTES = 160;
     const START_LOCK = 'sspa_traffic_start_lock';
+    const COLLECTION_LOCK_PREFIX = 'sspa_traffic_collection_lock_';
 
     public static function register() {
         add_action('sspa_traffic_collection_tick', array(__CLASS__, 'scheduled_tick'), 10, 1);
@@ -280,56 +281,100 @@ class SSPA_Traffic_Collection {
 
     public static function stop($collection_id = 0, $emergency = false) {
         global $wpdb;
-        $row = $collection_id ? self::get($collection_id) : self::active();
+        $row = $collection_id ? self::raw_get($collection_id) : self::raw_active();
         if (!$row) {
             return new WP_Error('sspa_traffic_no_collection', __('No active traffic collection was found.', 'super-speedy-performance-analysis'));
         }
-        $table = SSPA_Schema::table('traffic_collections');
-        if ($emergency) {
-            SSPA_Traffic_Helper::remove(true);
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_STOPPED,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_EMERGENCY,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
-            return self::status((int) $row['id']);
+        $collection_id = (int) $row['id'];
+        $lock_key = self::collection_lock_key($collection_id);
+        $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 5 * MINUTE_IN_SECONDS);
+        if (!$lock_owner) {
+            return new WP_Error('sspa_traffic_collection_busy', __('Another request is changing this traffic collection. Try again.', 'super-speedy-performance-analysis'));
         }
 
-        if ((int) $row['status_code'] === SSPA_Traffic_Codes::COLLECTION_RUNNING) {
-            $now = time();
-            $outcomes_until = $now + self::OUTCOME_SECONDS;
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_OUTCOME,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_MANUAL,
-                'collect_until' => gmdate('Y-m-d H:i:s', $now),
-                'outcomes_until' => gmdate('Y-m-d H:i:s', $outcomes_until),
-            ), array('id' => (int) $row['id']));
-            $helper = SSPA_Traffic_Helper::install(array(
-                'collection_id' => (int) $row['id'],
-                'collect_until' => $now,
-                'outcomes_until' => $outcomes_until,
-                'event_id_stop' => (int) $row['event_id_stop'],
-                'origin_sample_modulus' => (int) $row['origin_sample_modulus'],
-                'key_option' => self::key_option($row['id']),
-            ));
-            if (is_wp_error($helper)) {
-                SSPA_Traffic_Helper::remove(true);
-                $wpdb->update($table, array('status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE), array('id' => (int) $row['id']));
+        $table = SSPA_Schema::table('traffic_collections');
+        try {
+            // Discard the caller's snapshot after lock acquisition. Every transition
+            // is based on state read while owning this collection's one lifecycle lock.
+            $row = self::raw_get($collection_id);
+            if (!$row) {
+                return new WP_Error('sspa_traffic_no_collection', __('No traffic collection was found.', 'super-speedy-performance-analysis'));
             }
+            $status = (int) $row['status_code'];
+            if (!in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
+                self::clear_ticks($collection_id);
+                return self::status($collection_id);
+            }
+
+            if ($emergency) {
+                SSPA_Traffic_Helper::remove(true);
+                self::conditional_transition($collection_id, $status, array(
+                    'status_code' => SSPA_Traffic_Codes::COLLECTION_STOPPED,
+                    'stop_reason_code' => SSPA_Traffic_Codes::STOP_EMERGENCY,
+                    'finished_at' => gmdate('Y-m-d H:i:s'),
+                ));
+                self::clear_ticks($collection_id);
+            } elseif (SSPA_Traffic_Codes::COLLECTION_RUNNING === $status) {
+                $now = time();
+                $outcomes_until = $now + self::OUTCOME_SECONDS;
+                self::conditional_transition($collection_id, $status, array(
+                    'status_code' => SSPA_Traffic_Codes::COLLECTION_OUTCOME,
+                    'stop_reason_code' => SSPA_Traffic_Codes::STOP_MANUAL,
+                    'collect_until' => gmdate('Y-m-d H:i:s', $now),
+                    'outcomes_until' => gmdate('Y-m-d H:i:s', $outcomes_until),
+                ));
+                self::clear_ticks($collection_id);
+                $helper = SSPA_Traffic_Helper::install(array(
+                    'collection_id' => $collection_id,
+                    'collect_until' => $now,
+                    'outcomes_until' => $outcomes_until,
+                    'event_id_stop' => (int) $row['event_id_stop'],
+                    'origin_sample_modulus' => (int) $row['origin_sample_modulus'],
+                    'key_option' => self::key_option($collection_id),
+                ));
+                if (is_wp_error($helper)) {
+                    SSPA_Traffic_Helper::remove(true);
+                    self::conditional_transition($collection_id, SSPA_Traffic_Codes::COLLECTION_OUTCOME, array(
+                        'status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
+                        'finished_at' => gmdate('Y-m-d H:i:s'),
+                    ));
+                    self::clear_ticks($collection_id);
+                } else {
+                    wp_schedule_single_event($outcomes_until + 5, 'sspa_traffic_collection_tick', array($collection_id));
+                }
+            }
+        } finally {
+            SSPA_Atomic_Claim::release($lock_key, $lock_owner);
         }
-        return self::status((int) $row['id']);
+        return self::status($collection_id);
     }
 
     public static function deactivate() {
-        global $wpdb;
-        $row = self::active();
-        SSPA_Traffic_Helper::remove(true);
-        if ($row) {
-            $wpdb->update(SSPA_Schema::table('traffic_collections'), array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_STOPPED,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_DEACTIVATED,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
+        $row = self::raw_active();
+        if (!$row) {
+            SSPA_Traffic_Helper::remove(true);
+            return true;
+        }
+        $id = (int) $row['id'];
+        $lock_key = self::collection_lock_key($id);
+        $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 5 * MINUTE_IN_SECONDS);
+        if (!$lock_owner) {
+            return false;
+        }
+        try {
+            $row = self::raw_get($id);
+            if ($row && in_array((int) $row['status_code'], array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
+                SSPA_Traffic_Helper::remove(true);
+                self::conditional_transition($id, (int) $row['status_code'], array(
+                    'status_code' => SSPA_Traffic_Codes::COLLECTION_STOPPED,
+                    'stop_reason_code' => SSPA_Traffic_Codes::STOP_DEACTIVATED,
+                    'finished_at' => gmdate('Y-m-d H:i:s'),
+                ));
+                self::clear_ticks($id);
+            }
+            return true;
+        } finally {
+            SSPA_Atomic_Claim::release($lock_key, $lock_owner);
         }
     }
 
@@ -353,68 +398,117 @@ class SSPA_Traffic_Collection {
     }
 
     public static function scheduled_tick($collection_id) {
-        $row = self::get((int) $collection_id);
-        if ($row) {
-            self::reconcile($row);
-        }
+        self::reconcile((int) $collection_id);
     }
 
     private static function reconcile($row) {
         global $wpdb;
+        $collection_id = is_array($row) ? (int) ($row['id'] ?? 0) : (int) $row;
+        if (!$collection_id) {
+            return false;
+        }
+        $lock_key = self::collection_lock_key($collection_id);
+        $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 5 * MINUTE_IN_SECONDS);
+        if (!$lock_owner) {
+            return false;
+        }
+
         $table = SSPA_Schema::table('traffic_collections');
-        $status = (int) $row['status_code'];
-        $helper_state = SSPA_Traffic_Helper::state();
-        if (in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)
-            && (int) $row['observer_version'] !== SSPA_Traffic_Codes::OBSERVER_VERSION) {
-            SSPA_Traffic_Helper::remove(true);
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_PLUGIN_UPDATE,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
-            return;
+        try {
+            // Never act on the snapshot passed by active(), get() or cron. It may have
+            // been read before an administrator committed a terminal stop.
+            $row = self::raw_get($collection_id);
+            if (!$row) {
+                return false;
+            }
+            $status = (int) $row['status_code'];
+            if (!in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
+                self::clear_ticks($collection_id);
+                return true;
+            }
+
+            $helper_state = SSPA_Traffic_Helper::state();
+            $terminal = null;
+            if ((int) $row['observer_version'] !== SSPA_Traffic_Codes::OBSERVER_VERSION) {
+                $terminal = array(SSPA_Traffic_Codes::COLLECTION_INCOMPLETE, SSPA_Traffic_Codes::STOP_PLUGIN_UPDATE);
+            } elseif (in_array($helper_state, array('event_limit', 'database_error'), true)) {
+                $terminal = array(
+                    SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
+                    'event_limit' === $helper_state ? SSPA_Traffic_Codes::STOP_EVENT_LIMIT : SSPA_Traffic_Codes::STOP_DATABASE_ERROR,
+                );
+            } elseif ('absent' === $helper_state) {
+                $terminal = array(SSPA_Traffic_Codes::COLLECTION_INCOMPLETE, SSPA_Traffic_Codes::STOP_OBSERVER_MISSING);
+            } else {
+                $event_table_bytes = self::event_table_bytes();
+                if ($event_table_bytes !== null && $event_table_bytes >= (int) $row['disk_ceiling_bytes']) {
+                    $terminal = array(SSPA_Traffic_Codes::COLLECTION_INCOMPLETE, SSPA_Traffic_Codes::STOP_DISK_LIMIT);
+                }
+            }
+
+            $now = time();
+            if (!$terminal && $now > self::timestamp($row['outcomes_until'])) {
+                $terminal = array(SSPA_Traffic_Codes::COLLECTION_COMPLETE, SSPA_Traffic_Codes::STOP_EXPIRED);
+            }
+            if ($terminal) {
+                SSPA_Traffic_Helper::remove(true);
+                self::conditional_transition($collection_id, $status, array(
+                    'status_code' => $terminal[0],
+                    'stop_reason_code' => $terminal[1],
+                    'finished_at' => gmdate('Y-m-d H:i:s'),
+                ));
+                self::clear_ticks($collection_id);
+            } elseif ($now > self::timestamp($row['collect_until']) && SSPA_Traffic_Codes::COLLECTION_RUNNING === $status) {
+                self::conditional_transition($collection_id, $status, array('status_code' => SSPA_Traffic_Codes::COLLECTION_OUTCOME));
+            }
+            return true;
+        } finally {
+            SSPA_Atomic_Claim::release($lock_key, $lock_owner);
         }
-        if (in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)
-            && in_array($helper_state, array('event_limit', 'database_error'), true)) {
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
-                'stop_reason_code' => 'event_limit' === $helper_state ? SSPA_Traffic_Codes::STOP_EVENT_LIMIT : SSPA_Traffic_Codes::STOP_DATABASE_ERROR,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
-            SSPA_Traffic_Helper::remove(true);
-            return;
+    }
+
+    private static function raw_get($collection_id) {
+        global $wpdb;
+        return $wpdb->get_row($wpdb->prepare(
+            'SELECT * FROM %i WHERE id = %d AND blog_id = %d',
+            SSPA_Schema::table('traffic_collections'),
+            (int) $collection_id,
+            get_current_blog_id()
+        ), ARRAY_A) ?: null;
+    }
+
+    private static function raw_active() {
+        global $wpdb;
+        $running = implode(',', array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME));
+        return $wpdb->get_row($wpdb->prepare(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- integer constants only.
+            "SELECT * FROM %i WHERE blog_id=%d AND status_code IN ($running) ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('traffic_collections'),
+            get_current_blog_id()
+        ), ARRAY_A) ?: null;
+    }
+
+    private static function collection_lock_key($collection_id) {
+        return self::COLLECTION_LOCK_PREFIX . (int) $collection_id;
+    }
+
+    private static function conditional_transition($collection_id, $expected_status, $data) {
+        global $wpdb;
+        $sets = array();
+        $values = array();
+        foreach ($data as $column => $value) {
+            $sets[] = sanitize_key($column) . '=%s';
+            $values[] = $value;
         }
-        if (in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)
-            && 'absent' === $helper_state) {
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_OBSERVER_MISSING,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
-            return;
-        }
-        $event_table_bytes = self::event_table_bytes();
-        if (in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)
-            && $event_table_bytes !== null && $event_table_bytes >= (int) $row['disk_ceiling_bytes']) {
-            SSPA_Traffic_Helper::remove(true);
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_DISK_LIMIT,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
-            return;
-        }
-        $now = time();
-        if ($now > self::timestamp($row['outcomes_until']) && in_array($status, array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
-            SSPA_Traffic_Helper::remove(true);
-            $wpdb->update($table, array(
-                'status_code' => SSPA_Traffic_Codes::COLLECTION_COMPLETE,
-                'stop_reason_code' => SSPA_Traffic_Codes::STOP_EXPIRED,
-                'finished_at' => gmdate('Y-m-d H:i:s'),
-            ), array('id' => (int) $row['id']));
-        } elseif ($now > self::timestamp($row['collect_until']) && $status === SSPA_Traffic_Codes::COLLECTION_RUNNING) {
-            $wpdb->update($table, array('status_code' => SSPA_Traffic_Codes::COLLECTION_OUTCOME), array('id' => (int) $row['id']));
-        }
+        $values[] = (int) $collection_id;
+        $values[] = (int) $expected_status;
+        return 1 === (int) $wpdb->query($wpdb->prepare(
+            'UPDATE %i SET ' . implode(',', $sets) . ' WHERE id=%d AND status_code=%d',
+            array_merge(array(SSPA_Schema::table('traffic_collections')), $values)
+        ));
+    }
+
+    private static function clear_ticks($collection_id) {
+        wp_clear_scheduled_hook('sspa_traffic_collection_tick', array((int) $collection_id));
     }
 
     public static function observations($collection_id = 0) {

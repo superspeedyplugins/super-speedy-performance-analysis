@@ -60,6 +60,92 @@ update_option(SSPA_Digests::OPTION_PREFIX . $cancel_run, array('fixture' => true
 SSPA_Run_Controller::cancel($cancel_run);
 sspa_53_t(false === get_option(SSPA_Digests::OPTION_PREFIX . $cancel_run), 'cancelling a run discards its digest snapshot');
 
+// A cancel request must arbitrate through the exact same per-run lock as the worker.
+// The old implementation deleted the queue without that lock, so a worker holding a
+// stale in-memory queue could write it straight back after the run became cancelled.
+$wpdb->insert(SSPA_Schema::table('runs'), array(
+    'run_uuid' => wp_generate_uuid4(), 'blog_id' => get_current_blog_id(), 'run_type' => 'baseline',
+    'status' => 'crawling', 'started' => gmdate('Y-m-d H:i:s'), 'notes' => 'sspa-case-53',
+));
+$locked_cancel_run = (int) $wpdb->insert_id;
+$locked_cancel_queue = array(
+    'jobs' => array(array('page_key' => 'home', 'url' => home_url('/'), 'variant' => 'anon')),
+    'idx' => 0,
+    'user_id' => 1,
+    'started_at' => time(),
+    'last_progress' => time(),
+    'transport' => 'loopback',
+);
+SSPA_Run_Queue::save($locked_cancel_run, $locked_cancel_queue);
+wp_schedule_single_event(time() + 300, 'sspa_process_batch_event', array($locked_cancel_run));
+$worker_owner = SSPA_Atomic_Claim::acquire('sspa_lock_' . $locked_cancel_run, 300, 'sspa-case-53-worker');
+$cancel_code = 'echo SSPA_Run_Controller::cancel(' . $locked_cancel_run . ') ? "finished" : "waiting";';
+$cancel_process = proc_open(array(
+    'wp',
+    '--path=' . ABSPATH,
+    '--url=' . home_url('/'),
+    '--skip-themes',
+    'eval',
+    $cancel_code,
+), array(
+    0 => array('pipe', 'r'),
+    1 => array('pipe', 'w'),
+    2 => array('pipe', 'w'),
+), $cancel_pipes);
+$cancel_output = '';
+$cancel_error = '';
+$cancel_exit = -1;
+if (is_resource($cancel_process)) {
+    fclose($cancel_pipes[0]);
+    $cancel_output = stream_get_contents($cancel_pipes[1]);
+    $cancel_error = stream_get_contents($cancel_pipes[2]);
+    fclose($cancel_pipes[1]);
+    fclose($cancel_pipes[2]);
+    $cancel_exit = proc_close($cancel_process);
+}
+$cancel_requested = SSPA_Run_Controller::run_row($locked_cancel_run);
+sspa_53_t(
+    0 === $cancel_exit
+        && 'waiting' === trim($cancel_output)
+        && 'cancelling' === $cancel_requested['status']
+        && is_array(SSPA_Run_Queue::get($locked_cancel_run)),
+    'a second-process cancellation waits behind the worker single lock without deleting its queue'
+);
+if (0 !== $cancel_exit) {
+    echo "FAIL  cancellation child process: $cancel_error\n";
+    $GLOBALS['sspa_53_fails']++;
+}
+$cron_rows = maybe_unserialize((string) $wpdb->get_var("SELECT option_value FROM {$wpdb->options} WHERE option_name='cron'"));
+$scheduled_key = md5(serialize(array($locked_cancel_run)));
+$old_run_scheduled = false;
+foreach ((array) $cron_rows as $cron_hooks) {
+    if (is_array($cron_hooks) && isset($cron_hooks['sspa_process_batch_event'][$scheduled_key])) {
+        $old_run_scheduled = true;
+        break;
+    }
+}
+sspa_53_t(!$old_run_scheduled, 'cancellation removes every queued worker restart');
+
+$stale_worker_queue = $locked_cancel_queue;
+$stale_worker_queue['idx'] = 1;
+$stale_worker_queue['last_progress'] = time();
+$stale_saved = SSPA_Run_Queue::save($locked_cancel_run, $stale_worker_queue);
+$after_stale_save = SSPA_Run_Queue::get($locked_cancel_run);
+sspa_53_t(
+    false === $stale_saved && is_array($after_stale_save) && 0 === (int) $after_stale_save['idx'],
+    'a stale worker cannot advance or recreate a cancelling run queue'
+);
+
+SSPA_Atomic_Claim::release('sspa_lock_' . $locked_cancel_run, $worker_owner);
+$cancel_finished = SSPA_Run_Controller::cancel($locked_cancel_run);
+$cancelled_row = SSPA_Run_Controller::run_row($locked_cancel_run);
+sspa_53_t(
+    true === $cancel_finished
+        && 'cancelled' === $cancelled_row['status']
+        && null === SSPA_Run_Queue::get($locked_cancel_run),
+    'cancellation finalises under the worker lock once its current owner leaves'
+);
+
 // Missing/corrupt capture evidence is unknown, never silently verified.
 $wpdb->insert(SSPA_Schema::table('runs'), array(
     'run_uuid' => wp_generate_uuid4(), 'blog_id' => get_current_blog_id(), 'run_type' => 'cache_impact',

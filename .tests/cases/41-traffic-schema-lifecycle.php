@@ -59,9 +59,28 @@ sspa_tl_t(is_wp_error($conflict) && 'sspa_traffic_active_conflict' === $conflict
 $stopped = SSPA_Traffic_Collection::stop($id, false);
 sspa_tl_t(!is_wp_error($stopped) && 'outcome' === $stopped['collection']['status'], 'normal stop ends request collection and enters outcome window');
 sspa_tl_t('active' === SSPA_Traffic_Helper::state(), 'bounded outcome observer remains active after normal stop');
+$stale_outcome_row = $wpdb->get_row($wpdb->prepare(
+    'SELECT * FROM %i WHERE id = %d',
+    SSPA_Schema::table('traffic_collections'),
+    $id
+), ARRAY_A);
 $emergency = SSPA_Traffic_Collection::stop($id, true);
 sspa_tl_t(!is_wp_error($emergency) && 'stopped' === $emergency['collection']['status'], 'emergency stop ends all observation');
 sspa_tl_t('absent' === SSPA_Traffic_Helper::state(), 'emergency stop removes observer and stopped marker');
+$reconcile = new ReflectionMethod('SSPA_Traffic_Collection', 'reconcile');
+$reconcile->setAccessible(true);
+$reconcile->invoke(null, $stale_outcome_row);
+$after_stale_reconcile = $wpdb->get_row($wpdb->prepare(
+    'SELECT * FROM %i WHERE id = %d',
+    SSPA_Schema::table('traffic_collections'),
+    $id
+), ARRAY_A);
+sspa_tl_t(
+    SSPA_Traffic_Codes::COLLECTION_STOPPED === (int) $after_stale_reconcile['status_code']
+        && SSPA_Traffic_Codes::STOP_EMERGENCY === (int) $after_stale_reconcile['stop_reason_code'],
+    'a stale reconciler cannot overwrite the emergency-stop terminal state'
+);
+sspa_tl_t(false === wp_next_scheduled('sspa_traffic_collection_tick', array($id)), 'terminal stop removes every collection cron restart');
 $deleted = SSPA_Traffic_Collection::delete($id);
 sspa_tl_t(!is_wp_error($deleted) && !get_option($key_option) && !SSPA_Traffic_Collection::get($id), 'explicit delete removes stopped collection rows and temporary key');
 sspa_tl_t((bool) has_action('wp_ajax_sspa_traffic_delete', array('SSPA_Traffic_Ajax', 'delete')), 'destructive deletion is available to administrators');
@@ -74,6 +93,28 @@ if (!is_wp_error($second)) {
     $mismatch = SSPA_Traffic_Collection::status($second_id);
     sspa_tl_t('incomplete' === $mismatch['collection']['status'] && 'plugin_updated' === $mismatch['collection']['stop_reason'], 'observer contract mismatch stops collection as incomplete');
     sspa_tl_t('absent' === SSPA_Traffic_Helper::state(), 'contract mismatch removes the old observer');
+}
+
+$locked = SSPA_Traffic_Collection::start('1h', 'test');
+sspa_tl_t(!is_wp_error($locked), 'a collection starts for lifecycle-lock arbitration');
+if (!is_wp_error($locked)) {
+    $locked_id = (int) $locked['collection']['id'];
+    $lock_key = 'sspa_traffic_collection_lock_' . $locked_id;
+    $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 300, 'sspa-case-41-worker');
+    $blocked_stop = SSPA_Traffic_Collection::stop($locked_id, true);
+    $locked_row = $wpdb->get_row($wpdb->prepare(
+        'SELECT * FROM %i WHERE id = %d',
+        SSPA_Schema::table('traffic_collections'),
+        $locked_id
+    ), ARRAY_A);
+    sspa_tl_t(
+        is_wp_error($blocked_stop)
+            && 'sspa_traffic_collection_busy' === $blocked_stop->get_error_code()
+            && SSPA_Traffic_Codes::COLLECTION_RUNNING === (int) $locked_row['status_code'],
+        'stop and reconciliation share one per-collection lifecycle lock'
+    );
+    SSPA_Atomic_Claim::release($lock_key, $lock_owner);
+    SSPA_Traffic_Collection::stop($locked_id, true);
 }
 
 $before = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . SSPA_Schema::table('traffic_events'));

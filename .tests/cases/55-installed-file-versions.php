@@ -25,6 +25,7 @@ $sspa_pins = array(
         'declared' => SSPA_MU_VERSION,
         'hashes' => array(
             '1.0.0' => '586612818e2b8d891f19774c5cfd7908c999d9b6b46deacc8d1beb912a023fd1',
+            '1.0.1' => '7361c5c13a4a8dfd7c90ad5188321b8334cac0f5876a02403e2afc1eefedc7f1',
         ),
     ),
     'dropins/db.php' => array(

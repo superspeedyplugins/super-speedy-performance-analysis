@@ -6,23 +6,50 @@ class SSPA_Run_Queue {
     public static function save($run_id, $queue) {
         global $wpdb;
         $run_id = (int) $run_id;
+        if ($run_id <= 0 || false === $wpdb->query('START TRANSACTION')) {
+            return false;
+        }
+
+        // The run row is the queue-write arbitration point. Cancellation changes the
+        // status while holding this same row lock, so a worker can never write a stale
+        // cursor after cancellation intent has committed.
+        $status = $wpdb->get_var($wpdb->prepare(
+            'SELECT status FROM %i WHERE id = %d FOR UPDATE',
+            SSPA_Schema::table('runs'),
+            $run_id
+        ));
+        if (!in_array($status, array('queued', 'crawling', 'running'), true)) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
         $jobs = isset($queue['jobs']) && is_array($queue['jobs']) ? array_values($queue['jobs']) : array();
         $idx = isset($queue['idx']) ? max(0, (int) $queue['idx']) : 0;
         unset($queue['jobs'], $queue['idx']);
         $jobs_table = SSPA_Schema::table('run_jobs');
         $existing = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id = %d', $jobs_table, $run_id));
         for ($position = $existing; $position < count($jobs); $position++) {
-            $wpdb->insert($jobs_table, array('run_id' => $run_id, 'position' => $position, 'status' => $position < $idx ? 'done' : 'queued', 'job_blob' => wp_json_encode($jobs[$position]), 'created_at' => gmdate('Y-m-d H:i:s')));
+            if (false === $wpdb->insert($jobs_table, array('run_id' => $run_id, 'position' => $position, 'status' => $position < $idx ? 'done' : 'queued', 'job_blob' => wp_json_encode($jobs[$position]), 'created_at' => gmdate('Y-m-d H:i:s')))) {
+                $wpdb->query('ROLLBACK');
+                return false;
+            }
         }
         if ($idx > 0) {
-            $wpdb->query($wpdb->prepare("UPDATE %i SET status='done', finished_at=COALESCE(finished_at,UTC_TIMESTAMP()) WHERE run_id=%d AND position<%d AND status<>'done'", $jobs_table, $run_id, $idx));
+            if (false === $wpdb->query($wpdb->prepare("UPDATE %i SET status='done', finished_at=COALESCE(finished_at,UTC_TIMESTAMP()) WHERE run_id=%d AND position<%d AND status<>'done'", $jobs_table, $run_id, $idx))) {
+                $wpdb->query('ROLLBACK');
+                return false;
+            }
         }
-        $wpdb->query($wpdb->prepare(
+        $saved = $wpdb->query($wpdb->prepare(
             "INSERT INTO %i (run_id,job_cursor,total_jobs,state_blob,started_at,last_progress) VALUES (%d,%d,%d,%s,%s,%s) ON DUPLICATE KEY UPDATE job_cursor=VALUES(job_cursor),total_jobs=VALUES(total_jobs),state_blob=VALUES(state_blob),last_progress=VALUES(last_progress)",
             SSPA_Schema::table('run_queues'), $run_id, $idx, count($jobs), wp_json_encode($queue),
             gmdate('Y-m-d H:i:s', isset($queue['started_at']) ? (int) $queue['started_at'] : time()),
             gmdate('Y-m-d H:i:s', isset($queue['last_progress']) ? (int) $queue['last_progress'] : time())
         ));
+        if (false === $saved || false === $wpdb->query('COMMIT')) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
         return true;
     }
 
