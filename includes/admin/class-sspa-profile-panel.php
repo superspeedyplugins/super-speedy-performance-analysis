@@ -550,7 +550,7 @@ class SSPA_Profile_Panel {
             . esc_html__('Measurement boundary:', 'super-speedy-performance-analysis') . '</strong> '
             . esc_html__('These figures are not the plugin\'s total impact. This timer measures plugin file loading and callbacks whose execution begins in that plugin; work triggered inside WordPress core or another component is reported where it ran. Compare this with Measured plugin impact on this page below, which comes from separate controlled requests with the plugin excluded.', 'super-speedy-performance-analysis')
             . '</p>';
-        $html .= '<table class="sspa-adhoc-table sspa-adhoc-num3">';
+        $html .= '<table class="sspa-adhoc-table sspa-adhoc-num3 sspa-adhoc-direct-table">';
         $html .= '<tr class="sspa-adhoc-hrow"><td>' . esc_html__('Plugin', 'super-speedy-performance-analysis') . '</td><td>'
             . esc_html__('Direct load', 'super-speedy-performance-analysis') . '</td><td>' . esc_html__('Direct hooks', 'super-speedy-performance-analysis')
             . '</td><td>' . esc_html__('Direct measured', 'super-speedy-performance-analysis') . '</td></tr>';

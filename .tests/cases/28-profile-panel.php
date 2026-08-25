@@ -84,6 +84,7 @@ foreach ($sspa_sections as $sspa_needle => $sspa_label) {
 sspa_panel_t(false === strpos($sspa_html, 'PHP cost per plugin'), 'panel does not call direct attribution total plugin cost');
 sspa_panel_t(false === strpos($sspa_html, '>Total<'), 'direct-attribution table has no invented total column');
 sspa_panel_t(false !== strpos($sspa_html, 'Direct measured'), 'direct-attribution table labels its measured subtotal');
+sspa_panel_t(false !== strpos($sspa_html, 'sspa-adhoc-direct-table'), 'direct-attribution table has its narrow-panel layout contract');
 sspa_panel_t(
     false !== strpos($sspa_html, 'These figures are not the plugin&#039;s total impact')
     && false !== strpos($sspa_html, 'work triggered inside WordPress core or another component is reported where it ran'),

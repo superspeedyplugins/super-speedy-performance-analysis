@@ -743,6 +743,19 @@
 	border-bottom: 1px solid var(--sspa-outline);
 }
 
+/* The direct-attribution table lives in one half of the desktop grid. Give all three
+   measured columns enough room for their explicit labels and let those labels wrap rather
+   than colliding at ordinary laptop widths. */
+#sspa-adhoc-pop .sspa-adhoc-direct-table td:nth-last-child(-n+3) {
+	width: 90px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-direct-table .sspa-adhoc-hrow td:nth-last-child(-n+3) {
+	padding-left: 8px;
+	white-space: normal;
+	overflow-wrap: normal;
+}
+
 /* ── EXPLAIN notes under a query ────────────────────────────────────── */
 
 #sspa-adhoc-pop .sspa-adhoc-explain {
