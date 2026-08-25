@@ -80,6 +80,7 @@ class SSPA_Schema {
             KEY run_uuid_lookup (run_uuid),
             KEY blog_status (blog_id,status),
             KEY status (status),
+            KEY status_id_type (status,id,run_type),
             KEY started (started)
         ) $charset_collate;");
 
@@ -386,6 +387,7 @@ class SSPA_Schema {
         ) $charset_collate;");
 
         self::ensure_run_uuids();
+        self::remove_retired_options();
         SSPA_Run_Queue::discard_legacy_options();
 
         update_option('sspa_db_version', self::DB_VERSION);
@@ -404,6 +406,16 @@ class SSPA_Schema {
         if (!$unique) {
             $wpdb->query("ALTER TABLE $runs ADD UNIQUE KEY run_uuid_unique (run_uuid)");
         }
+    }
+
+    /** Remove settings that could make a checkout flow target real catalogue inventory. */
+    private static function remove_retired_options() {
+        $options = get_option('sspa_options', array());
+        if (!is_array($options) || !array_key_exists('checkout_product_id', $options)) {
+            return;
+        }
+        unset($options['checkout_product_id']);
+        update_option('sspa_options', $options);
     }
 
     public static function upgrade($from_version) {

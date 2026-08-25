@@ -19,7 +19,7 @@ foreach (array('traffic_collections', 'traffic_events', 'traffic_rollups', 'traf
     $table = SSPA_Schema::table($name);
     sspa_tl_t($table === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)), "$name table exists");
 }
-sspa_tl_t('2.3' === SSPA_Schema::DB_VERSION && '2.3' === get_option('sspa_db_version'), 'database schema version is 2.3');
+sspa_tl_t('2.4' === SSPA_Schema::DB_VERSION && '2.4' === get_option('sspa_db_version'), 'database schema version is 2.4');
 $event_columns = $wpdb->get_col('SHOW COLUMNS FROM ' . SSPA_Schema::table('traffic_events'));
 sspa_tl_t(in_array('automation_code', $event_columns, true) && in_array('ssf_protection_code', $event_columns, true), 'request rows have privacy-safe automation and SSF decision dimensions');
 

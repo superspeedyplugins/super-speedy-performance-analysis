@@ -14,12 +14,46 @@ $sample_ids = wc_get_products(array('status' => 'publish', 'limit' => 20, 'retur
 $sample_ids = array_values(array_filter($sample_ids, function ($id) {
     return 'checkout_product' !== get_post_meta((int) $id, '_sspa_temp', true);
 }));
-$product = SSPA_Checkout_Flow::default_product($sample_ids ? (int) $sample_ids[0] : 0);
+$product = SSPA_Checkout_Flow::default_product();
 $again = SSPA_Checkout_Flow::default_product();
 sspa_hardening_t($product && $again && $product->get_id() === $again->get_id(), 'checkout reuses one dedicated test product');
 sspa_hardening_t($product && !in_array($product->get_id(), array_map('intval', $sample_ids), true), 'checkout ignores real catalogue product ids');
 sspa_hardening_t($product && 'hidden' === $product->get_catalog_visibility(), 'test product is hidden from catalogue and search');
 sspa_hardening_t($product && !$product->managing_stock() && 'checkout_product' === $product->get_meta('_sspa_temp', true), 'test product is marked and cannot alter real stock');
+
+$checkout_ability = function_exists('wp_get_ability') ? wp_get_ability('super-speedy-performance/run-checkout-flow') : null;
+$checkout_schema = $checkout_ability ? $checkout_ability->get_input_schema() : array();
+sspa_hardening_t(
+    !$checkout_ability || !isset($checkout_schema['properties']['product_id']),
+    'agent checkout contract cannot accept a catalogue product id'
+);
+sspa_hardening_t(
+    !array_key_exists('checkout_product_id', sspa_default_options()),
+    'plugin settings contain no catalogue-product selector'
+);
+$legacy_options = get_option('sspa_options', array());
+$legacy_options['checkout_product_id'] = $sample_ids ? (int) $sample_ids[0] : PHP_INT_MAX;
+update_option('sspa_options', $legacy_options);
+SSPA_Schema::create_tables();
+$migrated_options = get_option('sspa_options', array());
+sspa_hardening_t(
+    !array_key_exists('checkout_product_id', $migrated_options),
+    'schema upgrade removes the retired catalogue-product setting'
+);
+
+$contract_run = SSPA_Run_Controller::start(array(
+    'type' => 'checkout',
+    'user_id' => 1,
+    'product_id' => $sample_ids ? (int) $sample_ids[0] : PHP_INT_MAX,
+));
+$contract_queue = !is_wp_error($contract_run) ? SSPA_Run_Queue::get($contract_run) : null;
+sspa_hardening_t(
+    is_array($contract_queue) && !array_key_exists('product_id', $contract_queue['checkout']['opts']),
+    'checkout run state cannot retain a caller-supplied catalogue product id'
+);
+if (!is_wp_error($contract_run)) {
+    SSPA_Run_Controller::cancel($contract_run);
+}
 
 // Drive the real HTTP wrapper while intercepting immediately before transport.
 $seen_args = null;

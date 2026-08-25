@@ -82,10 +82,10 @@
 
 		html += '<p class="sspa-adhoc-note">Measuring your <strong>' +
 			('block' === inv.checkout_type ? 'block' : 'shortcode') + '</strong> checkout <strong>and what you do with the order after</strong>. ' +
-			'It buys something, for real, with every plugin on your site active, then <strong>opens the order in wp-admin and marks it completed</strong> &mdash; the two things you handle most. ' +
+			'It checks out using the hidden, non-stock-managed SSPA test product, with every plugin on your site active, then <strong>opens the order in wp-admin and marks it completed</strong> &mdash; the two things you handle most. ' +
 			'That is the point: a run that switches your integrations off measures a store nobody has. ' +
 			'Marking it completed sends the completed-order email and fires everything hooking order completion. ' +
-			'The order is <strong>cancelled and deleted</strong> afterwards and stock is put back.</p>';
+			'The order is <strong>cancelled and deleted</strong> afterwards. No catalogue product or stock is touched.</p>';
 
 		html += '<ul class="sspa-ck-list">';
 		if (inv.product) {

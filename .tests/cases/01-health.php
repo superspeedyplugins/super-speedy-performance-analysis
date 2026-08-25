@@ -12,6 +12,17 @@ foreach (array('runs', 'profiles', 'component_stats', 'findings', 'plugin_impact
     sspa_t($wpdb->get_var("SHOW TABLES LIKE '$table'") === $table, "table $name exists");
 }
 
+$run_lookup_columns = $wpdb->get_col($wpdb->prepare(
+    'SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s AND INDEX_NAME=%s ORDER BY SEQ_IN_INDEX',
+    DB_NAME,
+    SSPA_Schema::table('runs'),
+    'status_id_type'
+));
+sspa_t(
+    array('status', 'id', 'run_type') === $run_lookup_columns,
+    'runs table indexes recurring latest-completed lookups by status, id and type'
+);
+
 sspa_t(strlen((string) SSPA_Token::secret()) === 64, 'secret generated');
 
 // Self-heal: a crashed earlier test (06 swaps db.php) can leave a fake drop-in behind.

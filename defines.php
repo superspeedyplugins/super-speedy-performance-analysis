@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-define('SSPA_DB_VERSION', '2.3');
+define('SSPA_DB_VERSION', '2.4');
 
 // The mu-loader and the db.php drop-in are installed files with their own lifecycles: a
 // plugin release usually changes neither. Version them independently so an ordinary patch
@@ -19,7 +19,6 @@ function sspa_default_options() {
 
         // Checkout flow profiling. All defaults work unconfigured, so the button does
         // something sensible on a store that has never opened these settings.
-        'checkout_product_id' => 0,       // 0 = cheapest purchasable, in-stock, simple product
         'checkout_quantity' => 1,
         'checkout_address' => null,       // null = store base country, valid postcode for it
         'checkout_email' => '',           // '' = admin_email tagged +sspa-perf-<run_id>

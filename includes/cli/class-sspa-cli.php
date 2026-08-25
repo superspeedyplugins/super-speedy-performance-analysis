@@ -106,17 +106,14 @@ class SSPA_CLI {
     }
 
     /**
-     * Measure one complete purchase: what a customer waits through at each step of the
-     * checkout funnel, with the full plugin set active and nothing switched off.
+     * Measure one complete checkout using the hidden, non-stock-managed SSPA test product:
+     * what a customer waits through at each step, with the full plugin set active.
      *
-     * This BUYS SOMETHING FOR REAL. A real order is created, real emails are sent and real
-     * integrations fire; the order is cancelled and deleted afterwards and stock is put
-     * back. Use --dry-run first to see exactly what it would set off.
+     * This creates a real order, but never orders a catalogue product. Real emails are sent
+     * and real integrations fire unless their switches say otherwise; the order is cancelled
+     * and deleted afterwards. Use --dry-run first to see exactly what it would set off.
      *
      * ## OPTIONS
-     *
-     * [--product=<id>]
-     * : Product to buy. Defaults to the cheapest purchasable in-stock shippable one.
      *
      * [--repeats=<n>]
      * : Run the flow n times (default 1). Every repeat is another real order.
@@ -143,7 +140,7 @@ class SSPA_CLI {
      *
      *     wp sspa checkout-flow --dry-run
      *     wp sspa checkout-flow
-     *     wp sspa checkout-flow --product=47 --repeats=3
+     *     wp sspa checkout-flow --repeats=3
      *
      * @subcommand checkout-flow
      */
@@ -166,9 +163,6 @@ class SSPA_CLI {
         }
 
         $start_args = array('type' => 'checkout', 'trigger' => 'cli');
-        if (!empty($assoc_args['product'])) {
-            $start_args['product_id'] = (int) $assoc_args['product'];
-        }
         if (!empty($assoc_args['payment'])) {
             $start_args['payment_mode'] = $assoc_args['payment'];
         }

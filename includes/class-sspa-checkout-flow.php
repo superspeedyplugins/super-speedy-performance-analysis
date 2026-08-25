@@ -105,9 +105,6 @@ class SSPA_Checkout_Flow {
                 ? 'sandbox'
                 : 'no_payment',
         );
-        if (!empty($_POST['product_id'])) {
-            $args['product_id'] = (int) $_POST['product_id'];
-        }
         sspa_update_option('checkout_consent', true);
 
         $run_id = SSPA_Run_Controller::start($args);
@@ -377,8 +374,7 @@ class SSPA_Checkout_Flow {
     }
 
     /** Return the plugin-owned hidden product; real catalogue inventory is never used. */
-    public static function default_product($product_id = 0) {
-        unset($product_id); // retained in the signature for compatibility with older callers.
+    public static function default_product() {
         if (!class_exists('WC_Product_Simple')) {
             return null;
         }
@@ -501,7 +497,7 @@ class SSPA_Checkout_Flow {
     /**
      * Run one complete purchase over loopback.
      *
-     * @param array $opts {run_id, product_id, quantity, address, email, mail_mode,
+     * @param array $opts {run_id, quantity, address, email, mail_mode,
      *                     payment_mode, allow_integrations, allow_webhooks, plugin_set_hash}
      * @return array {steps: [{page_key, method, url, sample, skipped}], order_ids, outcome,
      *                notes} - outcome is 'ok' or one of the failure codes in doc C4.
@@ -514,7 +510,7 @@ class SSPA_Checkout_Flow {
             $result['outcome'] = 'no_store';
             return $result;
         }
-        $product = self::default_product(isset($opts['product_id']) ? $opts['product_id'] : 0);
+        $product = self::default_product();
         if (!$product) {
             $result['outcome'] = 'no_product';
             return $result;

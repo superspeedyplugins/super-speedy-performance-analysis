@@ -332,15 +332,14 @@ class SSPA_Abilities {
         ));
 
         wp_register_ability(self::CATEGORY . '/run-checkout-flow', array(
-            'label' => __('Measure the checkout flow (buys something for real)', 'super-speedy-performance-analysis'),
-            'description' => __('Measure a real purchase and the order-handling workflow. THIS CREATES A REAL ORDER. The MCP-safe defaults suppress mail, integrations and webhooks; each can be enabled explicitly. The order is cancelled and deleted afterwards and stock is restored. Call with dry_run first, show the pre-flight inventory to the site owner, then pass confirm:true for a real run. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
+            'label' => __('Measure the checkout flow with the plugin-owned test product', 'super-speedy-performance-analysis'),
+            'description' => __('Measure a checkout and the order-handling workflow using the hidden, non-stock-managed SSPA test product. THIS CREATES A REAL ORDER, but never orders a catalogue product. The MCP-safe defaults suppress mail, integrations and webhooks; each can be enabled explicitly. The order is cancelled and deleted afterwards. Call with dry_run first, show the pre-flight inventory to the site owner, then pass confirm:true for a real run. Asynchronous when not a dry run: poll get-status, then get-checkout-flow.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',
                 'properties' => array(
                     'dry_run' => array('type' => 'boolean', 'description' => __('Return the pre-flight inventory and create nothing.', 'super-speedy-performance-analysis')),
                     'confirm' => array('type' => 'boolean', 'description' => __('Must be true for a real checkout run.', 'super-speedy-performance-analysis')),
-                    'product_id' => array('type' => 'integer', 'description' => __('Product to buy; defaults to the cheapest purchasable, in-stock, shippable one.', 'super-speedy-performance-analysis')),
                     'allow_integrations' => array('type' => 'boolean', 'description' => __('Default false. Set true explicitly to fire store integrations.', 'super-speedy-performance-analysis')),
                     'allow_webhooks' => array('type' => 'boolean', 'description' => __('Default false. Set true explicitly to fire webhooks.', 'super-speedy-performance-analysis')),
                     'mail_mode' => array('type' => 'string', 'enum' => array('deliver', 'construct', 'suppress'), 'description' => __('suppress by default. Set deliver explicitly to send order emails.', 'super-speedy-performance-analysis')),
@@ -608,7 +607,7 @@ class SSPA_Abilities {
             'allow_integrations' => false,
             'allow_webhooks' => false,
         );
-        foreach (array('product_id', 'mail_mode') as $key) {
+        foreach (array('mail_mode') as $key) {
             if (isset($input[$key])) {
                 $args[$key] = $input[$key];
             }

@@ -771,7 +771,6 @@ class SSPA_Run_Controller {
             // The order-management steps (view + complete) run as the admin who started the
             // run - no temporary admin users (Dave's rule) - so the flow needs their id.
             'user_id' => !empty($args['user_id']) ? (int) $args['user_id'] : get_current_user_id(),
-            'product_id' => !empty($args['product_id']) ? (int) $args['product_id'] : (int) sspa_get_option('checkout_product_id'),
             'quantity' => !empty($args['quantity']) ? (int) $args['quantity'] : max(1, (int) sspa_get_option('checkout_quantity')),
             'mail_mode' => in_array($mail_mode, array('deliver', 'construct', 'suppress'), true) ? $mail_mode : 'deliver',
             // Whitelist: an unknown mode falls through to no payment, never to a payment.
