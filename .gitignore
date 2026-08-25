@@ -7,17 +7,18 @@ node_modules/
 /.tests/scratch/
 
 # THIS REPO IS PUBLIC. The working documents below live in the private meta repo
-# (~/superspeedy-plugin-meta/super-speedy-performance-analysis) and are symlinked in at these
+# (~/dev/super-speedy/superspeedy-plugin-meta/super-speedy-performance-analysis) and are symlinked in at these
 # paths, so every skill that reads them keeps working. They must never be tracked here:
 # .roadmap is a competitive tell, .docs describes unbuilt work, and .features/.compatibility
 # carry <!-- internal --> blocks that exist to stop things reaching customers.
+/AGENTS.md
 /CLAUDE.md
 /.docs
 /.roadmap
 /.features
 /.compatibility
 /.devdiary
-/.todo
+/.code-reviews
 
 # wp-cli machine-local config: points wp at the local WordPress install
 wp-cli.local.yml

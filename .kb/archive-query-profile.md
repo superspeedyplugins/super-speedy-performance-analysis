@@ -39,7 +39,7 @@ Returns a `WP_Error` when no completed run exists.
 
 ## Versioning
 
-The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profile::SCHEMA`. It is independent of the report schema in `docs/agent-api.md`. New fields may be added without a bump; a field changing meaning or disappearing bumps it.
+The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profile::SCHEMA`. It is independent of the report schema in `.kb/agent-api.md`. New fields may be added without a bump; a field changing meaning or disappearing bumps it.
 
 ## The whole structure
 

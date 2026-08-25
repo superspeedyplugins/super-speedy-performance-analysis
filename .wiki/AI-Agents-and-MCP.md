@@ -15,8 +15,8 @@ The whole plugin is drivable without the GUI. That's deliberate: the useful shap
 Two files ship in the repository:
 
 - [`SKILL.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/SKILL.md) teaches a Claude-based agent the install, run and interpret workflow.
-- [`docs/agent-instructions-openai.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/docs/agent-instructions-openai.md) is the OpenAI equivalent.
-- [`docs/agent-api.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/docs/agent-api.md) documents the report schema, including the delta sign convention.
+- [`.kb/agent-instructions-openai.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/.kb/agent-instructions-openai.md) is the OpenAI equivalent.
+- [`.kb/agent-api.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/.kb/agent-api.md) documents the report schema, including the delta sign convention.
 
 Point your agent at the one that matches it rather than describing the plugin to it yourself.
 

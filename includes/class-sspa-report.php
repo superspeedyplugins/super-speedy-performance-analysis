@@ -4,7 +4,7 @@ defined('ABSPATH') || exit;
 /**
  * The agent-facing report: one stable JSON structure consumed by WP-CLI, the Abilities
  * API and (indirectly) any LLM interpreting results. Schema documented in
- * docs/agent-api.md - keep them in sync and bump SCHEMA on breaking changes.
+ * .kb/agent-api.md - keep them in sync and bump SCHEMA on breaking changes.
  */
 class SSPA_Report {
 
@@ -247,7 +247,7 @@ class SSPA_Report {
      * which columns must be materialised first. Consumed by Super Speedy Archives to configure
      * its mirror table without a human filling the settings in by hand.
      *
-     * Additive to the report schema, so SCHEMA does not move. Documented in docs/agent-api.md.
+     * Additive to the report schema, so SCHEMA does not move. Documented in .kb/agent-api.md.
      *
      * @return array|WP_Error
      */

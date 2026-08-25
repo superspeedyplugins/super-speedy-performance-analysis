@@ -35,7 +35,7 @@ wp sspa impacts
 wp sspa report
 ```
 
-`status` prints the current or last run. `findings` lists the plain-English findings with the component responsible. `impacts` lists measured per-plugin impact from Plugin Impact Analysis. `report` is the full agent-readable document, and its schema is documented in [`docs/agent-api.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/docs/agent-api.md).
+`status` prints the current or last run. `findings` lists the plain-English findings with the component responsible. `impacts` lists measured per-plugin impact from Plugin Impact Analysis. `report` is the full agent-readable document, and its schema is documented in [`.kb/agent-api.md`](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/.kb/agent-api.md).
 
 ```
 wp sspa http-calls [--run-id=<id>] --format=json

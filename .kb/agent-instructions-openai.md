@@ -30,6 +30,6 @@ no impact.
 ## Tool definitions (function calling)
 
 If you expose tools rather than a shell, map them 1:1 to the abilities listed in
-`docs/agent-api.md` - the input/output JSON schemas served by
+`.kb/agent-api.md` - the input/output JSON schemas served by
 `/wp-json/wp-abilities/v1/abilities` are designed to be used directly as function-calling
 parameter schemas.

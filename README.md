@@ -52,8 +52,8 @@ The whole plugin is drivable without the GUI:
 - **WordPress Abilities API** (WP 6.9+) with the same surface, exposed through the one shared
   Super Speedy MCP bridge without AI Engine or the WordPress MCP Adapter.
 - **[SKILL.md](SKILL.md)** teaches Claude-based agents the install -> run -> interpret
-  workflow; `docs/agent-instructions-openai.md` is the OpenAI equivalent. The report schema
-  is documented in `docs/agent-api.md`.
+  workflow; `.kb/agent-instructions-openai.md` is the OpenAI equivalent. The report schema
+  is documented in `.kb/agent-api.md`.
 
 ## Requirements
 
