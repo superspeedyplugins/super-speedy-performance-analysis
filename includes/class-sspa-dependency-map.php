@@ -38,6 +38,23 @@ class SSPA_Dependency_Map {
     /** Main files larger than this are scanned only up to here - a loader is never this big. */
     const SCAN_BYTES = 1048576;
 
+    /** Remember a dependency edge only after a grouped retry completed successfully. */
+    public static function learn($dependency, $reactor) {
+        $dependency = sanitize_key($dependency);
+        $reactor = sanitize_key($reactor);
+        if (!$dependency || !$reactor || $dependency === $reactor) {
+            return false;
+        }
+        $learned = (array) get_option(self::LEARNED_OPTION, array());
+        $reactors = isset($learned[$dependency]) ? (array) $learned[$dependency] : array();
+        if (!in_array($reactor, $reactors, true)) {
+            $reactors[] = $reactor;
+            $learned[$dependency] = array_values(array_unique($reactors));
+            update_option(self::LEARNED_OPTION, $learned, false);
+        }
+        return true;
+    }
+
     /**
      * @return array slug => [slugs that require it]
      */

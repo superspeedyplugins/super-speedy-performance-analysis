@@ -67,20 +67,12 @@ class SSPA_Checkout_Flow {
         }
         SSPA_Helper_Files::ensure_installed();
 
-        $crawler = new SSPA_Crawler();
-        $sample = $crawler->send_profiled(home_url('/?sspa_flow_probe=1'), array(
-            'method' => 'GET',
-            'flags' => array('v' => 'guest', 'ck' => 'pre'),
-        ));
-        if (!is_array($sample['json'])) {
-            wp_send_json_error(sprintf(
-                /* translators: %s: an error code such as no_canary */
-                __('The pre-flight request could not be measured (%s). Check the Tools tab.', 'super-speedy-performance-analysis'),
-                $sample['error'] ? $sample['error'] : 'http ' . $sample['code']
-            ));
+        $preflight = self::preflight_request();
+        if (is_wp_error($preflight)) {
+            wp_send_json_error($preflight->get_error_message());
         }
         wp_send_json_success(array(
-            'inventory' => $sample['json'],
+            'inventory' => $preflight['inventory'],
             'consented' => (bool) sspa_get_option('checkout_consent'),
             'defaults' => array(
                 'mail_mode' => sspa_get_option('checkout_mail_mode'),
@@ -89,6 +81,30 @@ class SSPA_Checkout_Flow {
                 'allow_webhooks' => (bool) sspa_get_option('checkout_allow_webhooks'),
             ),
         ));
+    }
+
+    /** Exact, side-effect-free checkout entry-point probe shared by every interface. */
+    public static function preflight_request() {
+        $crawler = new SSPA_Crawler();
+        $sample = $crawler->send_profiled(home_url('/?sspa_flow_probe=1'), array(
+            'method' => 'GET',
+            'flags' => array('v' => 'guest', 'ck' => 'pre'),
+        ));
+        if (!is_array($sample['json'])) {
+            $reason = !empty($sample['blocked_by'])
+                ? sprintf(
+                    /* translators: %s: identified or probable security layer */
+                    __('The checkout entry point was blocked by %s before any order was created. Whitelist this site\'s own loopback requests, then run the pre-flight again.', 'super-speedy-performance-analysis'),
+                    $sample['blocked_by']
+                )
+                : sprintf(
+                    /* translators: %s: an error code such as no_canary */
+                    __('The checkout pre-flight request could not be measured (%s). No order was created. Check the Tools tab.', 'super-speedy-performance-analysis'),
+                    $sample['error'] ? $sample['error'] : 'http ' . $sample['code']
+                );
+            return new WP_Error('sspa_checkout_preflight_failed', $reason, array('sample' => $sample));
+        }
+        return array('inventory' => $sample['json'], 'sample' => $sample);
     }
 
     public static function ajax_start() {

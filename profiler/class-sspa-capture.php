@@ -297,6 +297,20 @@ if (!class_exists('SSPA_Capture')) {
                 'alloptions_bytes' => function_exists('wp_load_alloptions') ? strlen(serialize(wp_load_alloptions())) : null,
             );
 
+            $fatal = null;
+            $last_error = error_get_last();
+            $fatal_types = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR);
+            if (is_array($last_error) && in_array((int) $last_error['type'], $fatal_types, true)) {
+                $owner = $map->classify_file(isset($last_error['file']) ? $last_error['file'] : '');
+                $message = isset($last_error['message']) ? (string) $last_error['message'] : '';
+                $message = preg_replace('/\b\d+\b/', '#', str_replace('\\', '/', $message));
+                $fatal = array(
+                    'component' => $owner['component'],
+                    'type' => $owner['type'],
+                    'fingerprint' => hash('sha256', $message),
+                );
+            }
+
             $payload = array(
                 'schema' => self::SCHEMA_VERSION,
                 'token' => $this->token_id,
@@ -307,6 +321,7 @@ if (!class_exists('SSPA_Capture')) {
                 'http' => $http,
                 'mail' => $mail,
                 'cache' => $cache,
+                'fatal' => $fatal,
                 // Which options this request actually read. Names and call counts only -
                 // never values, which hold licence keys, API tokens and customer data.
                 // Armed in the db.php drop-in; see the coverage note there.

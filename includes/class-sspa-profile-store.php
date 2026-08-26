@@ -92,6 +92,13 @@ class SSPA_Profile_Store {
             if (!empty($s['capture']['reactions'])) {
                 $summary['reactions'] = count((array) $s['capture']['reactions']);
             }
+            if (!empty($s['capture']['fatal']) && is_array($s['capture']['fatal'])) {
+                $summary['fatal'] = array(
+                    'component' => isset($s['capture']['fatal']['component']) ? sanitize_key($s['capture']['fatal']['component']) : '',
+                    'type' => isset($s['capture']['fatal']['type']) ? sanitize_key($s['capture']['fatal']['type']) : '',
+                    'fingerprint' => isset($s['capture']['fatal']['fingerprint']) ? (string) $s['capture']['fatal']['fingerprint'] : '',
+                );
+            }
             return $summary;
         }, $samples);
 

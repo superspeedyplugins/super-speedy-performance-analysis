@@ -110,6 +110,11 @@ class SSPA_Run_Controller {
                 SSPA_Helper_Files::restore_held_dropin();
                 return new WP_Error('sspa_no_store', __('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
             }
+            $checkout_preflight = SSPA_Checkout_Flow::preflight_request();
+            if (is_wp_error($checkout_preflight)) {
+                SSPA_Helper_Files::restore_held_dropin();
+                return $checkout_preflight;
+            }
             $jobs = array(
                 array('page_key' => 'flow-preflight', 'checkout' => 'preflight', 'variant' => 'guest', 'url' => home_url('/?sspa_flow_probe=1')),
                 array('page_key' => 'flow', 'checkout' => 'flow', 'variant' => 'guest', 'url' => wc_get_checkout_url()),
@@ -404,9 +409,14 @@ class SSPA_Run_Controller {
             }
         }
 
+        $blocked_target = self::preflight_sweep_targets($page_jobs);
+        if (is_wp_error($blocked_target)) {
+            return $blocked_target;
+        }
+
         // Cache modes need the per-request object-cache toggle, i.e. OUR db.php shim.
-        $has_oc = wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php');
-        $oc_capable = $has_oc && 'ours' === SSPA_Helper_Files::dropin_status();
+        $oc = SSPA_Object_Cache_Capability::inspect();
+        $oc_capable = $oc['switchable'] && 'ours' === SSPA_Helper_Files::dropin_status();
 
         // Slowest resolvable page: the screening page every plugin gets tested on. A sweep
         // scoped to one URL has no source run to rank pages by, and only one page to pick.
@@ -543,6 +553,7 @@ class SSPA_Run_Controller {
             // it covers rather than crediting the whole delta to one plugin.
             'groups' => $groups,
             'oc_capable' => $oc_capable,
+            'oc_reason' => $oc_capable ? '' : $oc['reason'],
             // Whether phase 2 may spend three measurements per cell on the cache modes.
             // Site sweeps always have; a page-scoped sweep asks first, because there the
             // difference between 24 and 72 measurements is the difference between waiting
@@ -711,9 +722,12 @@ class SSPA_Run_Controller {
     private static function build_cache_impact_jobs($args, &$oc_mode) {
         global $wpdb;
 
-        $has_dropin = file_exists(WP_CONTENT_DIR . '/object-cache.php');
-        if (!wp_using_ext_object_cache() && !$has_dropin) {
+        $oc = SSPA_Object_Cache_Capability::inspect();
+        if (!$oc['persistent']) {
             return new WP_Error('sspa_no_object_cache', __('No persistent object cache detected - there is nothing to toggle. Install Redis/Memcached first.', 'super-speedy-performance-analysis'));
+        }
+        if (!$oc['switchable']) {
+            return new WP_Error('sspa_object_cache_platform_managed', $oc['reason']);
         }
 
         if ('ours' === SSPA_Helper_Files::dropin_status()) {
@@ -809,7 +823,15 @@ class SSPA_Run_Controller {
                 'url' => $job['url'],
                 'sample' => $sample,
             ), $opts);
-            return;
+            if (!is_array($sample['json'])) {
+                return new WP_Error(
+                    'sspa_checkout_preflight_failed',
+                    !empty($sample['blocked_by'])
+                        ? sprintf(__('The checkout entry point was blocked by %s before any order was created.', 'super-speedy-performance-analysis'), $sample['blocked_by'])
+                        : __('The checkout pre-flight failed before any order was created.', 'super-speedy-performance-analysis')
+                );
+            }
+            return true;
         }
 
         $result = SSPA_Checkout_Flow::run($opts);
@@ -826,6 +848,7 @@ class SSPA_Run_Controller {
                 return $step['skipped'] ? array('step' => $step['page_key'], 'why' => $step['skipped']) : null;
             }, $result['steps']))),
         );
+        return true;
     }
 
     private static function save_checkout_step($run_id, $step, $opts) {
@@ -1068,13 +1091,13 @@ class SSPA_Run_Controller {
      *
      * @return array {healthy:bool, reason:string}
      */
-    public static function loopback_preflight() {
-        $url = home_url('/');
+    public static function loopback_preflight($target_url = '', $variant = 'anon') {
+        $url = $target_url ? (string) $target_url : home_url('/');
         $url .= (strpos($url, '?') === false ? '?' : '&') . 'sspa_nc=' . bin2hex(random_bytes(6));
-        $token = SSPA_Token::mint($url, array('bl' => '1', 'v' => 'anon'));
+        $token = SSPA_Token::mint($url, array('bl' => '1', 'v' => $variant));
         $response = SSPA_Crawler::request($url, array(
             'redirection' => 0,
-            'sslverify' => false,
+            'sslverify' => true,
             'headers' => array('Cache-Control' => 'no-cache', SSPA_Token::HEADER => $token['header']),
         ));
 
@@ -1094,7 +1117,13 @@ class SSPA_Run_Controller {
             return array('healthy' => false, 'reason' => __('the site is behind HTTP authentication (401) at the server level', 'super-speedy-performance-analysis'));
         }
         if (403 === $code) {
-            return array('healthy' => false, 'reason' => __('a firewall or security layer refused the request (403)', 'super-speedy-performance-analysis'));
+            $headers = array();
+            foreach (wp_remote_retrieve_headers($response) as $key => $value) {
+                $headers[strtolower((string) $key)] = $value;
+            }
+            $detail = SSPA_Security_Detect::classify_detail($code, $headers, substr((string) wp_remote_retrieve_body($response), 0, 20000), false);
+            $layer = $detail ? SSPA_Security_Detect::display_label($detail) : __('an unknown security layer', 'super-speedy-performance-analysis');
+            return array('healthy' => false, 'reason' => sprintf(__('the request was refused with HTTP 403 by %s', 'super-speedy-performance-analysis'), $layer));
         }
         if (429 === $code || 503 === $code) {
             /* translators: %d: HTTP status */
@@ -1110,6 +1139,28 @@ class SSPA_Run_Controller {
         }
         /* translators: %d: HTTP status */
         return array('healthy' => false, 'reason' => sprintf(__('the home page returned HTTP %d', 'super-speedy-performance-analysis'), $code));
+    }
+
+    /** Refuse a long sweep before queueing it when any exact target path is blocked. */
+    private static function preflight_sweep_targets($page_jobs) {
+        $seen = array();
+        foreach ((array) $page_jobs as $job) {
+            $url = isset($job['url']) ? (string) $job['url'] : '';
+            if (!$url || isset($seen[$url])) {
+                continue;
+            }
+            $seen[$url] = true;
+            $probe = self::loopback_preflight($url, isset($job['variant']) ? $job['variant'] : 'anon');
+            if (!$probe['healthy']) {
+                return new WP_Error('sspa_target_preflight_blocked', sprintf(
+                    /* translators: 1: page label, 2: exact preflight failure */
+                    __('Plugin impact analysis did not start because the target "%1$s" is blocked: %2$s. No isolation measurements were queued. Whitelist this site\'s own loopback requests and try again.', 'super-speedy-performance-analysis'),
+                    isset($job['page_key']) ? $job['page_key'] : $url,
+                    $probe['reason']
+                ));
+            }
+        }
+        return true;
     }
 
     /**
@@ -1224,7 +1275,11 @@ class SSPA_Run_Controller {
                 // A checkout flow is one long job that can exceed BATCH_SECONDS. Already
                 // tolerated: the deadline is checked BEFORE starting a job, never during.
                 if (!empty($job['checkout'])) {
-                    self::process_checkout_job($run_id, $job, $queue);
+                    $checkout_result = self::process_checkout_job($run_id, $job, $queue);
+                    if (is_wp_error($checkout_result)) {
+                        self::fail($run_id, $checkout_result->get_error_message(), $lock_owner);
+                        return;
+                    }
                     $queue['idx']++;
                     $queue['last_progress'] = time();
                     if (!SSPA_Run_Queue::save($run_id, $queue)) {
@@ -1259,6 +1314,9 @@ class SSPA_Run_Controller {
 
                 try {
                     $result = $crawler->profile_job($job, $queue['user_id']);
+                    if (!empty($job['ps']) && !empty($queue['sweep'])) {
+                        $result = self::recover_runtime_dependency($crawler, $job, $result, $queue);
+                    }
                     SSPA_Profile_Store::save($run_id, $result);
                 } finally {
                     if ($temp_id) {
@@ -1291,6 +1349,78 @@ class SSPA_Run_Controller {
         } finally {
             SSPA_Atomic_Claim::release($lock_key, $lock_owner);
         }
+    }
+
+    /**
+     * A fatal can reveal an undeclared dependency that headers and bootstrap scanning could
+     * not know about. Add the owner to this request's virtual exclusion, retry immediately,
+     * and remember the edge only when the grouped request completes cleanly.
+     */
+    private static function recover_runtime_dependency($crawler, &$job, $result, &$queue) {
+        $hash = isset($job['ps']) ? (string) $job['ps'] : '';
+        $root = isset($queue['sweep']['hashes'][$hash]) ? $queue['sweep']['hashes'][$hash] : '';
+        if (!$hash || !$root || 'theme' === $root) {
+            return $result;
+        }
+
+        $files = SSPA_Dependency_Map::slug_to_file();
+        $fragile = SSPA_Dependency_Map::fragile();
+        $payload = get_option('sspa_isolation_' . $hash);
+        if (!is_array($payload) || empty($payload['plugins'])) {
+            return $result;
+        }
+
+        $learn = array();
+        $limit = min(8, max(1, count($files)));
+        for ($attempt = 0; $attempt < $limit; $attempt++) {
+            $fatal = self::result_fatal_component($result);
+            if (!$fatal || !isset($files[$fatal]) || $fatal === $root || in_array($fatal, $fragile, true)
+                || in_array($files[$fatal], $payload['plugins'], true)) {
+                return $result;
+            }
+
+            $payload['plugins'][] = $files[$fatal];
+            $payload['plugins'] = array_values(array_unique($payload['plugins']));
+            update_option('sspa_isolation_' . $hash, $payload, false);
+            $job['group'] = array_values(array_unique(array_merge(isset($job['group']) ? (array) $job['group'] : array(), array($fatal))));
+            $learn[] = $fatal;
+            $result = $crawler->profile_job($job, $queue['user_id']);
+
+            if (self::profile_result_healthy($result)) {
+                foreach ($learn as $reactor) {
+                    SSPA_Dependency_Map::learn($root, $reactor);
+                }
+                $existing = isset($queue['sweep']['groups'][$root]) ? (array) $queue['sweep']['groups'][$root] : array();
+                $queue['sweep']['groups'][$root] = array_values(array_unique(array_merge($existing, $learn)));
+                if (!isset($queue['sweep']['runtime_dependencies'])) {
+                    $queue['sweep']['runtime_dependencies'] = array();
+                }
+                $queue['sweep']['runtime_dependencies'][$root] = $queue['sweep']['groups'][$root];
+                return $result;
+            }
+        }
+        return $result;
+    }
+
+    private static function result_fatal_component($result) {
+        foreach (isset($result['samples']) ? (array) $result['samples'] : array() as $sample) {
+            if (!empty($sample['capture']['fatal']['component'])) {
+                return sanitize_key($sample['capture']['fatal']['component']);
+            }
+        }
+        return '';
+    }
+
+    private static function profile_result_healthy($result) {
+        if (!empty($result['blocked_by']) || empty($result['samples'])) {
+            return false;
+        }
+        foreach ((array) $result['samples'] as $sample) {
+            if (!empty($sample['error']) || (int) $sample['code'] >= 500 || empty($sample['capture'])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

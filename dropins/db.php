@@ -67,7 +67,18 @@ unset($sspa_token_value);
 // Cache-impact runs: prevent the object-cache drop-in loading for this request only.
 // db.php is the only code that runs early enough to register this filter in time.
 if (isset($sspa_shim_tok['flags']['oc']) && '0' === $sspa_shim_tok['flags']['oc']) {
-    add_filter('enable_loading_object_cache_dropin', '__return_false');
+    // Managed hosts can load their cache implementation before db.php from a path outside
+    // wp-content. Disabling WordPress's drop-in loader in that state makes core load its
+    // fallback cache.php over the already-defined functions and fatals on wp_cache_init().
+    // Refuse this one synthetic cache-off request and tell the collector exactly why.
+    if (function_exists('wp_cache_init')) {
+        $GLOBALS['sspa_object_cache_disable_unsupported'] = true;
+        if (!headers_sent()) {
+            header('X-SSPA-Object-Cache: platform-managed');
+        }
+    } else {
+        add_filter('enable_loading_object_cache_dropin', '__return_false');
+    }
 }
 
 // Isolation cells (a plugin virtually excluded) arm the destructive-statement guard in the

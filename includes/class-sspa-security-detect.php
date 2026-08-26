@@ -25,6 +25,23 @@ class SSPA_Security_Detect {
      * @return string|null Blocking layer slug/label, or null if not blocked.
      */
     public static function classify($code, $headers, $body, $had_auth_cookie) {
+        $detail = self::classify_detail($code, $headers, $body, $had_auth_cookie);
+        return $detail ? self::display_label($detail) : null;
+    }
+
+    public static function display_label($detail) {
+        if (!is_array($detail) || empty($detail['label'])) {
+            return null;
+        }
+        return ('probable' === (isset($detail['confidence']) ? $detail['confidence'] : ''))
+            ? sprintf(__('%s (probable)', 'super-speedy-performance-analysis'), $detail['label'])
+            : $detail['label'];
+    }
+
+    /**
+     * @return array|null {label:string,confidence:identified|probable|unknown}
+     */
+    public static function classify_detail($code, $headers, $body, $had_auth_cookie) {
         $blocked = in_array($code, array(401, 403, 406, 418, 429, 503), true);
 
         // Login bounce despite valid cookies = an auth/security layer rejected our session.
@@ -44,23 +61,23 @@ class SSPA_Security_Detect {
         // Edge layers first (headers are the strongest signal).
         $server = isset($headers['server']) ? strtolower((string) (is_array($headers['server']) ? end($headers['server']) : $headers['server'])) : '';
         if (isset($headers['cf-ray']) || strpos($server, 'cloudflare') !== false) {
-            return 'Cloudflare';
+            return array('label' => 'Cloudflare', 'confidence' => 'identified');
         }
         if (isset($headers['x-sucuri-id']) || isset($headers['x-sucuri-block'])) {
-            return 'Sucuri WAF';
+            return array('label' => 'Sucuri WAF', 'confidence' => 'identified');
         }
         if (is_string($body) && stripos($body, 'wordfence') !== false) {
-            return 'Wordfence';
+            return array('label' => 'Wordfence', 'confidence' => 'identified');
         }
 
         // Fall back to the active security plugin.
         $active = (array) get_option('active_plugins', array());
         foreach (self::$security_plugins as $file => $label) {
             if (in_array($file, $active, true)) {
-                return $label;
+                return array('label' => $label, 'confidence' => 'probable');
             }
         }
-        return 'unknown security layer';
+        return array('label' => 'unknown security layer', 'confidence' => 'unknown');
     }
 
     public static function whitelist_advice($layer) {

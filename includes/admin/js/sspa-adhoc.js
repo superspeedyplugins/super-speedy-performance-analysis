@@ -553,6 +553,9 @@
 		if (data.oc_capable) {
 			html += '<p><label><input type="checkbox" id="sspa-adhoc-cachemodes"> ' + esc(i18n.cache_modes) + '</label></p>';
 		}
+		if (!data.oc_capable && data.oc_reason) {
+			html += '<p class="sspa-adhoc-note">' + esc(data.oc_reason) + '</p>';
+		}
 		html += '<p class="sspa-adhoc-estimate"></p>';
 		html += '<p><button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-measure-start">' + esc(i18n.start_measuring) + '</button> ' +
 			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-measure-cancel">' + esc(i18n.cancel) + '</button></p>';

@@ -8,7 +8,7 @@ define('SSPA_DB_VERSION', '2.4');
 // bump stops rewriting them, and bump the one that changed when its template changes.
 // .tests/cases/55-installed-file-versions.php fails if a template is edited without one.
 define('SSPA_MU_VERSION', '1.0.1');
-define('SSPA_DROPIN_VERSION', '1.0.0');
+define('SSPA_DROPIN_VERSION', '1.0.1');
 
 // All plugin settings live in one option row (autoloaded: it is small and read on every
 // admin page). Profiling data lives in the sspa_* tables, never in options.

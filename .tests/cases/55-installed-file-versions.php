@@ -33,6 +33,7 @@ $sspa_pins = array(
         'declared' => SSPA_DROPIN_VERSION,
         'hashes' => array(
             '1.0.0' => '0455bfa1efa6af7b59c72a5a7a7f80406116bbf1ed37b3f4a55f9a87b6260637',
+            '1.0.1' => '484d8f49aeb8e7c06e99b34204f72a01549f89773a2bd77a8db858f85424abd5',
         ),
     ),
 );

@@ -44,10 +44,28 @@ class SSPA_Crawler {
                 if (!empty($job['oc_off'])) {
                     $wflags['oc'] = '0';
                 }
-                $wurl = self::bust_url($job['url']);
-                $token = SSPA_Token::mint($wurl, $wflags);
-                $this->send($wurl, $cookies, $token['header']);
-                self::discard_capture($token['id']);
+                // Isolation warm-ups are profiled only so a dependency fatal can be
+                // attributed and recovered before the three measured samples. Ignoring an
+                // unobserved fatal here caused one needless 500 before the measured 500.
+                if (!empty($job['ps'])) {
+                    $warm_sample = $this->profiled_request($job['url'], $cookies, $wflags);
+                    if (!empty($warm_sample['blocked_by']) || (int) $warm_sample['code'] >= 500) {
+                        return array(
+                            'page_key' => $job['page_key'],
+                            'url' => $job['url'],
+                            'variant' => $job['variant'],
+                            'samples' => array($warm_sample),
+                            'blocked_by' => $warm_sample['blocked_by'],
+                            'plugin_set_hash' => $job['ps'],
+                            'object_cache_mode' => !empty($job['oc_label']) ? $job['oc_label'] : (!empty($job['oc_off']) ? 'disabled' : 'normal'),
+                        );
+                    }
+                } else {
+                    $wurl = self::bust_url($job['url']);
+                    $token = SSPA_Token::mint($wurl, $wflags);
+                    $this->send($wurl, $cookies, $token['header']);
+                    self::discard_capture($token['id']);
+                }
             } else {
                 $this->send($job['url'], $cookies, null); // unsigned: warms caches, not profiled
             }
@@ -80,7 +98,7 @@ class SSPA_Crawler {
                 continue; // page cache served it - tells us nothing about PHP
             }
             $samples[] = $sample;
-            if ($sample['blocked_by']) {
+            if ($sample['blocked_by'] || (int) $sample['code'] >= 500) {
                 $blocked_by = $sample['blocked_by'];
                 break;
             }
@@ -125,6 +143,7 @@ class SSPA_Crawler {
             'code' => 0,
             'cached' => false,
             'blocked_by' => null,
+            'blocked_confidence' => null,
             'error' => null,
             'error_message' => null,
             'capture' => null,
@@ -141,12 +160,14 @@ class SSPA_Crawler {
         $headers = $norm['headers'];
         $sample['code'] = (int) $norm['code'];
 
-        $sample['blocked_by'] = SSPA_Security_Detect::classify(
+        $block = SSPA_Security_Detect::classify_detail(
             $sample['code'],
             $headers,
             substr((string) $norm['body'], 0, 20000),
             !empty($norm['cookies_present'])
         );
+        $sample['blocked_by'] = $block ? SSPA_Security_Detect::display_label($block) : null;
+        $sample['blocked_confidence'] = $block ? $block['confidence'] : null;
         if ($sample['blocked_by']) {
             return $sample;
         }
@@ -171,6 +192,15 @@ class SSPA_Crawler {
                 $sample['error'] = 'ps_not_applied';
                 return $sample;
             }
+        }
+
+        if (isset($flags['oc']) && '0' === (string) $flags['oc']
+            && isset($headers['x-sspa-object-cache'])
+            && 'platform-managed' === $headers['x-sspa-object-cache']) {
+            $sample['error'] = 'object_cache_disable_unsupported';
+            $sample['error_message'] = __('The hosting platform owns this persistent object cache, so it cannot be disabled safely.', 'super-speedy-performance-analysis');
+            self::discard_capture($token_id);
+            return $sample;
         }
 
         // Output identity: a hash of the response with per-request noise stripped, so the

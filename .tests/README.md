@@ -218,6 +218,11 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   fixture written via heredoc must name its plugin basename explicitly - `__FILE__` inside the
   heredoc silently becomes the CASE file's path and hooks register under a name that never
   fires, making guard assertions vacuous.
+- `58-managed-host-guards.php` - managed-host refusal paths: a request already carrying a
+  platform-owned cache implementation cannot be recorded as cache disabled, a home-page
+  loopback passing does not hide a product-path 403, Plugin Impact Analysis refuses the
+  blocked target before queueing work, and checkout refuses the exact blocked entry point
+  without creating an order.
 
 - `32-loopback-timeout.php` - measurement requests impose no response timeout, proven with a
   real page that sleeps 12s while the obsolete stored timeout is 10s. It also forces a real

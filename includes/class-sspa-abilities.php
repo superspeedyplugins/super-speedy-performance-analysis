@@ -585,15 +585,11 @@ class SSPA_Abilities {
             return new WP_Error('sspa_no_store', __('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
         }
         if (!empty($input['dry_run'])) {
-            $crawler = new SSPA_Crawler();
-            $sample = $crawler->send_profiled(home_url('/?sspa_flow_probe=1'), array(
-                'method' => 'GET',
-                'flags' => array('v' => 'guest', 'ck' => 'pre'),
-            ));
-            if (!is_array($sample['json'])) {
-                return new WP_Error('sspa_preflight_failed', __('The pre-flight request could not be measured.', 'super-speedy-performance-analysis'));
+            $preflight = SSPA_Checkout_Flow::preflight_request();
+            if (is_wp_error($preflight)) {
+                return $preflight;
             }
-            return array('dry_run' => true, 'inventory' => $sample['json']);
+            return array('dry_run' => true, 'inventory' => $preflight['inventory']);
         }
 
         if (!isset($input['confirm']) || true !== rest_sanitize_boolean($input['confirm'])) {

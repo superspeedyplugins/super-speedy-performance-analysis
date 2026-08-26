@@ -1040,8 +1040,8 @@ class SSPA_Profile_Panel {
             return $b['cost_ms'] <=> $a['cost_ms'];
         });
 
-        $oc_capable = (wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php'))
-            && 'ours' === SSPA_Helper_Files::dropin_status();
+        $oc = SSPA_Object_Cache_Capability::inspect();
+        $oc_capable = $oc['switchable'] && 'ours' === SSPA_Helper_Files::dropin_status();
 
         wp_send_json_success(array(
             'scope' => $row ? 'page' : 'site',
@@ -1052,6 +1052,7 @@ class SSPA_Profile_Panel {
             'pages' => $pages,
             'screen_pages' => SSPA_Run_Controller::SWEEP_SCREEN_PAGES,
             'oc_capable' => $oc_capable,
+            'oc_reason' => $oc_capable ? '' : $oc['reason'],
             'seconds_per_job' => self::seconds_per_job(),
             'rebaseline_every' => SSPA_Run_Controller::SWEEP_REBASELINE_EVERY,
         ));

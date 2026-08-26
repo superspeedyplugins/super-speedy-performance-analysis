@@ -150,15 +150,11 @@ class SSPA_CLI {
         }
 
         if (!empty($assoc_args['dry-run'])) {
-            $crawler = new SSPA_Crawler();
-            $sample = $crawler->send_profiled(home_url('/?sspa_flow_probe=1'), array(
-                'method' => 'GET',
-                'flags' => array('v' => 'guest', 'ck' => 'pre'),
-            ));
-            if (!is_array($sample['json'])) {
-                WP_CLI::error('The pre-flight request could not be measured: ' . ($sample['error'] ? $sample['error'] : 'http ' . $sample['code']));
+            $preflight = SSPA_Checkout_Flow::preflight_request();
+            if (is_wp_error($preflight)) {
+                WP_CLI::error($preflight->get_error_message());
             }
-            WP_CLI::line(wp_json_encode($sample['json']));
+            WP_CLI::line(wp_json_encode($preflight['inventory']));
             return;
         }
 
