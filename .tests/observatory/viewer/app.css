@@ -1,0 +1,34 @@
+:root { color-scheme: dark; --bg: #10131a; --panel: #191e29; --line: #343b4d; --text: #f3f5f7; --muted: #aab2c5; --blue: #66d9ef; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+header, main { width: min(1500px, calc(100% - 40px)); margin: 0 auto; }
+header { display: flex; justify-content: space-between; gap: 30px; align-items: end; padding: 36px 0 24px; }
+h1 { margin: 0; font-size: clamp(32px, 5vw, 58px); letter-spacing: -0.04em; }
+h2 { margin: 0 0 12px; font-size: 22px; }
+p { color: var(--muted); }
+.eyebrow { color: var(--blue); margin: 0 0 5px; text-transform: uppercase; font-size: 12px; letter-spacing: .12em; }
+select { margin-left: 8px; padding: 8px 12px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.summary { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.summary div, .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.summary div { padding: 16px 18px; }
+.summary strong { display: block; font-size: 27px; }
+.summary span { color: var(--muted); }
+.panel { margin: 0 0 16px; padding: 20px; overflow: hidden; }
+.hint { margin: -8px 0 8px; }
+.chart { min-height: 390px; overflow-x: auto; }
+svg { width: 100%; min-width: 760px; height: 390px; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; }
+.grid { stroke: var(--line); stroke-width: 1; }
+.median { stroke: #fff; stroke-width: 3; }
+.point { stroke: #10131a; stroke-width: 1.5; cursor: pointer; }
+.fault-warning { stroke: #ffb020; stroke-width: 3; }
+.fault-error { stroke: #ff4d6d; stroke-width: 3; }
+#tooltip { display: none; position: fixed; z-index: 10; max-width: 360px; padding: 10px 12px; background: #05070b; border: 1px solid var(--line); border-radius: 6px; pointer-events: none; box-shadow: 0 8px 30px #0009; }
+details { border-top: 1px solid var(--line); padding: 12px 0; }
+summary { cursor: pointer; }
+summary small { color: var(--muted); margin-left: 8px; }
+.severity { display: inline-block; min-width: 110px; color: #ffcc66; font: 12px ui-monospace, monospace; text-transform: uppercase; }
+.severity.error, .severity.user_error, .severity.database_error, .severity.request_failed, .severity.navigation_error { color: #ff4d6d; }
+.clean { color: #a6e22e; }
+.error { padding: 20px; color: #ff4d6d; }
+@media (max-width: 800px) { header { align-items: start; flex-direction: column; } .summary { grid-template-columns: repeat(2, 1fr); } }

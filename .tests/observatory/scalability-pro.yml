@@ -1,0 +1,68 @@
+plugin: scalability-pro
+
+defaults:
+  repetitions: 7
+  warmups: 2
+  timeout_ms: 30000
+
+sites:
+  - id: scalability-pro.default
+    url: http://scalability-pro.localhost:8081
+    scenario: default
+    activate_plugin: true
+  - id: scalability-pro.tests-e2e
+    url: http://tests-e2e.scalability-pro.localhost:8081
+    scenario: tests-e2e
+    activate_plugin: true
+
+features:
+  - admin-and-editing
+  - developer-extensibility
+  - guided-setup-and-measurement
+  - options-autoload
+  - outbound-http-api
+  - query-and-database
+  - unload-plugins
+  - woocommerce-and-imports
+
+targets:
+  - id: default-home
+    site: scalability-pro.default
+    feature: guided-setup-and-measurement
+    area: frontend
+    page_type: home
+    path: /
+    role: guest
+    readiness_selector: body.home
+  - id: default-404
+    site: scalability-pro.default
+    feature: query-and-database
+    area: frontend
+    page_type: not_found
+    path: /observatory-definitely-missing/
+    role: guest
+    readiness_selector: body.error404
+  - id: default-dashboard
+    site: scalability-pro.default
+    feature: admin-and-editing
+    area: backend
+    page_type: dashboard
+    path: /wp-admin/index.php
+    role: administrator
+    readiness_selector: body.index-php
+  - id: default-archive-settings
+    site: scalability-pro.default
+    feature: query-and-database
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=scalabilitypro&tab=archive-options
+    role: administrator
+    readiness_selector: body.wp-admin
+  - id: e2e-unload-settings
+    site: scalability-pro.tests-e2e
+    feature: unload-plugins
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=scalabilitypro&tab=unload-plugins
+    role: administrator
+    readiness_selector: body.wp-admin

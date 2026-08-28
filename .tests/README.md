@@ -20,6 +20,29 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
 which zsh does not set when the file is sourced interactively.
 
+### Central E2E observatory
+
+The separate observatory measures PHP request time and correlated PHP faults across declared
+parallel-development sites. Its permanent MU recorder is installed by parallel-dev but remains
+dormant unless a signed measurement request arms it.
+
+```bash
+cd .tests/observatory
+npm install
+npm test
+npm run observatory:prepare -- scalability-pro
+npm run observatory:run -- scalability-pro
+npm run observatory:view
+```
+
+The viewer runs at `http://127.0.0.1:8791/`. Raw request envelopes, SQLite data and screenshots
+stay in the gitignored `.data/e2e-observatory/` directory. The current manifest measures the
+Scalability Pro default and `tests-e2e` sites. It records the active theme slug, version and
+measured classic/hybrid/block-FSE type with each run.
+
+This is a local observatory, not the plugin's regression oracle. The suite below still decides
+pass or fail for Performance Analysis itself.
+
 The site is **persistent**, not per-run - 43 case files against a fresh install every time
 would be slow, and the cases are written to be idempotent against a standing site. When one
 leaves residue behind, `--reset` is the cure.

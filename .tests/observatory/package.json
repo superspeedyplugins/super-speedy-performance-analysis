@@ -1,0 +1,17 @@
+{
+  "name": "sspa-e2e-observatory",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "observatory:prepare": "node src/prepare.js",
+    "observatory:run": "node src/run.js",
+    "observatory:view": "php -S 127.0.0.1:8791 -t viewer",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "playwright": "^1.55.0",
+    "yaml": "^2.8.1"
+  }
+}
