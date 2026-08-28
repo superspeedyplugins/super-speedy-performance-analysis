@@ -1,0 +1,28 @@
+{
+  "schema": "sspa/cache-optimisation-analysis@3",
+  "generated_at": "2026-08-28T00:00:00Z",
+  "run_id": 1,
+  "headline": "Page-cache delivery assessment fixture",
+  "detail": "Browser, server and origin boundaries remain separate.",
+  "assessment": {
+    "schema": 2,
+    "shared_cache_status": "visitor_specific_content_review_recommended",
+    "difficulty": "moderate",
+    "hazards": [],
+    "candidate_components": []
+  },
+  "page_cache_status": "partially_confirmed",
+  "origin_profiles": [],
+  "delivery_path_observations": {"browser": {"visitor_state": "anonymous_browser", "requests": []}, "server": {"visitor_state": "anonymous_server_loopback", "requests": []}},
+  "cache_layers": [],
+  "representative_pages": [],
+  "page_verdicts": [],
+  "software_inventory": {},
+  "scale_inventory": {},
+  "source_coverage": {},
+  "route_failures": [],
+  "opportunity": [],
+  "difficulty": {"rating": "moderate", "points": 4},
+  "evidence_sufficiency": "staging_design_requires_identity_comparison",
+  "limitations": ["authenticated_customer_not_measured", "basket_state_not_measured"]
+}

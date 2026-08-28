@@ -141,6 +141,7 @@ class SSPA_Markdown_Export {
         self::pages($lines, $report['pages']);
         self::impacts($lines, $report['impacts']);
         self::cache_safety($lines, $report['cache_safety']);
+        self::cache_delivery($lines, isset($report['cache_delivery']) ? $report['cache_delivery'] : null);
 
         $http = SSPA_Report::http_calls($run_id);
         if (!is_wp_error($http)) {
@@ -434,6 +435,36 @@ class SSPA_Markdown_Export {
         foreach ((array) (isset($assessment['candidate_components']) ? $assessment['candidate_components'] : array()) as $candidate) {
             $lines[] = '- Inspect `' . self::code(isset($candidate['component']) ? $candidate['component'] : 'unknown') . '` for: ' . self::plain(implode(', ', isset($candidate['signals']) ? (array) $candidate['signals'] : array()));
         }
+        $lines[] = '';
+    }
+
+    private static function cache_delivery(&$lines, $report) {
+        if (!$report) {
+            return;
+        }
+        $lines[] = '## Page-cache delivery';
+        $lines[] = '';
+        $lines[] = '- Result: **' . self::plain(isset($report['headline']) ? $report['headline'] : 'Unknown') . '**';
+        $lines[] = '- Evidence sufficiency: `' . self::code(isset($report['evidence_sufficiency']) ? $report['evidence_sufficiency'] : 'unknown') . '`';
+        $lines[] = '- Boundaries: browser visitor-path TTFB, server-loopback completion and origin generation are separate measurements. No subtraction or combined total is used.';
+        $lines[] = '';
+        $lines[] = '| Page | Origin generation | Anonymous browser network TTFB | Cache verdict |';
+        $lines[] = '|---|---:|---:|---|';
+        foreach ((array) (isset($report['page_verdicts']) ? $report['page_verdicts'] : array()) as $verdict) {
+            $opportunity = null;
+            foreach ((array) (isset($report['opportunity']) ? $report['opportunity'] : array()) as $row) {
+                if (isset($row['page_key']) && $row['page_key'] === $verdict['page_key']) {
+                    $opportunity = $row;
+                    break;
+                }
+            }
+            $lines[] = '| `' . self::code($verdict['page_key']) . '` | '
+                . self::ms($opportunity ? $opportunity['origin_generation_ms'] : null) . ' | '
+                . self::ms($opportunity ? $opportunity['anonymous_browser_ttfb_ms'] : null) . ' | `'
+                . self::code($verdict['verdict']) . '` |';
+        }
+        $lines[] = '';
+        $lines[] = 'Logged-in customer and basket timings were not measured. Anonymous cache delivery does not approve customer caching.';
         $lines[] = '';
     }
 

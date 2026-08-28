@@ -9,6 +9,7 @@ function sspa_tc_t($ok, $label) {
 $fixture_dir = SSPA_PLUGIN_DIR . '.tests/fixtures/';
 $fixtures = array(
     'cache-optimisation-analysis-v2.json' => 'sspa/shared-cache-safety-report@2',
+    'cache-optimisation-analysis-v3.json' => 'sspa/cache-optimisation-analysis@3',
     'traffic-performance-analysis-provisional-v1.json' => 'sspa/traffic-performance-analysis@1',
     'traffic-performance-analysis-final-v1.json' => 'sspa/traffic-performance-analysis@1',
     'cloudflare-traffic-evidence-v1.json' => 'sspa/cloudflare-traffic-evidence@1',

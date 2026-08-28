@@ -72,6 +72,7 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
   "insights": [ /* first 10 findings, most severe first */ ],
   "findings": [ /* all findings, shape below */ ],
   "cache_safety": {"headline": "...", "detail": "...", "assessment": {"shared_cache_status": "visitor_specific_content_review_recommended", "difficulty": "moderate", "hazards": [], "candidate_components": []}},
+  "cache_delivery": null,
   "pages": [ /* per-page medians, shape below */ ],
   "impacts": [ /* measured isolation deltas, shape below */ ]
 }
@@ -113,6 +114,31 @@ Repeated site-wide signals are scored once, while their affected page count rema
 The `source_scan` block states component coverage and every component limited by the fair
 per-component scan ceiling. A controlled
 guest/customer/basket comparison is still required before enabling shared caching.
+
+### Page-cache delivery qualification
+
+The administrator can run a separate page-cache delivery assessment after a completed baseline or
+spot analysis. It tests only four generated public routes: home, shop, one populated product
+category and one published product. It accepts no arbitrary URL. Each route receives two sequential
+anonymous browser GETs and two sequential server-loopback GETs, for 16 requests in total. The probe
+keeps TLS verification enabled, sends no login, basket or customer cookies and does not purge or
+change a cache.
+
+After completion, `get-cache-optimisation-analysis`, `wp sspa cache-optimisation-report` and the JSON
+download return `sspa/cache-optimisation-analysis@3`. The `get-cache-safety-report` ability and
+`wp sspa cache-scan` compatibility alias remain frozen at `sspa/shared-cache-safety-report@2`.
+The version 3 `assessment` member retains that version 2
+anonymous reconnaissance for compatibility. New top-level members include `origin_profiles`,
+`delivery_path_observations`, `cache_layers`, `representative_pages`, `page_verdicts`,
+`software_inventory`, `scale_inventory`, `source_coverage`, `route_failures`, `opportunity`,
+`difficulty`, `evidence_sufficiency` and `limitations`.
+
+Browser Resource Timing supplies anonymous visitor-path TTFB. A zero transfer size with a decoded
+body is labelled as a browser HTTP-cache read rather than a CDN or WordPress page-cache HIT.
+Server-loopback requests report completion time because the WordPress HTTP API does not expose a
+response-start timestamp. Origin generation, browser TTFB and server completion remain separate
+boundaries. Consumers must not subtract them or invent a combined total. Logged-in customer and
+basket timings remain explicitly unmeasured.
 
 ### Experimental traffic observations
 

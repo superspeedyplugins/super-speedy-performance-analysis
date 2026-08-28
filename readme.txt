@@ -33,7 +33,9 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 
 == Changelog ==
 
-= 0.35 (23rd-26th August 2026) =
+= 0.35 (23rd-28th August 2026) =
+* Added a separate page-cache delivery assessment for the home, shop, a populated product category and a published product, comparing anonymous browser network TTFB with profiled origin generation while keeping every measurement boundary separate
+* Added cache-layer evidence, fixed-route safety, private software and scale inventory, per-component source coverage and Code Snippets use/counts to the versioned cache optimisation report without retaining response HTML, cookie values or snippet source
 * Added managed-host safeguards that skip unsafe platform-owned cache comparisons, learn undeclared plugin dependency groups after one isolated failure, and preflight exact Plugin Impact and checkout paths before work is queued; thanks to Glenn H for discovering and documenting all three cases
 * Relabelled direct PHP attribution so its bootstrap-timer boundary cannot be mistaken for a plugin's total causal impact
 * Changed the top-level `Performance Analysis` admin-bar item to run `Analyse this page`, matching its first submenu action

@@ -180,6 +180,29 @@
 	color: #fff;
 }
 
+#sspa_main .sspa-cache-delivery {
+	border-top: 1px solid #dcdcde;
+	margin-top: 20px;
+	padding-top: 8px;
+}
+
+#sspa_main .sspa-cache-delivery-targets {
+	margin-left: 20px;
+}
+
+#sspa_main .sspa-cache-delivery-targets code {
+	font-size: 11px;
+	overflow-wrap: anywhere;
+}
+
+#sspa_main .sspa-cache-delivery-results {
+	margin: 12px 0;
+}
+
+#sspa_main .sspa-cache-delivery-progress {
+	margin: 8px 0 14px;
+}
+
 #sspa_main .sspa-impact-adds {
 	color: #d63638;
 }

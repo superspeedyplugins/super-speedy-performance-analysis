@@ -79,6 +79,9 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         );
         $sspa_shared_cache_status = isset($sspa_cache_evidence['shared_cache_status']) ? $sspa_cache_evidence['shared_cache_status'] : '';
         $sspa_cache_totals = isset($sspa_cache_evidence['totals']) ? (array) $sspa_cache_evidence['totals'] : array();
+        $sspa_delivery_targets = SSPA_Cache_Delivery::targets();
+        $sspa_delivery_report = SSPA_Cache_Delivery::report((int) $sspa_last_run['id']);
+        $sspa_delivery_report = is_wp_error($sspa_delivery_report) ? null : $sspa_delivery_report;
         ?>
         <div class="sspa-placeholder sspa-cache-recon">
             <h2><?php esc_html_e('Cache optimisation analysis', 'super-speedy-performance-analysis'); ?></h2>
@@ -195,6 +198,58 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <p class="description">
                 <?php esc_html_e('This scan uses anonymous responses and source indicators. It identifies where controlled guest, customer and basket testing should begin; it does not prove that shared caching is safe or that a candidate component owns a changed region.', 'super-speedy-performance-analysis'); ?>
             </p>
+
+            <div class="sspa-cache-delivery" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>">
+                <h3><?php esc_html_e('Page-cache delivery', 'super-speedy-performance-analysis'); ?></h3>
+                <p class="description"><?php esc_html_e('Measure what a normal anonymous browser receives and compare it with the profiled origin generation time. Browser TTFB, server-loopback completion time and origin generation remain separate measurements.', 'super-speedy-performance-analysis'); ?></p>
+                <?php if (4 === count($sspa_delivery_targets)) : ?>
+                    <ul class="sspa-cache-delivery-targets">
+                        <?php foreach ($sspa_delivery_targets as $sspa_delivery_target) : ?>
+                            <li><strong><?php echo esc_html($sspa_delivery_target['label']); ?></strong> <code><?php echo esc_html($sspa_delivery_target['url']); ?></code></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <p class="description"><?php esc_html_e('This sends 16 sequential anonymous GET requests: two browser and two server-side requests for each of the four fixed public pages. It sends no login, basket or customer cookies and does not purge or change any cache.', 'super-speedy-performance-analysis'); ?></p>
+                    <p>
+                        <button type="button" class="button button-secondary sspa-cache-delivery-start" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Check page-cache delivery', 'super-speedy-performance-analysis'); ?></button>
+                        <span class="spinner sspa-cache-delivery-spinner"></span>
+                        <span class="description sspa-cache-delivery-status" aria-live="polite"></span>
+                    </p>
+                    <div class="sspa-progress-bar sspa-cache-delivery-progress" hidden><div class="sspa-progress-fill" style="width:0"></div></div>
+                <?php else : ?>
+                    <p class="notice notice-warning inline"><?php esc_html_e('This assessment needs a home page, WooCommerce shop, populated product category and published product.', 'super-speedy-performance-analysis'); ?></p>
+                <?php endif; ?>
+
+                <?php if ($sspa_delivery_report) : ?>
+                    <p><span class="sspa-badge sspa-badge-measured"><?php echo esc_html($sspa_delivery_report['headline']); ?></span></p>
+                    <table class="widefat striped sspa-cache-delivery-results">
+                        <thead><tr>
+                            <th><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?></th>
+                            <th><?php esc_html_e('Origin generation', 'super-speedy-performance-analysis'); ?></th>
+                            <th><?php esc_html_e('Anonymous browser network TTFB', 'super-speedy-performance-analysis'); ?></th>
+                            <th><?php esc_html_e('Result', 'super-speedy-performance-analysis'); ?></th>
+                        </tr></thead>
+                        <tbody>
+                        <?php foreach ((array) $sspa_delivery_report['page_verdicts'] as $sspa_delivery_verdict) :
+                            $sspa_delivery_opportunity = null;
+                            foreach ((array) $sspa_delivery_report['opportunity'] as $sspa_delivery_row) {
+                                if ($sspa_delivery_row['page_key'] === $sspa_delivery_verdict['page_key']) {
+                                    $sspa_delivery_opportunity = $sspa_delivery_row;
+                                    break;
+                                }
+                            }
+                            ?>
+                            <tr>
+                                <td><code><?php echo esc_html($sspa_delivery_verdict['page_key']); ?></code></td>
+                                <td><?php echo null !== ($sspa_delivery_opportunity['origin_generation_ms'] ?? null) ? esc_html(number_format_i18n($sspa_delivery_opportunity['origin_generation_ms'], 1) . ' ms') : esc_html__('Not measured', 'super-speedy-performance-analysis'); ?></td>
+                                <td><?php echo null !== ($sspa_delivery_opportunity['anonymous_browser_ttfb_ms'] ?? null) ? esc_html(number_format_i18n($sspa_delivery_opportunity['anonymous_browser_ttfb_ms'], 1) . ' ms') : esc_html__('Not measured', 'super-speedy-performance-analysis'); ?></td>
+                                <td><code><?php echo esc_html($sspa_delivery_verdict['verdict']); ?></code></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p class="description"><?php esc_html_e('Logged-in customer and basket timings are not measured by this stage. Anonymous cache delivery does not approve customer caching.', 'super-speedy-performance-analysis'); ?></p>
+                <?php endif; ?>
+            </div>
             <p>
                 <button type="button" class="button sspa-cache-safety-download" data-run-id="<?php echo (int) $sspa_last_run['id']; ?>"><?php esc_html_e('Download cache optimisation analysis', 'super-speedy-performance-analysis'); ?></button>
                 <span class="description sspa-cache-safety-download-status" aria-live="polite"></span>

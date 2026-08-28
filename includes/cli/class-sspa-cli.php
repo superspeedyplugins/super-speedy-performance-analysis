@@ -273,7 +273,7 @@ class SSPA_CLI {
      * @subcommand cache-scan
      */
     public function cache_scan($args, $assoc_args) {
-        $assessment = SSPA_Cache_Recon::export_data(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        $assessment = SSPA_Cache_Recon::export_v2(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
         if (is_wp_error($assessment)) {
             WP_CLI::error($assessment->get_error_message());
         }

@@ -246,6 +246,10 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   loopback passing does not hide a product-path 403, Plugin Impact Analysis refuses the
   blocked target before queueing work, and checkout refuses the exact blocked entry point
   without creating an order.
+- `59-cache-delivery.php` - the separate live-safe cache delivery assessment resolves only
+  home, shop, one populated product category and one ordinary product; performs a real clean
+  canonical GET; keeps browser, server and origin timings separate; persists the version 3
+  evidence contract; and records Code Snippets use/counts without names or source.
 
 - `32-loopback-timeout.php` - measurement requests impose no response timeout, proven with a
   real page that sleeps 12s while the obsolete stored timeout is 10s. It also forces a real
@@ -277,7 +281,8 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `40-traffic-contracts.php` - freezes the cache optimisation, provisional/final traffic and
   optional Cloudflare JSON contracts; every fixture passes the shared forbidden-property
   validator, while planted customer identity fields fail closed. Also pins the clearer immediate
-  analysis GUI name and keeps the existing `sspa/shared-cache-safety-report@2` machine schema.
+  analysis GUI name, keeps `sspa/shared-cache-safety-report@2` frozen for compatibility and
+  records the additive `sspa/cache-optimisation-analysis@3` contract.
 - `41-traffic-schema-lifecycle.php` - all five additive traffic tables, database insert
   pre-flight, collection HMAC key separation, generated active-only MU observer, one/two/four-hour
   duration scheduling and idempotency/conflict, normal outcome stop, emergency stop,

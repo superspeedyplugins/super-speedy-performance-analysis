@@ -33,10 +33,11 @@ if (is_array($report)) {
 }
 
 $cache_recon = wp_get_ability('super-speedy-performance/get-cache-safety-report')->execute(array());
-sspa_t(is_array($cache_recon) && isset($cache_recon['assessment']['difficulty']), 'get-cache-safety-report returns the dedicated assessment');
+sspa_t(is_array($cache_recon) && 'sspa/shared-cache-safety-report@2' === $cache_recon['schema'] && isset($cache_recon['assessment']['difficulty']), 'get-cache-safety-report returns the frozen version 2 assessment');
 
 $cache_optimisation = wp_get_ability('super-speedy-performance/get-cache-optimisation-analysis')->execute(array());
-sspa_t(is_array($cache_optimisation) && 'sspa/shared-cache-safety-report@2' === $cache_optimisation['schema'], 'get-cache-optimisation-analysis returns the complete versioned document');
+$cache_expected_schema = is_wp_error(SSPA_Cache_Delivery::report()) ? 'sspa/shared-cache-safety-report@2' : 'sspa/cache-optimisation-analysis@3';
+sspa_t(is_array($cache_optimisation) && $cache_expected_schema === $cache_optimisation['schema'], 'get-cache-optimisation-analysis returns the current complete versioned document');
 
 $findings = wp_get_ability('super-speedy-performance/get-findings')->execute(array());
 sspa_t(is_array($findings) && isset($findings['total'], $findings['findings']), 'get-findings shape');
@@ -146,7 +147,7 @@ if (class_exists('WP_CLI')) {
 
     $json = WP_CLI::runcommand('sspa cache-optimisation-report --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_cache_named = json_decode((string) $json, true);
-    sspa_t(is_array($cli_cache_named) && 'sspa/shared-cache-safety-report@2' === $cli_cache_named['schema'], 'wp sspa cache-optimisation-report emits the complete versioned document');
+    sspa_t(is_array($cli_cache_named) && $cache_expected_schema === $cli_cache_named['schema'], 'wp sspa cache-optimisation-report emits the current complete versioned document');
 
     $json = WP_CLI::runcommand('sspa traffic status --format=json', array('return' => true, 'launch' => true, 'exit_error' => false));
     $cli_traffic = json_decode((string) $json, true);

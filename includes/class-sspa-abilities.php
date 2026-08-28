@@ -191,7 +191,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/get-cache-optimisation-analysis', array(
             'label' => __('Get cache optimisation analysis', 'super-speedy-performance-analysis'),
-            'description' => __('Read the immediate cache implementation difficulty and hazard analysis from a normal performance run. No traffic collector is required. The versioned document includes private-site diagnostic URLs and local component paths, but no response or customer content.', 'super-speedy-performance-analysis'),
+            'description' => __('Read cache qualification evidence for a normal performance run. Before page-cache delivery is checked it returns the version 2 anonymous hazard analysis. Afterwards it returns the version 3 browser delivery, server-loopback, origin, cache-layer, inventory and sufficiency evidence. It includes private-site diagnostic URLs and local aggregate counts, but no response HTML, customer content, cookie values or snippet source.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',
@@ -508,7 +508,7 @@ class SSPA_Abilities {
     }
 
     public static function exec_get_cache_safety_report($input) {
-        return SSPA_Cache_Recon::export_data(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
+        return SSPA_Cache_Recon::export_v2(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
     }
 
     public static function exec_get_cache_optimisation_analysis($input) {

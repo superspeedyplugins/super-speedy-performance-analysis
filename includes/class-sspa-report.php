@@ -148,6 +148,8 @@ class SSPA_Report {
                 'assessment' => is_array($cache_evidence) ? $cache_evidence : array(),
             );
         }
+        $cache_delivery = SSPA_Cache_Delivery::report($run_id);
+        $cache_delivery = is_wp_error($cache_delivery) ? null : $cache_delivery;
 
         $pages = array();
         foreach ($wpdb->get_results($wpdb->prepare(
@@ -201,6 +203,7 @@ class SSPA_Report {
             'insights' => array_slice($findings, 0, 10),
             'findings' => $findings,
             'cache_safety' => $cache_safety,
+            'cache_delivery' => $cache_delivery,
             'pages' => $pages,
             'impacts' => self::impacts(),
         );

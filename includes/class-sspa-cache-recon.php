@@ -40,6 +40,15 @@ class SSPA_Cache_Recon {
 
     /** Versioned local evidence document for independent review or support work. */
     public static function export_data($run_id = 0) {
+        $delivery = SSPA_Cache_Delivery::report($run_id);
+        if (!is_wp_error($delivery)) {
+            return $delivery;
+        }
+        return self::export_v2($run_id);
+    }
+
+    /** Frozen compatibility document for cache-safety consumers which only understand v2. */
+    public static function export_v2($run_id = 0) {
         $report = SSPA_Report::cache_safety($run_id);
         if (is_wp_error($report)) {
             return $report;
@@ -468,6 +477,7 @@ class SSPA_Cache_Recon {
                 'components_scanned' => (int) ($source['components_scanned'] ?? 0),
                 'components_truncated' => array_values((array) ($source['components_truncated'] ?? array())),
                 'stored_code_not_scanned' => !empty($source['stored_code_not_scanned']),
+                'component_coverage' => array_values((array) ($source['component_coverage'] ?? array())),
             ),
             'limitations' => array(
                 'anonymous_response_only',
@@ -500,6 +510,7 @@ class SSPA_Cache_Recon {
         $bytes_scanned = 0;
         $truncated = false;
         $components_truncated = array();
+        $component_coverage = array();
         $states = array();
 
         foreach ($targets as $target) {
@@ -507,6 +518,16 @@ class SSPA_Cache_Recon {
             if (count($files) > self::MAX_SOURCE_FILES_PER_COMPONENT) {
                 $components_truncated[$target['component']] = true;
             }
+            $component_coverage[$target['component']] = array(
+                'component' => $target['component'],
+                'files_discovered' => count($files),
+                'files_scanned' => 0,
+                'bytes_scanned' => 0,
+                'ceiling_reached' => count($files) > self::MAX_SOURCE_FILES_PER_COMPONENT,
+                'stored_code_unavailable' => false,
+                'observed_rendering_pages' => isset($observed[$target['component']]) ? $observed[$target['component']] : array(),
+                'evidence_paths_examined' => array(),
+            );
             $states[] = array(
                 'target' => $target,
                 'files' => $files,
@@ -540,6 +561,11 @@ class SSPA_Cache_Recon {
                 }
                 $files_scanned++;
                 $bytes_scanned += strlen($code);
+                $component_coverage[$target['component']]['files_scanned']++;
+                $component_coverage[$target['component']]['bytes_scanned'] += strlen($code);
+                if (count($component_coverage[$target['component']]['evidence_paths_examined']) < 20) {
+                    $component_coverage[$target['component']]['evidence_paths_examined'][] = substr(basename($file), 0, 120);
+                }
                 $signals = self::scan_source_text($code, strtolower(pathinfo($file, PATHINFO_EXTENSION)));
                 $file_score = self::source_signal_score($signals);
                 if ($file_score < 3) {
@@ -581,6 +607,7 @@ class SSPA_Cache_Recon {
             foreach ($states as $state) {
                 if ($state['cursor'] < $state['limit']) {
                     $components_truncated[$state['target']['component']] = true;
+                    $component_coverage[$state['target']['component']]['ceiling_reached'] = true;
                 }
             }
         }
@@ -626,6 +653,18 @@ class SSPA_Cache_Recon {
                 break;
             }
         }
+        if ($stored_code) {
+            $component_coverage['code-snippets'] = array(
+                'component' => 'code-snippets',
+                'files_discovered' => 0,
+                'files_scanned' => 0,
+                'bytes_scanned' => 0,
+                'ceiling_reached' => false,
+                'stored_code_unavailable' => true,
+                'observed_rendering_pages' => array(),
+                'evidence_paths_examined' => array(),
+            );
+        }
 
         return array(
             'files_scanned' => $files_scanned,
@@ -634,6 +673,7 @@ class SSPA_Cache_Recon {
             'components_scanned' => count($targets),
             'components_truncated' => array_keys($components_truncated),
             'stored_code_not_scanned' => $stored_code,
+            'component_coverage' => array_values($component_coverage),
             'candidates' => array_values($candidates),
         );
     }
