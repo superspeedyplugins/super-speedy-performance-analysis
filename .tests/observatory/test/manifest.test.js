@@ -14,3 +14,9 @@ test('Scalability Pro manifest maps every target to a real declared site and fea
     assert.ok(target.readiness_selector);
   }
 });
+
+test('fleet manifests may map sites to different plugins', () => {
+  const { manifest } = loadManifest('fleet-mvp');
+  assert.deepEqual(manifest.sites.map((site) => site.plugin_slug), ['scalability-pro', 'super-speedy-ajax-prices']);
+  assert.equal(manifest.targets.length, 2);
+});

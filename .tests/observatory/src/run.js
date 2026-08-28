@@ -23,15 +23,16 @@ sqlite(`UPDATE runs SET status='aborted',finished_at=${sql(new Date().toISOStrin
 sqlite(`INSERT INTO runs VALUES (${sql(runId)},${sql(manifest.plugin)},${sql(hash(source))},${sql(RUNNER_VERSION)},${seed},${sql(new Date().toISOString())},NULL,'running');`);
 
 function wpValue(site, args) {
-  try { return wp(site, args, { plugin: manifest.plugin, quiet: true }); } catch { return ''; }
+  try { return wp(site, args, { plugin: site.plugin_slug || manifest.plugin, quiet: true }); } catch { return ''; }
 }
 
 for (const site of manifest.sites) {
   const plugins = JSON.parse(wpValue(site, ['plugin', 'list', '--status=active', '--fields=name,version', '--format=json']) || '[]');
-  const config = recorderConfig(manifest.plugin, site);
+  const pluginSlug = site.plugin_slug || manifest.plugin;
+  const config = recorderConfig(pluginSlug, site);
   const activeThemes = JSON.parse(wpValue(site, ['theme', 'list', '--status=active', '--fields=name,version', '--format=json']) || '[]');
   const activeTheme = activeThemes[0] || { name: '', version: '' };
-  const themeDirectory = path.join(siteDirectory(manifest.plugin, site.scenario), 'wp-content/themes', activeTheme.name || '');
+  const themeDirectory = path.join(siteDirectory(pluginSlug, site.scenario), 'wp-content/themes', activeTheme.name || '');
   const hasThemeJson = activeTheme.name ? existsSync(path.join(themeDirectory, 'theme.json')) : false;
   const hasBlockTemplates = activeTheme.name ? existsSync(path.join(themeDirectory, 'templates/index.html')) : false;
   const themeEvidence = {
@@ -80,7 +81,7 @@ for (const site of manifest.sites) {
     wpValue(site, ['db', 'query', 'SELECT VERSION();', '--skip-column-names']),
     JSON.stringify(themeEvidence),
     JSON.stringify(plugins), hash(JSON.stringify(plugins)),
-    wpValue(site, ['plugin', 'get', manifest.plugin, '--field=version']), '0.1.0', JSON.stringify(debug), JSON.stringify(characteristics),
+    wpValue(site, ['plugin', 'get', pluginSlug, '--field=version']), '0.1.0', JSON.stringify(debug), JSON.stringify({ ...characteristics, plugin_slug: pluginSlug }),
   ];
   sqlite(`INSERT INTO sites VALUES (${row.map(sql).join(',')});`);
   site.recorder = config;

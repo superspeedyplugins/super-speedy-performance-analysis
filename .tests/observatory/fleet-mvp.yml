@@ -1,0 +1,40 @@
+plugin: fleet-mvp
+
+defaults:
+  repetitions: 7
+  warmups: 2
+  timeout_ms: 30000
+
+sites:
+  - id: scalability-pro.tests-e2e
+    plugin_slug: scalability-pro
+    url: http://tests-e2e.scalability-pro.localhost:8081
+    scenario: tests-e2e
+    activate_plugin: true
+  - id: super-speedy-ajax-prices.tests-e2e
+    plugin_slug: super-speedy-ajax-prices
+    url: http://tests-e2e.super-speedy-ajax-prices.localhost:8081
+    scenario: tests-e2e
+    activate_plugin: true
+
+features:
+  - scalability-pro/plugin-unloads
+  - super-speedy-ajax-prices/archive-prices
+
+targets:
+  - id: spro-unload-settings
+    site: scalability-pro.tests-e2e
+    feature: scalability-pro/plugin-unloads
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=scalabilitypro&tab=unload-plugins
+    role: administrator
+    readiness_selector: body.wp-admin
+  - id: ajax-prices-shop
+    site: super-speedy-ajax-prices.tests-e2e
+    feature: super-speedy-ajax-prices/archive-prices
+    area: frontend
+    page_type: shop_archive
+    path: /shop/
+    role: guest
+    readiness_selector: body.woocommerce-shop

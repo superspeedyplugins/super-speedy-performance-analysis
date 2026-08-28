@@ -32,6 +32,10 @@ function validateManifest(manifest, filename) {
     throw new Error(`Invalid observatory manifest: ${filename}`);
   }
   const sites = new Set(manifest.sites.map((site) => site.id));
+  for (const site of manifest.sites) {
+    site.plugin_slug = site.plugin_slug || manifest.plugin;
+    if (!site.plugin_slug) throw new Error(`Site ${site.id} has no plugin_slug`);
+  }
   const targets = new Set();
   for (const target of manifest.targets) {
     if (!target.id || targets.has(target.id)) throw new Error(`Duplicate or missing target id: ${target.id}`);
