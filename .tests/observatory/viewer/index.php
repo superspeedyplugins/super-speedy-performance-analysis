@@ -26,7 +26,7 @@ if ( isset( $_GET['api'] ) ) {
 	}
 	if ( 'samples' === $api ) {
 		$stmt = $db->prepare(
-			'SELECT s.*, t.feature_id, t.area, t.page_type, t.path, t.site_id, t.role, si.url AS site_url, si.plugin_version, si.theme AS theme_json
+			'SELECT s.*, t.feature_id, t.area, t.page_type, t.path, t.site_id, t.role, si.url AS site_url, si.plugin_version, si.theme AS theme_json, si.characteristics_json
 			 FROM samples s JOIN targets t ON t.run_id=s.run_id AND t.id=s.target_id
 			 JOIN sites si ON si.run_id=s.run_id AND si.id=t.site_id
 			 WHERE s.run_id=:run ORDER BY t.area,t.id,s.sequence'

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS sites (
     plugin_version TEXT,
     recorder_version TEXT NOT NULL,
     debug_json TEXT NOT NULL,
+    characteristics_json TEXT NOT NULL DEFAULT '{}',
     PRIMARY KEY (run_id, id)
 );
 

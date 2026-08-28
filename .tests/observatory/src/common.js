@@ -85,6 +85,8 @@ export function hash(value) {
 
 export function initialiseDatabase() {
   sqlite(readFileSync(path.join(observatoryDir, 'schema.sql'), 'utf8'));
+  const siteColumns = new Set(sqliteJson('PRAGMA table_info(sites);').map((column) => column.name));
+  if (!siteColumns.has('characteristics_json')) sqlite("ALTER TABLE sites ADD COLUMN characteristics_json TEXT NOT NULL DEFAULT '{}';");
 }
 
 export function recorderConfig(plugin, site) {

@@ -82,8 +82,11 @@ function scatter(element, rows, groupKey, colourMap, declaredGroups = null) {
 
 function showTooltip(event, row) {
   let theme = { slug: '?', version: '?', type: '?' };
+  let site = {};
   try { theme = JSON.parse(row.theme_json || '{}'); } catch { /* Old runs stored only a slug. */ }
-  tooltip.innerHTML = `<strong>${escapeHtml(row.page_type || row.feature_id)}</strong><br>${escapeHtml(row.feature_id)}<br>${escapeHtml(row.site_id)} · plugin ${escapeHtml(row.plugin_version || '?')}<br>Theme ${escapeHtml(theme.slug || row.theme_json || '?')} ${escapeHtml(theme.version || '')} · ${escapeHtml(theme.type || 'unclassified')}<br>PHP ${Number(row.php_wall_ms).toFixed(1)} ms · ${row.query_count ?? '?'} queries<br>${row.fault_error_count} errors · ${row.fault_warning_count} warnings · ${row.fault_notice_count} notices`;
+  try { site = JSON.parse(row.characteristics_json || '{}'); } catch { /* Old runs have no characteristics. */ }
+  const feature = String(row.feature_id || '').replaceAll('-', ' ');
+  tooltip.innerHTML = `<strong>${escapeHtml(row.page_type || row.feature_id)}</strong><br>Feature: ${escapeHtml(feature)}<br>${escapeHtml(row.site_id)} · plugin ${escapeHtml(row.plugin_version || '?')}<br>${escapeHtml(site.site_type || 'site')} · ${escapeHtml(site.dataset_tier || 'unclassified size')} · ${Number(site.database_mb || 0).toLocaleString()} MB database<br>${Number(site.products || 0).toLocaleString()} products · ${Number(site.variations || 0).toLocaleString()} variations · ${Number(site.orders || 0).toLocaleString()} orders<br>${Number(site.posts || 0).toLocaleString()} posts · ${Number(site.pages || 0).toLocaleString()} pages · ${Number(site.users || 0).toLocaleString()} users<br>${Number(site.taxonomy_relationships || 0).toLocaleString()} taxonomy relationships<br>Theme ${escapeHtml(theme.slug || row.theme_json || '?')} ${escapeHtml(theme.version || '')} · ${escapeHtml(theme.type || 'unclassified')}<br>PHP ${Number(row.php_wall_ms).toFixed(1)} ms · ${row.query_count ?? '?'} queries<br>${row.fault_error_count} errors · ${row.fault_warning_count} warnings · ${row.fault_notice_count} notices`;
   tooltip.style.left = `${event.clientX + 12}px`; tooltip.style.top = `${event.clientY + 12}px`; tooltip.style.display = 'block';
 }
 

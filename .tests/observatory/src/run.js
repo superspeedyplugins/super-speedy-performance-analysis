@@ -39,6 +39,35 @@ for (const site of manifest.sites) {
     version: activeTheme.version || '',
     type: hasBlockTemplates ? 'block_fse' : hasThemeJson ? 'hybrid' : 'classic',
   };
+  const countsJson = wpValue(site, ['eval', `
+    global $wpdb;
+    $posts = array();
+    foreach (array('product','product_variation','post','page','shop_order') as $type) {
+      $posts[$type] = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", $type));
+    }
+    $orders_table = $wpdb->prefix . 'wc_orders';
+    $hpos_orders = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = %s", $orders_table))
+      ? (int) $wpdb->get_var("SELECT COUNT(*) FROM {$orders_table}") : 0;
+    echo wp_json_encode(array(
+      'products' => $posts['product'],
+      'variations' => $posts['product_variation'],
+      'posts' => $posts['post'],
+      'pages' => $posts['page'],
+      'users' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->users}"),
+      'taxonomy_relationships' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->term_relationships}"),
+      'orders' => max($posts['shop_order'], $hpos_orders),
+    ));
+  `]);
+  const measuredCounts = JSON.parse(countsJson || '{}');
+  const databaseMb = Number(wpValue(site, ['db', 'query', 'SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.tables WHERE table_schema = DATABASE();', '--skip-column-names'])) || 0;
+  const catalogueSize = Number(measuredCounts.products || 0) + Number(measuredCounts.variations || 0);
+  const datasetTier = catalogueSize >= 1000000 ? '1m_plus' : catalogueSize >= 100000 ? '100k_plus' : catalogueSize >= 10000 ? '10k_plus' : 'small';
+  const characteristics = {
+    site_type: plugins.some((plugin) => plugin.name === 'woocommerce') ? 'woocommerce' : 'wordpress',
+    dataset_tier: datasetTier,
+    database_mb: databaseMb,
+    ...measuredCounts,
+  };
   const debug = {
     WP_DEBUG: wpValue(site, ['config', 'get', 'WP_DEBUG']),
     WP_DEBUG_LOG: wpValue(site, ['config', 'get', 'WP_DEBUG_LOG']),
@@ -51,7 +80,7 @@ for (const site of manifest.sites) {
     wpValue(site, ['db', 'query', 'SELECT VERSION();', '--skip-column-names']),
     JSON.stringify(themeEvidence),
     JSON.stringify(plugins), hash(JSON.stringify(plugins)),
-    wpValue(site, ['plugin', 'get', manifest.plugin, '--field=version']), '0.1.0', JSON.stringify(debug),
+    wpValue(site, ['plugin', 'get', manifest.plugin, '--field=version']), '0.1.0', JSON.stringify(debug), JSON.stringify(characteristics),
   ];
   sqlite(`INSERT INTO sites VALUES (${row.map(sql).join(',')});`);
   site.recorder = config;
