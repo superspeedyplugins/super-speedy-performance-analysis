@@ -28,7 +28,7 @@ details { border-top: 1px solid var(--line); padding: 12px 0; }
 summary { cursor: pointer; }
 summary small { color: var(--muted); margin-left: 8px; }
 .severity { display: inline-block; min-width: 110px; color: #ffcc66; font: 12px ui-monospace, monospace; text-transform: uppercase; }
-.severity.error, .severity.user_error, .severity.database_error, .severity.request_failed, .severity.navigation_error { color: #ff4d6d; }
+.severity.error, .severity.user_error, .severity.database_error, .severity.request_failed, .severity.navigation_error, .severity.assertion_failed, .severity.http_5xx { color: #ff4d6d; }
 .clean { color: #a6e22e; }
 .error { padding: 20px; color: #ff4d6d; }
 @media (max-width: 800px) { header { align-items: start; flex-direction: column; } .summary { grid-template-columns: repeat(2, 1fr); } }

@@ -33,8 +33,9 @@ if ( isset( $_GET['api'] ) ) {
 		);
 	} elseif ( 'faults' === $api ) {
 		$stmt = $db->prepare(
-			'SELECT f.*, t.feature_id, t.area, t.page_type, t.site_id
+			'SELECT f.*, t.feature_id, t.area, t.page_type, t.site_id, si.plugin_version, si.characteristics_json
 			 FROM faults f JOIN targets t ON t.run_id=f.run_id AND t.id=f.target_id
+			 JOIN sites si ON si.run_id=f.run_id AND si.id=t.site_id
 			 WHERE f.run_id=:run ORDER BY f.severity,f.target_id,f.id'
 		);
 	} else {

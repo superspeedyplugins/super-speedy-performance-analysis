@@ -55,3 +55,23 @@ test('an invalid signature cannot arm the recorder', () => {
   assert.equal(result.status, 0);
   assert.equal(existsSync(path.join(directory, 'inbox/recorder-test', runId, `${sampleId}.json`)), false);
 });
+
+test('fatal recording adds only the application fault and no recorder deprecation', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'sspa-observatory-fatal-'));
+  const runId = 'recorder_fatal_run';
+  const sampleId = 'fatal_probe_001';
+  const secret = 'test-secret-that-never-enters-a-site';
+  const expires = Math.floor(Date.now() / 1000) + 60;
+  const canonical = [runId, sampleId, 'GET', 'recorder.test', '/fatal-probe', expires].join('\n');
+  const signature = createHmac('sha256', secret).update(canonical).digest('hex');
+  const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'recorder-fatal-probe.php');
+  const result = spawnSync('php', [script], {
+    encoding: 'utf8',
+    env: { ...process.env, OBS_SPOOL: directory, OBS_SECRET: secret, OBS_ID: `${runId}:${sampleId}`, OBS_TOKEN: `${expires}:${signature}` },
+  });
+  assert.notEqual(result.status, 0, 'the recorder must not suppress the deliberate fatal');
+  const envelope = JSON.parse(readFileSync(path.join(directory, 'inbox/recorder-test', runId, `${sampleId}.json`), 'utf8'));
+  assert.equal(envelope.faults.length, 1);
+  assert.equal(envelope.faults[0].severity, 'error');
+  assert.match(envelope.faults[0].message, /Deliberate observatory fatal probe/);
+});

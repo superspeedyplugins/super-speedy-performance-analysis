@@ -35,6 +35,9 @@ function validateManifest(manifest, filename) {
   for (const site of manifest.sites) {
     site.plugin_slug = site.plugin_slug || manifest.plugin;
     if (!site.plugin_slug) throw new Error(`Site ${site.id} has no plugin_slug`);
+    if (site.plugin_ref && !site.expected_plugin_version) {
+      throw new Error(`Historical site ${site.id} needs expected_plugin_version`);
+    }
   }
   const targets = new Set();
   for (const target of manifest.targets) {

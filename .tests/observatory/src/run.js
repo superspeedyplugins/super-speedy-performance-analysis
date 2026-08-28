@@ -67,6 +67,9 @@ for (const site of manifest.sites) {
     site_type: plugins.some((plugin) => plugin.name === 'woocommerce') ? 'woocommerce' : 'wordpress',
     dataset_tier: datasetTier,
     database_mb: databaseMb,
+    release_label: site.release_label || '',
+    plugin_ref: site.plugin_ref || 'working-tree',
+    offered_version: site.offered_version || '',
     ...measuredCounts,
   };
   const debug = {
@@ -103,8 +106,12 @@ let runStatus = 'completed';
 
 async function login(page, baseUrl) {
   await page.goto(`${baseUrl}/wp-login.php`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
   await page.locator('#user_login').fill(adminUser);
   await page.locator('#user_pass').fill(adminPass);
+  if (await page.locator('#user_login').inputValue() !== adminUser || await page.locator('#user_pass').inputValue() !== adminPass) {
+    throw new Error(`${baseUrl}: WordPress login fields did not retain the supplied credentials`);
+  }
   await Promise.all([
     page.waitForURL(/\/wp-admin\//, { timeout: defaults.timeout_ms }),
     page.locator('#wp-submit').click(),
@@ -124,7 +131,7 @@ function counts(faults) {
   const result = { error: 0, warning: 0, notice: 0 };
   for (const fault of faults) {
     const severity = String(fault.severity || '');
-    if (severity.includes('error') || severity === 'parse') result.error += 1;
+    if (severity.includes('error') || severity === 'parse' || severity === 'assertion_failed' || severity === 'http_5xx') result.error += 1;
     else if (severity.includes('warning')) result.warning += 1;
     else result.notice += 1;
   }
@@ -170,7 +177,31 @@ async function measure(target, site, sequence, context, page) {
   } catch (error) {
     navigationError = String(error?.message || error).split('\n')[0];
   }
+  if (target.expect?.selector) {
+    const expected = page.locator(target.expect.selector).first();
+    if (await expected.count() === 0) {
+      browserFaults.push({
+        kind: 'browser_assertion', severity: 'assertion_failed',
+        message: `Expected selector is absent: ${target.expect.selector}`,
+        fingerprint: hash(`selector_absent|${target.expect.selector}`), file: '', line: 0,
+      });
+    } else {
+      for (const [attribute, value] of Object.entries(target.expect.attributes || {})) {
+        const actual = await expected.getAttribute(attribute);
+        if (String(actual) !== String(value)) browserFaults.push({
+          kind: 'browser_assertion', severity: 'assertion_failed',
+          message: `${attribute} expected ${value}, got ${actual}`,
+          fingerprint: hash(`attribute|${attribute}|${value}|${actual}`), file: '', line: 0,
+        });
+      }
+    }
+  }
   const browserMs = performance.now() - started;
+  if (response && response.status() >= 500) browserFaults.push({
+    kind: 'browser_response', severity: 'http_5xx',
+    message: `HTTP ${response.status()} ${targetUrl.pathname}`,
+    fingerprint: hash(`http_5xx|${response.status()}|${targetUrl.pathname}`), file: '', line: 0,
+  });
   await page.unroute('**/*');
   page.off('requestfailed', failed);
 

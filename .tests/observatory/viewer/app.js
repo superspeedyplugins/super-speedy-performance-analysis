@@ -86,7 +86,7 @@ function showTooltip(event, row) {
   try { theme = JSON.parse(row.theme_json || '{}'); } catch { /* Old runs stored only a slug. */ }
   try { site = JSON.parse(row.characteristics_json || '{}'); } catch { /* Old runs have no characteristics. */ }
   const feature = String(row.feature_id || '').replaceAll('-', ' ');
-  tooltip.innerHTML = `<strong>${escapeHtml(row.page_type || row.feature_id)}</strong><br>Feature: ${escapeHtml(feature)}<br>${escapeHtml(row.site_id)} · plugin ${escapeHtml(row.plugin_version || '?')}<br>${escapeHtml(site.site_type || 'site')} · ${escapeHtml(site.dataset_tier || 'unclassified size')} · ${Number(site.database_mb || 0).toLocaleString()} MB database<br>${Number(site.products || 0).toLocaleString()} products · ${Number(site.variations || 0).toLocaleString()} variations · ${Number(site.orders || 0).toLocaleString()} orders<br>${Number(site.posts || 0).toLocaleString()} posts · ${Number(site.pages || 0).toLocaleString()} pages · ${Number(site.users || 0).toLocaleString()} users<br>${Number(site.taxonomy_relationships || 0).toLocaleString()} taxonomy relationships<br>Theme ${escapeHtml(theme.slug || row.theme_json || '?')} ${escapeHtml(theme.version || '')} · ${escapeHtml(theme.type || 'unclassified')}<br>PHP ${Number(row.php_wall_ms).toFixed(1)} ms · ${row.query_count ?? '?'} queries<br>${row.fault_error_count} errors · ${row.fault_warning_count} warnings · ${row.fault_notice_count} notices`;
+  tooltip.innerHTML = `<strong>${escapeHtml(row.page_type || row.feature_id)}</strong><br>Feature: ${escapeHtml(feature)}<br>${escapeHtml(site.release_label || 'unlabelled build')} · plugin ${escapeHtml(row.plugin_version || '?')}<br>Ref ${escapeHtml(String(site.plugin_ref || '?').slice(0, 12))}${site.offered_version ? ` · offered as ${escapeHtml(site.offered_version)}` : ''}<br>${escapeHtml(row.site_id)}<br>${escapeHtml(site.site_type || 'site')} · ${escapeHtml(site.dataset_tier || 'unclassified size')} · ${Number(site.database_mb || 0).toLocaleString()} MB database<br>${Number(site.products || 0).toLocaleString()} products · ${Number(site.variations || 0).toLocaleString()} variations · ${Number(site.orders || 0).toLocaleString()} orders<br>${Number(site.posts || 0).toLocaleString()} posts · ${Number(site.pages || 0).toLocaleString()} pages · ${Number(site.users || 0).toLocaleString()} users<br>${Number(site.taxonomy_relationships || 0).toLocaleString()} taxonomy relationships<br>Theme ${escapeHtml(theme.slug || row.theme_json || '?')} ${escapeHtml(theme.version || '')} · ${escapeHtml(theme.type || 'unclassified')}<br>PHP ${Number(row.php_wall_ms).toFixed(1)} ms · ${row.query_count ?? '?'} queries<br>${row.fault_error_count} errors · ${row.fault_warning_count} warnings · ${row.fault_notice_count} notices`;
   tooltip.style.left = `${event.clientX + 12}px`; tooltip.style.top = `${event.clientY + 12}px`; tooltip.style.display = 'block';
 }
 
@@ -100,19 +100,24 @@ function renderFaults(rows) {
   const groups = new Map();
   rows.forEach((fault) => {
     const key = fault.fingerprint;
-    if (!groups.has(key)) groups.set(key, { ...fault, count: 0, targets: new Set(), features: new Set() });
-    const group = groups.get(key); group.count += 1; group.targets.add(fault.target_id); group.features.add(fault.feature_id);
+    if (!groups.has(key)) groups.set(key, { ...fault, count: 0, targets: new Set(), features: new Set(), versions: new Set() });
+    const group = groups.get(key); group.count += 1; group.targets.add(fault.target_id); group.features.add(fault.feature_id); group.versions.add(fault.plugin_version || '?');
   });
-  container.innerHTML = [...groups.values()].map((fault) => `<details><summary><span class="severity ${escapeHtml(fault.severity)}">${escapeHtml(fault.severity)}</span> ${escapeHtml(fault.message)} <small>${fault.count} samples</small></summary><p>${escapeHtml(fault.file || 'No file')}${fault.line ? `:${fault.line}` : ''}</p><p>Features: ${escapeHtml([...fault.features].join(', '))}</p><p>Targets: ${escapeHtml([...fault.targets].join(', '))}</p></details>`).join('');
+  container.innerHTML = [...groups.values()].map((fault) => `<details><summary><span class="severity ${escapeHtml(fault.severity)}">${escapeHtml(fault.severity)}</span> ${escapeHtml(fault.message)} <small>${fault.count} samples</small></summary><p>${escapeHtml(fault.file || 'No file')}${fault.line ? `:${fault.line}` : ''}</p><p>Versions: ${escapeHtml([...fault.versions].join(', '))}</p><p>Features: ${escapeHtml([...fault.features].join(', '))}</p><p>Targets: ${escapeHtml([...fault.targets].join(', '))}</p></details>`).join('');
 }
 
 async function render(run) {
   const [samplesResult, faultsResult, featureResult] = await Promise.all([api('samples', run), api('faults', run), api('features', run)]);
   const samples = samplesResult.rows;
+  samples.forEach((row) => {
+    row.version_page_type = `${row.plugin_version || '?'} · ${row.page_type}`;
+    row.version_target = `${row.plugin_version || '?'} · ${row.page_type}`;
+    row.version_feature = `${row.plugin_version || '?'} · ${row.feature_id}`;
+  });
   const map = featureColours(samples);
-  scatter(document.querySelector('#frontend-chart'), samples.filter((row) => row.area === 'frontend'), 'page_type', map);
-  scatter(document.querySelector('#backend-chart'), samples.filter((row) => row.area === 'backend'), 'target_id', map);
-  scatter(document.querySelector('#feature-chart'), samples, 'feature_id', map, featureResult.rows.map((row) => row.feature_id));
+  scatter(document.querySelector('#frontend-chart'), samples.filter((row) => row.area === 'frontend'), 'version_page_type', map);
+  scatter(document.querySelector('#backend-chart'), samples.filter((row) => row.area === 'backend'), 'version_target', map);
+  scatter(document.querySelector('#feature-chart'), samples, 'version_feature', map);
   renderFaults(faultsResult.rows);
   const valid = samples.filter((row) => Number(row.valid)).length;
   const errors = samples.reduce((sum, row) => sum + Number(row.fault_error_count), 0);

@@ -1,0 +1,224 @@
+plugin: scalability-pro
+fixture: spro-version-matrix
+
+defaults:
+  repetitions: 7
+  warmups: 2
+  timeout_ms: 30000
+
+sites:
+  - id: scalability-pro.tests-legacy-571
+    url: http://tests-legacy-571.scalability-pro.localhost:8081
+    scenario: tests-legacy-571
+    plugin_ref: 7e049cfe762e12b9de0fd8d75e996c60bef54ee1
+    expected_plugin_version: "5.71"
+    release_label: legacy-known-good
+    theme: twentytwentyone
+    activate_plugin: true
+  - id: scalability-pro.tests-customer-62926
+    url: http://tests-customer-62926.scalability-pro.localhost:8081
+    scenario: tests-customer-62926
+    plugin_ref: f71e996477888776c4db9132b1c6a050c66586cf
+    expected_plugin_version: "6.29.26"
+    offered_version: "6.29.24"
+    release_label: customer-download
+    theme: twentytwenty
+    activate_plugin: true
+  - id: scalability-pro.tests-current
+    url: http://tests-current.scalability-pro.localhost:8081
+    scenario: tests-current
+    release_label: current-candidate
+    theme: twentytwentyfour
+    activate_plugin: true
+
+features:
+  - scalability-pro/fast-pagination
+  - scalability-pro/internal-query-compatibility
+  - scalability-pro/admin-pagination
+
+targets:
+  - id: legacy-page-1
+    site: scalability-pro.tests-legacy-571
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-page-1
+    path: /spro-version-matrix/?fixture_page=1
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="1"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "10"}
+  - id: legacy-page-2
+    site: scalability-pro.tests-legacy-571
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-page-2
+    path: /spro-version-matrix/?fixture_page=2
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="2"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "10"}
+  - id: legacy-final-page
+    site: scalability-pro.tests-legacy-571
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-final-page
+    path: /spro-version-matrix/?fixture_page=3
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="3"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "5", data-next: "0"}
+  - id: legacy-empty
+    site: scalability-pro.tests-legacy-571
+    feature: scalability-pro/internal-query-compatibility
+    area: frontend
+    page_type: empty-secondary-query
+    path: /spro-version-matrix/?fixture_case=empty
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-case="empty"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "0"}
+  - id: legacy-null
+    site: scalability-pro.tests-legacy-571
+    feature: scalability-pro/internal-query-compatibility
+    area: frontend
+    page_type: null-posts-results
+    path: /spro-version-matrix/?fixture_case=null
+    role: guest
+    expect:
+      selector: '#spro-observatory-result[data-case="null"]'
+  - id: legacy-admin
+    site: scalability-pro.tests-legacy-571
+    feature: scalability-pro/admin-pagination
+    area: backend
+    page_type: machine-list
+    path: /wp-admin/edit.php?post_type=machine
+    role: administrator
+    readiness_selector: body.wp-admin.post-type-machine
+
+  - id: customer-page-1
+    site: scalability-pro.tests-customer-62926
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-page-1
+    path: /spro-version-matrix/?fixture_page=1
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="1"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "10"}
+  - id: customer-page-2
+    site: scalability-pro.tests-customer-62926
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-page-2
+    path: /spro-version-matrix/?fixture_page=2
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="2"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "10"}
+  - id: customer-final-page
+    site: scalability-pro.tests-customer-62926
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-final-page
+    path: /spro-version-matrix/?fixture_page=3
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="3"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "5", data-next: "0"}
+  - id: customer-empty
+    site: scalability-pro.tests-customer-62926
+    feature: scalability-pro/internal-query-compatibility
+    area: frontend
+    page_type: empty-secondary-query
+    path: /spro-version-matrix/?fixture_case=empty
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-case="empty"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "0"}
+  - id: customer-null
+    site: scalability-pro.tests-customer-62926
+    feature: scalability-pro/internal-query-compatibility
+    area: frontend
+    page_type: null-posts-results
+    path: /spro-version-matrix/?fixture_case=null
+    role: guest
+    expect:
+      selector: '#spro-observatory-result[data-case="null"]'
+  - id: customer-admin
+    site: scalability-pro.tests-customer-62926
+    feature: scalability-pro/admin-pagination
+    area: backend
+    page_type: machine-list
+    path: /wp-admin/edit.php?post_type=machine
+    role: administrator
+    readiness_selector: body.wp-admin.post-type-machine
+
+  - id: current-page-1
+    site: scalability-pro.tests-current
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-page-1
+    path: /spro-version-matrix/?fixture_page=1
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="1"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "10"}
+  - id: current-page-2
+    site: scalability-pro.tests-current
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-page-2
+    path: /spro-version-matrix/?fixture_page=2
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="2"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "10"}
+  - id: current-final-page
+    site: scalability-pro.tests-current
+    feature: scalability-pro/fast-pagination
+    area: frontend
+    page_type: pagination-final-page
+    path: /spro-version-matrix/?fixture_page=3
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-page="3"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "5", data-next: "0"}
+  - id: current-empty
+    site: scalability-pro.tests-current
+    feature: scalability-pro/internal-query-compatibility
+    area: frontend
+    page_type: empty-secondary-query
+    path: /spro-version-matrix/?fixture_case=empty
+    role: guest
+    readiness_selector: '#spro-observatory-result[data-case="empty"]'
+    expect:
+      selector: '#spro-observatory-result'
+      attributes: {data-count: "0"}
+  - id: current-null
+    site: scalability-pro.tests-current
+    feature: scalability-pro/internal-query-compatibility
+    area: frontend
+    page_type: null-posts-results
+    path: /spro-version-matrix/?fixture_case=null
+    role: guest
+    expect:
+      selector: '#spro-observatory-result[data-case="null"]'
+  - id: current-admin
+    site: scalability-pro.tests-current
+    feature: scalability-pro/admin-pagination
+    area: backend
+    page_type: machine-list
+    path: /wp-admin/edit.php?post_type=machine
+    role: administrator
+    readiness_selector: body.wp-admin.post-type-machine
