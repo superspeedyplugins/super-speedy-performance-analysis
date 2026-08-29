@@ -7,7 +7,8 @@
     "observatory:prepare": "node src/prepare.js",
     "observatory:run": "node src/run.js",
     "observatory:view": "php -S 127.0.0.1:8791 -t viewer",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:viewer": "node --test test/viewer-browser.e2e.js"
   },
   "dependencies": {
     "dotenv": "^17.2.2",

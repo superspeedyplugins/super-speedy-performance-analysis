@@ -1,5 +1,6 @@
 <?php
-$database = dirname( __DIR__, 3 ) . '/.data/e2e-observatory/observatory.sqlite';
+$configured_database = getenv( 'SSPA_OBSERVATORY_DATABASE' );
+$database            = $configured_database ? $configured_database : dirname( __DIR__, 3 ) . '/.data/e2e-observatory/observatory.sqlite';
 
 if ( isset( $_GET['api'] ) ) {
 	header( 'Content-Type: application/json; charset=utf-8' );
@@ -73,24 +74,49 @@ if ( isset( $_GET['api'] ) ) {
 	<main>
 		<section class="summary" id="summary"></section>
 		<section class="panel">
-			<h2>Front-end pages</h2>
-			<div class="chart" id="frontend-chart"></div>
+			<div class="explorer-heading">
+				<div>
+					<nav class="breadcrumb" id="breadcrumb" aria-label="Chart level"></nav>
+					<h2 id="explorer-title">Feature overview</h2>
+				</div>
+				<div class="area-switch" aria-label="Request area">
+					<button type="button" data-area="all">All</button>
+					<button type="button" data-area="frontend">Front end</button>
+					<button type="button" data-area="backend">Back end</button>
+				</div>
+			</div>
+			<p>Every point is one request. Click a feature along the bottom to open its key pages.</p>
+			<div class="keys" aria-label="Chart keys">
+				<div class="key-group"><strong>Build/version</strong><div id="build-key"></div></div>
+				<div class="key-group"><strong>Point state</strong><div id="state-key"></div><button type="button" id="clear-filters">Clear filters</button></div>
+			</div>
+			<div class="chart" id="explorer-chart"></div>
+			<div class="evidence-tools">
+				<p id="evidence-heading">Select a feature, page or request to inspect its evidence.</p>
+				<div class="evidence-actions">
+					<label for="evidence-sort">Order</label>
+					<select id="evidence-sort">
+						<option value="plot">Plot order</option>
+						<option value="errors">Errors first</option>
+						<option value="slowest">Slowest first</option>
+						<option value="fastest">Fastest first</option>
+						<option value="feature">Feature A-Z</option>
+						<option value="version">Version then page</option>
+						<option value="recorded">Recorded order</option>
+					</select>
+					<button type="button" id="clear-selection">Clear selection</button>
+				</div>
+			</div>
+			<div class="evidence-list" id="evidence"></div>
 		</section>
 		<section class="panel">
-			<h2>Back-end pages</h2>
-			<div class="chart" id="backend-chart"></div>
-		</section>
-		<section class="panel">
-			<h2>Features</h2>
-			<p class="hint">Speed and faults stay separate. There is no combined health score.</p>
-			<div class="chart" id="feature-chart"></div>
-		</section>
-		<section class="panel">
-			<h2>Faults</h2>
+			<h2>All faults in this execution</h2>
 			<div id="faults"></div>
 		</section>
 	</main>
+	<div class="sr-only" id="live" aria-live="polite"></div>
 	<div id="tooltip" role="status"></div>
-	<script src="app.js"></script>
+	<div class="point-chooser" id="point-chooser" hidden></div>
+	<script type="module" src="app.js"></script>
 </body>
 </html>
