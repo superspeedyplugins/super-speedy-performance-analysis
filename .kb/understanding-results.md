@@ -21,6 +21,42 @@ Attribution from query backtraces is **inferred** - accurate, but circumstantial
 
 A measured impact can be **negative** - shown as "saves Xms" in green. That means the page got *slower* when the plugin was excluded: the plugin is actively speeding your site up. This is normal for performance plugins that replace a slow core or WooCommerce feature (search, filtering, archives).
 
+## Comparing points in time
+
+The History tab can compare any two completed full scans or spot checks. **Response time is
+the headline**, because Performance Analysis is primarily a performance tool. A newly observed
+fatal, transport/HTTP failure, warning, or failed validity check is shown ahead of timing because
+a very fast error page is not an improvement.
+
+Open **Setup changes** in the comparison to see plugins or themes added, removed, or moved between
+versions. Those identities come from the two completed runs, so the report shows the setup that
+was actually measured rather than today's installed versions.
+
+**Configuration changes** appear when a plugin has deliberately published a small privacy-checked
+state declaration to Performance Analysis. PA never dumps another plugin's option table or guesses
+which free-text settings are safe.
+
+Performance Analysis also compares a normalised hash of each stable response. It stores no HTML
+for this check. **Changed** means the visible/meaningful output differed and should be reviewed;
+it does not automatically mean the site is wrong. Products can go out of stock, catalogue data
+can change, and ranking rules can be intentionally adjusted. When a stable result is important,
+**Use After as expected** turns that learned signature into a lightweight declared check for
+future comparisons.
+
+Plugin-change detection is enabled by default. After plugin updates, activation, or deactivation,
+the admin notice offers a quick comparison and explicitly tells you to finish any remaining
+updates first. Detection can be disabled under **History → Advanced history settings**. The
+updater request only records the changed plugin/version; it never runs an analysis itself.
+
+The comparison's privacy-safe evidence must be previewed before it can be downloaded. It contains
+run/component identities, measurements, cases, diagnostic fingerprints, and output-change state;
+it excludes response bodies, URLs, cookies, nonces, personal data, SQL text, and filesystem paths.
+Downloading this local file does not enable community sharing.
+
+For local automation, `wp sspa history-compare <before-run-id> <after-run-id>` and the readonly
+`compare-history` ability return that same versioned evidence contract without contacting a
+remote service. This is the PA input intended for Release Confidence and other test runners.
+
 ## The attribution trap (read this before blaming a plugin)
 
 The SQL/query columns credit work to **whichever component runs it**. A plugin that *replaces* a slow feature - say a search plugin that takes over product or order search - runs the search query itself. The search time then appears under *its* name, while the slow native code it replaced does not run at all and is credited to nobody. On the attribution columns alone, the plugin making your search fast can look like your biggest SQL spender.

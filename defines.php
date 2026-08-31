@@ -16,6 +16,10 @@ function sspa_default_options() {
     return array(
         'remove_data_on_uninstall' => false,
         'blob_retention_runs' => 5, // used by the manual "delete older than" button, never auto-pruned
+        // Offer one coalesced before/after scan after plugin changes. Sites with an
+        // existing sspa_options row inherit this new default through sspa_get_option();
+        // an explicitly saved false remains authoritative.
+        'plugin_update_detection' => true,
 
         // Checkout flow profiling. All defaults work unconfigured, so the button does
         // something sensible on a store that has never opened these settings.

@@ -323,6 +323,14 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   append-only phase extension, no queue option writes and terminal row cleanup.
 - `57-admin-bar-parent.php` - the top-level Performance Analysis admin-bar link performs the
   first submenu action, Analyse this page, rather than navigating to the full report.
+- `59-history-comparisons.php` - default-enabled plugin-change detection, single and bulk
+  updater hooks, durable coalesced change sets, exact before/after binding, setup-version
+  and publisher-declared configuration changes, stable-output comparison and declared
+  expectations, hostile privacy export fixtures,
+  History rendering, and matching WP-CLI plus readonly Abilities/MCP adapters, plus two real
+  retained-site spot runs whose second response is deliberately slower and meaningfully
+  different. Its bounded fault-injection switch is cleared at suite
+  startup and disarmed on exit so a killed case cannot poison later measurements.
 
 **Cross-process option reads.** A fixture that records into an option from inside the loopback
 requests, read back by the controller process, is only reliable if the controller busts BOTH the

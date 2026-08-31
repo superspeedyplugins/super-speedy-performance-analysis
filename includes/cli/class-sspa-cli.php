@@ -399,6 +399,34 @@ class SSPA_CLI {
     }
 
     /**
+     * Export a privacy-safe comparison of two completed points in time.
+     *
+     * ## OPTIONS
+     *
+     * <before-run-id>
+     * : Completed full-scan or spot-check run used as Before.
+     *
+     * <after-run-id>
+     * : Completed full-scan or spot-check run used as After.
+     *
+     * ## EXAMPLE
+     *
+     *     wp sspa history-compare 120 127
+     *
+     * @subcommand history-compare
+     */
+    public function history_compare($args, $assoc_args) {
+        if (count($args) < 2) {
+            WP_CLI::error('Provide Before and After run ids.');
+        }
+        $comparison = SSPA_History::compare((int) $args[0], (int) $args[1]);
+        if (is_wp_error($comparison)) {
+            WP_CLI::error($comparison->get_error_message());
+        }
+        WP_CLI::line(wp_json_encode(SSPA_History::export($comparison), JSON_UNESCAPED_SLASHES));
+    }
+
+    /**
      * Output the full agent-facing report as JSON.
      *
      * [--run=<id>]

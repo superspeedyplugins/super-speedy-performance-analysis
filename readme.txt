@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.35.21
+Stable tag: 0.35.22
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -20,7 +20,8 @@ Super Speedy Performance Analysis diagnoses your site's performance the way an e
 * Presents plain-English insights: the slowest queries and who ran them, queries fetching hundreds of rows (the usual RAM culprits), plugins running queries in loops, blocking HTTP calls and more.
 * Plugin Impact Analysis isolates the real culprits by virtually disabling plugins for test requests only - your live visitors are never affected - and measures each suspect's true cost.
 * Checkout and order analysis uses a hidden, non-stock-managed SSPA product instead of real catalogue inventory, keeps TLS verification enabled and never forwards profiling credentials across origins.
-* The History tab can opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
+* The History tab compares saved points in time, leads with response-time changes, highlights new faults and changed output, and can offer a quick comparison after plugin updates.
+* History can also opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
 * Optionally share anonymised results with the community at superspeedy.org to help build an open database of plugin performance. You see the exact payload before anything is sent.
 
 This plugin is free. Download it from https://www.superspeedyplugins.com/ - once installed it checks for its own updates from superspeedyplugins.com, so new versions appear on your Plugins screen like any other update.
@@ -34,6 +35,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.35 (23rd-26th August 2026) =
+* Added before-and-after History comparisons with update-triggered quick scans, response/output validity checks, learned expectations, and a preview-first privacy-safe evidence contract available through wp-admin, WP-CLI and the Abilities API
 * Added managed-host safeguards that skip unsafe platform-owned cache comparisons, learn undeclared plugin dependency groups after one isolated failure, and preflight exact Plugin Impact and checkout paths before work is queued; thanks to Glenn H for discovering and documenting all three cases
 * Relabelled direct PHP attribution so its bootstrap-timer boundary cannot be mistaken for a plugin's total causal impact
 * Changed the top-level `Performance Analysis` admin-bar item to run `Analyse this page`, matching its first submenu action

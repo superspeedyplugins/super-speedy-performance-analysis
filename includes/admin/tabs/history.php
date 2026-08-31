@@ -5,6 +5,24 @@ global $wpdb;
 $sspa_runs = $wpdb->get_results($wpdb->prepare('SELECT * FROM %i ORDER BY id DESC LIMIT 50', SSPA_Schema::table('runs')), ARRAY_A);
 $sspa_optin = SSPA_Submitter::opted_in();
 $sspa_remove_on_uninstall = (bool) sspa_get_option('remove_data_on_uninstall');
+$sspa_update_detection = (bool) sspa_get_option('plugin_update_detection');
+$sspa_comparable_runs = array_values(array_filter($sspa_runs, function ($sspa_run) {
+    return 'done' === $sspa_run['status'] && in_array($sspa_run['run_type'], array('baseline', 'spot'), true);
+}));
+$sspa_after_run_id = $sspa_comparable_runs ? (int) $sspa_comparable_runs[0]['id'] : 0;
+$sspa_before_run_id = isset($sspa_comparable_runs[1]) ? (int) $sspa_comparable_runs[1]['id'] : 0;
+if ($sspa_after_run_id) {
+    $sspa_latest_context = json_decode((string) $sspa_comparable_runs[0]['share_context'], true);
+    if (is_array($sspa_latest_context) && !empty($sspa_latest_context['history_comparison']['baseline_run_id'])) {
+        $sspa_candidate_before = (int) $sspa_latest_context['history_comparison']['baseline_run_id'];
+        foreach ($sspa_comparable_runs as $sspa_comparable_run) {
+            if ((int) $sspa_comparable_run['id'] === $sspa_candidate_before) {
+                $sspa_before_run_id = $sspa_candidate_before;
+                break;
+            }
+        }
+    }
+}
 
 // Plain names for the analysis types, so the share control says what it would actually send.
 $sspa_type_labels = array(
@@ -25,14 +43,56 @@ $sspa_share_states = array(
 );
 
 ?>
-<div class="sspa-history-toolbar" style="display:flex;justify-content:flex-end;margin:0 0 12px;">
-    <label>
-        <input type="checkbox" id="sspa-remove-data-on-uninstall" value="1" <?php checked($sspa_remove_on_uninstall); ?>>
-        <?php esc_html_e('Delete all SSPA data when the plugin is deleted', 'super-speedy-performance-analysis'); ?>
-    </label>
-    <span class="spinner" aria-hidden="true"></span>
+<div class="sspa-history-toolbar">
+    <details>
+        <summary><?php esc_html_e('Advanced history settings', 'super-speedy-performance-analysis'); ?></summary>
+        <p>
+            <label>
+                <input type="checkbox" id="sspa-plugin-update-detection" value="1" <?php checked($sspa_update_detection); ?>>
+                <?php esc_html_e('Offer a quick comparison after plugin changes', 'super-speedy-performance-analysis'); ?>
+            </label>
+            <span class="spinner" aria-hidden="true"></span><br>
+            <span class="description"><?php esc_html_e('Enabled by default. Updates are only recorded here; analysis never runs inside the updater request.', 'super-speedy-performance-analysis'); ?></span>
+        </p>
+        <p>
+            <label>
+                <input type="checkbox" id="sspa-remove-data-on-uninstall" value="1" <?php checked($sspa_remove_on_uninstall); ?>>
+                <?php esc_html_e('Delete all SSPA data when the plugin is deleted', 'super-speedy-performance-analysis'); ?>
+            </label>
+        </p>
+    </details>
 </div>
 <?php
+
+if (count($sspa_comparable_runs) >= 2) : ?>
+    <section class="sspa-history-compare-picker">
+        <h3><?php esc_html_e('Compare points in time', 'super-speedy-performance-analysis'); ?></h3>
+        <p class="description"><?php esc_html_e('Response time is the headline. New errors, warnings, failed validity checks, and declared expectations are shown first when they appear.', 'super-speedy-performance-analysis'); ?></p>
+        <div class="sspa-history-compare-controls">
+            <label><?php esc_html_e('Before', 'super-speedy-performance-analysis'); ?>
+                <select id="sspa-history-before">
+                    <?php foreach ($sspa_comparable_runs as $sspa_run) : ?>
+                        <option value="<?php echo (int) $sspa_run['id']; ?>" <?php selected($sspa_before_run_id, (int) $sspa_run['id']); ?>>#<?php echo (int) $sspa_run['id']; ?> — <?php echo esc_html($sspa_run['started']); ?> (<?php echo esc_html($sspa_run['run_type']); ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label><?php esc_html_e('After', 'super-speedy-performance-analysis'); ?>
+                <select id="sspa-history-after">
+                    <?php foreach ($sspa_comparable_runs as $sspa_run) : ?>
+                        <option value="<?php echo (int) $sspa_run['id']; ?>" <?php selected($sspa_after_run_id, (int) $sspa_run['id']); ?>>#<?php echo (int) $sspa_run['id']; ?> — <?php echo esc_html($sspa_run['started']); ?> (<?php echo esc_html($sspa_run['run_type']); ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <button type="button" class="button button-primary" id="sspa-history-compare"><?php esc_html_e('Compare', 'super-speedy-performance-analysis'); ?></button>
+            <span class="spinner" aria-hidden="true"></span>
+        </div>
+        <div id="sspa-history-comparison" aria-live="polite">
+            <?php echo SSPA_History::render(SSPA_History::compare($sspa_before_run_id, $sspa_after_run_id)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes every field. ?>
+        </div>
+    </section>
+<?php elseif ($sspa_comparable_runs) : ?>
+    <div class="sspa-placeholder"><p><?php esc_html_e('This is your first saved point in time. Run another full scan or quick comparison to see what changed.', 'super-speedy-performance-analysis'); ?></p></div>
+<?php endif;
 
 if (!$sspa_runs) : ?>
     <div class="sspa-placeholder">

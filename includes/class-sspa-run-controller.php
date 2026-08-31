@@ -160,6 +160,12 @@ class SSPA_Run_Controller {
                 $share_context['plugin_toggle'] = array('slug' => $slug, 'action' => $action);
             }
         }
+        if (!empty($args['share_context']['history_comparison']) && is_array($args['share_context']['history_comparison'])) {
+            $history_context = SSPA_History::sanitise_run_context($args['share_context']['history_comparison']);
+            if ($history_context) {
+                $share_context['history_comparison'] = $history_context;
+            }
+        }
         if ('admin_save' === $type && !empty($args['share_context']['admin_save']) && is_array($args['share_context']['admin_save'])) {
             $admin_save = $args['share_context']['admin_save'];
             $object_type = isset($admin_save['object_type']) ? sanitize_key($admin_save['object_type']) : '';
@@ -2320,12 +2326,15 @@ class SSPA_Run_Controller {
                 $args['type'] = 'spot';
             }
         }
-        $toggled = get_transient('sspa_plugin_toggled');
-        if ('spot' === $args['type'] && is_array($toggled) && !empty($toggled['slug']) && !empty($toggled['action'])) {
+        $change_set_id = isset($_POST['change_set_id']) ? sanitize_text_field(wp_unslash($_POST['change_set_id'])) : '';
+        $pending_change = $change_set_id ? SSPA_Change_Set::pending(true) : null;
+        if ('spot' === $args['type'] && is_array($pending_change)
+            && isset($pending_change['id']) && hash_equals((string) $pending_change['id'], $change_set_id)) {
+            $args['trigger'] = 'plugin_change';
             $args['share_context'] = array(
-                'plugin_toggle' => array(
-                    'slug' => sanitize_key($toggled['slug']),
-                    'action' => in_array($toggled['action'], array('activated', 'deactivated'), true) ? $toggled['action'] : 'unknown',
+                'history_comparison' => array(
+                    'baseline_run_id' => SSPA_Report::latest_done_run_id(),
+                    'change_set' => SSPA_Change_Set::context($pending_change),
                 ),
             );
         }
@@ -2333,8 +2342,8 @@ class SSPA_Run_Controller {
         if (is_wp_error($run_id)) {
             wp_send_json_error($run_id->get_error_message());
         }
-        if (isset($args['share_context']['plugin_toggle'])) {
-            delete_transient('sspa_plugin_toggled');
+        if ($change_set_id && isset($args['share_context']['history_comparison'])) {
+            SSPA_Change_Set::consume($change_set_id);
         }
         wp_send_json_success(self::status($run_id));
     }

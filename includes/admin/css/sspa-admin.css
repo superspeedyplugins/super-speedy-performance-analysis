@@ -541,3 +541,63 @@
 	height: 900px;
 	border: 0;
 }
+.sspa-history-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	margin: 0 0 12px;
+}
+.sspa-history-toolbar details {
+	max-width: 620px;
+	padding: 8px 12px;
+	border: 1px solid #dcdcde;
+	background: #fff;
+}
+.sspa-history-compare-picker {
+	margin: 0 0 20px;
+	padding: 18px;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+}
+.sspa-history-compare-picker h3 { margin-top: 0; }
+.sspa-history-compare-controls {
+	display: flex;
+	gap: 12px;
+	align-items: end;
+	flex-wrap: wrap;
+	margin: 14px 0;
+}
+.sspa-history-compare-controls label { display: grid; gap: 4px; }
+.sspa-history-summary {
+	display: flex;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 14px;
+	margin-bottom: 10px;
+	border-left: 4px solid #2271b1;
+	background: #f0f6fc;
+}
+.sspa-history-status-attention { border-left-color: #d63638; background: #fcf0f1; }
+.sspa-history-status-review { border-left-color: #dba617; background: #fcf9e8; }
+.sspa-history-kicker { display: block; color: #50575e; font-size: 12px; text-transform: uppercase; }
+.sspa-history-delta { margin-left: 8px; }
+.sspa-history-higher { color: #b32d2e; font-weight: 600; }
+.sspa-history-output-changed { color: #996800; font-weight: 600; }
+.sspa-history-lower, .sspa-history-output-unchanged { color: #008a20; font-weight: 600; }
+.sspa-history-validity-fail, .sspa-history-declared-fail { color: #b32d2e; font-weight: 600; }
+.sspa-history-validity-pass, .sspa-history-declared-pass { color: #008a20; font-weight: 600; }
+.sspa-history-compare-table { margin-top: 12px; }
+.sspa-history-compare-table .button { margin-top: 5px; }
+.sspa-history-setup-changes { margin: 10px 0 14px; }
+.sspa-history-setup-changes ul { margin: 8px 0 0 20px; }
+.sspa-history-export-actions { display: flex; align-items: center; gap: 8px; }
+.sspa-history-export-preview {
+	max-height: 420px;
+	overflow: auto;
+	padding: 12px;
+	border: 1px solid #dcdcde;
+	background: #f6f7f7;
+}
+@media (max-width: 782px) {
+	.sspa-history-summary { display: block; }
+	.sspa-history-summary > div + div { margin-top: 10px; }
+}

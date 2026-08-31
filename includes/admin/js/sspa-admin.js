@@ -4,7 +4,9 @@ jQuery(function () {
 
 	// A finished run reloads the page, so sspa_autospot must be consumed exactly once -
 	// left in the URL it would re-arm on every reload and loop the analysis forever.
-	var autospot = window.location.search.indexOf('sspa_autospot=1') !== -1;
+	var query = new URLSearchParams(window.location.search);
+	var autospot = query.get('sspa_autospot') === '1';
+	var changeSetId = query.get('sspa_change_set') || '';
 	if (autospot) {
 		sspa_strip_autospot_param();
 	}
@@ -15,7 +17,10 @@ jQuery(function () {
 		sspa_drive_run(active);
 	} else if (autospot) {
 		// Arrived from the plugin-toggle notice: run a quick spot profile of key pages.
-		sspa_start_typed_run({ 'page_keys[]': ['home', 'shop', 'baseline'] }, jQuery('#sspa-run-analysis'));
+		sspa_start_typed_run({
+			'page_keys[]': ['home', 'shop', 'baseline'],
+			change_set_id: changeSetId
+		}, jQuery('#sspa-run-analysis'));
 	}
 });
 
@@ -25,6 +30,9 @@ function sspa_strip_autospot_param() {
 	}
 	var search = window.location.search
 		.replace(/([?&])sspa_autospot=1(&|$)/, function (m, before, after) {
+			return after ? before : '';
+		})
+		.replace(/([?&])sspa_change_set=[^&]*(&|$)/, function (m, before, after) {
 			return after ? before : '';
 		})
 		.replace(/[?&]$/, '');
@@ -210,6 +218,106 @@ jQuery(document).on('change', '#sspa-remove-data-on-uninstall', function () {
 		checkbox.prop('disabled', false);
 		spinner.removeClass('is-active');
 	});
+});
+
+jQuery(document).on('change', '#sspa-plugin-update-detection', function () {
+	var checkbox = jQuery(this).prop('disabled', true);
+	var spinner = checkbox.closest('p').find('.spinner').addClass('is-active');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_history_setting',
+		nonce: sspa_admin.nonce,
+		plugin_update_detection: checkbox.is(':checked') ? 1 : 0
+	}).fail(function () {
+		checkbox.prop('checked', !checkbox.is(':checked'));
+		alert('Could not save the update comparison setting.');
+	}).always(function () {
+		checkbox.prop('disabled', false);
+		spinner.removeClass('is-active');
+	});
+});
+
+function sspa_history_pair() {
+	return {
+		before_run_id: parseInt(jQuery('#sspa-history-before').val(), 10) || 0,
+		after_run_id: parseInt(jQuery('#sspa-history-after').val(), 10) || 0
+	};
+}
+
+jQuery(document).on('click', '#sspa-history-compare', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var spinner = btn.siblings('.spinner').addClass('is-active');
+	var data = jQuery.extend({ action: 'sspa_history_compare', nonce: sspa_admin.nonce }, sspa_history_pair());
+	jQuery.post(ajaxurl, data, function (resp) {
+		if (resp.success) {
+			jQuery('#sspa-history-comparison').html(resp.data.html);
+		} else {
+			alert(resp.data || 'The points in time could not be compared.');
+		}
+	}).fail(function () {
+		alert('The points in time could not be compared.');
+	}).always(function () {
+		btn.prop('disabled', false);
+		spinner.removeClass('is-active');
+	});
+});
+
+jQuery(document).on('click', '.sspa-history-assert', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var data = jQuery.extend({
+		action: 'sspa_history_assertion',
+		nonce: sspa_admin.nonce,
+		mode: btn.data('mode'),
+		page_identity: btn.data('page-identity')
+	}, sspa_history_pair());
+	jQuery.post(ajaxurl, data, function (resp) {
+		if (resp.success) {
+			jQuery('#sspa-history-comparison').html(resp.data.html);
+		} else {
+			btn.prop('disabled', false);
+			alert(resp.data || 'The expectation could not be changed.');
+		}
+	}).fail(function () {
+		btn.prop('disabled', false);
+		alert('The expectation could not be changed.');
+	});
+});
+
+jQuery(document).on('click', '.sspa-history-preview-export', function () {
+	var section = jQuery(this).closest('.sspa-history-comparison');
+	var btn = jQuery(this).prop('disabled', true);
+	var spinner = section.find('.sspa-history-export-actions .spinner').addClass('is-active');
+	var data = jQuery.extend({ action: 'sspa_history_export', nonce: sspa_admin.nonce }, sspa_history_pair());
+	jQuery.post(ajaxurl, data, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || 'The evidence preview could not be prepared.');
+			return;
+		}
+		var json = JSON.stringify(resp.data.payload, null, 2);
+		section.data('sspa-history-export', { json: json, filename: resp.data.filename });
+		section.find('.sspa-history-export-preview').prop('hidden', false).text(json);
+		section.find('.sspa-history-download-export').prop('disabled', false);
+	}).fail(function () {
+		alert('The evidence preview could not be prepared.');
+	}).always(function () {
+		btn.prop('disabled', false);
+		spinner.removeClass('is-active');
+	});
+});
+
+jQuery(document).on('click', '.sspa-history-download-export', function () {
+	var section = jQuery(this).closest('.sspa-history-comparison');
+	var prepared = section.data('sspa-history-export');
+	if (!prepared || !prepared.json) {
+		return;
+	}
+	var blob = new Blob([prepared.json], { type: 'application/json' });
+	var link = document.createElement('a');
+	link.href = URL.createObjectURL(blob);
+	link.download = prepared.filename || ((sspa_admin.download_prefix || '') + 'sspa-history-comparison.json');
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(link.href);
 });
 
 // ---- Pages drill-down ----

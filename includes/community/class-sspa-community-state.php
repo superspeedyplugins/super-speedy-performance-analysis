@@ -151,6 +151,33 @@ class SSPA_Community_State {
     }
 
     /**
+     * Re-apply the declaration grammar to state loaded from a historical run.
+     *
+     * Run rows are immutable evidence, but local database content is still treated as
+     * untrusted at an export boundary. History uses this instead of copying the value
+     * grammar or trusting an old share_context blob.
+     */
+    public static function sanitise_stored_records($records) {
+        if (!is_array($records)) {
+            return array();
+        }
+        $clean = array();
+        foreach ($records as $record) {
+            if (count($clean) >= self::MAX_RECORDS) {
+                break;
+            }
+            $safe = self::sanitise_record($record);
+            if (!$safe) {
+                continue;
+            }
+            unset($safe['disclosure']);
+            $clean[$safe['component']['type'] . ':' . $safe['component']['slug']] = $safe;
+        }
+        ksort($clean, SORT_STRING);
+        return array_values($clean);
+    }
+
+    /**
      * One record, or null when it is not a record at all.
      *
      * A record with every value dropped is still returned: "this plugin was active and told us

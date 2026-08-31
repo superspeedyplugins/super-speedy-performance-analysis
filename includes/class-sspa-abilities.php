@@ -25,6 +25,7 @@ class SSPA_Abilities {
         return array(
             self::CATEGORY . '/get-status',
             self::CATEGORY . '/get-report',
+            self::CATEGORY . '/compare-history',
             self::CATEGORY . '/get-http-calls',
             self::CATEGORY . '/get-archive-profile',
             self::CATEGORY . '/get-cache-optimisation-analysis',
@@ -132,6 +133,25 @@ class SSPA_Abilities {
             'output_schema' => array('type' => 'object'),
             'permission_callback' => array(__CLASS__, 'can_manage'),
             'execute_callback' => array(__CLASS__, 'exec_get_report'),
+            'meta' => $readonly,
+        ));
+
+        wp_register_ability(self::CATEGORY . '/compare-history', array(
+            'label' => __('Compare performance history', 'super-speedy-performance-analysis'),
+            'description' => __('Return the same versioned privacy-safe Before/After evidence document available in History. It compares two completed full scans or spot checks without mutating either run or enabling community sharing.', 'super-speedy-performance-analysis'),
+            'category' => self::CATEGORY,
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'before_run_id' => array('type' => 'integer', 'description' => __('Completed run used as Before.', 'super-speedy-performance-analysis')),
+                    'after_run_id' => array('type' => 'integer', 'description' => __('Completed run used as After.', 'super-speedy-performance-analysis')),
+                ),
+                'required' => array('before_run_id', 'after_run_id'),
+                'additionalProperties' => false,
+            ),
+            'output_schema' => array('type' => 'object'),
+            'permission_callback' => array(__CLASS__, 'can_manage'),
+            'execute_callback' => array(__CLASS__, 'exec_compare_history'),
             'meta' => $readonly,
         ));
 
@@ -493,6 +513,14 @@ class SSPA_Abilities {
     public static function exec_get_report($input) {
         $report = SSPA_Report::build(!empty($input['run_id']) ? (int) $input['run_id'] : 0);
         return is_wp_error($report) ? $report : $report;
+    }
+
+    public static function exec_compare_history($input) {
+        $comparison = SSPA_History::compare(
+            !empty($input['before_run_id']) ? (int) $input['before_run_id'] : 0,
+            !empty($input['after_run_id']) ? (int) $input['after_run_id'] : 0
+        );
+        return is_wp_error($comparison) ? $comparison : SSPA_History::export($comparison);
     }
 
     public static function exec_get_http_calls($input) {
