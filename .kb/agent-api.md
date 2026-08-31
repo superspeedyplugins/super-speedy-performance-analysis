@@ -4,11 +4,11 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 ## Surfaces (identical data)
 
-- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|http-calls|cache-scan|cache-optimisation-report|report`
+- **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|http-calls|cache-scan|cache-optimisation-report|history-compare|report`
   plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts
   take `--format=json` or emit JSON directly).
 - **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
-  `get-status`, `get-report`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
+  `get-status`, `get-report`, `compare-history`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
   `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
   `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at
@@ -19,6 +19,20 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 Runs started via abilities are asynchronous: poll `get-status` until `active` is false.
 `wp sspa run` is synchronous and drives the batches itself.
+
+## Performance history comparison
+
+`wp sspa history-compare <before-run-id> <after-run-id>` and the readonly
+`compare-history` ability return the same `sspa/performance-history-comparison@1` document
+that History previews and downloads. Both inputs must identify different completed full scans
+or spot checks. The call never mutates either run, enables community sharing, or contacts a
+remote service, which makes it the local adapter for Release Confidence and other test runners.
+
+The document contains random bundle-local source identity, exact measured component versions,
+setup changes, publisher-declared privacy-checked configuration state and changes, response-time
+and other observation deltas, validity/declared cases, diagnostic counts/fingerprints, and
+hash-only output-change state. It excludes site URLs, response bodies,
+SQL text, paths, cookies, nonces, personal data, and customer/order identifiers.
 
 ## Outbound HTTP API inventory
 
@@ -189,8 +203,14 @@ from the run's full-set profile, for prioritising pages by slowness; null when t
 could not be measured), `output_stable` (true = the page's normalised output held still
 between fetches; false = it varies between loads - rotating/dynamic content - so
 byte-identity evidence is structurally unobtainable for this page and `output_identical`
-will be null; null = not enough samples to say), `profiled_at`, `plugins[]`. Each plugin
-entry:
+will be null; null = not enough samples to say), `output_signature` (a normalised MD5 when
+this exact run's repeated samples held still; null otherwise), `diagnostics` (allowlisted
+transport error codes, HTTP error count and fatal component/type/fingerprint records),
+`profiled_at`, `plugins[]`. A signature can coexist with `output_stable=false` when this run
+was reproducible but the latest wider Plugin Impact Analysis observed that the page varies;
+History can show the point-in-time difference for review, but must not call it proof of failure.
+The signature and diagnostics support local History comparisons; neither contains a response
+body, URL, error message or stack trace. Each plugin entry:
 
 - `plugin` (slug), `file` (dir/file.php), `version` (installed now)
 - `classification`: `never` | `review` | `candidate` - the unload-safety ladder.

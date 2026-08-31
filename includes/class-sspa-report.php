@@ -445,12 +445,40 @@ class SSPA_Report {
             // structurally unobtainable there, so any decision gated on it needs a
             // different bar. true = stable, false = varies, null = not enough samples.
             $stable_hashes = array();
+            $diagnostics = array(
+                'transport_errors' => array(),
+                'http_errors' => 0,
+                'fatals' => array(),
+            );
             foreach ((array) json_decode((string) $p['samples'], true) as $s) {
                 if (is_array($s) && !empty($s['body_hash'])) {
                     $stable_hashes[] = (string) $s['body_hash'];
                 }
+                if (is_array($s) && !empty($s['error'])) {
+                    $diagnostics['transport_errors'][] = sanitize_key($s['error']);
+                }
+                if (is_array($s) && !empty($s['code']) && (int) $s['code'] >= 400) {
+                    $diagnostics['http_errors']++;
+                }
+                if (is_array($s) && !empty($s['fatal']) && is_array($s['fatal'])) {
+                    $fingerprint = isset($s['fatal']['fingerprint']) ? strtolower((string) $s['fatal']['fingerprint']) : '';
+                    $diagnostics['fatals'][] = array(
+                        'component' => isset($s['fatal']['component']) ? sanitize_key($s['fatal']['component']) : '',
+                        'type' => isset($s['fatal']['type']) ? sanitize_key($s['fatal']['type']) : '',
+                        'fingerprint' => preg_match('/^[a-f0-9]{16,64}$/', $fingerprint) ? $fingerprint : '',
+                    );
+                }
             }
-            $output_stable = count($stable_hashes) >= 2 ? (1 === count(array_unique($stable_hashes))) : null;
+            $stable_sample_count = count($stable_hashes);
+            $stable_hashes = array_values(array_unique($stable_hashes));
+            $diagnostics['transport_errors'] = array_values(array_unique(array_filter($diagnostics['transport_errors'])));
+            $fatal_unique = array();
+            foreach ($diagnostics['fatals'] as $fatal) {
+                $fatal_unique[md5(wp_json_encode($fatal))] = $fatal;
+            }
+            $diagnostics['fatals'] = array_values($fatal_unique);
+            $run_output_stable = $stable_sample_count >= 2 ? (1 === count($stable_hashes)) : null;
+            $output_stable = $run_output_stable;
             // The sweep's verdict outranks this run's samples: if the latest Plugin Impact Analysis
             // of this page found its own baselines unstable, byte-identity is
             // unobtainable in practice and consumers must use their dynamic-page bar.
@@ -466,6 +494,13 @@ class SSPA_Report {
                 // consumer can prioritise pages by how slow they actually are.
                 'generation_ms' => null !== $p['page_gen_ms'] ? round((float) $p['page_gen_ms'], 1) : null,
                 'output_stable' => $output_stable,
+                // A stable normalised hash from this exact run is useful to local
+                // before/after consumers without exposing response content. A past
+                // sweep may still mark the journey dynamic overall; that warning must
+                // not erase the reproducible evidence captured at this point in time.
+                'output_signature' => true === $run_output_stable && 1 === count($stable_hashes)
+                    ? $stable_hashes[0] : null,
+                'diagnostics' => $diagnostics,
                 'profiled_at' => $p['created'],
                 'plugins' => $plugins,
             );

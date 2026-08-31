@@ -29,6 +29,13 @@ class SSPA_Bootstrap {
         add_action('sspa_submission_worker_event', array('SSPA_Community_Worker', 'run'));
         add_action('sspa_traffic_collection_tick', array('SSPA_Traffic_Collection', 'scheduled_tick'), 10, 1);
 
+        // Plugin changes happen in wp-admin, WP-Cron automatic updates and WP-CLI. Do
+        // not load the change recorder on ordinary visitor requests.
+        $is_cli = defined('WP_CLI') && WP_CLI;
+        if (is_admin() || wp_doing_cron() || $is_cli) {
+            SSPA_Change_Set::register();
+        }
+
         if (get_option('sspa_dropin_hold') || get_option('sspa_oc_hold')) {
             add_action('plugins_loaded', array('SSPA_Helper_Files', 'stale_hold_check'), 20);
         }
@@ -56,6 +63,10 @@ class SSPA_Bootstrap {
             'sspa_outbox_action' => array('SSPA_Run_Controller', 'ajax_outbox_action'),
             'sspa_share_run' => array('SSPA_Run_Controller', 'ajax_share_run'),
             'sspa_uninstall_setting' => array('SSPA_Run_Controller', 'ajax_uninstall_setting'),
+            'sspa_history_setting' => array('SSPA_History', 'ajax_setting'),
+            'sspa_history_compare' => array('SSPA_History', 'ajax_compare'),
+            'sspa_history_assertion' => array('SSPA_History', 'ajax_assertion'),
+            'sspa_history_export' => array('SSPA_History', 'ajax_export'),
             'sspa_cache_recon_export' => array('SSPA_Cache_Recon', 'ajax_export'),
             'sspa_browser_next' => array('SSPA_Browser_Transport', 'ajax_next'),
             'sspa_browser_record' => array('SSPA_Browser_Transport', 'ajax_record'),

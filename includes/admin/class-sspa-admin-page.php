@@ -8,30 +8,11 @@ defined('ABSPATH') || exit;
 class SSPA_Admin_Page {
 
     /**
-     * Offer a quick before/after profile whenever an admin toggles a plugin normally -
-     * over time these spot profiles build the site's own per-plugin cost ledger.
+     * Retained method name for the existing bootstrap. The durable recorder also covers
+     * plugin updates and is registered separately for cron/CLI update requests.
      */
     public static function register_toggle_prompt() {
-        $note = function ($plugin, $action) {
-            $slug = dirname($plugin) !== '.' ? dirname($plugin) : basename($plugin, '.php');
-            if ('super-speedy-performance-analysis' === $slug) {
-                return;
-            }
-            // A measurement request is not somebody toggling a plugin. A plugin measured with
-            // its dependency excluded can call deactivate_plugins() on itself, which fires
-            // this hook; the mu-loader stops that write persisting, and this stops it
-            // offering a spot-check for a deactivation that never happened.
-            if (defined('SSPA_PROFILED_REQUEST') && SSPA_PROFILED_REQUEST) {
-                return;
-            }
-            set_transient('sspa_plugin_toggled', array('slug' => $slug, 'action' => $action), 10 * MINUTE_IN_SECONDS);
-        };
-        add_action('activated_plugin', function ($plugin) use ($note) {
-            $note($plugin, 'activated');
-        });
-        add_action('deactivated_plugin', function ($plugin) use ($note) {
-            $note($plugin, 'deactivated');
-        });
+        SSPA_Change_Set::register();
         add_action('admin_notices', array(__CLASS__, 'toggle_prompt_notice'));
     }
 
@@ -39,29 +20,47 @@ class SSPA_Admin_Page {
         if (!current_user_can('manage_options')) {
             return;
         }
-        if (isset($_GET['sspa_dismiss_toggle'])) {
-            delete_transient('sspa_plugin_toggled');
+        if (!empty($_GET['sspa_change_action']) && !empty($_GET['sspa_change_set']) && !empty($_GET['_wpnonce'])) {
+            $action = sanitize_key(wp_unslash($_GET['sspa_change_action']));
+            $change_set_id = sanitize_text_field(wp_unslash($_GET['sspa_change_set']));
+            $nonce = sanitize_text_field(wp_unslash($_GET['_wpnonce']));
+            if (wp_verify_nonce($nonce, 'sspa_change_set_action_' . $change_set_id)) {
+                if ('snooze' === $action) {
+                    SSPA_Change_Set::snooze($change_set_id);
+                } elseif ('dismiss' === $action) {
+                    SSPA_Change_Set::dismiss($change_set_id);
+                }
+            }
             return;
         }
         // Keep the context until the AJAX request has created the spot-check run.
         if (isset($_GET['sspa_autospot'])) {
             return;
         }
-        $toggled = get_transient('sspa_plugin_toggled');
-        if (!is_array($toggled) || SSPA_Run_Controller::active_run_id()) {
+        $change_set = SSPA_Change_Set::pending();
+        if (!$change_set || SSPA_Run_Controller::active_run_id()) {
             return;
         }
-        $url = admin_url('admin.php?page=sspa&sspa_autospot=1#overview');
-        $dismiss = add_query_arg('sspa_dismiss_toggle', '1');
-        echo '<div class="notice notice-info is-dismissible"><p>';
-        printf(
-            /* translators: 1: plugin slug, 2: action */
-            esc_html__('You just %2$s %1$s - want a 30-second performance spot-check to see what it changed? Compare runs on the History tab afterwards.', 'super-speedy-performance-analysis'),
-            '<strong>' . esc_html($toggled['slug']) . '</strong>',
-            esc_html($toggled['action'])
-        );
-        echo ' <a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Run spot-check', 'super-speedy-performance-analysis') . '</a>';
-        echo ' <a href="' . esc_url($dismiss) . '">' . esc_html__('Dismiss', 'super-speedy-performance-analysis') . '</a>';
+        $count = count($change_set['changes']);
+        $run_url = add_query_arg(array(
+            'page' => 'sspa',
+            'sspa_autospot' => '1',
+            'sspa_change_set' => $change_set['id'],
+        ), admin_url('admin.php')) . '#overview';
+        $base_action_url = add_query_arg(array(
+            'sspa_change_set' => $change_set['id'],
+        ));
+        $snooze = wp_nonce_url(add_query_arg('sspa_change_action', 'snooze', $base_action_url), 'sspa_change_set_action_' . $change_set['id']);
+        $dismiss = wp_nonce_url(add_query_arg('sspa_change_action', 'dismiss', $base_action_url), 'sspa_change_set_action_' . $change_set['id']);
+        echo '<div class="notice notice-info"><p><strong>';
+        /* translators: %d: number of changed plugins */
+        printf(esc_html(_n('A plugin change was detected.', '%d plugin changes were detected.', $count, 'super-speedy-performance-analysis')), $count);
+        echo '</strong> ';
+        esc_html_e('Run a quick Performance Analysis after your final update to compare this site with its previous point in time. If you are making more updates, finish them first.', 'super-speedy-performance-analysis');
+        echo '</p><p>';
+        echo '<a class="button button-primary" href="' . esc_url($run_url) . '">' . esc_html__('Run quick comparison', 'super-speedy-performance-analysis') . '</a> ';
+        echo '<a class="button" href="' . esc_url($snooze) . '">' . esc_html__('Remind me later', 'super-speedy-performance-analysis') . '</a> ';
+        echo '<a href="' . esc_url($dismiss) . '">' . esc_html__('Dismiss this change set', 'super-speedy-performance-analysis') . '</a>';
         echo '</p></div>';
     }
 

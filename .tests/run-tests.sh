@@ -10,6 +10,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 sspa_require_site || exit 1
 sync_plugin || exit 1
 
+# A killed history-comparison case must not leave its deliberate REST slowdown
+# armed for an unrelated later suite run.
+cli option delete sspa_history_fixture_armed --quiet 2>/dev/null || true
+
 # Pre-flight: several cases silently degrade into failures (sector "general", tiny deep
 # deltas, no write profiles) when the WooCommerce sample data has gone missing - reseed.
 PRODUCTS=$(cli post list --post_type=product --post_status=publish --format=count 2>/dev/null | tr -dc '0-9')
