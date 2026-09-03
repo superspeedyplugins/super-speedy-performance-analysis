@@ -277,8 +277,8 @@ class SSPA_History {
     private static function headline_value($pages) {
         $values = array();
         foreach ((array) $pages as $page) {
-            if (null !== $page['generation_ms']) {
-                $values[] = $page['generation_ms'];
+            if (null !== $page['ttfb_ms']) {
+                $values[] = $page['ttfb_ms'];
             }
         }
         return SSPA_Profile_Store::median($values);

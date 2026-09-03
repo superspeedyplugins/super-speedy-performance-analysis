@@ -24,6 +24,19 @@ if (!class_exists('WooCommerce')) {
     return;
 }
 
+// This case exercises block checkout first and classic checkout second. Reset its own
+// persistent-site entry state so an interrupted earlier run cannot leave the next run
+// starting on the classic shortcode pages.
+$block_cart_page = (int) get_option('woocommerce_cart_page_id');
+$block_checkout_page = (int) get_option('woocommerce_checkout_page_id');
+if ($block_cart_page) {
+    wp_update_post(array('ID' => $block_cart_page, 'post_content' => '<!-- wp:woocommerce/cart /-->'));
+}
+if ($block_checkout_page) {
+    wp_update_post(array('ID' => $block_checkout_page, 'post_content' => '<!-- wp:woocommerce/checkout /-->'));
+}
+wp_cache_flush();
+
 $profiles_table = SSPA_Schema::table('profiles');
 $sessions_table = $wpdb->prefix . 'woocommerce_sessions';
 

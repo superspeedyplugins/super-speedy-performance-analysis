@@ -46,6 +46,17 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			1,
 			'ECharts loads once, after History opens'
 		);
+		const malformedStatus = await page.evaluate(async () => {
+			const probe = document.createElement('div');
+			probe.innerHTML = '<section data-sspa-history-chart><div class="sspa-history-chart-status"></div><div class="sspa-history-chart"></div><script type="application/json" class="sspa-history-chart-document">{broken</script></section>';
+			document.body.appendChild(probe);
+			window.jQuery(document).trigger('sspa:tab-rendered', ['history', probe]);
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			const status = probe.querySelector('.sspa-history-chart-status').textContent;
+			probe.remove();
+			return status;
+		});
+		assert.match(malformedStatus, /could not be read/i, 'Malformed chart data must surface a visible error');
 
 		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
 		const plotted = await page.locator('.sspa-history-chart').evaluate((mount) => {

@@ -32,8 +32,9 @@ later starts another period rather than merging separate dates.
 Each key page shows every valid retained request-time point and the median for both setup periods.
 Use the Metric control for generation time, database time, query count, outbound HTTP time, or peak
 memory. Those five views use one saved per-run median because older rows do not retain all of their
-raw samples. Failed or blocked requests have a separate fault marker and never count towards a
-median. **View chart data** exposes the same points, medians, changes and evidence states as a table.
+raw samples. Blocked requests, transport errors, HTTP errors and missing measurements keep distinct
+labels, use a separate fault marker and never count towards a median. **View chart data** exposes the
+same points, medians, changes and evidence states as a table.
 
 The History tab can compare any two completed full scans or spot checks. **Response time is
 the headline**, because Performance Analysis is primarily a performance tool. A newly observed
@@ -57,8 +58,10 @@ future comparisons.
 
 Plugin-change detection is enabled by default. After plugin updates, activation, or deactivation,
 the admin notice offers a quick comparison and explicitly tells you to finish any remaining
-updates first. Detection can be disabled under **History → Advanced history settings**. The
-updater request only records the changed plugin/version; it never runs an analysis itself.
+updates first. The notice shows the exact compatible earlier analysis it will use before you start;
+if none exists, it explains that the new run will become the first saved comparison point. Detection
+can be disabled under **History → Advanced history settings**. The updater request only records the
+changed plugin/version; it never runs an analysis itself.
 
 The comparison's privacy-safe evidence must be previewed before it can be downloaded. It contains
 run/component identities, measurements, cases, diagnostic fingerprints, and output-change state;

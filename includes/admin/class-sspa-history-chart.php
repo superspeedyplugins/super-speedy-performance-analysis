@@ -113,8 +113,12 @@ class SSPA_History_Chart {
                                 <?php echo esc_html(self::state_label($page)); ?>
                                 <?php if ($page['previous']['fault_count'] || $page['current']['fault_count']) : ?>
                                     <br><span class="sspa-history-fault-text"><?php
-                                        /* translators: 1: previous fault count, 2: current fault count */
-                                        printf(esc_html__('%1$d previous / %2$d current failed requests', 'super-speedy-performance-analysis'), (int) $page['previous']['fault_count'], (int) $page['current']['fault_count']);
+                                        echo esc_html(sprintf(
+                                            /* translators: 1: previous failure summary, 2: current failure summary */
+                                            __('Previous: %1$s. Current: %2$s.', 'super-speedy-performance-analysis'),
+                                            self::fault_summary($page['previous']['faults']),
+                                            self::fault_summary($page['current']['faults'])
+                                        ));
                                     ?></span>
                                 <?php endif; ?>
                             </td>
@@ -218,5 +222,25 @@ class SSPA_History_Chart {
             return __('Output unchanged', 'super-speedy-performance-analysis');
         }
         return __('Output comparison unavailable', 'super-speedy-performance-analysis');
+    }
+
+    private static function fault_summary($faults) {
+        if (!$faults) {
+            return __('none', 'super-speedy-performance-analysis');
+        }
+        $counts = array_count_values(wp_list_pluck($faults, 'state'));
+        $labels = array(
+            'blocked' => __('blocked', 'super-speedy-performance-analysis'),
+            'transport_error' => __('transport error', 'super-speedy-performance-analysis'),
+            'http_error' => __('HTTP error', 'super-speedy-performance-analysis'),
+            'missing' => __('missing measurement', 'super-speedy-performance-analysis'),
+        );
+        $parts = array();
+        foreach ($labels as $state => $label) {
+            if (!empty($counts[$state])) {
+                $parts[] = (int) $counts[$state] . ' ' . $label;
+            }
+        }
+        return implode(', ', $parts);
     }
 }
