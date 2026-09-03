@@ -51,7 +51,11 @@ DOTS=$(find "$ROOT" -name '.*' -not -name '.' | head -5)
 
 # Things every edition needs.
 for f in "$SLUG.php" readme.txt includes/class-sspa-schema.php profiler/bootstrap.php \
-         mu/sspa-loader.php dropins/db.php uninstall.php; do
+         mu/sspa-loader.php dropins/db.php uninstall.php \
+         includes/admin/vendor/echarts-history.min.js \
+         includes/admin/vendor/LICENSE-echarts.txt \
+         includes/admin/vendor/NOTICE-echarts.txt \
+         includes/admin/vendor/LICENSE-zrender.txt; do
     [ -e "$ROOT/$f" ] && pass "present: $f" || fail "MISSING: $f"
 done
 

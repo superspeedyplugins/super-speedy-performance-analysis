@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.35.22
+Stable tag: 0.35.23
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -35,6 +35,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.35 (23rd-26th August 2026) =
+* Added History charts that compare every retained key-page measurement and median from the current plugin and theme setup with the immediately previous measured setup
 * Added before-and-after History comparisons with update-triggered quick scans, response/output validity checks, learned expectations, and a preview-first privacy-safe evidence contract available through wp-admin, WP-CLI and the Abilities API
 * Added managed-host safeguards that skip unsafe platform-owned cache comparisons, learn undeclared plugin dependency groups after one isolated failure, and preflight exact Plugin Impact and checkout paths before work is queued; thanks to Glenn H for discovering and documenting all three cases
 * Relabelled direct PHP attribution so its bootstrap-timer boundary cannot be mistaken for a plugin's total causal impact

@@ -23,6 +23,18 @@ A measured impact can be **negative** - shown as "saves Xms" in green. That mean
 
 ## Comparing points in time
 
+The first History chart automatically compares the **Current setup** with the **Previous setup**.
+A setup is the active plugins and theme plus the exact versions captured when each analysis ran.
+If three plugins are updated together, that starts one new setup period; Performance Analysis does
+not guess how an unmeasured combination would have behaved. Returning to an older combination
+later starts another period rather than merging separate dates.
+
+Each key page shows every valid retained request-time point and the median for both setup periods.
+Use the Metric control for generation time, database time, query count, outbound HTTP time, or peak
+memory. Those five views use one saved per-run median because older rows do not retain all of their
+raw samples. Failed or blocked requests have a separate fault marker and never count towards a
+median. **View chart data** exposes the same points, medians, changes and evidence states as a table.
+
 The History tab can compare any two completed full scans or spot checks. **Response time is
 the headline**, because Performance Analysis is primarily a performance tool. A newly observed
 fatal, transport/HTTP failure, warning, or failed validity check is shown ahead of timing because

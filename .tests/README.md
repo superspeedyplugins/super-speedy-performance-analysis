@@ -16,6 +16,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh            # run all cases
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23
+.tests/browser/run-history-chart.sh  # real wp-admin History chart journey in Chromium
 ```
 
 Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
@@ -155,6 +156,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `61-taxonomy-placeholder-catalogue.php` - registers real custom post types whose archive
   links contain taxonomy placeholders, proves the largest non-empty term resolves the URL,
   an empty taxonomy skips the page, and the resolved archive is profiled successfully.
+- `62-history-setup-series.php` - runs adjacent measurements before and after changing only
+  an active plugin version, then proves the public History chart document separates the two
+  measured setup periods and retains their request points and medians.
 - `02-token.php` - HMAC token mint/verify: path binding, tamper, expiry, flags.
 - `03-fingerprint.php` - SQL normaliser: literals stripped, IN-lists collapsed, design
   smells (ORDER BY rand() etc) preserved, no PII survives.

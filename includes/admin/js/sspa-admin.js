@@ -179,10 +179,11 @@ function sspa_refresh_tabs(tabs, done) {
 	jQuery.post(ajaxurl, { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') }, function (resp) {
 		if (resp.success && resp.data.tabs) {
 			Object.keys(resp.data.tabs).forEach(function (slug) {
-				jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]')
+				var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]')
 					.html(resp.data.tabs[slug])
 					.attr('data-sspa-tab-loaded', '1')
 					.removeAttr('data-sspa-tab-loading');
+				jQuery(document).trigger('sspa:tab-rendered', [slug, panel.get(0)]);
 			});
 			jQuery('#sspa-runner').attr('data-active-run', resp.data.active_run || 0);
 		}

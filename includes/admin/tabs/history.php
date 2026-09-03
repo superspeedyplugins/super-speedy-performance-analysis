@@ -2,7 +2,7 @@
 defined('ABSPATH') || exit;
 
 global $wpdb;
-$sspa_runs = $wpdb->get_results($wpdb->prepare('SELECT * FROM %i ORDER BY id DESC LIMIT 50', SSPA_Schema::table('runs')), ARRAY_A);
+$sspa_runs = SSPA_History_Series::recent_runs();
 $sspa_optin = SSPA_Submitter::opted_in();
 $sspa_remove_on_uninstall = (bool) sspa_get_option('remove_data_on_uninstall');
 $sspa_update_detection = (bool) sspa_get_option('plugin_update_detection');
@@ -11,7 +11,13 @@ $sspa_comparable_runs = array_values(array_filter($sspa_runs, function ($sspa_ru
 }));
 $sspa_after_run_id = $sspa_comparable_runs ? (int) $sspa_comparable_runs[0]['id'] : 0;
 $sspa_before_run_id = isset($sspa_comparable_runs[1]) ? (int) $sspa_comparable_runs[1]['id'] : 0;
-if ($sspa_after_run_id) {
+$sspa_history_series = $sspa_after_run_id ? SSPA_History_Series::build(0, 'request_wall_ms') : null;
+if (is_array($sspa_history_series)) {
+    $sspa_after_run_id = (int) $sspa_history_series['anchor_run_id'];
+    if (!empty($sspa_history_series['previous']['run_ids'])) {
+        $sspa_before_run_id = (int) end($sspa_history_series['previous']['run_ids']);
+    }
+} elseif ($sspa_after_run_id) {
     $sspa_latest_context = json_decode((string) $sspa_comparable_runs[0]['share_context'], true);
     if (is_array($sspa_latest_context) && !empty($sspa_latest_context['history_comparison']['baseline_run_id'])) {
         $sspa_candidate_before = (int) $sspa_latest_context['history_comparison']['baseline_run_id'];
@@ -63,6 +69,10 @@ $sspa_share_states = array(
     </details>
 </div>
 <?php
+
+if ($sspa_after_run_id) {
+    echo SSPA_History_Chart::render($sspa_history_series); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes every field.
+}
 
 if (count($sspa_comparable_runs) >= 2) : ?>
     <section class="sspa-history-compare-picker">
