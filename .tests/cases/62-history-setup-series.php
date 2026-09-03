@@ -174,6 +174,7 @@ if (!is_wp_error($incompatible_id)) {
     $samples[0]['error'] = 'timeout';
     $samples[0]['error_message'] = 'Deliberate History chart fixture failure';
     $samples[0]['code'] = 0;
+    unset($samples[1]['wall_ms']);
     $wpdb->update(SSPA_Schema::table('profiles'), array('samples' => wp_json_encode($samples)), array('id' => (int) $profile['id']));
     $wpdb->update(
         SSPA_Schema::table('runs'),
@@ -185,19 +186,50 @@ if (!is_wp_error($incompatible_id)) {
         !is_wp_error($automatic) && (int) $restored_id === (int) $automatic['anchor_run_id'],
         'automatic History selection skips a newer incompatible measurement candidate'
     );
+    sspa_62_t(
+        !SSPA_History_Series::is_compatible_run_id($incompatible_id),
+        'an exact quick-comparison baseline cannot bind an incompatible run'
+    );
     $wpdb->update(
         SSPA_Schema::table('runs'),
         array('measurement_version' => (int) $incompatible_row['measurement_version']),
         array('id' => $incompatible_id)
     );
+    sspa_62_t(
+        SSPA_History_Series::is_compatible_run_id($incompatible_id),
+        'an exact quick-comparison baseline can bind a compatible run'
+    );
     $fault_document = SSPA_History_Series::build($incompatible_id, 'request_wall_ms');
     $fault_page = is_wp_error($fault_document) || empty($fault_document['pages'][0]) ? array() : $fault_document['pages'][0];
+    $fault_states = empty($fault_page['current']['faults']) ? array() : wp_list_pluck($fault_page['current']['faults'], 'state');
+    sort($fault_states, SORT_STRING);
     sspa_62_t(
         !empty($fault_page)
-            && 1 === (int) $fault_page['current']['fault_count']
+            && array('missing', 'transport_error') === $fault_states
+            && 2 === (int) $fault_page['current']['fault_count']
             && count($fault_page['current']['points']) === (int) $fault_page['current']['point_count'],
-        'a failed request has its own evidence state and cannot contribute to the timing median'
+        'transport errors and missing measurements keep distinct states and cannot contribute to the timing median'
     );
+    $fault_html = SSPA_History_Chart::render($fault_document);
+    sspa_62_t(
+        false !== strpos($fault_html, 'transport error') && false !== strpos($fault_html, 'missing measurement'),
+        'the accessible chart table names each failed evidence state'
+    );
+}
+
+// An unreadable run is a period boundary. It cannot silently join known A runs on either side.
+$unknown_boundary_id = sspa_62_drive_run();
+$boundary_anchor_id = sspa_62_drive_run();
+sspa_62_t(!is_wp_error($unknown_boundary_id) && !is_wp_error($boundary_anchor_id), 'the unknown-boundary fixture measurements complete');
+if (!is_wp_error($unknown_boundary_id) && !is_wp_error($boundary_anchor_id)) {
+    $unknown_row = SSPA_Run_Controller::run_row($unknown_boundary_id);
+    $wpdb->update(SSPA_Schema::table('runs'), array('plugin_set' => ''), array('id' => $unknown_boundary_id));
+    $boundary_document = SSPA_History_Series::build($boundary_anchor_id, 'request_wall_ms');
+    sspa_62_t(
+        !is_wp_error($boundary_document) && array($boundary_anchor_id) === $boundary_document['current']['run_ids'],
+        'a run without a versioned setup breaks contiguity instead of joining setup periods across it'
+    );
+    $wpdb->update(SSPA_Schema::table('runs'), array('plugin_set' => $unknown_row['plugin_set']), array('id' => $unknown_boundary_id));
 }
 
 if ($GLOBALS['sspa_62_failures']) {

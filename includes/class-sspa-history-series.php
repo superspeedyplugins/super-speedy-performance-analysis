@@ -171,6 +171,56 @@ class SSPA_History_Series {
         );
     }
 
+    /** Latest saved run that is structurally usable as a quick-comparison baseline. */
+    public static function latest_compatible_run_id($page_keys = array()) {
+        return self::compatible_candidate_id(0, $page_keys);
+    }
+
+    /** Validate the exact baseline shown to the administrator before a quick comparison. */
+    public static function is_compatible_run_id($run_id, $page_keys = array()) {
+        $run_id = (int) $run_id;
+        return $run_id > 0 && $run_id === self::compatible_candidate_id($run_id, $page_keys);
+    }
+
+    /** The bounded customer-facing quick scan, limited to pages this site can measure. */
+    public static function quick_comparison_page_keys() {
+        $available = array_map('sanitize_key', wp_list_pluck(SSPA_Catalogue::build(), 'page_key'));
+        return array_values(array_intersect(array('home', 'shop', 'baseline'), $available));
+    }
+
+    private static function compatible_candidate_id($wanted_id, $page_keys) {
+        $page_keys = array_values(array_unique(array_map('sanitize_key', (array) $page_keys)));
+        foreach (self::recent_runs() as $run) {
+            if ($wanted_id && (int) $run['id'] !== (int) $wanted_id) {
+                continue;
+            }
+            if (!self::is_candidate($run)
+                || (int) $run['measurement_version'] !== (int) SSPA_Community_Schema::MEASUREMENT_VERSION
+                || !self::setup_fingerprint($run)) {
+                if ($wanted_id) {
+                    return 0;
+                }
+                continue;
+            }
+            $identity = self::compatibility_identity($run);
+            if (is_wp_error($identity)) {
+                if ($wanted_id) {
+                    return 0;
+                }
+                continue;
+            }
+            $covered = array_values(array_unique(array_map('sanitize_key', wp_list_pluck($identity['profiles'], 'page_key'))));
+            if (array_diff($page_keys, $covered)) {
+                if ($wanted_id) {
+                    return 0;
+                }
+                continue;
+            }
+            return (int) $run['id'];
+        }
+        return 0;
+    }
+
     private static function is_candidate($run) {
         return is_array($run)
             && 'done' === $run['status']
@@ -180,18 +230,21 @@ class SSPA_History_Series {
     /** Groups newest-first candidate rows by adjacent, version-aware setup identity. */
     private static function setup_groups($runs) {
         $groups = array();
+        $boundary = true;
         foreach ($runs as $run) {
             $fingerprint = self::setup_fingerprint($run);
             if (!$fingerprint) {
+                $boundary = true;
                 continue;
             }
             $last = count($groups) - 1;
-            if ($last < 0 || $groups[$last][0]['_sspa_setup_fingerprint'] !== $fingerprint) {
+            if ($boundary || $last < 0 || $groups[$last][0]['_sspa_setup_fingerprint'] !== $fingerprint) {
                 $groups[] = array();
                 $last++;
             }
             $run['_sspa_setup_fingerprint'] = $fingerprint;
             $groups[$last][] = $run;
+            $boundary = false;
         }
         if (!$groups) {
             return new WP_Error('sspa_history_setup_unknown', __('Saved runs do not contain versioned plugin and theme inventories.', 'super-speedy-performance-analysis'));
@@ -442,7 +495,9 @@ class SSPA_History_Series {
                         'run_id' => $run_id,
                         'sample' => (int) $index + 1,
                         'response_code' => $code ?: null,
-                        'state' => !empty($profile['blocked_by']) ? 'blocked' : (!empty($sample['error']) ? 'transport_error' : 'http_error'),
+                        'state' => !empty($profile['blocked_by']) ? 'blocked'
+                            : (!empty($sample['error']) ? 'transport_error'
+                                : ($code < 200 || $code >= 400 ? 'http_error' : 'missing')),
                     );
                 }
             }

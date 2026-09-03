@@ -42,10 +42,13 @@ class SSPA_Admin_Page {
             return;
         }
         $count = count($change_set['changes']);
+        $quick_page_keys = SSPA_History_Series::quick_comparison_page_keys();
+        $baseline_run_id = SSPA_History_Series::latest_compatible_run_id($quick_page_keys);
         $run_url = add_query_arg(array(
             'page' => 'sspa',
             'sspa_autospot' => '1',
             'sspa_change_set' => $change_set['id'],
+            'sspa_baseline_run_id' => $baseline_run_id,
         ), admin_url('admin.php')) . '#overview';
         $base_action_url = add_query_arg(array(
             'sspa_change_set' => $change_set['id'],
@@ -57,6 +60,19 @@ class SSPA_Admin_Page {
         printf(esc_html(_n('A plugin change was detected.', '%d plugin changes were detected.', $count, 'super-speedy-performance-analysis')), $count);
         echo '</strong> ';
         esc_html_e('Run a quick Performance Analysis after your final update to compare this site with its previous point in time. If you are making more updates, finish them first.', 'super-speedy-performance-analysis');
+        if ($baseline_run_id) {
+            $baseline = SSPA_Run_Controller::run_row($baseline_run_id);
+            echo ' ';
+            printf(
+                /* translators: 1: analysis run ID, 2: analysis date */
+                esc_html__('This will compare with Analysis #%1$d from %2$s.', 'super-speedy-performance-analysis'),
+                $baseline_run_id,
+                esc_html(mysql2date(get_option('date_format'), $baseline['started'], false))
+            );
+        } else {
+            echo ' ';
+            esc_html_e('No compatible earlier analysis is available, so this run will become the first saved point for a later comparison.', 'super-speedy-performance-analysis');
+        }
         echo '</p><p>';
         echo '<a class="button button-primary" href="' . esc_url($run_url) . '">' . esc_html__('Run quick comparison', 'super-speedy-performance-analysis') . '</a> ';
         echo '<a class="button" href="' . esc_url($snooze) . '">' . esc_html__('Remind me later', 'super-speedy-performance-analysis') . '</a> ';
@@ -97,6 +113,7 @@ class SSPA_Admin_Page {
             'nonce' => wp_create_nonce('sspa_admin'),
             'download_prefix' => sspa_download_prefix(),
             'history_chart_asset' => SSPA_PLUGIN_URL . 'includes/admin/vendor/echarts-history.min.js',
+            'quick_comparison_page_keys' => SSPA_History_Series::quick_comparison_page_keys(),
         ));
         wp_localize_script('sspa-admin', 'sspa_tools_i18n', array(
             'show' => __('Show installation steps', 'super-speedy-performance-analysis'),

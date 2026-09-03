@@ -7,6 +7,7 @@ jQuery(function () {
 	var query = new URLSearchParams(window.location.search);
 	var autospot = query.get('sspa_autospot') === '1';
 	var changeSetId = query.get('sspa_change_set') || '';
+	var baselineRunId = parseInt(query.get('sspa_baseline_run_id'), 10) || 0;
 	if (autospot) {
 		sspa_strip_autospot_param();
 	}
@@ -18,8 +19,9 @@ jQuery(function () {
 	} else if (autospot) {
 		// Arrived from the plugin-toggle notice: run a quick spot profile of key pages.
 		sspa_start_typed_run({
-			'page_keys[]': ['home', 'shop', 'baseline'],
-			change_set_id: changeSetId
+			'page_keys[]': sspa_admin.quick_comparison_page_keys,
+			change_set_id: changeSetId,
+			baseline_run_id: baselineRunId
 		}, jQuery('#sspa-run-analysis'));
 	}
 });
@@ -33,6 +35,9 @@ function sspa_strip_autospot_param() {
 			return after ? before : '';
 		})
 		.replace(/([?&])sspa_change_set=[^&]*(&|$)/, function (m, before, after) {
+			return after ? before : '';
+		})
+		.replace(/([?&])sspa_baseline_run_id=[^&]*(&|$)/, function (m, before, after) {
 			return after ? before : '';
 		})
 		.replace(/[?&]$/, '');

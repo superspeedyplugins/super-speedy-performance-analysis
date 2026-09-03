@@ -191,6 +191,13 @@ register_shutdown_function(function () use ($history_state_publisher) {
     delete_option('sspa_history_config_variant');
 });
 update_option('sspa_history_fixture_variant', 'before', false);
+$quick_page_keys = SSPA_History_Series::quick_comparison_page_keys();
+$quick_prompt_baseline_id = sspa_history_drive_run(array('type' => 'spot', 'page_keys' => $quick_page_keys, 'user_id' => 1));
+sspa_history_t(!is_wp_error($quick_prompt_baseline_id), 'a compatible quick-comparison baseline completes');
+if (is_wp_error($quick_prompt_baseline_id)) {
+    echo 'FAIL: quick baseline: ' . $quick_prompt_baseline_id->get_error_message() . "\n";
+    return;
+}
 $pending_before_measurement = SSPA_Change_Set::pending(true);
 $before_id = sspa_history_drive_run(array('type' => 'spot', 'page_keys' => array('rest-posts'), 'user_id' => 1));
 sspa_history_t(!is_wp_error($before_id), 'the real Before point in time completes');
@@ -200,11 +207,47 @@ if (is_wp_error($before_id)) {
 }
 sspa_history_t($pending_before_measurement === SSPA_Change_Set::pending(true), 'profiled requests do not fabricate plugin changes');
 
+// Historical evidence can legitimately share a page key while describing a different
+// request. Duplicate one real stored profile at each identity seam before any History
+// reader caches this immutable run.
+global $wpdb;
+$profiles_table = SSPA_Schema::table('profiles');
+$base_profile = $wpdb->get_row($wpdb->prepare(
+    'SELECT * FROM %i WHERE run_id = %d AND page_key = %s ORDER BY id ASC LIMIT 1',
+    $profiles_table,
+    $before_id,
+    'rest-posts'
+), ARRAY_A);
+$identity_variants = array(
+    array('method' => 'POST', 'variant' => 'anon', 'object_cache_mode' => 'normal'),
+    array('method' => 'GET', 'variant' => 'member', 'object_cache_mode' => 'normal'),
+    array('method' => 'GET', 'variant' => 'anon', 'object_cache_mode' => 'cold'),
+);
+foreach ($identity_variants as $identity_variant) {
+    $duplicate = $base_profile;
+    unset($duplicate['id']);
+    $duplicate = array_merge($duplicate, $identity_variant);
+    $wpdb->insert($profiles_table, $duplicate);
+}
+
 file_put_contents($update_fixture, "<?php\n/**\n * Plugin Name: SSPA History Update Fixture\n * Version: 1.3.0\n */\n");
 wp_clean_plugins_cache(true);
 SSPA_Change_Set::record('sspa-history-update-fixture/sspa-history-update-fixture.php', 'updated', '1.2.0', '1.3.0');
 update_option('sspa_history_fixture_variant', 'after', false);
 update_option('sspa_history_config_variant', 'after', false);
+$notice_user_id = get_current_user_id();
+wp_set_current_user(1);
+ob_start();
+SSPA_Admin_Page::toggle_prompt_notice();
+$quick_notice = ob_get_clean();
+wp_set_current_user($notice_user_id);
+$quick_baseline_id = SSPA_History_Series::latest_compatible_run_id($quick_page_keys);
+sspa_history_t(
+    (int) $quick_prompt_baseline_id === (int) $quick_baseline_id
+        && false !== strpos($quick_notice, 'Analysis #' . $quick_baseline_id)
+        && false !== strpos($quick_notice, 'sspa_baseline_run_id=' . $quick_baseline_id),
+    'the quick-comparison prompt shows and binds its compatible Before analysis before starting'
+);
 $after_id = sspa_history_drive_run(array(
     'type' => 'spot',
     'page_keys' => array('rest-posts'),
@@ -232,29 +275,6 @@ sspa_history_t(
     'the After run is bound to the exact Before run and plugin-change trigger'
 );
 
-// Historical evidence can legitimately share a page key while describing a different
-// request. Duplicate one real stored profile at each identity seam before the comparison
-// reader caches this immutable run.
-global $wpdb;
-$profiles_table = SSPA_Schema::table('profiles');
-$base_profile = $wpdb->get_row($wpdb->prepare(
-    'SELECT * FROM %i WHERE run_id = %d AND page_key = %s ORDER BY id ASC LIMIT 1',
-    $profiles_table,
-    $before_id,
-    'rest-posts'
-), ARRAY_A);
-$identity_variants = array(
-    array('method' => 'POST', 'variant' => 'anon', 'object_cache_mode' => 'normal'),
-    array('method' => 'GET', 'variant' => 'member', 'object_cache_mode' => 'normal'),
-    array('method' => 'GET', 'variant' => 'anon', 'object_cache_mode' => 'cold'),
-);
-foreach ($identity_variants as $identity_variant) {
-    $duplicate = $base_profile;
-    unset($duplicate['id']);
-    $duplicate = array_merge($duplicate, $identity_variant);
-    $wpdb->insert($profiles_table, $duplicate);
-}
-
 $comparison = SSPA_History::compare($before_id, $after_id);
 sspa_history_t(!is_wp_error($comparison), 'the two completed points in time compare');
 if (is_wp_error($comparison)) {
@@ -272,6 +292,11 @@ sspa_history_t(is_array($rest_posts), 'the comparison aligns the real REST-posts
 sspa_history_t(
     $comparison['headline']['after'] > $comparison['headline']['before'] + 150,
     'response time is the headline and reports the fixture slowdown (' . wp_json_encode($comparison['headline']) . ')'
+);
+sspa_history_t(
+    (float) $comparison['headline']['before'] === (float) $rest_posts['metrics']['ttfb_ms']['before']
+        && (float) $comparison['headline']['after'] === (float) $rest_posts['metrics']['ttfb_ms']['after'],
+    'the response-time headline uses measured TTFB rather than PHP generation time'
 );
 sspa_history_t('pass' === $rest_posts['validity']['before'] && 'pass' === $rest_posts['validity']['after'], 'both real responses pass validity checks');
 $before_usage = SSPA_Report::page_plugin_usage($before_id);

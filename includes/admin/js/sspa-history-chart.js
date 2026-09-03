@@ -31,12 +31,19 @@
 
 	function readDocument(card) {
 		var node = card.querySelector('.sspa-history-chart-document');
+		var status = card.querySelector('.sspa-history-chart-status');
 		if (!node) {
+			if (status) {
+				status.textContent = 'The chart data could not be read: its data document is missing.';
+			}
 			return null;
 		}
 		try {
 			return JSON.parse(node.textContent);
 		} catch (error) {
+			if (status) {
+				status.textContent = 'The chart data could not be read: ' + error.message;
+			}
 			return null;
 		}
 	}
@@ -75,6 +82,24 @@
 		};
 	}
 
+	function faultSummary(faults) {
+		var labels = {
+			blocked: 'blocked',
+			transport_error: 'transport error',
+			http_error: 'HTTP error',
+			missing: 'missing measurement'
+		};
+		var counts = {};
+		faults.forEach(function (fault) {
+			counts[fault.state] = (counts[fault.state] || 0) + 1;
+		});
+		return Object.keys(labels).filter(function (state) {
+			return counts[state];
+		}).map(function (state) {
+			return counts[state] + ' ' + labels[state];
+		}).join(', ');
+	}
+
 	function optionFor(documentData, filter) {
 		var pages = documentData.pages.filter(function (page) {
 			return !filter || (page.label + ' ' + page.key).toLowerCase().indexOf(filter) !== -1;
@@ -103,10 +128,10 @@
 			var values = page.previous.points.concat(page.current.points).map(function (item) { return Number(item.value); });
 			var markerY = values.length ? Math.max.apply(null, values) * 1.08 : 1;
 			if (page.previous.fault_count) {
-				failures.push({value: [label, markerY], period: 'Previous setup', count: page.previous.fault_count});
+				failures.push({value: [label, markerY], period: 'Previous setup', summary: faultSummary(page.previous.faults), symbolOffset: [-12, 0]});
 			}
 			if (page.current.fault_count) {
-				failures.push({value: [label, markerY], period: 'Current setup', count: page.current.fault_count});
+				failures.push({value: [label, markerY], period: 'Current setup', summary: faultSummary(page.current.faults), symbolOffset: [12, 0]});
 			}
 		});
 
@@ -127,7 +152,7 @@
 				formatter: function (params) {
 					var data = params.data || {};
 					if (data.period) {
-						return '<strong>' + data.period + '</strong><br>' + data.count + ' failed request' + (data.count === 1 ? '' : 's');
+						return '<strong>' + data.period + '</strong><br>' + data.summary;
 					}
 					var value = Array.isArray(data.value) ? data.value[1] : data.value;
 					var lines = ['<strong>' + params.seriesName + '</strong>', unitValue(value, unit)];
