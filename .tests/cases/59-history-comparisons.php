@@ -314,6 +314,7 @@ sspa_history_t(true === $approved_after && 'pass' === $declared_page['declared']
 $assertion_state = get_option(SSPA_History::ASSERTIONS_OPTION, array());
 $assertion_state['expectations'][$rest_posts['key']]['source_run_uuid'] = 'victim@example.com C:\\Users\\victim\\secret.sql';
 update_option(SSPA_History::ASSERTIONS_OPTION, $assertion_state, false);
+$sharing_before_local_export = SSPA_Submitter::opted_in();
 $privacy_comparison = SSPA_History::compare($before_id, $after_id);
 $payload = SSPA_History::export($privacy_comparison);
 $hostile_context = SSPA_History::sanitise_run_context(array(
@@ -349,7 +350,10 @@ sspa_history_t(
         && 'done' === $payload['comparison']['before']['status'] && 'done' === $payload['comparison']['after']['status'],
     'evidence export has a versioned schema, random bundle-local source ID and explicit completion state'
 );
-sspa_history_t(false === SSPA_Submitter::opted_in(), 'local comparison export does not enable community sharing');
+sspa_history_t(
+    $sharing_before_local_export === SSPA_Submitter::opted_in(),
+    'local comparison export leaves community sharing unchanged'
+);
 
 $cli_json = WP_CLI::runcommand(
     'sspa history-compare ' . (int) $before_id . ' ' . (int) $after_id,
