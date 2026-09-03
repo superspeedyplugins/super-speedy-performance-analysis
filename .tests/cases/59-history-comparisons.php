@@ -232,6 +232,29 @@ sspa_history_t(
     'the After run is bound to the exact Before run and plugin-change trigger'
 );
 
+// Historical evidence can legitimately share a page key while describing a different
+// request. Duplicate one real stored profile at each identity seam before the comparison
+// reader caches this immutable run.
+global $wpdb;
+$profiles_table = SSPA_Schema::table('profiles');
+$base_profile = $wpdb->get_row($wpdb->prepare(
+    'SELECT * FROM %i WHERE run_id = %d AND page_key = %s ORDER BY id ASC LIMIT 1',
+    $profiles_table,
+    $before_id,
+    'rest-posts'
+), ARRAY_A);
+$identity_variants = array(
+    array('method' => 'POST', 'variant' => 'anon', 'object_cache_mode' => 'normal'),
+    array('method' => 'GET', 'variant' => 'member', 'object_cache_mode' => 'normal'),
+    array('method' => 'GET', 'variant' => 'anon', 'object_cache_mode' => 'cold'),
+);
+foreach ($identity_variants as $identity_variant) {
+    $duplicate = $base_profile;
+    unset($duplicate['id']);
+    $duplicate = array_merge($duplicate, $identity_variant);
+    $wpdb->insert($profiles_table, $duplicate);
+}
+
 $comparison = SSPA_History::compare($before_id, $after_id);
 sspa_history_t(!is_wp_error($comparison), 'the two completed points in time compare');
 if (is_wp_error($comparison)) {
@@ -240,7 +263,7 @@ if (is_wp_error($comparison)) {
 }
 $rest_posts = null;
 foreach ($comparison['pages'] as $page) {
-    if ('rest-posts' === $page['page_key']) {
+    if ('rest-posts|GET|anon|normal' === $page['key']) {
         $rest_posts = $page;
         break;
     }
@@ -398,6 +421,45 @@ sspa_history_t(false !== strpos($history_html, 'sspa-history-before') && false !
 sspa_history_t($before_row_original === SSPA_Run_Controller::run_row($before_id), 'comparison does not mutate the completed Before run');
 sspa_history_t($after_row_original === SSPA_Run_Controller::run_row($after_id), 'comparison does not mutate the completed After run');
 sspa_history_t(is_wp_error(SSPA_History::compare($before_id, $before_id)), 'the comparison fails closed for an invalid run pair');
+
+$identity_comparison = SSPA_History::compare($before_id, $after_id);
+$identity_pages = is_wp_error($identity_comparison) ? array() : wp_list_pluck($identity_comparison['pages'], 'present', 'key');
+$expected_identity_keys = array(
+    'rest-posts|GET|anon|normal',
+    'rest-posts|POST|anon|normal',
+    'rest-posts|GET|member|normal',
+    'rest-posts|GET|anon|cold',
+);
+$identity_separate = true;
+foreach ($expected_identity_keys as $identity_key) {
+    if (!isset($identity_pages[$identity_key])) {
+        $identity_separate = false;
+    }
+}
+sspa_history_t($identity_separate && 4 === count($identity_pages), 'History keeps method, visitor variant and object-cache mode as separate scenario identities');
+sspa_history_t(
+    isset($identity_pages['rest-posts|POST|anon|normal'])
+        && false === $identity_pages['rest-posts|POST|anon|normal']['after']
+        && false === $identity_pages['rest-posts|GET|member|normal']['after']
+        && false === $identity_pages['rest-posts|GET|anon|cold']['after'],
+    'scenario identities missing from After remain explicit removed evidence'
+);
+
+$wpdb->update(
+    SSPA_Schema::table('runs'),
+    array('measurement_version' => (int) $after_row_original['measurement_version'] + 1),
+    array('id' => $after_id)
+);
+$incompatible_comparison = SSPA_History::compare($before_id, $after_id);
+sspa_history_t(
+    is_wp_error($incompatible_comparison) && 'sspa_history_incompatible' === $incompatible_comparison->get_error_code(),
+    'History rejects a pair with incompatible measurement identities instead of reporting a pass'
+);
+$wpdb->update(
+    SSPA_Schema::table('runs'),
+    array('measurement_version' => (int) $after_row_original['measurement_version']),
+    array('id' => $after_id)
+);
 
 // Restore unrelated settings and disarm fault injection. The completed runs and latest
 // After state remain available for inspection on the retained feature site.

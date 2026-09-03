@@ -52,6 +52,7 @@ ssx_hook_wporg() {
 
     ssx_assert_no_updater "$stage"
     ssx_assert_menu_fallback "$stage"
+    ssx_assert_history_chart "$stage"
     ssx_assert_versions_match "$stage"
 }
 
@@ -113,9 +114,21 @@ ssx_assert_versions_match() {
     ssx_log "assert: version $header == stable tag $readme"
 }
 
+ssx_assert_history_chart() {
+    local stage="$1" file
+    for file in echarts-history.min.js LICENSE-echarts.txt NOTICE-echarts.txt LICENSE-zrender.txt; do
+        [ -s "$stage/includes/admin/vendor/$file" ] \
+            || ssx_die "History chart asset missing or empty: includes/admin/vendor/$file"
+    done
+    grep -q 'window.SSPAECharts' "$stage/includes/admin/vendor/echarts-history.min.js" \
+        || ssx_die "History chart bundle does not expose the pinned ECharts adapter"
+    ssx_log "assert: local History chart bundle and licence notices present"
+}
+
 # The full edition gets the same version check; it has nothing else to verify.
 ssx_hook_full() {
     ssx_assert_versions_match "$1"
+    ssx_assert_history_chart "$1"
     [ -f "$1/super-speedy-settings/super-speedy-settings.php" ] \
         || ssx_die "super-speedy-settings is missing - run: git submodule update --init"
     ssx_log "assert: super-speedy-settings present"

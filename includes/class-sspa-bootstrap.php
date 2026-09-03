@@ -67,6 +67,7 @@ class SSPA_Bootstrap {
             'sspa_history_compare' => array('SSPA_History', 'ajax_compare'),
             'sspa_history_assertion' => array('SSPA_History', 'ajax_assertion'),
             'sspa_history_export' => array('SSPA_History', 'ajax_export'),
+            'sspa_history_series' => array('SSPA_History_Chart', 'ajax_series'),
             'sspa_cache_recon_export' => array('SSPA_Cache_Recon', 'ajax_export'),
             'sspa_browser_next' => array('SSPA_Browser_Transport', 'ajax_next'),
             'sspa_browser_record' => array('SSPA_Browser_Transport', 'ajax_record'),

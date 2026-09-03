@@ -56,6 +56,10 @@ class SSPA_History {
                 return new WP_Error('sspa_history_incompatible', __('Only completed full scans and spot checks can be compared.', 'super-speedy-performance-analysis'));
             }
         }
+        $compatibility = SSPA_History_Series::pair_compatibility($before_run, $after_run);
+        if (is_wp_error($compatibility)) {
+            return $compatibility;
+        }
 
         $before = self::snapshot($before_run);
         $after = self::snapshot($after_run);
@@ -73,7 +77,12 @@ class SSPA_History {
         foreach ($all_keys as $key) {
             $left = isset($before['pages'][$key]) ? $before['pages'][$key] : null;
             $right = isset($after['pages'][$key]) ? $after['pages'][$key] : null;
-            $expected = isset($assertions[$key]) ? $assertions[$key] : null;
+            $legacy_key = self::legacy_page_key(
+                $right ? $right['page_key'] : $left['page_key'],
+                $right ? $right['variant'] : $left['variant']
+            );
+            $expected = isset($assertions[$key]) ? $assertions[$key]
+                : (isset($assertions[$legacy_key]) ? $assertions[$legacy_key] : null);
             $pages[] = self::compare_page($key, $left, $right, $expected);
         }
 
@@ -130,11 +139,7 @@ class SSPA_History {
     }
 
     private static function snapshot($run) {
-        $report = SSPA_Report::build((int) $run['id']);
         $usage = SSPA_Report::page_plugin_usage((int) $run['id']);
-        if (is_wp_error($report)) {
-            return $report;
-        }
         if (is_wp_error($usage)) {
             return $usage;
         }
@@ -142,7 +147,12 @@ class SSPA_History {
         $usage_pages = array();
         $diagnostics = array('fatals' => 0, 'transport_errors' => 0, 'http_errors' => 0, 'warnings' => 0, 'critical_findings' => 0);
         foreach ((array) $usage['pages'] as $page) {
-            $key = self::page_key($page['page_key'], isset($page['variant']) ? $page['variant'] : 'anon');
+            $key = SSPA_History_Series::page_identity(array(
+                'page_key' => $page['page_key'],
+                'method' => 'GET',
+                'variant' => isset($page['variant']) ? $page['variant'] : 'anon',
+                'object_cache_mode' => 'normal',
+            ));
             $usage_pages[$key] = $page;
             if (!empty($page['diagnostics'])) {
                 $diagnostics['fatals'] += count((array) $page['diagnostics']['fatals']);
@@ -150,29 +160,35 @@ class SSPA_History {
                 $diagnostics['http_errors'] += (int) $page['diagnostics']['http_errors'];
             }
         }
+        $report = SSPA_Report::build((int) $run['id']);
+        if (is_wp_error($report)) {
+            return $report;
+        }
         $diagnostics['warnings'] = isset($report['summary']['findings']['warn']) ? (int) $report['summary']['findings']['warn'] : 0;
         $diagnostics['critical_findings'] = isset($report['summary']['findings']['critical']) ? (int) $report['summary']['findings']['critical'] : 0;
 
         $pages = array();
-        foreach ((array) $report['pages'] as $page) {
+        foreach (SSPA_History_Series::profile_rows((int) $run['id']) as $page) {
             if ('baseline' === $page['page_key']) {
                 continue;
             }
-            $key = self::page_key($page['page_key'], isset($page['variant']) ? $page['variant'] : 'anon');
+            $key = SSPA_History_Series::page_identity($page);
             $extra = isset($usage_pages[$key]) ? $usage_pages[$key] : array();
             $pages[$key] = array(
                 'key' => $key,
                 'page_key' => sanitize_key($page['page_key']),
                 'variant' => sanitize_key(isset($page['variant']) ? $page['variant'] : 'anon'),
-                'generation_ms' => self::number_or_null($page['generation_ms']),
+                'method' => strtoupper(sanitize_key(isset($page['method']) ? $page['method'] : 'GET')),
+                'object_cache_mode' => sanitize_key(isset($page['object_cache_mode']) ? $page['object_cache_mode'] : 'normal'),
+                'generation_ms' => self::number_or_null($page['page_gen_ms']),
                 'ttfb_ms' => self::number_or_null($page['ttfb_ms']),
                 'sql_ms' => self::number_or_null($page['sql_ms']),
                 'sql_count' => self::number_or_null($page['sql_count']),
-                'rows_fetched' => self::number_or_null($page['rows_fetched']),
+                'rows_fetched' => self::number_or_null($page['rows_returned_total']),
                 'http_ms' => self::number_or_null($page['http_ms']),
                 'php_ms' => self::number_or_null($page['php_ms']),
                 'peak_mem_bytes' => self::number_or_null($page['peak_mem_bytes']),
-                'duplicate_queries' => self::number_or_null($page['duplicate_queries']),
+                'duplicate_queries' => self::number_or_null($page['dupe_query_count']),
                 'mail_count' => self::number_or_null($page['mail_count']),
                 'response_code' => isset($page['response_code']) ? (int) $page['response_code'] : null,
                 'blocked_by' => !empty($page['blocked_by']) ? sanitize_text_field($page['blocked_by']) : '',
@@ -232,6 +248,8 @@ class SSPA_History {
             'key' => $key,
             'page_key' => $page ? $page['page_key'] : '',
             'variant' => $page ? $page['variant'] : '',
+            'method' => $page ? $page['method'] : '',
+            'object_cache_mode' => $page ? $page['object_cache_mode'] : '',
             'present' => array('before' => (bool) $before, 'after' => (bool) $after),
             'validity' => array('before' => $before_validity, 'after' => $after_validity),
             'response_code' => array(
@@ -386,18 +404,30 @@ class SSPA_History {
         }
         $out = array();
         foreach ($state['expectations'] as $key => $expected) {
-            if (!is_array($expected) || !preg_match('/^[a-z0-9_-]+\|[a-z0-9_-]+$/', (string) $key)) {
+            if (!is_array($expected) || !preg_match('/^[A-Za-z0-9_-]+(?:\|[A-Za-z0-9_-]+){1,3}$/', (string) $key)) {
                 continue;
             }
             $page_key = sanitize_key(isset($expected['page_key']) ? $expected['page_key'] : '');
             $variant = sanitize_key(isset($expected['variant']) ? $expected['variant'] : '');
-            if ((string) $key !== self::page_key($page_key, $variant)) {
+            $method = strtoupper(sanitize_key(isset($expected['method']) ? $expected['method'] : ''));
+            $cache_mode = sanitize_key(isset($expected['object_cache_mode']) ? $expected['object_cache_mode'] : '');
+            $expected_key = $method && $cache_mode
+                ? SSPA_History_Series::page_identity(array(
+                    'page_key' => $page_key,
+                    'method' => $method,
+                    'variant' => $variant,
+                    'object_cache_mode' => $cache_mode,
+                ))
+                : self::legacy_page_key($page_key, $variant);
+            if ((string) $key !== $expected_key) {
                 continue;
             }
             $signature = isset($expected['output_signature']) ? strtolower((string) $expected['output_signature']) : '';
             $out[$key] = array(
                 'page_key' => $page_key,
                 'variant' => $variant,
+                'method' => $method,
+                'object_cache_mode' => $cache_mode,
                 'response_code' => isset($expected['response_code']) ? (int) $expected['response_code'] : null,
                 'output_signature' => preg_match('/^[a-f0-9]{32}$/', $signature) ? $signature : '',
                 'source_run_uuid' => self::safe_uuid(isset($expected['source_run_uuid']) ? $expected['source_run_uuid'] : ''),
@@ -427,6 +457,8 @@ class SSPA_History {
         $state['expectations'][$page_identity] = array(
             'page_key' => $page['page_key'],
             'variant' => $page['variant'],
+            'method' => $page['method'],
+            'object_cache_mode' => $page['object_cache_mode'],
             'response_code' => $page['response_code'],
             'output_signature' => $page['output_signature'],
             'source_run_uuid' => $snapshot['identity']['uuid'],
@@ -663,7 +695,7 @@ class SSPA_History {
         ));
     }
 
-    private static function page_key($page_key, $variant) {
+    private static function legacy_page_key($page_key, $variant) {
         return sanitize_key($page_key) . '|' . sanitize_key($variant);
     }
 

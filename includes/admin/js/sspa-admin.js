@@ -201,6 +201,7 @@ function sspa_refresh_tabs(tabs, done) {
 					panel.find('.sspa-payload-preview').replaceWith(preview);
 					panel.find('.sspa-payload-summary').replaceWith(summary);
 				}
+				jQuery(document).trigger('sspa:tab-rendered', [slug, panel.get(0)]);
 			});
 			jQuery('#sspa-runner').attr('data-active-run', resp.data.active_run || 0);
 		}

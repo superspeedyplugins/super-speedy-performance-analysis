@@ -92,9 +92,11 @@ class SSPA_Admin_Page {
 
     public static function enqueue_assets() {
         wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery', 'sspa-transport'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
+        wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-admin'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
         wp_localize_script('sspa-admin', 'sspa_admin', array(
             'nonce' => wp_create_nonce('sspa_admin'),
             'download_prefix' => sspa_download_prefix(),
+            'history_chart_asset' => SSPA_PLUGIN_URL . 'includes/admin/vendor/echarts-history.min.js',
         ));
         wp_localize_script('sspa-admin', 'sspa_tools_i18n', array(
             'show' => __('Show installation steps', 'super-speedy-performance-analysis'),

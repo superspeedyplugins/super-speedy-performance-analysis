@@ -597,7 +597,63 @@
 	border: 1px solid #dcdcde;
 	background: #f6f7f7;
 }
+.sspa-history-chart-card {
+	margin: 16px 0;
+	padding: 18px;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	background: #fff;
+}
+.sspa-history-chart-heading {
+	display: flex;
+	justify-content: space-between;
+	gap: 24px;
+	align-items: flex-start;
+}
+.sspa-history-chart-heading h3 { margin: 0 0 4px; }
+.sspa-history-chart-controls {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+.sspa-history-chart-controls label {
+	display: grid;
+	gap: 4px;
+	font-weight: 600;
+}
+.sspa-history-periods {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	margin: 16px 0;
+}
+.sspa-history-period {
+	display: grid;
+	gap: 3px;
+	padding: 12px 14px;
+	border-radius: 6px;
+	background: #f6f7f7;
+	border-left: 4px solid #6b7280;
+}
+.sspa-history-period-current { border-left-color: #2271b1; }
+.sspa-history-period > span { color: #50575e; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+.sspa-history-chart-changes { margin: 12px 0; }
+.sspa-history-chart-changes ul { display: flex; gap: 6px 14px; flex-wrap: wrap; margin: 6px 0 0 20px; }
+.sspa-history-chart-status { min-height: 20px; color: #50575e; }
+.sspa-history-chart { width: 100%; height: 460px; }
+.sspa-history-data-details { margin-top: 10px; }
+.sspa-history-data-details > summary { cursor: pointer; font-weight: 600; }
+.sspa-history-data-table { margin-top: 10px; }
+.sspa-history-data-table td { vertical-align: top; }
+.sspa-history-fault-text { color: #b32d2e; font-weight: 600; }
+.sspa-table-scroll { overflow-x: auto; }
 @media (max-width: 782px) {
 	.sspa-history-summary { display: block; }
 	.sspa-history-summary > div + div { margin-top: 10px; }
+	.sspa-history-chart-heading { display: block; }
+	.sspa-history-chart-controls { margin-top: 12px; }
+	.sspa-history-chart-controls label { flex: 1 1 180px; }
+	.sspa-history-periods { grid-template-columns: 1fr; }
+	.sspa-history-chart { height: 390px; min-width: 560px; }
+	.sspa-history-chart-card { overflow-x: auto; padding: 12px; }
 }

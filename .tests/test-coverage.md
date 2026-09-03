@@ -1,6 +1,6 @@
 # End-to-end test coverage - Super Speedy Performance Analysis
 
-_Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the main runner executes each `.tests/cases/*.php` file through `wp eval-file` on a persistent native WordPress and WooCommerce site; the Observatory adds one Chromium test against its real PHP viewer. Unit, mock, planted-row-only, static and pure contract tests are excluded by design._
+_Generated 2026-09-03. 47 end-to-end tests across eight areas. Convention: the main runner executes each `.tests/cases/*.php` file through `wp eval-file` on a persistent native WordPress and WooCommerce site; Playwright drives the real Observatory viewer and the wp-admin History chart. Unit, mock, planted-row-only, static and pure contract tests are excluded by design._
 
 ## Coverage
 
@@ -17,6 +17,7 @@ _Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the m
 - **52-release-hardening.php** - exercises the hidden checkout product, run arguments, HTTP wrapper, ownership leases, anonymous bootstrap and persisted uninstall controls.
 - **54-run-job-table.php** - persists and advances a real run queue without rewriting immutable jobs, then removes terminal rows.
 - **56-test-account-login.php** - blocks every normal login and credential path for the measurement customer while the short-lived signed measurement cookie still works.
+- **60-crash-recovery.php** - kills a separate controller process with a real run and foreign drop-in hold active, then proves stale-run recovery restores ownership and permits another run.
 
 ### Profiling, findings and reports
 
@@ -32,6 +33,7 @@ _Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the m
 - **37-component-state.php** - captures plugin-published configuration during real ad-hoc runs while rejecting hostile or private state from exported evidence.
 - **45-http-api-contract.php** - exposes stored outbound HTTP observations through the report, Ability and CLI paths with privacy-safe aggregation and explicit completeness.
 - **47-markdown-export.php** - produces the same privacy-safe Markdown service output for page, site, checkout and history result shapes.
+- **61-taxonomy-placeholder-catalogue.php** - resolves a custom post type archive placeholder to its largest non-empty taxonomy term, skips an unresolvable archive and measures the resolved page.
 
 ### Plugin Impact Analysis
 
@@ -54,6 +56,8 @@ _Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the m
 
 - **12-agents.php** - exercises the registered Abilities API and WP-CLI report, findings, impacts, metrics and traffic surfaces against stored runs.
 - **59-history-comparisons.php** - captures plugin changes, runs two real spot measurements and proves comparisons, expectations, privacy export, History rendering, WP-CLI and read-only Abilities output.
+- **62-history-setup-series.php** - measures contiguous versioned plugin setups, keeps an A-B-A return separate, excludes failed samples and incompatible runs, and produces the chart's public data document.
+- **history-chart.e2e.cjs** - opens wp-admin in Chromium and proves lazy ECharts loading, exact plotted values, metric switching, page filtering, reduced motion and the 480-pixel layout.
 
 ### Community sharing
 
@@ -83,6 +87,7 @@ _Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the m
 - Detect blocked loopbacks and support browser-driven measurement where the server cannot fetch itself.
 - Record site characteristics, component versions, component settings and option usage.
 - Compare saved analyses, update-triggered change sets, declared expectations and learned output signatures.
+- Group adjacent runs by measured plugin and theme versions, compare every retained point and median, and expose the same chart evidence as an accessible table.
 - Export privacy-safe JSON and Markdown through admin, WP-CLI, Abilities and MCP-compatible surfaces.
 - Queue opted-in analysis evidence through a durable signed community outbox.
 - Collect bounded local traffic and WooCommerce funnel evidence without transmitting visitor data.
@@ -95,7 +100,6 @@ _Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the m
 
 ### High risk
 
-- **Crash recovery after process death** - no test kills a run while helper-file holds or queue ownership are active, so a fatal interruption could leave measurement state blocking later work. _Test:_ start a long real run, wait until the hold and job exist, kill the controller process, load WordPress again, then assert stale holds self-heal, the plugin list is unchanged and a new run can start.
 - **Browser-driven fallback measurement** - the plugin's fallback for WAF, Basic Auth or loopback blocking has no browser test that completes a real analysis. A regression could leave affected customers unable to measure anything. _Test:_ make the server loopback fail for one target, start the analysis in a browser, drive the browser transport to completion and assert the same profiles and diagnostics as a loopback run.
 - **Real Query Monitor coexistence and measurement agreement** - case 06 uses a fake Query Monitor header and proves ownership safety, but it does not run against Query Monitor's real database drop-in or compare query count, time and rows. _Test:_ install and activate Query Monitor on the retained site, profile one deterministic page through both collectors and assert agreement within declared tolerances while Query Monitor keeps ownership of `db.php`.
 
@@ -105,20 +109,19 @@ _Generated 2026-08-31. 43 end-to-end tests across eight areas. Convention: the m
 - **Activation-triggered quick spot check** - update-change capture is covered, but the automatic lightweight measurement offered after activation is not driven from activation notice through completed run. _Test:_ activate a fixture plugin, accept the prompt in wp-admin, then assert one bounded spot run records the fixture version and leaves the active plugin set intact.
 - **Traffic comparison between two real collection windows** - the CLI and Ability schema are exercised, but not with two distinct collections produced by real requests and changed behaviour. _Test:_ collect a bounded first request set, change one measured delay, collect the second set, compare them and assert duration-normalised deltas, missing-data quality and unchanged privacy fields.
 - **Abilities API absence is counted as a pass** - case 12 prints `PASS: SKIP` when the API is unavailable, so the main suite can be green without testing the registered abilities. _Test:_ run the suite on its declared WordPress 6.9+ site, fail setup when the Abilities API is absent, then invoke every registered read and execute ability against real stored evidence.
-- **Customer admin interface journeys** - PHP cases render or call most admin paths directly, but no browser test navigates the eight tabs, starts a run, follows live progress, opens a profile or downloads an export. JavaScript and nonce wiring can regress while server tests stay green. _Test:_ use Playwright on the retained site to run one spot analysis from Overview, follow completion, open its page profile and History comparison, then download and validate the export.
+- **Customer admin interface journeys outside History** - the History chart now has a real browser journey, but no browser test starts a run, follows live progress, opens a profile or downloads an export. JavaScript and nonce wiring outside History can regress while server tests stay green. _Test:_ use Playwright on the retained site to run one spot analysis from Overview, follow completion, open its page profile, then download and validate the export.
 
 ### Low risk / nice-to-have
 
 - **Admin-bar controls and deep links** - direct PHP checks cover parts of the menu, but not browser clicks for cache clearing, `sspa_open` links, Markdown download or the first submenu action. _Test:_ open a measured page as administrator, use each visible control and assert the intended panel, cache action or download without a page-navigation mistake.
 - **Clipboard and profile-panel interaction** - rendered content is covered but click-to-copy queries, Escape close, attribution switching and cached/fresh presentation have no browser regression. _Test:_ open a stored profile in Playwright, exercise each interaction and assert persistent text, clipboard contents and focus restoration.
 - **Environment-specific profiler cards** - the current host exercises one capability combination; installed APM agents, blocked `performance_schema`, XHProf and SPX combinations are not exercised end to end. _Test:_ run the Tools page on controlled hosts or PHP configurations for each status and assert the detected state and generated instructions.
-- **Taxonomy-placeholder archive discovery** - archive profiling is covered, but no retained-site case proves a custom post type archive containing a taxonomy placeholder resolves to a real term before profiling. _Test:_ register the archive and term, run catalogue discovery and assert the resolved URL is measured while an empty taxonomy is skipped.
 
 ## Notes
 
-- The main suite contains 59 PHP case files. Seventeen are intentionally absent from the count because their central evidence is fabricated arrays or database rows, mocked HTTP, direct helper calls, static source checks or template rendering rather than a real end-to-end scenario.
+- The main suite contains 62 PHP case files. Seventeen are intentionally absent from the count because their central evidence is fabricated arrays or database rows, mocked HTTP, direct helper calls, static source checks or template rendering rather than a real end-to-end scenario.
 - Cases 12, 16 and 18 are conditional. In particular, case 18 honestly fails on the current macOS PHP-FPM setup because Excimer is not installed; it is not counted as passing coverage on that machine.
 - Cases 20, 45, 47, 52 and 54 are subsystem-level end-to-end tests rather than complete customer journeys. They remain in the count because they exercise real persisted state and the shipped service boundary.
 - The build smoke covers opted-in uninstall cleanup separately. It is not counted because this report follows the `.tests` end-to-end convention.
-- The Observatory's model, manifest and recorder tests are excluded. Only its Chromium test crosses the viewer's HTTP and browser boundary.
+- The Observatory's model, manifest and recorder tests are excluded. Its Chromium viewer journey and the separate wp-admin History chart journey cross real HTTP and browser boundaries.
 - Cases 21, 22, 35, 39 and 40 remain valuable integration or contract coverage even though they fall outside this report's strict scope.
