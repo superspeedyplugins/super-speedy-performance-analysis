@@ -7,11 +7,27 @@ function sspa_t($ok, $label) {
 }
 
 if (!function_exists('wp_register_ability') || !function_exists('wp_get_ability')) {
-    echo "PASS: SKIP - Abilities API not present on this WordPress\n";
+    echo "FAIL: Abilities API missing from the declared WordPress test environment\n";
     return;
 }
 
 wp_set_current_user(1);
+
+$registered_abilities = array(
+    'get-status', 'get-report', 'compare-history', 'get-http-calls', 'get-archive-profile',
+    'get-cache-safety-report', 'get-cache-optimisation-analysis', 'get-findings',
+    'get-plugin-impacts', 'get-page-plugin-usage', 'get-site-metrics', 'run-analysis',
+    'run-deep-analysis', 'run-checkout-flow', 'get-checkout-flow', 'start-traffic-collection',
+    'get-traffic-collection-status', 'stop-traffic-collection', 'get-traffic-observations',
+    'compare-traffic-collections', 'submit-results',
+);
+$missing_abilities = array();
+foreach ($registered_abilities as $ability_name) {
+    if (!is_object(wp_get_ability('super-speedy-performance/' . $ability_name))) {
+        $missing_abilities[] = $ability_name;
+    }
+}
+sspa_t(!$missing_abilities, 'all 21 declared abilities are registered' . ($missing_abilities ? ': ' . implode(', ', $missing_abilities) : ''));
 
 // --- Readonly abilities ---
 $ability = wp_get_ability('super-speedy-performance/get-status');

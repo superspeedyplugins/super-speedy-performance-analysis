@@ -23,12 +23,16 @@ if [ "${PRODUCTS:-0}" -lt 5 ]; then
 fi
 
 FILTER="${1:-}"
+START_AT="${SSPA_START_AT:-}"
 FAILED=0
 RAN=0
 FAILED_NAMES=""
 
 for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     name=$(basename "$case_file")
+    if [ -n "$START_AT" ] && [[ "$name" < "$START_AT" ]]; then
+        continue
+    fi
     if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then
         continue
     fi

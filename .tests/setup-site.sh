@@ -39,6 +39,12 @@ cli plugin install woocommerce --activate --quiet 2>/dev/null
 cli plugin install wordpress-importer --activate --quiet 2>/dev/null
 cli plugin activate "$PLUGIN_SLUG" --quiet 2>/dev/null
 
+WP_VERSION=$(cli core version 2>/dev/null)
+if ! cli eval 'exit(function_exists("wp_register_ability") && function_exists("wp_get_ability") ? 0 : 1);' >/dev/null 2>&1; then
+    echo "  ! WordPress $WP_VERSION does not provide the Abilities API required by this suite" >&2
+    exit 1
+fi
+
 # A persistent object cache. Case 10 needs one, and case 09 measures extra cache modes when
 # one is present, so without it two cases cover less than they claim to. The old Docker
 # environment ran a redis container for exactly this.
@@ -89,6 +95,7 @@ cli eval 'SSPA_Helper_Files::ensure_installed();' >/dev/null 2>&1
 
 echo
 echo "site      $SSPA_SITE_URL"
+echo "WordPress $WP_VERSION (Abilities API present)"
 echo "products  $(cli post list --post_type=product --post_status=publish --format=count 2>/dev/null)"
 echo "orders    $(cli eval 'echo count(wc_get_orders(array("limit" => -1, "return" => "ids")));' 2>/dev/null)"
 echo "posts     $(cli post list --post_type=post --post_status=publish --format=count 2>/dev/null)"
