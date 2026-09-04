@@ -34,6 +34,19 @@ if [ "$RESET" = "--reset" ] || [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     fi
 fi
 
+# parallel-dev creates a new site against the canonical repository. A feature
+# worktree must replace that symlink with the checkout which invoked this suite,
+# otherwise a green run can accidentally test main instead of the branch.
+PLUGIN_LINK="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
+if [ -L "$PLUGIN_LINK" ]; then
+    ln -sfn "$PLUGIN_DIR" "$PLUGIN_LINK"
+elif [ -e "$PLUGIN_LINK" ]; then
+    echo "  ! refusing to replace non-symlink plugin path: $PLUGIN_LINK" >&2
+    exit 1
+else
+    ln -s "$PLUGIN_DIR" "$PLUGIN_LINK"
+fi
+
 echo "==> plugins"
 cli plugin install woocommerce --activate --quiet 2>/dev/null
 cli plugin install wordpress-importer --activate --quiet 2>/dev/null

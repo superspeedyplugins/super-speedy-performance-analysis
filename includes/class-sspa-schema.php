@@ -55,6 +55,7 @@ class SSPA_Schema {
         $submission_events = self::table('submission_events');
         $traffic_collections = self::table('traffic_collections');
         $traffic_events = self::table('traffic_events');
+		$traffic_endpoint_observations = self::table('traffic_endpoint_observations');
         $traffic_rollups = self::table('traffic_rollups');
         $traffic_actor_work = self::table('traffic_actor_work');
         $traffic_reports = self::table('traffic_reports');
@@ -293,6 +294,7 @@ class SSPA_Schema {
             origin_sample_modulus smallint(5) unsigned NOT NULL DEFAULT 100,
             event_ceiling int(10) unsigned NOT NULL DEFAULT 250000,
             event_id_stop bigint(20) unsigned NOT NULL DEFAULT 0,
+			endpoint_id_stop bigint(20) unsigned NOT NULL DEFAULT 0,
             disk_ceiling_bytes bigint(20) unsigned NOT NULL DEFAULT 33554432,
             aggregate_cursor bigint(20) unsigned NOT NULL DEFAULT 0,
             source_revision int(10) unsigned NOT NULL DEFAULT 0,
@@ -333,6 +335,27 @@ class SSPA_Schema {
             PRIMARY KEY  (id),
             KEY collection_id (collection_id,id)
         ) $charset_collate;");
+
+		dbDelta("CREATE TABLE $traffic_endpoint_observations (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			collection_id bigint(20) unsigned NOT NULL,
+			identity_key binary(32) NOT NULL,
+			transport varchar(16) NOT NULL,
+			endpoint varchar(500) NOT NULL,
+			http_method varchar(10) NOT NULL,
+			auth_context varchar(16) NOT NULL,
+			observed_at int(10) unsigned NOT NULL,
+			status_code smallint(5) unsigned NOT NULL DEFAULT 0,
+			wall_ms mediumint(8) unsigned NOT NULL DEFAULT 0,
+			cpu_us int(10) unsigned NULL,
+			query_count mediumint(8) unsigned NULL,
+			handler_ms mediumint(8) unsigned NULL,
+			observer_us mediumint(8) unsigned NULL,
+			boundary varchar(24) NOT NULL DEFAULT 'shutdown_fallback',
+			PRIMARY KEY  (id),
+			KEY collection_identity (collection_id,identity_key,id),
+			KEY collection_id (collection_id,id)
+		) $charset_collate;");
 
         dbDelta("CREATE TABLE $traffic_rollups (
             collection_id bigint(20) unsigned NOT NULL,
@@ -432,7 +455,7 @@ class SSPA_Schema {
 
     public static function drop_tables() {
         global $wpdb;
-        foreach (array('run_jobs', 'run_queues', 'traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_events', 'traffic_collections', 'submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
+        foreach (array('run_jobs', 'run_queues', 'traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_endpoint_observations', 'traffic_events', 'traffic_collections', 'submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
             $table = self::table($name);
             $wpdb->query("DROP TABLE IF EXISTS $table");
         }

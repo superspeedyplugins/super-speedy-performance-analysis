@@ -10,6 +10,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 sspa_require_site || exit 1
 sync_plugin || exit 1
 
+# A retained site can have a collection left running by a previous focused
+# case. Clear that test state on the way in so early lifecycle cases do not
+# inherit a duration conflict from an earlier run.
+cli eval '$active = SSPA_Traffic_Collection::active(); if ( $active ) { SSPA_Traffic_Collection::stop( (int) $active["id"], true ); }' >/dev/null 2>&1 || exit 1
+
 # Pre-flight: several cases silently degrade into failures (sector "general", tiny deep
 # deltas, no write profiles) when the WooCommerce sample data has gone missing - reseed.
 PRODUCTS=$(cli post list --post_type=product --post_status=publish --format=count 2>/dev/null | tr -dc '0-9')

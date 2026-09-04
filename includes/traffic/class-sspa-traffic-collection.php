@@ -26,6 +26,7 @@ class SSPA_Traffic_Collection {
 
     public static function durations() {
         return array(
+			'15m' => 15 * MINUTE_IN_SECONDS,
             '1h' => HOUR_IN_SECONDS,
             '2h' => 2 * HOUR_IN_SECONDS,
             '4h' => 4 * HOUR_IN_SECONDS,
@@ -45,7 +46,7 @@ class SSPA_Traffic_Collection {
         }
         $durations = self::durations();
         if (!isset($durations[$duration])) {
-            return new WP_Error('sspa_traffic_duration', __('Choose 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));
+            return new WP_Error('sspa_traffic_duration', __('Choose 15m, 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));
         }
         $lock_owner = self::start_lock();
         if (!$lock_owner) {
@@ -131,11 +132,15 @@ class SSPA_Traffic_Collection {
         $events = SSPA_Schema::table('traffic_events');
         $max_id = (int) $wpdb->get_var("SELECT COALESCE(MAX(id),0) FROM $events");
         $event_id_stop = $max_id + $event_ceiling;
+		$endpoint_table = SSPA_Schema::table('traffic_endpoint_observations');
+		$endpoint_max_id = (int) $wpdb->get_var("SELECT COALESCE(MAX(id),0) FROM $endpoint_table");
+		$endpoint_id_stop = $endpoint_max_id + $event_ceiling;
         $helper = SSPA_Traffic_Helper::install(array(
             'collection_id' => $collection_id,
             'collect_until' => $collect_until,
             'outcomes_until' => $outcomes_until,
             'event_id_stop' => $event_id_stop,
+			'endpoint_id_stop' => $endpoint_id_stop,
             'origin_sample_modulus' => $sample_modulus,
             'key_option' => $key_option,
         ));
@@ -148,6 +153,7 @@ class SSPA_Traffic_Collection {
             'status_code' => SSPA_Traffic_Codes::COLLECTION_RUNNING,
             'started_at' => gmdate('Y-m-d H:i:s', $now),
             'event_id_stop' => $event_id_stop,
+			'endpoint_id_stop' => $endpoint_id_stop,
             'preflight_insert_ms' => $preflight,
         ), array('id' => $collection_id));
         wp_schedule_single_event($collect_until + 5, 'sspa_traffic_collection_tick', array($collection_id));
@@ -190,6 +196,7 @@ class SSPA_Traffic_Collection {
         SSPA_Traffic_Helper::remove(true);
         delete_option($key_option);
         $wpdb->delete(SSPA_Schema::table('traffic_events'), array('collection_id' => (int) $collection_id));
+		$wpdb->delete(SSPA_Schema::table('traffic_endpoint_observations'), array('collection_id' => (int) $collection_id));
         $wpdb->delete(SSPA_Schema::table('traffic_collections'), array('id' => (int) $collection_id));
     }
 
@@ -329,6 +336,7 @@ class SSPA_Traffic_Collection {
                     'collect_until' => $now,
                     'outcomes_until' => $outcomes_until,
                     'event_id_stop' => (int) $row['event_id_stop'],
+					'endpoint_id_stop' => (int) $row['endpoint_id_stop'],
                     'origin_sample_modulus' => (int) $row['origin_sample_modulus'],
                     'key_option' => self::key_option($collection_id),
                 ));
@@ -389,7 +397,7 @@ class SSPA_Traffic_Collection {
         }
         $id = (int) $row['id'];
         $deleted = array();
-        foreach (array('traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_events') as $name) {
+        foreach (array('traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_endpoint_observations', 'traffic_events') as $name) {
             $deleted[$name] = (int) $wpdb->delete(SSPA_Schema::table($name), array('collection_id' => $id));
         }
         delete_option(self::key_option($id));
@@ -1084,11 +1092,12 @@ class SSPA_Traffic_Collection {
 
     private static function event_table_bytes() {
         global $wpdb;
-        $table = SSPA_Schema::table('traffic_events');
+		$tables = array(SSPA_Schema::table('traffic_events'), SSPA_Schema::table('traffic_endpoint_observations'));
         $bytes = $wpdb->get_var($wpdb->prepare(
-            'SELECT COALESCE(DATA_LENGTH + INDEX_LENGTH,0) FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s',
+			'SELECT COALESCE(SUM(DATA_LENGTH + INDEX_LENGTH),0) FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME IN (%s,%s)',
             DB_NAME,
-            $table
+			$tables[0],
+			$tables[1]
         ));
         return $bytes !== null ? (int) $bytes : null;
     }

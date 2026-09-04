@@ -16,7 +16,17 @@ sspa_assets_t(
     0 === strpos($css_version, SSPA_VERSION . '.') && preg_match('/\.\d{9,}$/', $css_version),
     'the stylesheet cache key carries the file mtime (' . $css_version . ')'
 );
-sspa_assets_t(sspa_asset_version($js) !== $css_version, 'each asset gets its own cache key');
+$js_path = SSPA_PLUGIN_DIR . $js;
+$js_original = filemtime($js_path);
+$css_mtime = filemtime(SSPA_PLUGIN_DIR . $css);
+if ($js_original === $css_mtime) {
+    touch($js_path, $js_original + 1);
+    clearstatcache(true, $js_path);
+}
+$js_version = sspa_asset_version($js);
+touch($js_path, $js_original);
+clearstatcache(true, $js_path);
+sspa_assets_t($js_version !== $css_version, 'each asset uses its own file mtime for its cache key');
 sspa_assets_t(
     'store.example-' . SSPA_VERSION . '-sspa-report.json' === sspa_download_filename('sspa-report.json', 'https://www.Store.Example:8443/path'),
     'download filenames group by canonical domain and plugin version before the existing name'

@@ -12,24 +12,26 @@ $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_events'));
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_reports'));
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_actor_work'));
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_rollups'));
+$wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_endpoint_observations'));
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_collections'));
 $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like('sspa_traffic_key_') . '%'));
 
-foreach (array('traffic_collections', 'traffic_events', 'traffic_rollups', 'traffic_actor_work', 'traffic_reports') as $name) {
+foreach (array('traffic_collections', 'traffic_events', 'traffic_rollups', 'traffic_actor_work', 'traffic_reports', 'traffic_endpoint_observations') as $name) {
     $table = SSPA_Schema::table($name);
     sspa_tl_t($table === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)), "$name table exists");
 }
-sspa_tl_t('2.4' === SSPA_Schema::DB_VERSION && '2.4' === get_option('sspa_db_version'), 'database schema version is 2.4');
+sspa_tl_t('2.6' === SSPA_Schema::DB_VERSION && '2.6' === get_option('sspa_db_version'), 'database schema version is 2.6');
 $event_columns = $wpdb->get_col('SHOW COLUMNS FROM ' . SSPA_Schema::table('traffic_events'));
 sspa_tl_t(in_array('automation_code', $event_columns, true) && in_array('ssf_protection_code', $event_columns, true), 'request rows have privacy-safe automation and SSF decision dimensions');
 
 $durations = SSPA_Traffic_Collection::durations();
 sspa_tl_t(
-    isset($durations['1h'], $durations['2h'], $durations['4h'])
+    isset($durations['15m'], $durations['1h'], $durations['2h'], $durations['4h'])
+        && 15 * MINUTE_IN_SECONDS === $durations['15m']
         && HOUR_IN_SECONDS === $durations['1h']
         && 2 * HOUR_IN_SECONDS === $durations['2h']
         && 4 * HOUR_IN_SECONDS === $durations['4h'],
-    'short collection durations map to one, two and four hours'
+    'short collection durations map to 15 minutes, one, two and four hours'
 );
 
 $started = SSPA_Traffic_Collection::start('1h', 'test');
@@ -97,6 +99,9 @@ if (!is_wp_error($second)) {
 
 $locked = SSPA_Traffic_Collection::start('1h', 'test');
 sspa_tl_t(!is_wp_error($locked), 'a collection starts for lifecycle-lock arbitration');
+if (is_wp_error($locked)) {
+    echo 'FAIL: lifecycle-lock start error: ' . $locked->get_error_code() . ' - ' . $locked->get_error_message() . "\n";
+}
 if (!is_wp_error($locked)) {
     $locked_id = (int) $locked['collection']['id'];
     $lock_key = 'sspa_traffic_collection_lock_' . $locked_id;
@@ -126,4 +131,5 @@ foreach ($wpdb->get_col($wpdb->prepare("SELECT option_name FROM {$wpdb->options}
     delete_option($option);
 }
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_events'));
+$wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_endpoint_observations'));
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_collections'));
