@@ -7,6 +7,7 @@ defined('ABSPATH') || exit;
  * .kb/agent-api.md - keep them in sync and bump SCHEMA on breaking changes.
  */
 class SSPA_Report {
+	const ENDPOINT_EVIDENCE_SCHEMA = 'sspa/endpoint-evidence@1';
 
     const SCHEMA = 1;
 
@@ -524,4 +525,210 @@ class SSPA_Report {
         }
         return $out;
     }
+
+	/** Public, local-only endpoint evidence contract consumed by Scalability Pro. */
+	public static function endpoint_evidence($collection_id = 0) {
+		global $wpdb;
+		$collection = $collection_id ? SSPA_Traffic_Collection::get((int) $collection_id) : SSPA_Traffic_Collection::latest();
+		if (!$collection) {
+			return new WP_Error('sspa_no_endpoint_collection', __('No traffic collection was found.', 'super-speedy-performance-analysis'));
+		}
+		$limit = max(100, min(250000, (int) $collection['event_ceiling']));
+		$rows = $wpdb->get_results($wpdb->prepare(
+			'SELECT HEX(identity_key) identity_key, transport, endpoint, http_method, auth_context, observed_at, status_code, wall_ms, cpu_us, query_count, handler_ms, observer_us, boundary FROM %i WHERE collection_id = %d ORDER BY identity_key ASC, id ASC LIMIT %d',
+			SSPA_Schema::table('traffic_endpoint_observations'),
+			(int) $collection['id'],
+			$limit
+		), ARRAY_A);
+		$groups = array();
+		foreach ((array) $rows as $row) {
+			$key = strtolower((string) $row['identity_key']);
+			if (!isset($groups[$key])) {
+				$groups[$key] = array('identity' => array(
+					'transport' => (string) $row['transport'],
+					'endpoint' => (string) $row['endpoint'],
+					'method' => (string) $row['http_method'],
+					'context' => (string) $row['auth_context'],
+				), 'rows' => array());
+			}
+			$groups[$key]['rows'][] = $row;
+		}
+		$endpoints = array();
+		foreach ($groups as $key => $group) {
+			$identity = $group['identity'];
+			$wall = array();
+			$queries = array();
+			$handler = array();
+			$observer = array();
+			$status_counts = array('2xx' => 0, '3xx' => 0, '4xx' => 0, '5xx' => 0, 'other' => 0);
+			$first = null;
+			$last = null;
+			$boundaries = array();
+			foreach ($group['rows'] as $row) {
+				$wall[] = (int) $row['wall_ms'];
+				if (null !== $row['query_count']) { $queries[] = (int) $row['query_count']; }
+				if (null !== $row['handler_ms']) { $handler[] = (int) $row['handler_ms']; }
+				if (null !== $row['observer_us']) { $observer[] = (int) $row['observer_us']; }
+				$status = (int) $row['status_code'];
+				$bucket = $status >= 200 && $status < 300 ? '2xx' : ($status >= 300 && $status < 400 ? '3xx' : ($status >= 400 && $status < 500 ? '4xx' : ($status >= 500 && $status < 600 ? '5xx' : 'other')));
+				$status_counts[$bucket]++;
+				$first = null === $first ? (int) $row['observed_at'] : min($first, (int) $row['observed_at']);
+				$last = null === $last ? (int) $row['observed_at'] : max($last, (int) $row['observed_at']);
+				$boundaries[(string) $row['boundary']] = true;
+			}
+			$owners = self::endpoint_owners($identity);
+			$endpoints[] = array(
+				'key' => $key,
+				'identity' => array(
+					'blog_id' => (int) $collection['blog_id'],
+					'transport' => $identity['transport'],
+					'route_pattern' => 'rest' === $identity['transport'] ? $identity['endpoint'] : null,
+					'action' => 'rest' === $identity['transport'] ? null : $identity['endpoint'],
+					'method' => $identity['method'],
+					'auth_context' => $identity['context'],
+				),
+				'observations' => array(
+					'count' => count($group['rows']),
+					'first_seen' => null === $first ? null : gmdate('c', $first),
+					'last_seen' => null === $last ? null : gmdate('c', $last),
+					'duration_seconds' => null === $first || null === $last ? 0 : max(0, $last - $first),
+					'status_counts' => $status_counts,
+					'whole_request_wall_ms' => self::numeric_distribution($wall, true),
+					'handler_wall_ms' => self::numeric_distribution($handler, false),
+					'query_count' => self::numeric_distribution($queries, false),
+					'observer_overhead_us' => self::numeric_distribution($observer, false),
+				),
+				'owners' => $owners,
+				'plugin_activity' => array(),
+				'quality' => array(
+					'identity' => 'exact_registered_identity',
+					'frequency' => 'exact_during_bounded_collection',
+					'handler_boundary' => count($boundaries) === 1 ? (string) key($boundaries) : 'mixed',
+					'activity' => 'unknown',
+					'excimer' => 'unavailable',
+				),
+			);
+		}
+		usort($endpoints, function ($a, $b) {
+			return (int) $b['observations']['whole_request_wall_ms']['sum'] <=> (int) $a['observations']['whole_request_wall_ms']['sum'];
+		});
+		$started = !empty($collection['started_at']) ? strtotime($collection['started_at'] . ' UTC') : 0;
+		$ended_value = !empty($collection['finished_at']) ? $collection['finished_at'] : $collection['collect_until'];
+		$ended = $ended_value ? strtotime($ended_value . ' UTC') : 0;
+		return array(
+			'schema' => self::ENDPOINT_EVIDENCE_SCHEMA,
+			'capture' => array(
+				'collection_id' => (int) $collection['id'],
+				'started_at' => $started ? gmdate('c', $started) : null,
+				'ended_at' => $ended ? gmdate('c', $ended) : null,
+				'duration_seconds' => $started && $ended ? max(0, $ended - $started) : 0,
+				'identity_observations' => count($rows),
+				'detailed_samples' => 0,
+				'detailed_sample_ceiling' => 0,
+			),
+			'endpoints' => $endpoints,
+		);
+	}
+
+	public static function start_endpoint_evidence() {
+		return SSPA_Traffic_Collection::start('15m', 'spro-fast-ajax');
+	}
+
+	public static function endpoint_evidence_status($collection_id = 0) {
+		return SSPA_Traffic_Collection::status((int) $collection_id);
+	}
+
+	public static function stop_endpoint_evidence($collection_id = 0) {
+		return SSPA_Traffic_Collection::stop((int) $collection_id, true);
+	}
+
+	private static function numeric_distribution($values, $with_sum) {
+		$values = array_map('intval', (array) $values);
+		sort($values, SORT_NUMERIC);
+		$count = count($values);
+		$out = array(
+			'median' => $count ? $values[(int) ceil(0.5 * $count) - 1] : null,
+			'p95' => $count ? $values[(int) ceil(0.95 * $count) - 1] : null,
+			'samples' => $count,
+		);
+		if ($with_sum) { $out['sum'] = array_sum($values); }
+		return $out;
+	}
+
+	private static function endpoint_owners($identity) {
+		$callbacks = array();
+		if ('rest' === $identity['transport'] && function_exists('rest_get_server')) {
+			foreach (rest_get_server()->get_routes() as $pattern => $handlers) {
+				if ((string) $pattern !== (string) $identity['endpoint']) { continue; }
+				foreach ((array) $handlers as $handler) {
+					if (!is_array($handler) || empty($handler['methods'])) { continue; }
+					$methods = is_array($handler['methods']) ? array_keys(array_filter($handler['methods'])) : preg_split('/\s*,\s*/', (string) $handler['methods']);
+					if (!in_array($identity['method'], array_map('strtoupper', $methods), true)) { continue; }
+					if (isset($handler['callback'])) { $callbacks['execution'][] = $handler['callback']; }
+					if (isset($handler['permission_callback'])) { $callbacks['permission'][] = $handler['permission_callback']; }
+				}
+			}
+		} else {
+			$hook = 'wc_ajax' === $identity['transport'] ? 'wc_ajax_' . $identity['endpoint'] : (('logged_in' === $identity['context'] ? 'wp_ajax_' : 'wp_ajax_nopriv_') . $identity['endpoint']);
+			global $wp_filter;
+			if (!empty($wp_filter[$hook]) && $wp_filter[$hook] instanceof WP_Hook) {
+				foreach ($wp_filter[$hook]->callbacks as $bucket) {
+					foreach ($bucket as $entry) { if (isset($entry['function'])) { $callbacks['execution'][] = $entry['function']; } }
+				}
+			}
+		}
+		$execution_result = self::callback_plugins(isset($callbacks['execution']) ? $callbacks['execution'] : array());
+		$permission_result = self::callback_plugins(isset($callbacks['permission']) ? $callbacks['permission'] : array());
+		$execution = $execution_result['plugins'];
+		$permission = $permission_result['plugins'];
+		$dependencies = self::required_plugin_closure(array_merge($execution, $permission));
+		$callback_count = $execution_result['callbacks'] + $permission_result['callbacks'];
+		$unresolved_count = $execution_result['unresolved'] + $permission_result['unresolved'];
+		$resolution = !$callback_count || $unresolved_count === $callback_count
+			? 'unresolved' : ($unresolved_count ? 'partial' : 'complete');
+		return array(
+			'execution' => $execution,
+			'permission' => $permission,
+			'dependencies' => array_values(array_diff($dependencies, $execution, $permission)),
+			'resolution' => $resolution,
+			'fingerprint' => 'sha256:' . hash('sha256', wp_json_encode(array($execution, $permission, $dependencies))),
+		);
+	}
+
+	private static function callback_plugins($callbacks) {
+		$plugins = array();
+		$unresolved = 0;
+		$active = array_values((array) get_option('active_plugins', array()));
+		foreach ((array) $callbacks as $callback) {
+			try {
+				$reflection = is_array($callback) ? new ReflectionMethod($callback[0], $callback[1]) : (is_object($callback) && !($callback instanceof Closure) ? new ReflectionMethod($callback, '__invoke') : new ReflectionFunction($callback));
+				$file = wp_normalize_path((string) $reflection->getFileName());
+			} catch (Throwable $error) { $unresolved++; continue; }
+			$relative = wp_normalize_path(plugin_basename($file));
+			foreach ($active as $main) {
+				$directory = dirname($main);
+				if ($relative === $main || ('.' !== $directory && 0 === strpos($relative, trailingslashit($directory)))) { $plugins[] = $main; break; }
+			}
+		}
+		$plugins = array_values(array_unique($plugins));
+		sort($plugins, SORT_STRING);
+		return array('plugins' => $plugins, 'callbacks' => count((array) $callbacks), 'unresolved' => $unresolved);
+	}
+
+	private static function required_plugin_closure($owners) {
+		if (!function_exists('get_plugins')) { require_once ABSPATH . 'wp-admin/includes/plugin.php'; }
+		$headers = get_plugins();
+		$slugs = array();
+		foreach ($headers as $file => $header) { $slugs['.' === dirname($file) ? basename($file, '.php') : dirname($file)] = $file; }
+		$required = array_values(array_unique($owners));
+		$queue = $required;
+		while ($queue) {
+			$file = array_shift($queue);
+			foreach (array_filter(array_map('trim', explode(',', isset($headers[$file]['RequiresPlugins']) ? (string) $headers[$file]['RequiresPlugins'] : ''))) as $slug) {
+				if (isset($slugs[$slug]) && !in_array($slugs[$slug], $required, true)) { $required[] = $slugs[$slug]; $queue[] = $slugs[$slug]; }
+			}
+		}
+		sort($required, SORT_STRING);
+		return $required;
+	}
 }

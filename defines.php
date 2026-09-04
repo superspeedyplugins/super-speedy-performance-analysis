@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-define('SSPA_DB_VERSION', '2.4');
+define('SSPA_DB_VERSION', '2.6');
 
 // The mu-loader and the db.php drop-in are installed files with their own lifecycles: a
 // plugin release usually changes neither. Version them independently so an ordinary patch

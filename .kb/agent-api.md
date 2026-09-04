@@ -5,26 +5,22 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 ## Surfaces (identical data)
 
 - **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|http-calls|cache-scan|cache-optimisation-report|report`
-  plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts
-  take `--format=json` or emit JSON directly).
-- **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
-  `get-status`, `get-report`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
-  `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
-  `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
-  `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at
-  `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
-- **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
-  and exposes them as first-class tools (dash-joined names, for example
-  `super-speedy-performance-get-report`). The plugin registers no dedicated MCP server.
 
-Runs started via abilities are asynchronous: poll `get-status` until `active` is false.
-`wp sspa run` is synchronous and drives the batches itself.
+plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts take `--format=json` or emit JSON directly).
+
+- **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
+
+`get-status`, `get-report`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`, `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`, `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`, `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
+
+- **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
+
+and exposes them as first-class tools (dash-joined names, for example `super-speedy-performance-get-report`). The plugin registers no dedicated MCP server.
+
+Runs started via abilities are asynchronous: poll `get-status` until `active` is false. `wp sspa run` is synchronous and drives the batches itself.
 
 ## Outbound HTTP API inventory
 
-`SSPA_Report::http_calls($run_id)`, the `get-http-calls` ability and
-`wp sspa http-calls [--run-id=<id>] --format=json` return the identical local-only object. With no
-run id they use the latest completed baseline or spot analysis. Reading it never starts a run.
+`SSPA_Report::http_calls($run_id)`, the `get-http-calls` ability and `wp sspa http-calls [--run-id=<id>] --format=json` return the identical local-only object. With no run id they use the latest completed baseline or spot analysis. Reading it never starts a run.
 
 The object has its own schema version, currently `1`:
 
@@ -50,13 +46,7 @@ The object has its own schema version, currently `1`:
 }
 ```
 
-The inventory includes fast calls as well as slow findings and aggregates by normalised endpoint,
-method and component. It never returns query values, bodies, headers, cookies, credentials or
-account/install/order/payment identifiers. Variable path segments become typed placeholders.
-`purpose` is `payment`, `licence`, `update`, `telemetry`, `marketing`, `operational` or `unknown`.
-`block_safety` is `never`, `review` or `safe`; consumers must fail unknown values to review and
-must never offer blocking for `never`. `complete=false` names coverage gaps in
-`incomplete_reasons`, including old captures, truncation and analyses without wp-admin pages.
+The inventory includes fast calls as well as slow findings and aggregates by normalised endpoint, method and component. It never returns query values, bodies, headers, cookies, credentials or account/install/order/payment identifiers. Variable path segments become typed placeholders. `purpose` is `payment`, `licence`, `update`, `telemetry`, `marketing`, `operational` or `unknown`. `block_safety` is `never`, `review` or `safe`; consumers must fail unknown values to review and must never offer blocking for `never`. `complete=false` names coverage gaps in `incomplete_reasons`, including old captures, truncation and analyses without wp-admin pages.
 
 ## Report object (get-report / wp sspa report)
 
@@ -97,144 +87,92 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
 
 ### Shared-cache safety report
 
-`get-cache-safety-report`, `wp sspa cache-scan` and the report's
-`cache_safety` member expose the same local-only assessment. It is produced from
-one anonymous response per shared-cache page candidate plus a bounded active-source scan.
-`shared_cache_status` is `visitor_specific_content_review_recommended` or
-`no_visitor_specific_content_hazards_detected`; `difficulty` is `low`, `moderate` or `high`.
+`get-cache-safety-report`, `wp sspa cache-scan` and the report's `cache_safety` member expose the same local-only assessment. It is produced from one anonymous response per shared-cache page candidate plus a bounded active-source scan. `shared_cache_status` is `visitor_specific_content_review_recommended` or `no_visitor_specific_content_hazards_detected`; `difficulty` is `low`, `moderate` or `high`.
 
-The assessment includes potential `hazards`, existing Type A/Type B/fragment `coverage`,
-per-page application and infrastructure cookie names, nonce contexts, and ranked
-`candidate_components` with review priority, observed page keys and component-relative file/line
-evidence. It never includes HTML, cookie values, nonce values or customer text. Treat
-candidate components as the place to inspect first, not as proven owners. The Overview tab
-can download the same evidence as a versioned `sspa/shared-cache-safety-report@2` JSON report.
-Repeated site-wide signals are scored once, while their affected page count remains evidence.
-The `source_scan` block states component coverage and every component limited by the fair
-per-component scan ceiling. A controlled
-guest/customer/basket comparison is still required before enabling shared caching.
+The assessment includes potential `hazards`, existing Type A/Type B/fragment `coverage`, per-page application and infrastructure cookie names, nonce contexts, and ranked `candidate_components` with review priority, observed page keys and component-relative file/line evidence. It never includes HTML, cookie values, nonce values or customer text. Treat candidate components as the place to inspect first, not as proven owners. The Overview tab can download the same evidence as a versioned `sspa/shared-cache-safety-report@2` JSON report. Repeated site-wide signals are scored once, while their affected page count remains evidence. The `source_scan` block states component coverage and every component limited by the fair per-component scan ceiling. A controlled guest/customer/basket comparison is still required before enabling shared caching.
 
 ### Experimental traffic observations
 
-`get-traffic-observations` and `wp sspa traffic observations` return
-`sspa/traffic-collector-observations@1`. This is a Phase 3 aggregate diagnostic, not the final
-`sspa/traffic-performance-analysis@1` report. It contains collection health, source quality,
-event/request distributions, exact observed logged-in and non-empty-basket origin cohorts,
-WooCommerce event/link counts and aggregate minor-unit values by currency. Request-performance
-groups keep actor state, surface, page class and exact/sampled status separate. Each group states
-observed and estimated request counts, sample modulus, distinct actor count, wall-time average and
-p95, and wall/CPU/query totals. Only sampled rows are weighted.
+`get-traffic-observations` and `wp sspa traffic observations` return `sspa/traffic-collector-observations@1`. This is a Phase 3 aggregate diagnostic, not the final `sspa/traffic-performance-analysis@1` report. It contains collection health, source quality, event/request distributions, exact observed logged-in and non-empty-basket origin cohorts, WooCommerce event/link counts and aggregate minor-unit values by currency. Request-performance groups keep actor state, surface, page class and exact/sampled status separate. Each group states observed and estimated request counts, sample modulus, distinct actor count, wall-time average and p95, and wall/CPU/query totals. Only sampled rows are weighted.
 
-The `ssf_protection_opportunity` headline uses SSF's installed pure archive-gate decision when
-available. The `cache_fragment_opportunity` headline separates product single, product archive
-and shop GET/HEAD requests reaching WordPress by logged-in/basket state. Gross origin work is
-reported, while fragment cost and net saving stay unavailable until fragment requests are
-measured separately.
+The `ssf_protection_opportunity` headline uses SSF's installed pure archive-gate decision when available. The `cache_fragment_opportunity` headline separates product single, product archive and shop GET/HEAD requests reaching WordPress by logged-in/basket state. Gross origin work is reported, while fragment cost and net saving stay unavailable until fragment requests are measured separately.
 
-`wp sspa traffic compare <before-id> <after-id>` and the `compare-traffic-collections` ability
-return `sspa/traffic-collection-comparison@1`. Request volumes and processing totals are projected
-to 24 hours before comparison; average and p95 generation time remain per-request measurements.
-Every metric contains before, after, absolute change and percentage change.
+`wp sspa traffic compare <before-id> <after-id>` and the `compare-traffic-collections` ability return `sspa/traffic-collection-comparison@1`. Request volumes and processing totals are projected to 24 hours before comparison; average and p95 generation time remain per-request measurements. Every metric contains before, after, absolute change and percentage change.
 
-It never exposes actor, session, account, order or path join keys. The source ledger explicitly
-marks browser and Cloudflare evidence unavailable and anonymous WordPress-origin requests sampled.
-Early reads do not stop or shorten collection. Destructive raw-data deletion is only available
-in the Traffic tab and `wp sspa traffic delete`, not through MCP.
+It never exposes actor, session, account, order or path join keys. The source ledger explicitly marks browser and Cloudflare evidence unavailable and anonymous WordPress-origin requests sampled. Early reads do not stop or shorten collection. Destructive raw-data deletion is only available in the Traffic tab and `wp sspa traffic delete`, not through MCP.
+
+### Fast Ajax endpoint evidence
+
+The local PHP contract for Scalability Pro is `sspa/endpoint-evidence@1`. It is additive to the main report and is not exposed through WP-CLI, Abilities or MCP. Consumers call:
+
+- `SSPA_Report::start_endpoint_evidence()` to start one bounded 15-minute collection.
+- `SSPA_Report::endpoint_evidence_status($collection_id)` to read its lifecycle state.
+- `SSPA_Report::stop_endpoint_evidence($collection_id)` to stop and finalise it.
+- `SSPA_Report::endpoint_evidence($collection_id)` to read evidence during or after collection.
+
+Each endpoint is keyed by the exact registered transport, action or REST route pattern, method and authentication context. Its evidence includes count, first/last seen, status classes, whole-request wall-time median/p95/sum, handler timing, query-count distribution and observer-overhead distribution. `owners` separates execution callbacks from REST permission callbacks, adds recursive `Requires Plugins` dependencies, states whether resolution was `complete`, `partial` or `unresolved`, and supplies a fingerprint for invalidation.
+
+The first contract intentionally returns `plugin_activity: []`, `quality.activity: "unknown"`, `capture.detailed_samples: 0` and `capture.detailed_sample_ceiling: 0`. Consumers must not interpret that as proof that a plugin did no work. Detailed per-plugin activity remains unavailable until its production overhead has been measured and bounded.
+
+The observer stores no request or response body, cookie, query value, account identifier or literal dynamic REST path. Unregistered and ambiguous request input cannot create evidence. The Traffic tab displays the same identities, frequency, timing, query, failure and evidence-quality data for administrator review.
 
 ### Page
 
-`page_key`, `variant` (anon|customer|admin), `generation_ms`, `ttfb_ms`, `sql_ms`,
-`sql_count`, `rows_fetched`, `http_ms`, `php_ms`, `peak_mem_bytes`, `duplicate_queries`,
-`mail_count`, `response_code`, `blocked_by` (security layer name or null). Special keys:
-`baseline` (server noise floor), `mail-probe` (mail construction cost), `write-*` (opt-in
-write cascades).
+`page_key`, `variant` (anon|customer|admin), `generation_ms`, `ttfb_ms`, `sql_ms`, `sql_count`, `rows_fetched`, `http_ms`, `php_ms`, `peak_mem_bytes`, `duplicate_queries`, `mail_count`, `response_code`, `blocked_by` (security layer name or null). Special keys: `baseline` (server noise floor), `mail-probe` (mail construction cost), `write-*` (opt-in write cascades).
 
 ### Impact (Plugin Impact Analysis)
 
-Plugin Impact Analysis is a two-phase sweep: every eligible plugin is screened on its busiest
-pages, and plugins showing measurable impact are then measured on every page plus extra
-cache modes. Expect one impact row per plugin per measured page per cache mode - many
-rows for impactful plugins, a few screening rows for innocent ones.
+Plugin Impact Analysis is a two-phase sweep: every eligible plugin is screened on its busiest pages, and plugins showing measurable impact are then measured on every page plus extra cache modes. Expect one impact row per plugin per measured page per cache mode - many rows for impactful plugins, a few screening rows for innocent ones.
 
-`plugin`, `page_key`, `method` (single_out; bisect appears only in pre-0.8 data),
-`object_cache_mode` (`normal` = the cache in its natural warmed state - the steady-state
-number to headline; `disabled` and `prime` appear for impacted plugins on sites with a
-persistent object cache; `warm` only in pre-0.9.1 data), `delta_generation_ms`,
-`delta_sql_ms`, `delta_http_ms`, `delta_mem_bytes`, `delta_queries`, `noise_floor_ms`,
-`confidence` (measured = proven; none = |delta| below noise floor), `measured_at`.
+`plugin`, `page_key`, `method` (single_out; bisect appears only in pre-0.8 data), `object_cache_mode` (`normal` = the cache in its natural warmed state - the steady-state number to headline; `disabled` and `prime` appear for impacted plugins on sites with a persistent object cache; `warm` only in pre-0.9.1 data), `delta_generation_ms`, `delta_sql_ms`, `delta_http_ms`, `delta_mem_bytes`, `delta_queries`, `noise_floor_ms`, `confidence` (measured = proven; none = |delta| below noise floor), `measured_at`.
 
-When summarising a plugin, aggregate its `normal` rows: net delta across pages, plus the
-single biggest cost or saving. A plugin whose `disabled` deltas are much worse than its
-`normal` deltas depends heavily on the object cache.
+When summarising a plugin, aggregate its `normal` rows: net delta across pages, plus the single biggest cost or saving. A plugin whose `disabled` deltas are much worse than its `normal` deltas depends heavily on the object cache.
 
-**Sign convention (all `delta_*` fields):** baseline (all plugins active) minus the
-measurement with the plugin virtually excluded. **Positive = the plugin ADDS that much**
-(cost). **Negative = the plugin SAVES that much** - the page got slower without it, i.e.
-the plugin is speeding the site up (common for search/filter replacement plugins). Never
-describe a negative delta as the plugin being slow.
+**Sign convention (all `delta_*` fields):** baseline (all plugins active) minus the measurement with the plugin virtually excluded. **Positive = the plugin ADDS that much** (cost). **Negative = the plugin SAVES that much** - the page got slower without it, i.e. the plugin is speeding the site up (common for search/filter replacement plugins). Never describe a negative delta as the plugin being slow.
 
 ## Page plugin usage object (get-page-plugin-usage / wp sspa page-plugin-usage)
 
-Separate from the report and additive to it; its own `schema` (currently 1,
-`SSPA_Report::PAGE_PLUGIN_USAGE_SCHEMA`). PHP surface: `SSPA_Report::page_plugin_usage($run_id = 0)`.
+Separate from the report and additive to it; its own `schema` (currently 1, `SSPA_Report::PAGE_PLUGIN_USAGE_SCHEMA`). PHP surface: `SSPA_Report::page_plugin_usage($run_id = 0)`.
 
-What it answers: for each profiled page, what every active plugin actually DID there, so a
-consumer (Scalability Pro's Unload Plugins tab) can decide which plugins are not needed on
-which pages. Top level: `schema`, `generated_at`, `run` {id, type, started, finished},
-`complete` (bool), `incomplete_reasons` (e.g. `no_deep_run_yet`,
-`run_predates_evidence_capture`), `pages[]`.
+What it answers: for each profiled page, what every active plugin actually DID there, so a consumer (Scalability Pro's Unload Plugins tab) can decide which plugins are not needed on which pages. Top level: `schema`, `generated_at`, `run` {id, type, started, finished}, `complete` (bool), `incomplete_reasons` (e.g. `no_deep_run_yet`, `run_predates_evidence_capture`), `pages[]`.
 
-Each page: `page_key`, `url`, `variant`, `generation_ms` (median server generation time
-from the run's full-set profile, for prioritising pages by slowness; null when the page
-could not be measured), `output_stable` (true = the page's normalised output held still
-between fetches; false = it varies between loads - rotating/dynamic content - so
-byte-identity evidence is structurally unobtainable for this page and `output_identical`
-will be null; null = not enough samples to say), `profiled_at`, `plugins[]`. Each plugin
-entry:
+Each page: `page_key`, `url`, `variant`, `generation_ms` (median server generation time from the run's full-set profile, for prioritising pages by slowness; null when the page could not be measured), `output_stable` (true = the page's normalised output held still between fetches; false = it varies between loads - rotating/dynamic content - so byte-identity evidence is structurally unobtainable for this page and `output_identical` will be null; null = not enough samples to say), `profiled_at`, `plugins[]`. Each plugin entry:
 
 - `plugin` (slug), `file` (dir/file.php), `version` (installed now)
 - `classification`: `never` | `review` | `candidate` - the unload-safety ladder.
-  **`never` always wins over measurements**; it covers money/order paths, security,
-  membership/access control, consent banners, multilingual/routing, caching and
-  page-builder plugins, plus anything whose dependency group contains one of those.
-  A classifier failure lands on `never`/`review`, never `candidate`.
+
+**`never` always wins over measurements**; it covers money/order paths, security, membership/access control, consent banners, multilingual/routing, caching and page-builder plugins, plus anything whose dependency group contains one of those. A classifier failure lands on `never`/`review`, never `candidate`.
+
 - `classification_reasons`, `group` (plugins that must be unloaded together with it)
 - `evidence` {attributed, query_count, sql_ms, http_ms, mail_ms, include_ms, hook_ms,
-  assets_count} - attribution from this run's full-set profile. **NULL include_ms /
-  hook_ms / assets_count mean the run predates evidence capture: report UNKNOWN, never
-  zero.**
+
+assets_count} - attribution from this run's full-set profile. **NULL include_ms / hook_ms / assets_count mean the run predates evidence capture: report UNKNOWN, never zero.**
+
 - `impact` (nullable) - the latest Plugin Impact Analysis measurement for this plugin on this
-  page: `delta_generation_ms`, `noise_floor_ms`, `confidence` (measured|none),
-  `output_identical` (true = excluding the plugin changed no bytes of the normalised
-  response; false = it did; null = unknowable), `measured_version`, `measured_at`.
-  Evidence measured against a version other than `version` is stale - re-measure before
-  acting on it.
+
+page: `delta_generation_ms`, `noise_floor_ms`, `confidence` (measured|none), `output_identical` (true = excluding the plugin changed no bytes of the normalised response; false = it did; null = unknowable), `measured_version`, `measured_at`. Evidence measured against a version other than `version` is stale - re-measure before acting on it.
 
 ## Archive profile object (get-archive-profile)
 
-Separate from the report and additive to it, so `SSPA_Report::SCHEMA` does not move. It has its
-own `schema` (currently 1, `SSPA_Archive_Profile::SCHEMA`).
+Separate from the report and additive to it, so `SSPA_Report::SCHEMA` does not move. It has its own `schema` (currently 1, `SSPA_Archive_Profile::SCHEMA`).
 
-What it answers: which composite database indexes this site's archive pages would actually use,
-and which columns have to exist before those indexes can be built. Intended for auto-configuring
-Super Speedy Archives.
+What it answers: which composite database indexes this site's archive pages would actually use, and which columns have to exist before those indexes can be built. Intended for auto-configuring Super Speedy Archives.
 
-**The full field-by-field contract is a single document: `.kb/archive-query-profile.md`**, also
-published at https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/ - build
-against that, not against this summary. It is deliberately the only place the shape is
-specified, so there is nothing to drift out of sync.
+**The full field-by-field contract is a single document: `.kb/archive-query-profile.md`**, also published at https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/ - build against that, not against this summary. It is deliberately the only place the shape is specified, so there is nothing to drift out of sync.
 
 ## Guarantees agents can rely on
 
 - Page keys are stable across runs - compare runs by page_key.
 - `confidence: measured` numbers came from re-measurement with a verified plugin-set
-  canary; deltas whose absolute value is below `noise_floor_ms` are never reported as
-  measured.
+
+canary; deltas whose absolute value is below `noise_floor_ms` are never reported as measured.
+
 - Single-out impacts compare against a baseline re-measured seconds before the excluded
-  measurement (drift control), and the excluded plugin set gets its own warm-up request.
+
+measurement (drift control), and the excluded plugin set gets its own warm-up request.
+
 - Profiled requests never send mail and never change the live plugin set.
 - `run-analysis` without `include_writes` performs GET requests only.
 - An archive profile never claims a query is unindexed without a query plan to say so. A
-  `mixed` or `low` type confidence must not be auto-applied - either choice is wrong for part
-  of the data. `complete: false` means insufficient evidence, never "nothing needed": a run
-  whose CPT archive timed out has proved nothing about that archive.
+
+`mixed` or `low` type confidence must not be auto-applied - either choice is wrong for part of the data. `complete: false` means insufficient evidence, never "nothing needed": a run whose CPT archive timed out has proved nothing about that archive.

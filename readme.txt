@@ -39,6 +39,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.
 * Fixed admin tabs following URL fragments when navigating to History or using browser Back and Forward.
+* Added a privacy-safe 15-minute endpoint evidence contract for Scalability Pro with exact registered identities, request metrics, callback ownership and honest unknown activity
 * Added managed-host safeguards that skip unsafe platform-owned cache comparisons, learn undeclared plugin dependency groups after one isolated failure, and preflight exact Plugin Impact and checkout paths before work is queued; thanks to Glenn H for discovering and documenting all three cases
 * Relabelled direct PHP attribution so its bootstrap-timer boundary cannot be mistaken for a plugin's total causal impact
 * Changed the top-level `Performance Analysis` admin-bar item to run `Analyse this page`, matching its first submenu action

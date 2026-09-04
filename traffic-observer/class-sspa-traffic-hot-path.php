@@ -15,6 +15,10 @@ class SSPA_Traffic_Hot_Path {
     private static $context_captured = false;
     private static $basket_was_non_empty = false;
     private static $collection_key = false;
+	private static $endpoint_identity = null;
+	private static $endpoint_started_ns = 0;
+	private static $endpoint_finished_ns = 0;
+	private static $endpoint_boundary = 'shutdown_fallback';
 
     public static function boot($config) {
         if (!is_array($config) || empty($config['collection_id']) || empty($config['table'])) {
@@ -36,6 +40,10 @@ class SSPA_Traffic_Hot_Path {
         }
 
         add_action('plugins_loaded', array(__CLASS__, 'register_woo_hooks'), 100);
+		add_action('init', array(__CLASS__, 'resolve_ajax_endpoint'), PHP_INT_MAX);
+		add_filter('rest_request_before_callbacks', array(__CLASS__, 'rest_endpoint_start'), PHP_INT_MIN, 3);
+		add_filter('rest_request_after_callbacks', array(__CLASS__, 'rest_endpoint_finish'), PHP_INT_MAX, 3);
+		add_filter('wp_die_ajax_handler', array(__CLASS__, 'wrap_ajax_die_handler'), PHP_INT_MAX);
         add_action('wp', array(__CLASS__, 'capture_context'), PHP_INT_MAX);
         add_action('shutdown', array(__CLASS__, 'flush'), PHP_INT_MAX);
     }
@@ -162,11 +170,137 @@ class SSPA_Traffic_Hot_Path {
                 $rows[] = self::event_row($event, $context, $surface, $page_class, $ssf_protection, $observer_us);
             }
         }
-        if (!$rows) {
-            return;
-        }
-        self::insert_rows($rows);
+		if ($rows) {
+			self::insert_rows($rows);
+		}
+		self::insert_endpoint_observation($observer_us);
     }
+
+	/** Resolve only registered AJAX action identities; arbitrary request values never persist. */
+	public static function resolve_ajax_endpoint() {
+		if (!self::collecting_requests()) { return; }
+		$method = strtoupper(isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '');
+		$context = is_user_logged_in() ? 'logged_in' : 'anonymous';
+		$path = self::request_path();
+		$admin_path = wp_parse_url(admin_url('admin-ajax.php'), PHP_URL_PATH);
+		$action = self::request_scalar('action');
+		if (function_exists('wp_doing_ajax') && wp_doing_ajax() && is_string($admin_path)
+			&& untrailingslashit($path) === untrailingslashit($admin_path) && $action) {
+			$hook = ('logged_in' === $context ? 'wp_ajax_' : 'wp_ajax_nopriv_') . $action;
+			if (has_action($hook)) {
+				self::arm_endpoint(array('transport' => 'admin_ajax', 'endpoint' => $action, 'method' => $method, 'context' => $context), $hook);
+			}
+			return;
+		}
+		$home_path = wp_parse_url(home_url('/'), PHP_URL_PATH);
+		$wc_action = self::request_scalar('wc-ajax');
+		if ($wc_action && is_string($home_path) && untrailingslashit($path) === untrailingslashit($home_path)
+			&& has_action('wc_ajax_' . $wc_action)) {
+			self::arm_endpoint(array('transport' => 'wc_ajax', 'endpoint' => $wc_action, 'method' => $method, 'context' => $context), 'wc_ajax_' . $wc_action);
+		}
+	}
+
+	private static function request_scalar($key) {
+		$has_get = array_key_exists($key, (array) $_GET);
+		$has_post = array_key_exists($key, (array) $_POST);
+		if (!$has_get && !$has_post) { return ''; }
+		if (($has_get && !is_scalar($_GET[$key])) || ($has_post && !is_scalar($_POST[$key]))) { return ''; }
+		$get = $has_get ? (string) wp_unslash($_GET[$key]) : null;
+		$post = $has_post ? (string) wp_unslash($_POST[$key]) : null;
+		if ($has_get && $has_post && !hash_equals($get, $post)) { return ''; }
+		$value = $has_post ? $post : $get;
+		return is_string($value) && preg_match('/\A[A-Za-z0-9_.:-]{1,191}\z/', $value) ? $value : '';
+	}
+
+	private static function arm_endpoint($identity, $hook = '') {
+		if (self::$endpoint_identity) { return; }
+		self::$endpoint_identity = $identity;
+		if ($hook) {
+			add_action($hook, array(__CLASS__, 'endpoint_handler_start'), PHP_INT_MIN);
+		}
+	}
+
+	public static function endpoint_handler_start() {
+		if (!self::$endpoint_started_ns) {
+			self::$endpoint_started_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
+		}
+	}
+
+	public static function wrap_ajax_die_handler($handler) {
+		if (!self::$endpoint_identity || !is_callable($handler)) { return $handler; }
+		return function (...$arguments) use ($handler) {
+			self::$endpoint_finished_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
+			self::$endpoint_boundary = 'ajax_die';
+			return call_user_func_array($handler, $arguments);
+		};
+	}
+
+	public static function rest_endpoint_start($response, $handler, $request) {
+		if (!self::collecting_requests() || !is_object($request) || !method_exists($request, 'get_route')) { return $response; }
+		$route = (string) $request->get_route();
+		$method = strtoupper((string) $request->get_method());
+		$pattern = self::registered_rest_pattern($route, $method, $handler);
+		if ($pattern) {
+			self::arm_endpoint(array(
+				'transport' => 'rest', 'endpoint' => $pattern, 'method' => $method,
+				'context' => is_user_logged_in() ? 'logged_in' : 'anonymous',
+			));
+			self::endpoint_handler_start();
+		}
+		return $response;
+	}
+
+	public static function rest_endpoint_finish($response, $handler, $request) {
+		if (self::$endpoint_identity && 'rest' === self::$endpoint_identity['transport']) {
+			self::$endpoint_finished_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
+			self::$endpoint_boundary = 'callback_return';
+		}
+		return $response;
+	}
+
+	private static function registered_rest_pattern($route, $method, $selected_handler) {
+		if (!function_exists('rest_get_server')) { return ''; }
+		foreach (rest_get_server()->get_routes() as $pattern => $handlers) {
+			if (1 !== @preg_match('~\A(?:' . str_replace('~', '\\~', (string) $pattern) . ')\z~', $route)) { continue; }
+			foreach ((array) $handlers as $handler) {
+				if (!is_array($handler) || empty($handler['methods'])) { continue; }
+				$methods = is_array($handler['methods']) ? array_keys(array_filter($handler['methods'])) : preg_split('/\s*,\s*/', (string) $handler['methods']);
+				if (!in_array($method, array_map('strtoupper', $methods), true)) { continue; }
+				if (is_array($selected_handler) && isset($selected_handler['callback'], $handler['callback']) && $selected_handler['callback'] !== $handler['callback']) { continue; }
+				return (string) $pattern;
+			}
+		}
+		return '';
+	}
+
+	private static function insert_endpoint_observation($observer_us) {
+		if (!self::$endpoint_identity || empty(self::$config['endpoint_table']) || empty(self::$config['endpoint_id_stop'])) { return; }
+		global $wpdb;
+		$now_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
+		$handler_end = self::$endpoint_finished_ns ?: $now_ns;
+		$handler_ms = self::$endpoint_started_ns ? min(16777215, max(0, (int) round(($handler_end - self::$endpoint_started_ns) / 1000000))) : null;
+		$wall_ms = min(16777215, max(0, (int) round(($now_ns - self::$started_ns) / 1000000)));
+		$identity = self::$endpoint_identity;
+		$key = hash('sha256', implode("\0", array($identity['transport'], $identity['endpoint'], $identity['method'], $identity['context'])));
+		$inserted = $wpdb->insert(self::$config['endpoint_table'], array(
+			'collection_id' => (int) self::$config['collection_id'],
+			'identity_key' => hex2bin($key),
+			'transport' => $identity['transport'],
+			'endpoint' => $identity['endpoint'],
+			'http_method' => $identity['method'],
+			'auth_context' => $identity['context'],
+			'observed_at' => time(),
+			'status_code' => min(999, max(0, (int) http_response_code())),
+			'wall_ms' => $wall_ms,
+			'cpu_us' => self::cpu_delta_us(),
+			'query_count' => isset($GLOBALS['wpdb']->num_queries) ? min(16777215, max(0, (int) $GLOBALS['wpdb']->num_queries)) : null,
+			'handler_ms' => $handler_ms,
+			'observer_us' => min(16777215, max(0, (int) $observer_us)),
+			'boundary' => self::$endpoint_boundary,
+		));
+		if (false === $inserted) { self::retire('database_error'); return; }
+		if ((int) $wpdb->insert_id >= (int) self::$config['endpoint_id_stop']) { self::retire('event_limit'); }
+	}
 
     private static function request_row($context, $surface, $page_class, $ssf_protection, $observer_us) {
         $wall_ns = (function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000)) - self::$started_ns;

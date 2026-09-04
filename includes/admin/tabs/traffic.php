@@ -5,6 +5,9 @@ $sspa_traffic_status = SSPA_Traffic_Collection::status();
 $sspa_traffic_collection = isset($sspa_traffic_status['collection']) ? $sspa_traffic_status['collection'] : null;
 $sspa_traffic_active = !empty($sspa_traffic_status['active']);
 $sspa_traffic_has_woo = class_exists('WooCommerce');
+$sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report', 'endpoint_evidence')
+    ? SSPA_Report::endpoint_evidence((int) $sspa_traffic_collection['id'])
+    : null;
 ?>
 <div class="sspa-placeholder sspa-traffic-panel" data-active="<?php echo $sspa_traffic_active ? '1' : '0'; ?>" data-collection-id="<?php echo $sspa_traffic_collection ? (int) $sspa_traffic_collection['id'] : 0; ?>">
     <h2><?php esc_html_e('Traffic collector', 'super-speedy-performance-analysis'); ?> <span class="sspa-status sspa-status-blocked"><?php esc_html_e('Experimental', 'super-speedy-performance-analysis'); ?></span></h2>
@@ -39,6 +42,49 @@ $sspa_traffic_has_woo = class_exists('WooCommerce');
             <p><?php esc_html_e('No collection has been started.', 'super-speedy-performance-analysis'); ?></p>
         <?php endif; ?>
     </div>
+
+    <?php if (is_array($sspa_endpoint_evidence)) : ?>
+        <h3 id="sspa-endpoint-evidence"><?php esc_html_e('AJAX and REST endpoint evidence', 'super-speedy-performance-analysis'); ?></h3>
+        <p class="description"><?php esc_html_e('Passive evidence from exact registered endpoints in this bounded collection. It ranks measured opportunity; it does not replay requests or automatically decide which plugins are safe to remove.', 'super-speedy-performance-analysis'); ?></p>
+        <?php if (empty($sspa_endpoint_evidence['endpoints'])) : ?>
+            <p><?php esc_html_e('No registered AJAX, WooCommerce AJAX or REST endpoint has been observed in this collection.', 'super-speedy-performance-analysis'); ?></p>
+        <?php else : ?>
+            <table class="widefat striped sspa-endpoint-evidence-table">
+                <thead><tr>
+                    <th><?php esc_html_e('Endpoint', 'super-speedy-performance-analysis'); ?></th>
+                    <th><?php esc_html_e('Requests', 'super-speedy-performance-analysis'); ?></th>
+                    <th><?php esc_html_e('Wall time', 'super-speedy-performance-analysis'); ?></th>
+                    <th><?php esc_html_e('Queries', 'super-speedy-performance-analysis'); ?></th>
+                    <th><?php esc_html_e('Responses', 'super-speedy-performance-analysis'); ?></th>
+                    <th><?php esc_html_e('Plugin evidence', 'super-speedy-performance-analysis'); ?></th>
+                </tr></thead>
+                <tbody>
+                <?php foreach ($sspa_endpoint_evidence['endpoints'] as $sspa_endpoint) :
+                    $identity = isset($sspa_endpoint['identity']) ? $sspa_endpoint['identity'] : array();
+                    $observations = isset($sspa_endpoint['observations']) ? $sspa_endpoint['observations'] : array();
+                    $wall = isset($observations['whole_request_wall_ms']) ? $observations['whole_request_wall_ms'] : array();
+                    $queries = isset($observations['query_count']) ? $observations['query_count'] : array();
+                    $observer = isset($observations['observer_overhead_us']) ? $observations['observer_overhead_us'] : array();
+                    $statuses = isset($observations['status_counts']) ? $observations['status_counts'] : array();
+                    $endpoint_name = !empty($identity['route_pattern']) ? $identity['route_pattern'] : (isset($identity['action']) ? $identity['action'] : '');
+                    $status_parts = array();
+                    foreach (array('2xx', '3xx', '4xx', '5xx', 'other') as $status_class) {
+                        if (!empty($statuses[$status_class])) { $status_parts[] = $status_class . ': ' . (int) $statuses[$status_class]; }
+                    }
+                    ?>
+                    <tr>
+                        <td><code><?php echo esc_html($endpoint_name); ?></code><br><span class="description"><?php echo esc_html(implode(' · ', array_filter(array(isset($identity['transport']) ? str_replace('_', '-', $identity['transport']) : '', isset($identity['method']) ? $identity['method'] : '', isset($identity['auth_context']) ? str_replace('_', ' ', $identity['auth_context']) : '')))); ?></span></td>
+                        <td><?php echo esc_html(number_format_i18n(isset($observations['count']) ? (int) $observations['count'] : 0)); ?></td>
+                        <td><?php /* translators: 1: median milliseconds, 2: p95 milliseconds, 3: total milliseconds */ printf(esc_html__('median %1$s ms; p95 %2$s ms; total %3$s ms', 'super-speedy-performance-analysis'), esc_html(isset($wall['median']) ? $wall['median'] : '—'), esc_html(isset($wall['p95']) ? $wall['p95'] : '—'), esc_html(isset($wall['sum']) ? $wall['sum'] : '—')); ?></td>
+                        <td><?php /* translators: 1: median query count, 2: p95 query count */ printf(esc_html__('median %1$s; p95 %2$s', 'super-speedy-performance-analysis'), esc_html(isset($queries['median']) ? $queries['median'] : '—'), esc_html(isset($queries['p95']) ? $queries['p95'] : '—')); ?></td>
+                        <td><?php echo esc_html($status_parts ? implode('; ', $status_parts) : '—'); ?></td>
+                        <td><?php echo 'unknown' === (isset($sspa_endpoint['quality']['activity']) ? $sspa_endpoint['quality']['activity'] : '') ? esc_html__('Unknown — detailed activity was not sampled.', 'super-speedy-performance-analysis') : esc_html__('Measured', 'super-speedy-performance-analysis'); ?><br><span class="description"><?php /* translators: %s: observer overhead p95 in microseconds */ printf(esc_html__('Observer overhead p95: %s µs', 'super-speedy-performance-analysis'), esc_html(isset($observer['p95']) ? $observer['p95'] : '—')); ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    <?php endif; ?>
 
     <?php if (!$sspa_traffic_active) : ?>
         <h3><?php esc_html_e('Start an experimental collection', 'super-speedy-performance-analysis'); ?></h3>
