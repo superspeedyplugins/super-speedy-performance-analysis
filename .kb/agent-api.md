@@ -155,6 +155,21 @@ marks browser and Cloudflare evidence unavailable and anonymous WordPress-origin
 Early reads do not stop or shorten collection. Destructive raw-data deletion is only available
 in the Traffic tab and `wp sspa traffic delete`, not through MCP.
 
+### Fast Ajax endpoint evidence
+
+The local PHP contract for Scalability Pro is `sspa/endpoint-evidence@1`. It is additive to the main report and is not exposed through WP-CLI, Abilities or MCP. Consumers call:
+
+- `SSPA_Report::start_endpoint_evidence()` to start one bounded 15-minute collection.
+- `SSPA_Report::endpoint_evidence_status($collection_id)` to read its lifecycle state.
+- `SSPA_Report::stop_endpoint_evidence($collection_id)` to stop and finalise it.
+- `SSPA_Report::endpoint_evidence($collection_id)` to read evidence during or after collection.
+
+Each endpoint is keyed by the exact registered transport, action or REST route pattern, method and authentication context. Its evidence includes count, first/last seen, status classes, whole-request wall-time median/p95/sum, handler timing, query-count distribution and observer-overhead distribution. `owners` separates execution callbacks from REST permission callbacks, adds recursive `Requires Plugins` dependencies, states whether resolution was `complete`, `partial` or `unresolved`, and supplies a fingerprint for invalidation.
+
+The first contract intentionally returns `plugin_activity: []`, `quality.activity: "unknown"`, `capture.detailed_samples: 0` and `capture.detailed_sample_ceiling: 0`. Consumers must not interpret that as proof that a plugin did no work. Detailed per-plugin activity remains unavailable until its production overhead has been measured and bounded.
+
+The observer stores no request or response body, cookie, query value, account identifier or literal dynamic REST path. Unregistered and ambiguous request input cannot create evidence. The Traffic tab displays the same identities, frequency, timing, query, failure and evidence-quality data for administrator review.
+
 ### Page
 
 `page_key`, `variant` (anon|customer|admin), `generation_ms`, `ttfb_ms`, `sql_ms`,

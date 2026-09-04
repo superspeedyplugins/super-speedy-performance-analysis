@@ -13,6 +13,10 @@ sync_plugin || exit 1
 # A killed history-comparison case must not leave its deliberate REST slowdown
 # armed for an unrelated later suite run.
 cli option delete sspa_history_fixture_armed --quiet 2>/dev/null || true
+# A retained site can have a collection left running by a previous focused
+# case. Clear that test state on the way in so early lifecycle cases do not
+# inherit a duration conflict from an earlier run.
+cli eval '$active = SSPA_Traffic_Collection::active(); if ( $active ) { SSPA_Traffic_Collection::stop( (int) $active["id"], true ); }' >/dev/null 2>&1 || exit 1
 
 # Pre-flight: several cases silently degrade into failures (sector "general", tiny deep
 # deltas, no write profiles) when the WooCommerce sample data has gone missing - reseed.
