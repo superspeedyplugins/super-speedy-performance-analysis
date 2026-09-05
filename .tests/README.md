@@ -19,6 +19,12 @@ SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts
 .tests/browser/run-history-chart.sh  # real wp-admin History chart journey in Chromium
 ```
 
+The History browser journey also verifies that changing metrics preserves the page filter
+in both the plotted categories and accessible comparison table.
+
+For package smoke tests from a parallel worktree, supply a unique `SSPA_SMOKE_TAG` to
+`.build/smoke-test.sh` so another checkout's retained edition site is not reset.
+
 Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
 which zsh does not set when the file is sourced interactively.
 

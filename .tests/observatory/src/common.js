@@ -8,7 +8,9 @@ import YAML from 'yaml';
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const observatoryDir = path.resolve(here, '..');
 export const pluginRoot = path.resolve(observatoryDir, '../..');
-export const workspaceRoot = path.resolve(pluginRoot, '..');
+export const workspaceRoot = process.env.SSPA_WORKSPACE_ROOT
+  ? path.resolve(process.env.SSPA_WORKSPACE_ROOT)
+  : path.resolve(pluginRoot, '..');
 export const dataDir = path.join(pluginRoot, '.data/e2e-observatory');
 export const databasePath = path.join(dataDir, 'observatory.sqlite');
 export const parallelDevBin = path.join(workspaceRoot, 'tools/parallel-dev/bin');
