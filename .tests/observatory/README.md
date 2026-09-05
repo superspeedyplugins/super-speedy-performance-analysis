@@ -44,6 +44,11 @@ theme, release label and historical `plugin_ref`.
 
 ## Tests
 
+When running from a Git worktree outside the workspace root, set `SSPA_WORKSPACE_ROOT`
+to the workspace containing `workspace.env` and `tools/parallel-dev`. Set `PD_SITES_ROOT`
+to the machine's parallel-dev site directory. Measurement output still belongs to the
+current plugin checkout's `.data/e2e-observatory/`, not the canonical checkout.
+
 ```bash
 npm test
 npm run test:viewer

@@ -202,6 +202,9 @@
 			mount.sspaChart = chart;
 			card.sspaDocument = documentData;
 			var filter = (card.querySelector('.sspa-history-page-filter').value || '').trim().toLowerCase();
+			$(card).find('.sspa-history-data-table tbody tr').each(function () {
+				this.hidden = !!filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1;
+			});
 			chart.setOption(optionFor(documentData, filter), true);
 			status.textContent = documentData.metric.label + ' chart loaded.';
 			if (!mount.sspaResizeObserver && window.ResizeObserver) {
@@ -232,10 +235,6 @@
 		if (!card || !card.sspaDocument) {
 			return;
 		}
-		var filter = this.value.trim().toLowerCase();
-		$(card).find('.sspa-history-data-table tbody tr').each(function () {
-			this.hidden = filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1;
-		});
 		render(card, card.sspaDocument);
 	});
 

@@ -86,6 +86,18 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		const filter = page.locator('.sspa-history-page-filter');
 		await filter.fill('no-such-page');
 		assert.equal(await page.locator('.sspa-history-data-table tbody tr').evaluateAll((rows) => rows.filter((row) => !row.hidden).length), 0);
+		await page.locator('.sspa-history-metric').selectOption('sql_count');
+		await page.locator('.sspa-history-metric').evaluate((select) => new Promise((resolve) => {
+			if (!select.disabled) return resolve();
+			const observer = new MutationObserver(() => {
+				if (!select.disabled) { observer.disconnect(); resolve(); }
+			});
+			observer.observe(select, { attributes: true, attributeFilter: ['disabled'] });
+		}));
+		assert.equal(await page.locator('.sspa-history-data-table tbody tr').evaluateAll((rows) => rows.filter((row) => !row.hidden).length), 0,
+			'Changing the metric must preserve the table page filter');
+		assert.deepEqual(await page.locator('.sspa-history-chart').evaluate((mount) => mount.sspaChart.getOption().xAxis[0].data), [],
+			'The chart and table must both keep the same empty filtered result');
 		await filter.fill(generation.pages[0].label.toLowerCase());
 		assert.ok(await page.locator('.sspa-history-data-table tbody tr').evaluateAll((rows) => rows.filter((row) => !row.hidden).length) >= 1);
 

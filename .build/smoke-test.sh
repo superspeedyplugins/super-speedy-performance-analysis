@@ -90,7 +90,7 @@ source "$SMOKE_LIB"
 set +e
 set -uo pipefail
 
-pd_smoke_start "sspa-$EDITION" "$SLUG" "$ZIP" || { echo "FAIL  could not start the smoke site"; exit 1; }
+pd_smoke_start "${SSPA_SMOKE_TAG:-sspa-$EDITION}" "$SLUG" "$ZIP" || { echo "FAIL  could not start the smoke site"; exit 1; }
 pass "smoke WordPress at $PD_SMOKE_URL (left in place)"
 
 wpc plugin list --status=active --field=name 2>/dev/null | grep -q "^$SLUG$" \

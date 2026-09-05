@@ -40,6 +40,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.
 * Fixed admin tabs following URL fragments when navigating to History or using browser Back and Forward.
+* Fixed History page filters being lost from the comparison table when changing chart metrics
 * Added History charts that compare every retained key-page measurement and median from the current plugin and theme setup with the immediately previous measured setup
 * Added before-and-after History comparisons with update-triggered quick scans, response/output validity checks, learned expectations, and a preview-first privacy-safe evidence contract available through wp-admin, WP-CLI and the Abilities API
 * Added managed-host safeguards that skip unsafe platform-owned cache comparisons, learn undeclared plugin dependency groups after one isolated failure, and preflight exact Plugin Impact and checkout paths before work is queued; thanks to Glenn H for discovering and documenting all three cases
