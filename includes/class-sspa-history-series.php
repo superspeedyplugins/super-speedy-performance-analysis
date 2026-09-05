@@ -118,7 +118,13 @@ class SSPA_History_Series {
 
         return array(
             'schema' => self::SCHEMA,
-            'metric' => array_merge(array('key' => $metric), $metrics[$metric]),
+            'metric' => array_merge(array(
+                'key' => $metric,
+                'description' => 'retained_request_samples' === $metrics[$metric]['source']
+                    ? __('Each point is one retained request. Lines show the median of those request measurements.', 'super-speedy-performance-analysis')
+                    : __("Each point is one analysis's page median. Lines show the median of those per-analysis medians, not a raw request distribution.", 'super-speedy-performance-analysis'),
+                'change_label' => __('Change', 'super-speedy-performance-analysis'),
+            ), $metrics[$metric]),
             'anchor_run_id' => (int) $anchor['id'],
             'previous' => $previous,
             'current' => $current,
@@ -288,7 +294,8 @@ class SSPA_History_Series {
                 );
                 continue;
             }
-            if ($identity['fingerprint'] !== $anchor_identity['fingerprint']) {
+            if ($identity['fingerprint'] !== $anchor_identity['fingerprint']
+                || !array_intersect($identity['coverage'], $anchor_identity['coverage'])) {
                 $warnings[] = sprintf(
                     /* translators: %d: run id */
                     __('Run #%d was excluded because its measurement environment or page scenarios differ.', 'super-speedy-performance-analysis'),
@@ -321,11 +328,11 @@ class SSPA_History_Series {
             'scenario_revision' => self::SCENARIO_REVISION,
             'measurement_version' => (int) $run['measurement_version'],
             'environment' => $environment,
-            'coverage' => $coverage,
         );
         return array(
             'fingerprint' => hash('sha256', wp_json_encode($identity)),
             'identity' => $identity,
+            'coverage' => $coverage,
             'profiles' => $profiles,
         );
     }
@@ -425,11 +432,13 @@ class SSPA_History_Series {
 
     private static function pages($previous_runs, $current_runs, $metric_key, $metric) {
         $by_page = array();
+        $seen = array();
         foreach (array('previous' => $previous_runs, 'current' => $current_runs) as $period => $runs) {
             foreach (array_reverse($runs) as $run) {
                 $profiles = isset($run['_sspa_profiles']) ? $run['_sspa_profiles'] : self::profile_rows((int) $run['id']);
                 foreach ($profiles as $profile) {
                     $identity = self::page_identity($profile);
+                    $seen[$period][$identity][(int) $run['id']] = true;
                     if (!isset($by_page[$identity])) {
                         $by_page[$identity] = array(
                             'key' => $identity,
@@ -451,7 +460,17 @@ class SSPA_History_Series {
             }
         }
         foreach ($by_page as &$page) {
-            foreach (array('previous', 'current') as $period) {
+            foreach (array('previous' => $previous_runs, 'current' => $current_runs) as $period => $runs) {
+                foreach ($runs as $run) {
+                    if (empty($seen[$period][$page['key']][(int) $run['id']])) {
+                        $page[$period]['faults'][] = array(
+                            'run_id' => (int) $run['id'],
+                            'sample' => null,
+                            'response_code' => null,
+                            'state' => 'missing',
+                        );
+                    }
+                }
                 $values = wp_list_pluck($page[$period]['points'], 'value');
                 $page[$period]['median'] = SSPA_Profile_Store::median($values);
                 $page[$period]['point_count'] = count($values);

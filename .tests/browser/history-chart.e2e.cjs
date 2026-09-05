@@ -61,11 +61,15 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
 		const plotted = await page.locator('.sspa-history-chart').evaluate((mount) => {
 			const option = mount.sspaChart.getOption();
+			const medianValue = (point) => {
+				const value = point !== null && typeof point === 'object' ? point.value : point;
+				return value === null ? null : Number(value);
+			};
 			return {
 				previous: option.series[0].data.map((point) => Number(point.value[1])),
 				current: option.series[1].data.map((point) => Number(point.value[1])),
-				previousMedians: option.series[2].data.map((point) => point === null ? null : Number(point.value === undefined ? point : point.value)),
-				currentMedians: option.series[3].data.map((point) => point === null ? null : Number(point.value === undefined ? point : point.value)),
+				previousMedians: option.series[2].data.map(medianValue),
+				currentMedians: option.series[3].data.map(medianValue),
 				animation: option.animation
 			};
 		});
@@ -74,12 +78,20 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		assert.deepEqual(plotted.previousMedians, source.pages.map((item) => item.previous.median));
 		assert.deepEqual(plotted.currentMedians, source.pages.map((item) => item.current.median));
 		assert.equal(await page.locator('.sspa-history-data-table tbody tr').count(), source.pages.length);
+		const medianTooltip = await page.locator('.sspa-history-chart').evaluate((mount) => {
+			const option = mount.sspaChart.getOption();
+			return option.tooltip[0].formatter({seriesName: 'Current median', data: option.series[3].data[0]});
+		});
+		const medianDelta = source.pages[0].current.median - source.pages[0].previous.median;
+		assert.ok(medianTooltip.includes(Math.abs(medianDelta).toFixed(1) + ' ms'), 'Current median tooltip shows the absolute measured change');
+		assert.ok(medianTooltip.includes(Math.abs(medianDelta / source.pages[0].previous.median * 100).toFixed(1) + '%'), 'Current median tooltip shows the percentage measured change');
 
 		await page.locator('.sspa-history-metric').selectOption('generation_ms');
 		await page.locator('.sspa-history-chart-status').filter({ hasText: 'Page generation time chart loaded' }).waitFor();
 		const generation = await page.locator('[data-sspa-history-chart]').evaluate((card) => card.sspaDocument);
 		assert.equal(generation.metric.key, 'generation_ms');
 		assert.equal(generation.metric.source, 'per_run_median');
+		assert.match(await page.locator('[data-sspa-history-chart]').innerText(), /Each point is one analysis.*page median/, 'Summary metrics visibly distinguish per-analysis medians from raw request samples');
 		const generationPoints = await page.locator('.sspa-history-chart').evaluate((mount) => mount.sspaChart.getOption().series[1].data.map((point) => Number(point.value[1])));
 		assert.deepEqual(generationPoints, generation.pages.flatMap((item) => item.current.points.map((point) => Number(point.value))));
 

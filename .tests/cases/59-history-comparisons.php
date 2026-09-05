@@ -184,11 +184,7 @@ PHP
 update_option('sspa_history_fixture_armed', time() + 120, false);
 register_shutdown_function(function () use ($history_state_publisher) {
     delete_option('sspa_history_fixture_armed');
-    sspa_update_option('plugin_update_detection', false);
-    deactivate_plugins('sspa-history-update-fixture/sspa-history-update-fixture.php');
-    sspa_update_option('plugin_update_detection', true);
     remove_filter('sspa_component_state', $history_state_publisher);
-    delete_option('sspa_history_config_variant');
 });
 update_option('sspa_history_fixture_variant', 'before', false);
 $quick_page_keys = SSPA_History_Series::quick_comparison_page_keys();
@@ -492,11 +488,8 @@ update_option('sspa_options', $original_options);
 sspa_update_option('plugin_update_detection', true);
 SSPA_Change_Set::consume($change_set_id);
 delete_option('sspa_history_fixture_armed');
-sspa_update_option('plugin_update_detection', false);
-deactivate_plugins('sspa-history-update-fixture/sspa-history-update-fixture.php');
-sspa_update_option('plugin_update_detection', true);
 remove_filter('sspa_component_state', $history_state_publisher);
-delete_option('sspa_history_config_variant');
+// Keep the measured plugin and its configuration available for inspection.
 
 if ($GLOBALS['sspa_history_failures']) {
     echo 'FAIL: ' . $GLOBALS['sspa_history_failures'] . " Performance History assertion(s) failed\n";

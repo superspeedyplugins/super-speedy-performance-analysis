@@ -100,6 +100,4 @@ if (is_wp_error($run_id)) {
 }
 
 remove_filter('post_type_archive_link', $archive_filter, 10);
-if (file_exists($fixture)) {
-    unlink($fixture);
-}
+// Retain the MU fixture so the measured archive routes still resolve after the test.
