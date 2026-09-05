@@ -1,8 +1,8 @@
 <?php
 // Phase-5 Excimer collector: sampling profile captured during a normal profiled
-// request, attributed through the component map. The extension lives in the APACHE
-// web SAPI serving the profiled requests, not necessarily this CLI process
-// never has it, so the decision comes from the CAPTURE contents.
+// request, attributed through the component map. The extension must be loaded in the
+// web SAPI serving the profiled requests, not necessarily this CLI process.
+// The decision comes from the CAPTURE contents.
 
 function sspa_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
@@ -31,8 +31,8 @@ $capture = ($row && $row['profile_blob']) ? json_decode(gzuncompress($row['profi
 sspa_t(is_array($capture), 'capture unpacked');
 
 $p = is_array($capture) && isset($capture['profile']) ? $capture['profile'] : null;
-// If this fails, excimer is not loaded in the APACHE container - run
-// pecl install excimer, then add extension=excimer.so to the php-fpm ini.
+// Missing capture requires checking the actual web SAPI and its profiler configuration.
+// Use the isolated-runtime procedure in .tests/README.md, not a shared PHP installation.
 sspa_t(is_array($p), 'excimer profile captured');
 if (is_array($p)) {
     sspa_t('excimer' === $p['collector'], 'collector labelled excimer');
