@@ -90,14 +90,6 @@ if (!is_wp_error($next)) {
     SSPA_Run_Controller::cancel((int) $next);
 }
 
-// Restore the suite's normal SSPA drop-in for later cases. The failed run and its evidence
-// deliberately remain in the retained site.
-if (file_exists($dropin) && 'qm' === SSPA_Helper_Files::dropin_status()) {
-    unlink($dropin);
-}
-SSPA_Helper_Files::ensure_installed();
-if (file_exists($ready)) {
-    unlink($ready);
-}
-sspa_60_t('ours' === SSPA_Helper_Files::dropin_status(), 'the normal profiling shim is restored for subsequent cases');
-
+// Leave the recovered foreign drop-in and child readiness evidence for inspection.
+// This case clears its previous readiness record on entry.
+sspa_60_t('qm' === SSPA_Helper_Files::dropin_status() && file_exists($ready), 'the recovered drop-in and child readiness evidence remain inspectable');

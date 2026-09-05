@@ -159,6 +159,13 @@
 					if (data.runId) {
 						lines.push('Analysis #' + data.runId + (data.sample ? ', sample ' + data.sample : ''));
 					}
+					if (data.delta && data.delta.absolute !== null) {
+						var change = (data.delta.absolute < 0 ? '−' : '+') + unitValue(Math.abs(data.delta.absolute), unit);
+						if (data.delta.percent !== null) {
+							change += ' (' + (data.delta.percent < 0 ? '−' : '+') + Math.abs(data.delta.percent).toFixed(1) + '%)';
+						}
+						lines.push(documentData.metric.change_label + ': ' + change);
+					}
 					if (data.outputState === 'changed') {
 						lines.push('Output changed — review');
 					}
@@ -201,6 +208,7 @@
 			var chart = mount.sspaChart || echarts.init(mount, null, {renderer: 'canvas'});
 			mount.sspaChart = chart;
 			card.sspaDocument = documentData;
+			card.querySelector('.sspa-history-evidence-source').textContent = documentData.metric.description;
 			var filter = (card.querySelector('.sspa-history-page-filter').value || '').trim().toLowerCase();
 			$(card).find('.sspa-history-data-table tbody tr').each(function () {
 				this.hidden = !!filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1;

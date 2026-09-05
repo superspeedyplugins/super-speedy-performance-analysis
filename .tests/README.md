@@ -165,6 +165,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `62-history-setup-series.php` - runs adjacent measurements before and after changing only
   an active plugin version, then proves the public History chart document separates the two
   measured setup periods and retains their request points and medians.
+- `63-history-quick-baseline.php` - measures a full baseline and a version-changed quick scan,
+  proving that the chart retains the exact offered baseline despite different page coverage
+  and marks pages outside the quick scan as missing instead of improvements.
 - `02-token.php` - HMAC token mint/verify: path binding, tamper, expiry, flags.
 - `03-fingerprint.php` - SQL normaliser: literals stripped, IN-lists collapsed, design
   smells (ORDER BY rand() etc) preserved, no PII survives.

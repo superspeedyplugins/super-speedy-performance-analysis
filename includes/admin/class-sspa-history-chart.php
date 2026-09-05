@@ -18,6 +18,7 @@ class SSPA_History_Chart {
                 <div>
                     <h3><?php esc_html_e('Performance by measured setup', 'super-speedy-performance-analysis'); ?></h3>
                     <p class="description"><?php esc_html_e('Every point is a saved measurement. Medians compare the setup before the plugin or theme change with the current setup.', 'super-speedy-performance-analysis'); ?></p>
+                    <p class="description sspa-history-evidence-source"><?php echo esc_html($document['metric']['description']); ?></p>
                 </div>
                 <div class="sspa-history-chart-controls">
                     <label>
