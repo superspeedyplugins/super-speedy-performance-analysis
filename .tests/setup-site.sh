@@ -100,7 +100,7 @@ echo "products  $(cli post list --post_type=product --post_status=publish --form
 echo "orders    $(cli eval 'echo count(wc_get_orders(array("limit" => -1, "return" => "ids")));' 2>/dev/null)"
 echo "posts     $(cli post list --post_type=post --post_status=publish --format=count 2>/dev/null)"
 echo "HPOS      $(cli eval 'echo Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled() ? "on" : "OFF";' 2>/dev/null)"
-echo "excimer   $(cli eval 'echo extension_loaded("excimer") ? "yes (WARNING: it segfaults php-fpm here - see .tests/README.md)" : "no - case 18 will FAIL; deliberate, see .tests/README.md";' 2>/dev/null)"
+echo "excimer   $(cli eval 'echo extension_loaded("excimer") ? "loaded in CLI; verify the web SAPI with case 18 (see .tests/README.md)" : "not loaded in CLI; web SAPI status is determined by case 18 (see .tests/README.md)";' 2>/dev/null)"
 echo "obj cache $(cli eval 'echo wp_using_ext_object_cache() ? "persistent" : "NONE - case 10 cannot pass; see the redis note above";' 2>/dev/null)"
 echo
 echo "run the suite with: .tests/run-tests.sh"

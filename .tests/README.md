@@ -89,7 +89,13 @@ Both were restored natively on 16 August 2026, so the suite covers exactly what 
 Docker. `setup-site.sh` prints the state of each; if either is missing, the case that needs it
 FAILS rather than quietly passing, because a skip that looks like a pass is how coverage rots.
 
-- **Excimer** (case 18, the sampling profiler). **Do not install it on this machine.**
+- **Excimer** (case 18, the sampling profiler). **Do not enable it in shared PHP just to pass this test.**
+
+  The crash evidence below belongs to the original macOS/Homebrew PHP 8.5 environment. It is
+  not evidence that Excimer fails on every Linux or WSL runtime. Verify each proposed combination
+  in a separate PHP-FPM process, first with bounded repeated sampling and then with case 18 through
+  the actual HTTP-serving SAPI. Keep the process logs and check for worker crashes. A successful
+  CLI extension check alone is not sufficient. Do not restart shared services for this check.
 
   `pecl install excimer` builds and works, and case 18 passes with it - but it SEGFAULTS
   php-fpm under load. Measured 16 August 2026 across three identical full-suite runs:
@@ -109,7 +115,7 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   predates PHP 8.5. Building 1.2.7 from current upstream - whose newest commit is "Fix build
   with PHP 8.6.0alpha3", so it certainly targets 8.5 - made it WORSE, not better.
 
-  Still untested, and the one thing that could still exonerate Excimer: a Linux distro build
+  Not tested in that original comparison: a Linux distro build
   (`php8.5-excimer` from deb.sury.org or Remi) on x86_64. Homebrew does not package Excimer,
   so macOS cannot install what a client server actually runs. The
   crashes are not confined to the suite: they kill php-fpm workers, so every parallel-dev
@@ -117,7 +123,7 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   (case 19 failed with `gen=0ms` on a step that is fine, and case 42 tripped a p95 timing
   ceiling).
 
-  Case 18 therefore FAILS on this machine, and that is the honest state - it is not skipped,
+  Case 18 therefore FAILS on the original environment without Excimer, and that is the honest state - it is not skipped,
   because a skip that reads as a pass is how coverage rots. If you need it, the options are a
   different PHP build or a pinned-version environment, decided deliberately.
 
