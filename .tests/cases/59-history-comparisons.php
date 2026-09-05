@@ -404,9 +404,12 @@ $cli_json = WP_CLI::runcommand(
     array('return' => true, 'launch' => true, 'exit_error' => false)
 );
 $cli_payload = json_decode($cli_json, true);
+// Compare the wire contract on both sides: JSON decodes whole-valued floats as integers.
+// Strictly comparing the decoded result with PHP round() values otherwise fails intermittently.
+$expected_cli_headline = json_decode(wp_json_encode($privacy_comparison['headline']), true);
 sspa_history_t(
     is_array($cli_payload) && SSPA_History::EXPORT_SCHEMA === $cli_payload['schema']
-        && $privacy_comparison['headline'] === $cli_payload['comparison']['headline'],
+        && $expected_cli_headline === $cli_payload['comparison']['headline'],
     'WP-CLI exposes the same versioned comparison contract for local CI runners'
 );
 
