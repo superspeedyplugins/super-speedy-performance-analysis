@@ -102,10 +102,13 @@ $wpdb->update($profiles_table, array(
 ), array('id' => $profile_id));
 $missing_html = SSPA_Profile_Panel::render($profile_id, array('cached' => true));
 $tools_url = admin_url('admin.php?page=sspa#tools');
+$expected_prompt = extension_loaded('excimer')
+    ? 'Re-run with Excimer to improve this data'
+    : 'Install Excimer to improve this data';
 sspa_excimer_ui_t(
-    false !== strpos($missing_html, 'Install Excimer to improve this data')
+    false !== strpos($missing_html, $expected_prompt)
     && false !== strpos($missing_html, esc_url($tools_url)),
-    'missing function data links to the Tools tab installation instructions'
+    'missing function data gives the runtime-appropriate action and links to the Tools tab'
 );
 sspa_excimer_ui_t(
     false !== strpos($missing_html, 'sspa-excimer-phases-prompt')

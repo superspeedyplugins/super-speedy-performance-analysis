@@ -16,7 +16,10 @@ sspa_assets_t(
     0 === strpos($css_version, SSPA_VERSION . '.') && preg_match('/\.\d{9,}$/', $css_version),
     'the stylesheet cache key carries the file mtime (' . $css_version . ')'
 );
-sspa_assets_t(sspa_asset_version($js) !== $css_version, 'each asset gets its own cache key');
+$js_version = sspa_asset_version($js);
+// A fresh checkout can give different assets the same mtime. Their URLs already differ;
+// independence means editing CSS must not invalidate unchanged JS, not unequal timestamps.
+sspa_assets_t($js_version === SSPA_VERSION . '.' . filemtime(SSPA_PLUGIN_DIR . $js), 'JavaScript uses its own file timestamp');
 sspa_assets_t(
     'store.example-' . SSPA_VERSION . '-sspa-report.json' === sspa_download_filename('sspa-report.json', 'https://www.Store.Example:8443/path'),
     'download filenames group by canonical domain and plugin version before the existing name'
@@ -47,7 +50,9 @@ $original = filemtime($path);
 touch($path, $original + 60);
 clearstatcache(true, $path);
 $bumped = sspa_asset_version($css);
+$unchanged_js = sspa_asset_version($js);
 touch($path, $original);
 clearstatcache(true, $path);
 sspa_assets_t($bumped !== $css_version, 'editing the file changes its cache key (' . $css_version . ' -> ' . $bumped . ')');
+sspa_assets_t($unchanged_js === $js_version, 'editing CSS leaves the JavaScript cache key unchanged');
 sspa_assets_t(sspa_asset_version($css) === $css_version, 'restoring the mtime restores the key');

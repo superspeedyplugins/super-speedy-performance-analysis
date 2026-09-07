@@ -40,7 +40,7 @@ SSPA_Traffic_Helper::install(array(
     'key_option' => SSPA_Traffic_Collection::key_option($collection_id),
 ));
 
-$plain_anonymous = wp_remote_get(home_url('/shop/?sspa_traffic_fixture=plain-anonymous'), array(
+$plain_anonymous = wp_remote_get(add_query_arg('sspa_traffic_fixture', 'plain-anonymous', wc_get_page_permalink('shop')), array(
     'timeout' => 20,
     'user-agent' => 'Mozilla/5.0',
 ));
@@ -54,7 +54,7 @@ sspa_tw_t(!is_wp_error($add) && !is_wp_error($cart), 'guest basket requests comp
 sspa_tw_t($basket_events >= 1 && $cart_events >= 1, 'empty-to-non-empty basket and cart view events are observed');
 sspa_tw_t($basket_request && strlen($basket_request['actor_key']) === 12, 'guest basket request has only a twelve-byte keyed actor join');
 
-$bot_with_basket = wp_remote_get(home_url('/shop/?sspa_traffic_fixture=bot-with-basket'), array(
+$bot_with_basket = wp_remote_get(add_query_arg('sspa_traffic_fixture', 'bot-with-basket', wc_get_page_permalink('shop')), array(
     'timeout' => 20,
     'cookies' => $cookies,
     'user-agent' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
@@ -76,8 +76,8 @@ if (!is_wp_error($user_id)) {
         'value' => wp_generate_auth_cookie($user_id, $expires, 'logged_in'),
         'expires' => $expires,
     ), home_url('/'));
-    wp_remote_get(home_url('/my-account/?sspa_traffic_fixture=logged-in'), array('timeout' => 20, 'cookies' => array($auth_cookie)));
-    wp_remote_get(home_url('/shop/?sspa_traffic_fixture=guest-to-account'), array('timeout' => 20, 'cookies' => array_merge($cookies, array($auth_cookie))));
+    wp_remote_get(add_query_arg('sspa_traffic_fixture', 'logged-in', wc_get_page_permalink('myaccount')), array('timeout' => 20, 'cookies' => array($auth_cookie)));
+    wp_remote_get(add_query_arg('sspa_traffic_fixture', 'guest-to-account', wc_get_page_permalink('shop')), array('timeout' => 20, 'cookies' => array_merge($cookies, array($auth_cookie))));
 }
 $logged_in_request = $wpdb->get_row($wpdb->prepare("SELECT actor_key,actor_state FROM $events WHERE collection_id = %d AND event_code = 1 AND actor_state = %d ORDER BY id DESC LIMIT 1", $collection_id, SSPA_Traffic_Codes::ACTOR_LOGGED_IN_NO_BASKET), ARRAY_A);
 $alias_event = $wpdb->get_row($wpdb->prepare("SELECT actor_key,related_actor_key FROM $events WHERE collection_id = %d AND event_code = %d ORDER BY id DESC LIMIT 1", $collection_id, SSPA_Traffic_Codes::EVENT_ACTOR_ALIAS), ARRAY_A);

@@ -29,7 +29,17 @@ $block_targets = function ($pre, $args, $url) use ($target, $flow_url) {
     $path = wp_parse_url($url, PHP_URL_PATH);
     $query = wp_parse_url($url, PHP_URL_QUERY);
     $target_path = wp_parse_url($target, PHP_URL_PATH);
-    if ($path !== $target_path && false === strpos((string) $query, 'sspa_flow_probe=1')) {
+    // Plain permalinks share '/' with home. Match the product's routing arguments too,
+    // while allowing the profiling request to append its own signed arguments.
+    parse_str((string) wp_parse_url($target, PHP_URL_QUERY), $target_query);
+    parse_str((string) $query, $request_query);
+    $matches_target = $path === $target_path;
+    foreach ($target_query as $key => $value) {
+        if (!isset($request_query[$key]) || $request_query[$key] !== $value) {
+            $matches_target = false;
+        }
+    }
+    if (!$matches_target && false === strpos((string) $query, 'sspa_flow_probe=1')) {
         return $pre;
     }
     if (empty($args['headers'][SSPA_Token::HEADER])) {
@@ -55,9 +65,15 @@ $deep = SSPA_Run_Controller::start(array(
     'url' => $target,
     'suspects' => array('woocommerce'),
     'cache_modes' => false,
+    // Earlier coverage deliberately retains a foreign/QM drop-in. Exercise the supported
+    // temporary swap so this test reaches target preflight rather than its prerequisite.
+    'swap_dropin' => true,
     'user_id' => 1,
 ));
 sspa_mhg_t(is_wp_error($deep) && 'sspa_target_preflight_blocked' === $deep->get_error_code(), 'Plugin Impact Analysis refuses to queue a blocked target');
+if (!is_wp_error($deep) || 'sspa_target_preflight_blocked' !== $deep->get_error_code()) {
+    echo 'DIAGNOSTIC: deep outcome ' . (is_wp_error($deep) ? $deep->get_error_code() : 'queued') . "\n";
+}
 
 $before = function_exists('wc_get_orders') ? count(wc_get_orders(array('limit' => -1, 'return' => 'ids'))) : 0;
 $checkout = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1));
