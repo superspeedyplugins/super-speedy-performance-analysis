@@ -180,10 +180,19 @@ function sspa_refresh_tabs(tabs, done) {
 	jQuery.post(ajaxurl, { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') }, function (resp) {
 		if (resp.success && resp.data.tabs) {
 			Object.keys(resp.data.tabs).forEach(function (slug) {
-				jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]')
+				var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]');
+				// Preserve the selected preview, including a request still filling it.
+				// Background queue refreshes must not detach its response target.
+				var preview = panel.find('.sspa-payload-preview:visible').detach();
+				var summary = preview.length ? panel.find('.sspa-payload-summary').detach() : jQuery();
+				panel
 					.html(resp.data.tabs[slug])
 					.attr('data-sspa-tab-loaded', '1')
 					.removeAttr('data-sspa-tab-loading');
+				if (preview.length) {
+					panel.find('.sspa-payload-preview').replaceWith(preview);
+					panel.find('.sspa-payload-summary').replaceWith(summary);
+				}
 			});
 			jQuery('#sspa-runner').attr('data-active-run', resp.data.active_run || 0);
 		}
@@ -507,8 +516,9 @@ jQuery(document).on('change', '.sspa-publisher-toggle', function () {
 });
 
 jQuery(document).on('click', '.sspa-preview-outbox', function () {
-	var pre = jQuery('#sspa-payload-preview');
-	var summary = jQuery('#sspa-payload-summary');
+	var panel = jQuery(this).closest('.tab-contents');
+	var pre = panel.find('.sspa-payload-preview');
+	var summary = panel.find('.sspa-payload-summary');
 	var outboxId = jQuery(this).data('outbox-id') || 0;
 	if (pre.is(':visible') && pre.data('outbox-id') === outboxId) {
 		pre.hide();

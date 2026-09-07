@@ -48,6 +48,13 @@ if [ -z "$FILTER" ] || [[ "admin-tabs-browser" == *"$FILTER"* ]]; then
 fi
 
 echo
+if [ -z "$FILTER" ] || [[ "share-preview-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-share-preview.sh"; then
+        FAILED=$((FAILED + 1))
+        FAILED_NAMES="$FAILED_NAMES share-preview-browser"
+    fi
+fi
 echo "$RAN case file(s) run, $FAILED failed"
 [ -n "$FAILED_NAMES" ] && echo "failed:$FAILED_NAMES"
 exit $FAILED

@@ -16,6 +16,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh            # run all cases
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
+.tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 ```
 
 Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
@@ -25,6 +26,9 @@ The registered admin-tabs browser case requires Node.js and the observatory's Pl
 dependency with Chromium installed. `SSPA_PLAYWRIGHT_MODULE` can select an existing Playwright
 installation. It checks fresh History links, changed fragments, back/forward, reload and
 invalid fragments through the authenticated admin page without changing analysis data.
+The Share preview browser case uses the same dependency and verifies both navigation orders,
+Share alone, preview toggling and persistence across a real tab refresh. It requires an
+existing completed analysis and does not opt in or submit an analysis.
 
 ### Central E2E observatory
 

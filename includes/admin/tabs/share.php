@@ -257,8 +257,8 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         </button>
         <span class="description"><?php esc_html_e('Builds the payload for your most recent analysis and shows it. Nothing is queued or sent.', 'super-speedy-performance-analysis'); ?></span>
     </p>
-    <div id="sspa-payload-summary" class="sspa-payload-summary" style="display:none"></div>
-    <pre id="sspa-payload-preview" style="display:none"></pre>
+    <div class="sspa-payload-summary" style="display:none"></div>
+    <pre class="sspa-payload-preview" style="display:none"></pre>
     <p class="description">
         <?php /* translators: %s: the random install id */ printf(esc_html__('Install ID: %s (random - not derived from your site).', 'super-speedy-performance-analysis'), esc_html(SSPA_Community_Identity::install_uuid())); ?>
         <?php /* translators: %s: the collector URL */ printf(esc_html__('Collector: %s.', 'super-speedy-performance-analysis'), esc_html(SSPA_Community_Identity::collector_url())); ?>

@@ -267,7 +267,7 @@
 	margin: 0 3px 3px 0;
 }
 
-#sspa_main #sspa-payload-preview {
+#sspa_main .sspa-payload-preview {
 	max-height: 480px;
 	overflow: auto;
 	white-space: pre-wrap;
