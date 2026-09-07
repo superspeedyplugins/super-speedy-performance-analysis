@@ -24,6 +24,12 @@ SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts
 The History browser journey also verifies that changing metrics preserves the page filter
 in both the plotted categories and accessible comparison table.
 
+For a manually requested warning demonstration on a dedicated local site, install
+`.tests/fixtures/history-shop-warning.php` as an MU plugin on that site only, then run a full
+baseline. It emits a labelled PHP warning only while PA profiles the WooCommerce Shop page;
+ordinary page visits are unaffected. Keep the healthy preceding run for comparison. This
+fixture is not installed automatically by the suite and is excluded from customer builds.
+
 For package smoke tests from a parallel worktree, supply a unique `SSPA_SMOKE_TAG` to
 `.build/smoke-test.sh` so another checkout's retained edition site is not reset.
 

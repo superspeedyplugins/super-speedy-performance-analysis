@@ -123,16 +123,16 @@
 		pages.forEach(function (page, pageIndex) {
 			var label = labels[pageIndex];
 			page.previous.points.forEach(function (item) {
-				previousPoints.push(point(label, item, -9));
+				previousPoints.push(Object.assign(point(label, item, -9), {period: 'previous'}));
 			});
 			page.current.points.forEach(function (item) {
-				currentPoints.push(point(label, item, 9));
+				currentPoints.push(Object.assign(point(label, item, 9), {period: 'recent'}));
 			});
 			var values = page.previous.points.concat(page.current.points).map(function (item) { return Number(item.value); });
 			var markerY = values.length ? Math.max.apply(null, values) * 1.08 : 1;
 			['previous', 'current'].forEach(function (side) {
 				page[side].faults.forEach(function (fault, index) {
-					failures.push({value: [label, markerY], period: side === 'previous' ? 'Before' : 'After', summary: faultSummary([fault]), savedPoint: fault, symbolOffset: [(side === 'previous' ? -12 : 12) + index * 3, 0]});
+					failures.push({value: [label, markerY], period: side === 'previous' ? 'previous' : 'recent', summary: faultSummary([fault]), savedPoint: fault, symbolOffset: [(side === 'previous' ? -12 : 12) + index * 3, 0]});
 				});
 			});
 		});
@@ -153,11 +153,12 @@
 				trigger: 'item',
 				formatter: function (params) {
 					var data = params.data || {};
-					if (data.period) {
-						return '<strong>' + data.period + '</strong><br>' + data.summary;
+					var heading = '<strong>' + escapeText(data.value[0] + ' (' + data.period + ')') + '</strong>';
+					if (data.summary) {
+						return heading + '<br>' + data.summary;
 					}
 					var value = Array.isArray(data.value) ? data.value[1] : data.value;
-					var lines = ['<strong>' + params.seriesName + '</strong>', unitValue(value, unit)];
+					var lines = [heading, unitValue(value, unit)];
 					if (data.runId) {
 						lines.push('Analysis #' + data.runId + (data.sample ? ', sample ' + data.sample : ''));
 					}

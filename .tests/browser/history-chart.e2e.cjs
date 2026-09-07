@@ -59,6 +59,24 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		assert.match(malformedStatus, /could not be read/i, 'Malformed chart data must surface a visible error');
 
 		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
+		const tooltipHeadings = await page.locator('.sspa-history-chart').evaluate(mount => {
+			const option = mount.sspaChart.getOption();
+			return option.series.flatMap((series, index) => series.data.map(data => {
+				const node = document.createElement('div');
+				node.innerHTML = option.tooltip[0].formatter({seriesName:series.name, seriesIndex:index, data});
+				return {actual:node.querySelector('strong').textContent, expected:data.value[0] + ' (' + (index === 0 || data.period === 'previous' || data.period === 'Before' ? 'previous' : 'recent') + ')'};
+			}));
+		});
+		assert.ok(tooltipHeadings.length > 0);
+		for (const heading of tooltipHeadings) assert.equal(heading.actual, heading.expected, 'Every tooltip names its x-axis page and previous/recent period');
+		const escapedHeading = await page.locator('.sspa-history-chart').evaluate(mount => {
+			const option = mount.sspaChart.getOption();
+			const data = {...option.series[0].data[0], value:['<img src=x onerror=alert(1)>', 1]};
+			const node = document.createElement('div');
+			node.innerHTML = option.tooltip[0].formatter({data, seriesIndex:0});
+			return {text:node.querySelector('strong').textContent, images:node.querySelectorAll('img').length};
+		});
+		assert.deepEqual(escapedHeading, {text:'<img src=x onerror=alert(1)> (previous)', images:0}, 'Page labels are inert tooltip text');
 		const plotted = await page.locator('.sspa-history-chart').evaluate((mount) => {
 			const option = mount.sspaChart.getOption();
 			return {
