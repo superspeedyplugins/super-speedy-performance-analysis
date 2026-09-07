@@ -50,7 +50,7 @@ class SSPA_History_Chart {
 
             <div class="sspa-history-chart-status" aria-live="polite"></div>
             <p class="description"><?php esc_html_e('Select a measurement or failure marker to inspect its retained evidence. The data table provides the same controls by keyboard.', 'super-speedy-performance-analysis'); ?></p>
-            <p class="description sspa-history-marker-key"><?php esc_html_e('Marker key: amber-outlined triangles show observed PHP warnings or notices; red-outlined inverted triangles show observed PHP errors. Solid red triangles mark failed requests. These markers describe retained observations, not complete PHP error coverage.', 'super-speedy-performance-analysis'); ?></p>
+            <p class="description sspa-history-marker-key"><?php esc_html_e('Marker key: amber-outlined triangles show observed PHP warnings or notices; solid red inverted triangles show observed PHP errors. Solid red upright triangles mark failed requests. These markers describe retained observations, not complete PHP error coverage.', 'super-speedy-performance-analysis'); ?></p>
             <div class="sspa-history-chart" role="img" aria-label="<?php esc_attr_e('Previous and current measured setup performance by page', 'super-speedy-performance-analysis'); ?>"></div>
             <section class="sspa-history-point-details" aria-live="polite" hidden></section>
             <script type="application/json" class="sspa-history-chart-document"><?php
