@@ -256,6 +256,18 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			await diagnosticRow.locator('.sspa-history-inspect-point').filter({hasText:'After'}).first().click();
 			assert.ok((await page.locator('.sspa-history-point-details').innerText()).includes('SSPA local diagnostic one'));
 			assert.equal(await page.locator('.sspa-history-point-details script').count(), 0, 'Diagnostic message markup is inert text');
+			const measuredLink = page.locator('.sspa-history-measured-page a');
+			await measuredLink.waitFor();
+			const measuredUrl = await measuredLink.getAttribute('href');
+			assert.equal(measuredUrl, siteUrl + '/', 'History opens the measured fixture page, not the current admin URL');
+			assert.equal(await measuredLink.getAttribute('target'), '_blank');
+			assert.match(await measuredLink.getAttribute('rel'), /noopener/);
+			await page.locator('.sspa-history-point-details button').filter({hasText:'Open saved page profile'}).click();
+			await page.locator('#sspa-adhoc-pop .sspa-profile-target').waitFor();
+			assert.equal(await page.locator('#sspa-adhoc-pop .sspa-profile-target a').getAttribute('href'), measuredUrl);
+			assert.match(await page.locator('#sspa-adhoc-pop .sspa-profile-target').innerText(), /GET.*diagnostic-pair/);
+			assert.equal(await page.locator('#sspa-adhoc-pop .sspa-profile-target').evaluate(node => !!(node.compareDocumentPosition(document.querySelector('#sspa-adhoc-pop .sspa-adhoc-topbar')) & Node.DOCUMENT_POSITION_FOLLOWING)), true, 'Measured target precedes the action buttons');
+			await page.locator('#sspa-adhoc-pop .sspa-adhoc-close').click();
 			if (screenshot) {
 				const parsed = path.parse(screenshot);
 				await page.locator('[data-sspa-history-chart]').screenshot({path:path.join(parsed.dir, parsed.name + '-warnings' + parsed.ext)});

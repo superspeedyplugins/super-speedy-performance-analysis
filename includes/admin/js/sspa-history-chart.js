@@ -256,6 +256,19 @@
 				}
 				window.sspaPanel.openProfile(item.profile_id);
 			});
+			var measuredPage = $('<p class="sspa-history-measured-page" aria-live="polite">').text(strings.loading_measured_page).appendTo(target);
+			$.post(ajaxurl, {action: 'sspa_profile_target', nonce: sspa_admin.nonce, profile_id: item.profile_id}).done(function (response) {
+				if (!response.success) {
+					measuredPage.text(response.data || strings.measured_page_failed);
+					return;
+				}
+				measuredPage.empty();
+				if (response.data.url) {
+					$('<a target="_blank" rel="noopener noreferrer">').attr('href', response.data.url).text(strings.open_measured_page).appendTo(measuredPage);
+				} else {
+					measuredPage.text(strings.measured_page_action);
+				}
+			}).fail(function () { measuredPage.text(strings.measured_page_failed); });
 			$('<p class="description">').text(strings.representative_capture).appendTo(target);
 		}
 	}

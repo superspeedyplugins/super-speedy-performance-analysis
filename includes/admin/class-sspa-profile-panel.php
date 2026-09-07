@@ -27,6 +27,7 @@ class SSPA_Profile_Panel {
     const FALLBACK_SECONDS_PER_JOB = 8;
 
     public static function register() {
+        add_action('wp_ajax_sspa_profile_target', array(__CLASS__, 'ajax_target'));
         add_action('wp_ajax_sspa_profile_panel', array(__CLASS__, 'ajax_panel'));
         add_action('wp_ajax_sspa_profile_export', array(__CLASS__, 'ajax_export'));
         add_action('wp_ajax_sspa_impact_plan', array(__CLASS__, 'ajax_impact_plan'));
@@ -37,6 +38,36 @@ class SSPA_Profile_Panel {
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
+    }
+
+    /** Read the retained target without loading the full diagnostic panel. */
+    public static function ajax_target() {
+        self::guard();
+        $row = self::profile_row(isset($_POST['profile_id']) ? absint($_POST['profile_id']) : 0);
+        if (!$row) {
+            wp_send_json_error(__('That page profile no longer exists.', 'super-speedy-performance-analysis'), 404);
+        }
+        wp_send_json_success(array('url' => self::measured_page_url($row)));
+    }
+
+    /** Only ordinary HTTP page navigation; never replay measurement or action URLs. */
+    public static function measured_page_url($row) {
+        if (!self::is_reprofilable($row)) {
+            return '';
+        }
+        $parts = wp_parse_url($row['url']);
+        if (!$parts || empty($parts['host']) || empty($parts['scheme']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true) || isset($parts['user']) || isset($parts['pass'])) {
+            return '';
+        }
+        $query = array();
+        parse_str(isset($parts['query']) ? $parts['query'] : '', $query);
+        foreach ($query as $key => $value) {
+            if (0 === strpos($key, 'sspa_') || false !== stripos($key, 'nonce') || in_array($key, array('add-to-cart', 'remove_item', 'undo_item', 'wc-ajax', 'logout'), true)
+                || (in_array($key, array('action', 'action2'), true) && !in_array($value, array('edit', '-1'), true))) {
+                return '';
+            }
+        }
+        return esc_url_raw($row['url'], array('http', 'https'));
     }
 
     /**
@@ -246,7 +277,15 @@ class SSPA_Profile_Panel {
         $run = SSPA_Run_Controller::run_row((int) $row['run_id']);
         $run_type = $run ? $run['run_type'] : '';
 
-        $html = '<div class="sspa-adhoc-topbar sspa-adhoc-span">';
+        $url = self::measured_page_url($row);
+        $html = '<div class="sspa-profile-target sspa-adhoc-span" style="overflow-wrap:anywhere">';
+        $html .= '<strong>' . esc_html__('Measured URL / workflow', 'super-speedy-performance-analysis') . '</strong><br>';
+        $html .= '<code>' . esc_html(strtoupper($row['method']) . ' · ' . $row['page_key']) . '</code><br>';
+        $html .= $url ? '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">' . esc_html($row['url']) . '</a>' : '<code>' . esc_html($row['url']) . '</code>';
+        if (!$url) {
+            $html .= '<p class="sspa-adhoc-note">' . esc_html__('Recorded workflow or action endpoint; opening this profile does not replay the action.', 'super-speedy-performance-analysis') . '</p>';
+        }
+        $html .= '</div><div class="sspa-adhoc-topbar sspa-adhoc-span">';
         if (self::is_reprofilable($row)) {
             $html .= '<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-adhoc-rerun" data-url="' . esc_attr($row['url']) . '">'
                 . esc_html__('Re-run', 'super-speedy-performance-analysis') . '</button>';

@@ -32,6 +32,11 @@ Click a run number in the History list to open its saved on-screen report. Its p
 retained profile details without starting another analysis. The saved report has its own URL;
 use **Back to History** to return to the list and comparison controls.
 
+In a selected chart point's details, **Open measured page** opens its saved page address in
+a new tab, below **Open saved page profile**. The profile shows **Measured URL / workflow**
+above its action buttons, including the saved request method and page or workflow key.
+Action-only endpoints remain labelled evidence without a link that could replay the action.
+
 For automatic update-boundary selection, choose **Previous plugin configuration** and click
 **Compare**. The chart compares all retained points in the current setup period with the
 immediately preceding measured setup period. The accompanying report compares the selected

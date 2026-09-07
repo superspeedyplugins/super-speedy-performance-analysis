@@ -82,6 +82,7 @@ class SSPA_Bootstrap {
             'sspa_workflow_targets' => array('SSPA_Workflow_Analysis', 'ajax_targets'),
             'sspa_workflow_launch' => array('SSPA_Workflow_Analysis', 'ajax_launch'),
             'sspa_profile_panel' => array('SSPA_Profile_Panel', 'ajax_panel'),
+            'sspa_profile_target' => array('SSPA_Profile_Panel', 'ajax_target'),
             'sspa_profile_export' => array('SSPA_Profile_Panel', 'ajax_export'),
             'sspa_impact_plan' => array('SSPA_Profile_Panel', 'ajax_impact_plan'),
             'sspa_markdown_export' => array('SSPA_Markdown_Export', 'ajax_export'),

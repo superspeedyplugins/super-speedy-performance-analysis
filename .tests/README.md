@@ -177,6 +177,11 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 
 - `69-response-cachebuster.php` - real REST pagination reflects PA cache busters without
   making identical output unstable; meaningful body and pagination changes still differ.
+- `68-profile-target.php` - saved-page navigation keeps ordinary GET URLs and editor links,
+  rejects action/POST/profiling targets and unsafe URL schemes, and checks real authenticated
+  HTTP responses for administrators, subscribers, invalid nonces and missing profiles. The History browser journey
+  checks the matching measured-page link and target context above profile action buttons.
+
 - `01-health.php` - tables, secret, helper-file install (mu-loader + db.php shim),
   placeholder replacement. Self-heals a leftover fake db.php from a crashed 06.
 - `60-crash-recovery.php` - kills a separate controller process after a real run has held a

@@ -151,6 +151,10 @@ class SSPA_Admin_Page {
             'counts' => __('Observed PHP diagnostics: %1$d; retained: %2$d.', 'super-speedy-performance-analysis'),
             'truncated' => __('Entries or messages were truncated.', 'super-speedy-performance-analysis'),
             'open_profile' => __('Open saved page profile', 'super-speedy-performance-analysis'),
+            'open_measured_page' => __('Open measured page', 'super-speedy-performance-analysis'),
+            'loading_measured_page' => __('Loading measured page link…', 'super-speedy-performance-analysis'),
+            'measured_page_failed' => __('The measured page link could not be loaded.', 'super-speedy-performance-analysis'),
+            'measured_page_action' => __('No ordinary page link was retained for this workflow. Open its saved profile to inspect the measured endpoint.', 'super-speedy-performance-analysis'),
             'profile_unavailable' => __('The profile viewer did not load. Reload the page to try again.', 'super-speedy-performance-analysis'),
             'representative_capture' => __('The full page profile contains its retained representative capture; it is not a separate full capture for every request sample.', 'super-speedy-performance-analysis'),
             /* translators: %s: diagnostic parsing error */

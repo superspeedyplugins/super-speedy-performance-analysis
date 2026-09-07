@@ -40,6 +40,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.
 * Fixed admin tabs following URL fragments when navigating to History or using browser Back and Forward.
+* Added measured-page links to History point details and saved URL/workflow labels above profile actions
 * History chart tooltips identify the page and whether its measurement is previous or recent
 * Simplified History charts to grey previous measurements, blue recent measurements and red errors, without median lines
 * Fixed failed chart metric changes leaving the selector inconsistent with the displayed measurements
