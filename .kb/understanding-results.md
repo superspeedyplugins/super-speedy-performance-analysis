@@ -42,17 +42,17 @@ If three plugins are updated together, that starts one new setup period; Perform
 not guess how an unmeasured combination would have behaved. Returning to an older combination
 later starts another period rather than merging separate dates.
 
-Each key page shows every valid retained request-time point and the median for each selected run
-or setup period.
+Each key page shows every valid retained request-time point, with grey dots for previous
+measurements and blue dots for recent measurements. The chart has no median lines.
 Use the Metric control for generation time, database time, query count, outbound HTTP time, or peak
 memory. Those five views use one saved per-run median because older rows do not retain all of their
 raw samples. Blocked requests, transport errors, HTTP errors and missing measurements keep distinct
 labels, use a separate fault marker and never count towards a median. **View chart data** exposes the
-same points, medians, changes and evidence states as a table.
+points, summary medians, changes and evidence states as a table.
 
 With **Request wall time** selected, click a point or its table detail button to inspect the
 saved request. Amber outlined triangles identify retained PHP warnings or notices; inverted
-red outlined triangles identify retained PHP errors; solid red triangles identify failed
+solid red triangles identify retained PHP errors; upright solid red triangles identify failed
 requests. Details show the saved run, page and available diagnostic messages.
 
 Diagnostic coverage is explicit. A sample without retained diagnostics is unavailable, not a

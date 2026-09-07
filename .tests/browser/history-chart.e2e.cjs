@@ -61,30 +61,21 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
 		const plotted = await page.locator('.sspa-history-chart').evaluate((mount) => {
 			const option = mount.sspaChart.getOption();
-			const medianValue = (point) => {
-				const value = point !== null && typeof point === 'object' ? point.value : point;
-				return value === null ? null : Number(value);
-			};
 			return {
 				previous: option.series[0].data.map((point) => Number(point.value[1])),
 				current: option.series[1].data.map((point) => Number(point.value[1])),
-				previousMedians: option.series[2].data.map(medianValue),
-				currentMedians: option.series[3].data.map(medianValue),
+				series: option.series.map(series => ({name:series.name, type:series.type, color:series.itemStyle && series.itemStyle.color})),
 				animation: option.animation
 			};
 		});
 		assert.deepEqual(plotted.previous, source.pages.flatMap((item) => item.previous.points.map((point) => Number(point.value))));
 		assert.deepEqual(plotted.current, source.pages.flatMap((item) => item.current.points.map((point) => Number(point.value))));
-		assert.deepEqual(plotted.previousMedians, source.pages.map((item) => item.previous.median));
-		assert.deepEqual(plotted.currentMedians, source.pages.map((item) => item.current.median));
+		assert.deepEqual(plotted.series, [
+			{name:'Previous measurements', type:'scatter', color:'#6b7280'},
+			{name:'Recent measurements', type:'scatter', color:'#2271b1'},
+			{name:'Errors', type:'scatter', color:'#d63638'}
+		], 'The chart shows only grey previous, blue recent and red error points, without median overlays');
 		assert.equal(await page.locator('.sspa-history-data-table tbody tr').count(), source.pages.length);
-		const medianTooltip = await page.locator('.sspa-history-chart').evaluate((mount) => {
-			const option = mount.sspaChart.getOption();
-			return option.tooltip[0].formatter({seriesName: 'Current median', data: option.series[3].data[0]});
-		});
-		const medianDelta = source.pages[0].current.median - source.pages[0].previous.median;
-		assert.ok(medianTooltip.includes(Math.abs(medianDelta).toFixed(1) + ' ms'), 'Current median tooltip shows the absolute measured change');
-		assert.ok(medianTooltip.includes(Math.abs(medianDelta / source.pages[0].previous.median * 100).toFixed(1) + '%'), 'Current median tooltip shows the percentage measured change');
 
 		// A rejected metric request must not relabel the measurements still on screen.
 		const rejectMetric = async route => {

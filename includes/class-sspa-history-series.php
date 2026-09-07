@@ -165,8 +165,8 @@ class SSPA_History_Series {
             'metric' => array_merge(array(
                 'key' => $metric,
                 'description' => 'retained_request_samples' === $definition['source']
-                    ? __('Each point is one retained request. Lines show the median of those request measurements.', 'super-speedy-performance-analysis')
-                    : __("Each point is one analysis's page median. Lines show the median of those per-analysis medians, not a raw request distribution.", 'super-speedy-performance-analysis'),
+                    ? __('Each point is one retained request. Grey shows previous measurements, blue shows recent measurements and red marks errors.', 'super-speedy-performance-analysis')
+                    : __("Each point is one analysis's page median, not an individual request. Grey shows previous measurements, blue shows recent measurements and red marks errors.", 'super-speedy-performance-analysis'),
                 'change_label' => __('Change', 'super-speedy-performance-analysis'),
             ), $definition),
             'anchor_run_id' => (int) $anchor['id'],
