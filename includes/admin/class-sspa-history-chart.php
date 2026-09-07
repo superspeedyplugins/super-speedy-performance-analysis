@@ -16,8 +16,8 @@ class SSPA_History_Chart {
         <section class="sspa-history-chart-card" data-sspa-history-chart>
             <div class="sspa-history-chart-heading">
                 <div>
-                    <h3><?php esc_html_e('Performance by measured setup', 'super-speedy-performance-analysis'); ?></h3>
-                    <p class="description"><?php esc_html_e('Every point is a saved measurement. Medians compare the setup before the plugin or theme change with the current setup.', 'super-speedy-performance-analysis'); ?></p>
+                    <h3><?php echo esc_html('pair' === ($document['selection_mode'] ?? 'setup') ? __('Selected run comparison', 'super-speedy-performance-analysis') : __('Performance by measured setup', 'super-speedy-performance-analysis')); ?></h3>
+                    <p class="description"><?php echo esc_html('pair' === ($document['selection_mode'] ?? 'setup') ? __('The chart and report compare the exact Before and After runs selected above, including runs with unchanged plugins.', 'super-speedy-performance-analysis') : __('Every point is a saved measurement. Medians compare the previous measured plugin configuration with the current configuration.', 'super-speedy-performance-analysis')); ?></p>
                     <p class="description sspa-history-evidence-source"><?php echo esc_html($document['metric']['description']); ?></p>
                 </div>
                 <div class="sspa-history-chart-controls">
@@ -37,6 +37,9 @@ class SSPA_History_Chart {
             </div>
 
             <?php echo self::period_summary($document); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?>
+            <?php if ('setup' === ($document['selection_mode'] ?? 'setup')) : ?>
+                <p class="description"><?php esc_html_e('This chart includes the runs listed in each configuration period. The comparison report below compares the named representative runs, not an aggregate of the whole period.', 'super-speedy-performance-analysis'); ?></p>
+            <?php endif; ?>
 
             <?php if (!empty($document['empty_state'])) : ?>
                 <div class="notice notice-info inline"><p><?php echo esc_html($document['empty_state']); ?></p></div>
@@ -46,7 +49,10 @@ class SSPA_History_Chart {
             <?php endforeach; ?>
 
             <div class="sspa-history-chart-status" aria-live="polite"></div>
+            <p class="description"><?php esc_html_e('Select a measurement or failure marker to inspect its retained evidence. The data table provides the same controls by keyboard.', 'super-speedy-performance-analysis'); ?></p>
+            <p class="description sspa-history-marker-key"><?php esc_html_e('Marker key: amber-outlined triangles show observed PHP warnings or notices; red-outlined inverted triangles show observed PHP errors. Solid red triangles mark failed requests. These markers describe retained observations, not complete PHP error coverage.', 'super-speedy-performance-analysis'); ?></p>
             <div class="sspa-history-chart" role="img" aria-label="<?php esc_attr_e('Previous and current measured setup performance by page', 'super-speedy-performance-analysis'); ?>"></div>
+            <section class="sspa-history-point-details" aria-live="polite" hidden></section>
             <script type="application/json" class="sspa-history-chart-document"><?php
                 echo wp_json_encode($document, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON hex flags make script-safe text.
             ?></script>
@@ -64,7 +70,8 @@ class SSPA_History_Chart {
         $document = SSPA_History_Series::build(
             isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0,
             isset($_POST['metric']) ? sanitize_key(wp_unslash($_POST['metric'])) : 'request_wall_ms',
-            isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0
+            isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,
+            isset($_POST['selection_mode']) ? sanitize_key(wp_unslash($_POST['selection_mode'])) : 'setup'
         );
         if (is_wp_error($document)) {
             wp_send_json_error($document->get_error_message());
@@ -112,6 +119,28 @@ class SSPA_History_Chart {
                             <td><?php echo esc_html(self::change($page['delta'], $unit)); ?></td>
                             <td>
                                 <?php echo esc_html(self::state_label($page)); ?>
+                                <details>
+                                    <summary><?php esc_html_e('Requests and diagnostics', 'super-speedy-performance-analysis'); ?></summary>
+                                    <ul>
+                                    <?php foreach (array('previous', 'current') as $side) :
+                                        foreach (array_merge($page[$side]['points'], $page[$side]['faults']) as $point) : ?>
+                                        <li><button type="button" class="button-link sspa-history-inspect-point" data-point="<?php echo esc_attr(wp_json_encode($point)); ?>">
+                                            <?php echo esc_html(sprintf(
+                                                /* translators: 1: before/after side, 2: run ID, 3: sample or aggregate description */
+                                                __('%1$s: run #%2$d, %3$s', 'super-speedy-performance-analysis'),
+                                                'previous' === $side ? __('Before', 'super-speedy-performance-analysis') : __('After', 'super-speedy-performance-analysis'),
+                                                $point['run_id'],
+                                                isset($point['sample']) ? sprintf(
+                                                    /* translators: %d: request sample number within the saved page profile. */
+                                                    __('sample %d', 'super-speedy-performance-analysis'),
+                                                    $point['sample']
+                                                ) : __('page summary', 'super-speedy-performance-analysis')
+                                            )); ?>
+                                        </button></li>
+                                        <?php endforeach;
+                                    endforeach; ?>
+                                    </ul>
+                                </details>
                                 <?php if ($page['previous']['fault_count'] || $page['current']['fault_count']) : ?>
                                     <br><span class="sspa-history-fault-text"><?php
                                         echo esc_html(sprintf(
@@ -138,17 +167,19 @@ class SSPA_History_Chart {
         ?>
         <div class="sspa-history-periods">
             <div class="sspa-history-period sspa-history-period-previous">
-                <span><?php esc_html_e('Previous setup', 'super-speedy-performance-analysis'); ?></span>
+                <span><?php echo esc_html('pair' === ($document['selection_mode'] ?? 'setup') ? __('Before run', 'super-speedy-performance-analysis') : __('Previous setup', 'super-speedy-performance-analysis')); ?></span>
                 <?php if ($document['previous']) : ?>
                     <strong><?php echo esc_html(self::dates($document['previous'])); ?></strong>
+                    <small><?php echo esc_html('#' . implode(', #', $document['previous']['run_ids'])); ?></small>
                     <small><?php /* translators: %d: number of analysis runs */ printf(esc_html(_n('%d analysis', '%d analyses', $document['previous']['run_count'], 'super-speedy-performance-analysis')), (int) $document['previous']['run_count']); ?></small>
                 <?php else : ?>
                     <strong><?php esc_html_e('Not measured yet', 'super-speedy-performance-analysis'); ?></strong>
                 <?php endif; ?>
             </div>
             <div class="sspa-history-period sspa-history-period-current">
-                <span><?php esc_html_e('Current setup', 'super-speedy-performance-analysis'); ?></span>
+                <span><?php echo esc_html('pair' === ($document['selection_mode'] ?? 'setup') ? __('After run', 'super-speedy-performance-analysis') : __('Current setup', 'super-speedy-performance-analysis')); ?></span>
                 <strong><?php echo esc_html(self::dates($document['current'])); ?></strong>
+                <small><?php echo esc_html('#' . implode(', #', $document['current']['run_ids'])); ?></small>
                 <small><?php /* translators: %d: number of analysis runs */ printf(esc_html(_n('%d analysis', '%d analyses', $document['current']['run_count'], 'super-speedy-performance-analysis')), (int) $document['current']['run_count']); ?></small>
             </div>
         </div>
@@ -174,11 +205,14 @@ class SSPA_History_Chart {
 
     private static function component_change($change) {
         if ('added' === $change['state']) {
+            /* translators: %s: recorded component version after it was added. */
             return sprintf(__('added at %s', 'super-speedy-performance-analysis'), $change['after_version']);
         }
         if ('removed' === $change['state']) {
+            /* translators: %s: recorded component version before it was removed. */
             return sprintf(__('removed (was %s)', 'super-speedy-performance-analysis'), $change['before_version']);
         }
+        /* translators: 1: previous recorded component version, 2: new recorded component version. */
         return sprintf(__('%1$s → %2$s', 'super-speedy-performance-analysis'), $change['before_version'], $change['after_version']);
     }
 

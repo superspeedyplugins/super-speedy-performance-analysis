@@ -260,7 +260,13 @@ jQuery(document).on('change', '#sspa-plugin-update-detection', function () {
 	});
 });
 
-function sspa_history_pair() {
+function sspa_history_pair(section) {
+	if (section && section.length) {
+		return {
+			before_run_id: parseInt(section.attr('data-before-run'), 10) || 0,
+			after_run_id: parseInt(section.attr('data-after-run'), 10) || 0
+		};
+	}
 	return {
 		before_run_id: parseInt(jQuery('#sspa-history-before').val(), 10) || 0,
 		after_run_id: parseInt(jQuery('#sspa-history-after').val(), 10) || 0
@@ -270,17 +276,36 @@ function sspa_history_pair() {
 jQuery(document).on('click', '#sspa-history-compare', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	var spinner = btn.siblings('.spinner').addClass('is-active');
-	var data = jQuery.extend({ action: 'sspa_history_compare', nonce: sspa_admin.nonce }, sspa_history_pair());
+	var panel = btn.closest('div.tab-contents');
+	var chartHost = panel.find('.sspa-history-chart-host');
+	var filter = chartHost.find('.sspa-history-page-filter').val() || '';
+	var data = jQuery.extend({ action: 'sspa_history_compare', nonce: sspa_admin.nonce,
+		selection_mode: jQuery('#sspa-history-mode').val() || 'pair',
+		metric: chartHost.find('.sspa-history-metric').val() || 'request_wall_ms'
+	}, sspa_history_pair());
+	chartHost.prop('hidden', true);
+	jQuery('#sspa-history-comparison').text('Loading the selected comparison…');
+	panel.find('.sspa-history-compare-controls select').prop('disabled', true);
 	jQuery.post(ajaxurl, data, function (resp) {
 		if (resp.success) {
 			jQuery('#sspa-history-comparison').html(resp.data.html);
+			chartHost.find('.sspa-history-chart').each(function () {
+				if (this.sspaResizeObserver) this.sspaResizeObserver.disconnect();
+				if (this.sspaChart) this.sspaChart.dispose();
+			});
+			chartHost.html(resp.data.chart_html).prop('hidden', false);
+			chartHost.find('.sspa-history-page-filter').val(filter);
+			jQuery('#sspa-history-after').val(resp.data.after_run_id);
+			if (resp.data.before_run_id) jQuery('#sspa-history-before').val(resp.data.before_run_id);
+			jQuery(document).trigger('sspa:tab-rendered', ['history', panel.get(0)]);
 		} else {
-			alert(resp.data || 'The points in time could not be compared.');
+			jQuery('#sspa-history-comparison').text(resp.data || 'The points in time could not be compared.');
 		}
 	}).fail(function () {
-		alert('The points in time could not be compared.');
+		jQuery('#sspa-history-comparison').text('The points in time could not be compared. Please try Compare again.');
 	}).always(function () {
 		btn.prop('disabled', false);
+		panel.find('.sspa-history-compare-controls select').prop('disabled', false);
 		spinner.removeClass('is-active');
 	});
 });
@@ -292,7 +317,7 @@ jQuery(document).on('click', '.sspa-history-assert', function () {
 		nonce: sspa_admin.nonce,
 		mode: btn.data('mode'),
 		page_identity: btn.data('page-identity')
-	}, sspa_history_pair());
+	}, sspa_history_pair(btn.closest('.sspa-history-comparison')));
 	jQuery.post(ajaxurl, data, function (resp) {
 		if (resp.success) {
 			jQuery('#sspa-history-comparison').html(resp.data.html);
@@ -310,7 +335,7 @@ jQuery(document).on('click', '.sspa-history-preview-export', function () {
 	var section = jQuery(this).closest('.sspa-history-comparison');
 	var btn = jQuery(this).prop('disabled', true);
 	var spinner = section.find('.sspa-history-export-actions .spinner').addClass('is-active');
-	var data = jQuery.extend({ action: 'sspa_history_export', nonce: sspa_admin.nonce }, sspa_history_pair());
+	var data = jQuery.extend({ action: 'sspa_history_export', nonce: sspa_admin.nonce }, sspa_history_pair(section));
 	jQuery.post(ajaxurl, data, function (resp) {
 		if (!resp.success) {
 			alert(resp.data || 'The evidence preview could not be prepared.');

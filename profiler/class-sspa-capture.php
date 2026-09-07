@@ -11,10 +11,13 @@ if (!class_exists('SSPA_Capture')) {
         // capture must read it as "this run predates the contract", never as "this site has no
         // archives" - the two are indistinguishable from the payload alone.
         // 3 adds HTTP scheme and sslverify to the stable outbound-call source data.
-        const SCHEMA_VERSION = 3;
+        // 4 adds local-only, bounded PHP diagnostics for each profiled request.
+        const SCHEMA_VERSION = 4;
         const FULL_SQL_TOP_N = 20;
         const FULL_SQL_MS = 50;
         const FULL_SQL_ROWS = 200;
+        const PHP_DIAGNOSTICS_MAX = 20;
+        const PHP_DIAGNOSTICS_MESSAGE_MAX = 1000;
 
         private $token_id;
         private $flags;
@@ -24,6 +27,9 @@ if (!class_exists('SSPA_Capture')) {
         private $mail_calls = array();
         private $mail_pending = null;
         private $conditionals = array();
+        private $php_events = array();
+        private $php_event_count = 0;
+        private $php_diagnostics_armed = false;
 
         public function __construct($token_id, $flags) {
             $this->token_id = $token_id;
@@ -43,6 +49,14 @@ if (!class_exists('SSPA_Capture')) {
         private $archives = null;
 
         public function arm() {
+            // PHP does not expose the previous handler's error mask. Forwarding every
+            // error to its callable would change its behaviour, so preserve it intact.
+            $previous = set_error_handler(array($this, 'observe_php_error'));
+            if (null !== $previous) {
+                restore_error_handler();
+            } else {
+                $this->php_diagnostics_armed = true;
+            }
             // Armed from the mu-loader, i.e. BEFORE any regular plugin loads - the only
             // vantage point from which per-plugin include timing is possible.
             require_once __DIR__ . '/class-sspa-boot-timer.php';
@@ -95,6 +109,84 @@ if (!class_exists('SSPA_Capture')) {
             }
             add_action('wp', array($this, 'snapshot_conditionals'));
             register_shutdown_function(array($this, 'finalize'));
+        }
+
+        /**
+         * Observe only errors delivered to this callback, without handling them.
+         * PHP exposes no notification when another plugin temporarily replaces and
+         * restores a handler. Even an observer still installed at shutdown cannot
+         * promise uninterrupted coverage or count errors another handler consumed.
+         */
+        public function observe_php_error($type, $message, $file = '', $line = 0) {
+            if (error_reporting() & $type) {
+                $this->retain_php_error($type, $message, $file, $line);
+            }
+            // PHP still logs/displays/terminates according to its own configuration.
+            return false;
+        }
+
+        private function retain_php_error($type, $message, $file, $line) {
+            $this->php_event_count++;
+            if (count($this->php_events) < self::PHP_DIAGNOSTICS_MAX) {
+                $this->php_events[] = array(
+                    'type' => (int) $type,
+                    'message' => substr((string) $message, 0, self::PHP_DIAGNOSTICS_MESSAGE_MAX),
+                    'message_truncated' => strlen((string) $message) > self::PHP_DIAGNOSTICS_MESSAGE_MAX,
+                    'file' => substr((string) $file, 0, 1024),
+                    'line' => (int) $line,
+                );
+            }
+        }
+
+        /** Close only our own observer; another plugin's replacement remains installed. */
+        private function collect_php_diagnostics($map) {
+            if (!$this->php_diagnostics_armed) {
+                return array('schema' => 1, 'coverage' => 'unavailable', 'reason' => 'existing_error_handler', 'count' => null, 'retained_count' => 0, 'truncated' => false, 'events' => array());
+            }
+            $last_error = error_get_last();
+            $probe = static function () { return false; };
+            $current = set_error_handler($probe);
+            restore_error_handler();
+            $ours = array($this, 'observe_php_error') === $current;
+            if ($ours) {
+                restore_error_handler();
+            }
+            // Engine fatals bypass set_error_handler. Keep their text only locally,
+            // alongside the existing share-safe fatal summary. User errors were already
+            // observed by our handler and must not be counted a second time.
+            if ($ours && is_array($last_error) && in_array((int) $last_error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
+                $this->retain_php_error($last_error['type'], $last_error['message'], $last_error['file'], $last_error['line']);
+            }
+            $events = array();
+            foreach ($this->php_events as $event) {
+                $owner = $map->classify_file($event['file']);
+                $type = $event['type'];
+                $severity = 'error';
+                if (in_array($type, array(E_WARNING, E_USER_WARNING, E_CORE_WARNING, E_COMPILE_WARNING), true)) {
+                    $severity = 'warning';
+                } elseif (in_array($type, array(E_NOTICE, E_USER_NOTICE), true)) {
+                    $severity = 'notice';
+                } elseif (in_array($type, array(E_DEPRECATED, E_USER_DEPRECATED), true)) {
+                    $severity = 'deprecated';
+                } elseif (2048 === $type) { // E_STRICT itself is deprecated on PHP 8.4+.
+                    $severity = 'strict';
+                }
+                $event['severity'] = $severity;
+                $event['component'] = $owner['component'];
+                $event['component_type'] = $owner['type'];
+                // Component plus basename/line is enough to locate the source locally.
+                $event['file'] = basename(str_replace('\\', '/', $event['file']));
+                $events[] = $event;
+            }
+            return array(
+                'schema' => 1,
+                'coverage' => $ours ? 'observer_delivery' : 'partial',
+                'reason' => $ours ? null : 'handler_changed',
+                'count' => $this->php_event_count,
+                'retained_count' => count($events),
+                'truncated' => $this->php_event_count > count($events) || in_array(true, array_column($events, 'message_truncated'), true),
+                'events' => $events,
+            );
         }
 
         public function http_start($pre, $args, $url) {
@@ -259,6 +351,7 @@ if (!class_exists('SSPA_Capture')) {
             require_once __DIR__ . '/class-sspa-component-map.php';
             require_once __DIR__ . '/fingerprint.php';
             $map = new SSPA_Component_Map();
+            $php_diagnostics = $this->collect_php_diagnostics($map);
 
             // A send still in flight at shutdown (fatal inside a mailer, or a mailer that
             // returns through none of the three exits we hook) is recorded with an unknown
@@ -322,6 +415,9 @@ if (!class_exists('SSPA_Capture')) {
                 'mail' => $mail,
                 'cache' => $cache,
                 'fatal' => $fatal,
+                // Private local request evidence. Community export uses an explicit
+                // allowlist and does not transmit this section or its messages.
+                'php_diagnostics' => $php_diagnostics,
                 // Which options this request actually read. Names and call counts only -
                 // never values, which hold licence keys, API tokens and customer data.
                 // Armed in the db.php drop-in; see the coverage note there.

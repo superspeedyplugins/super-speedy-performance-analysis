@@ -99,6 +99,11 @@ class SSPA_Profile_Store {
                     'fingerprint' => isset($s['capture']['fatal']['fingerprint']) ? (string) $s['capture']['fatal']['fingerprint'] : '',
                 );
             }
+            // Keep diagnostics on the exact request that produced them. The profile
+            // blob stores only the median capture and can later be pruned.
+            if (isset($s['capture']['php_diagnostics']) && is_array($s['capture']['php_diagnostics'])) {
+                $summary['php_diagnostics'] = $s['capture']['php_diagnostics'];
+            }
             return $summary;
         }, $samples);
 

@@ -11,24 +11,7 @@ $sspa_comparable_runs = array_values(array_filter($sspa_runs, function ($sspa_ru
 }));
 $sspa_after_run_id = $sspa_comparable_runs ? (int) $sspa_comparable_runs[0]['id'] : 0;
 $sspa_before_run_id = isset($sspa_comparable_runs[1]) ? (int) $sspa_comparable_runs[1]['id'] : 0;
-$sspa_history_series = $sspa_after_run_id ? SSPA_History_Series::build(0, 'request_wall_ms') : null;
-if (is_array($sspa_history_series)) {
-    $sspa_after_run_id = (int) $sspa_history_series['anchor_run_id'];
-    if (!empty($sspa_history_series['previous']['run_ids'])) {
-        $sspa_before_run_id = (int) end($sspa_history_series['previous']['run_ids']);
-    }
-} elseif ($sspa_after_run_id) {
-    $sspa_latest_context = json_decode((string) $sspa_comparable_runs[0]['share_context'], true);
-    if (is_array($sspa_latest_context) && !empty($sspa_latest_context['history_comparison']['baseline_run_id'])) {
-        $sspa_candidate_before = (int) $sspa_latest_context['history_comparison']['baseline_run_id'];
-        foreach ($sspa_comparable_runs as $sspa_comparable_run) {
-            if ((int) $sspa_comparable_run['id'] === $sspa_candidate_before) {
-                $sspa_before_run_id = $sspa_candidate_before;
-                break;
-            }
-        }
-    }
-}
+$sspa_history_series = $sspa_after_run_id ? SSPA_History_Series::build($sspa_after_run_id, 'request_wall_ms', $sspa_before_run_id, $sspa_before_run_id ? 'pair' : 'setup') : null;
 
 // Plain names for the analysis types, so the share control says what it would actually send.
 $sspa_type_labels = array(
@@ -68,17 +51,20 @@ $sspa_share_states = array(
         </p>
     </details>
 </div>
+<div id="sspa-history-saved-run" hidden aria-live="polite"></div>
+<div id="sspa-history-list">
 <?php
-
-if ($sspa_after_run_id) {
-    echo SSPA_History_Chart::render($sspa_history_series); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes every field.
-}
-
 if (count($sspa_comparable_runs) >= 2) : ?>
     <section class="sspa-history-compare-picker">
         <h3><?php esc_html_e('Compare points in time', 'super-speedy-performance-analysis'); ?></h3>
         <p class="description"><?php esc_html_e('Response time is the headline. New errors, warnings, failed validity checks, and declared expectations are shown first when they appear.', 'super-speedy-performance-analysis'); ?></p>
         <div class="sspa-history-compare-controls">
+            <label><?php esc_html_e('Compare', 'super-speedy-performance-analysis'); ?>
+                <select id="sspa-history-mode">
+                    <option value="pair" selected><?php esc_html_e('Selected runs', 'super-speedy-performance-analysis'); ?></option>
+                    <option value="setup"><?php esc_html_e('Previous plugin configuration', 'super-speedy-performance-analysis'); ?></option>
+                </select>
+            </label>
             <label><?php esc_html_e('Before', 'super-speedy-performance-analysis'); ?>
                 <select id="sspa-history-before">
                     <?php foreach ($sspa_comparable_runs as $sspa_run) : ?>
@@ -96,6 +82,7 @@ if (count($sspa_comparable_runs) >= 2) : ?>
             <button type="button" class="button button-primary" id="sspa-history-compare"><?php esc_html_e('Compare', 'super-speedy-performance-analysis'); ?></button>
             <span class="spinner" aria-hidden="true"></span>
         </div>
+        <div class="sspa-history-chart-host"><?php echo SSPA_History_Chart::render($sspa_history_series); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes fields. ?></div>
         <div id="sspa-history-comparison" aria-live="polite">
             <?php echo SSPA_History::render(SSPA_History::compare($sspa_before_run_id, $sspa_after_run_id)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes every field. ?>
         </div>
@@ -119,6 +106,7 @@ if (!$sspa_runs) : ?>
             <a href="#share" class="sspa-goto-tab" data-tab="share"><?php esc_html_e('Sharing settings and privacy details', 'super-speedy-performance-analysis'); ?></a>
         </p>
     </div>
+    <div class="sspa-table-scroll">
     <table class="widefat striped sspa-pages-table">
         <thead>
             <tr>
@@ -152,7 +140,7 @@ if (!$sspa_runs) : ?>
             $sspa_shareable = 'done' === $run['status'] || ('failed' === $run['status'] && 'checkout' === $run['run_type']);
             ?>
             <tr>
-                <td>#<?php echo (int) $run['id']; ?></td>
+                <td><a class="sspa-history-run-link" data-run-id="<?php echo (int) $run['id']; ?>" href="<?php echo esc_url(SSPA_History_Run_View::url((int) $run['id'])); ?>">#<?php echo (int) $run['id']; ?></a></td>
                 <td><?php echo esc_html($run['run_type']); ?></td>
                 <td><?php echo esc_html($run['started']); ?></td>
                 <td><?php echo esc_html($run['status']); ?></td>
@@ -208,6 +196,8 @@ if (!$sspa_runs) : ?>
         <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
     <div class="sspa-payload-summary" style="display:none"></div>
     <pre class="sspa-payload-preview" style="display:none;max-height:420px;overflow:auto;background:#fff;padding:12px;border:1px solid #dcdcde;"></pre>
 <?php endif; ?>
+</div>

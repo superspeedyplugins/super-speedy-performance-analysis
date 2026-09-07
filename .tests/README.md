@@ -186,6 +186,14 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `63-history-quick-baseline.php` - measures a full baseline and a version-changed quick scan,
   proving that the chart retains the exact offered baseline despite different page coverage
   and marks pages outside the quick scan as missing instead of improvements.
+- `64-history-exact-pairs.php` - verifies exact selected run pairs, unchanged setups, incompatible
+  selections, retained profile identities and missing samples without invented zero values.
+- `65-history-saved-view.php` - opens exact retained reports, checks profile links and permissions,
+  and rejects missing IDs without starting another analysis.
+- `66-history-request-diagnostics.php` - captures real PHP warnings per request, preserves other
+  error handlers, reports unavailable legacy coverage and excludes diagnostic text from exports.
+- `67-history-headline-coverage.php` - uses labelled retained scalar fixtures to prevent unmatched
+  or failed pages from creating headline improvements, while retaining valid zero measurements.
 - `02-token.php` - HMAC token mint/verify: path binding, tamper, expiry, flags.
 - `03-fingerprint.php` - SQL normaliser: literals stripped, IN-lists collapsed, design
   smells (ORDER BY rand() etc) preserved, no PII survives.

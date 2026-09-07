@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { parse as parseEnv } from 'dotenv';
+import { navigateDocument } from './navigation.js';
 import {
   dataDir, hash, initialiseDatabase, loadManifest, recorderConfig, sleep, sql, sqlite,
   siteDirectory, workspaceRoot, wp,
@@ -167,9 +168,9 @@ async function measure(target, site, sequence, context, page) {
   let response = null;
   let readinessOk = false;
   let navigationError = '';
-  const started = performance.now();
+  let started = performance.now();
   try {
-    response = await page.goto(targetUrl.href, { waitUntil: 'domcontentloaded', timeout: defaults.timeout_ms });
+    response = await navigateDocument(page, targetUrl.href, { waitUntil: 'domcontentloaded', timeout: defaults.timeout_ms }, () => { started = performance.now(); });
     if (target.readiness_selector) {
       await page.locator(target.readiness_selector).first().waitFor({ state: 'attached', timeout: defaults.timeout_ms });
     }
@@ -241,7 +242,7 @@ try {
     const page = await context.newPage();
     if (target.role === 'administrator') await login(page, site.url);
     for (let warmup = 0; warmup < (target.warmups ?? defaults.warmups); warmup += 1) {
-      await page.goto(new URL(target.path, site.url).href, { waitUntil: 'domcontentloaded', timeout: defaults.timeout_ms });
+      await navigateDocument(page, new URL(target.path, site.url).href, { waitUntil: 'domcontentloaded', timeout: defaults.timeout_ms });
     }
     for (let sequence = 1; sequence <= (target.repetitions ?? defaults.repetitions); sequence += 1) {
       const valid = await measure(target, site, sequence, context, page);

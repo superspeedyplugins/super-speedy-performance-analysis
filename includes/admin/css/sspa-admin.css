@@ -589,7 +589,8 @@
 .sspa-history-compare-table .button { margin-top: 5px; }
 .sspa-history-setup-changes { margin: 10px 0 14px; }
 .sspa-history-setup-changes ul { margin: 8px 0 0 20px; }
-.sspa-history-export-actions { display: flex; align-items: center; gap: 8px; }
+.sspa-history-export-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sspa-history-export-actions .button { white-space: normal; max-width: 100%; }
 .sspa-history-export-preview {
 	max-height: 420px;
 	overflow: auto;
@@ -646,7 +647,13 @@
 .sspa-history-data-table { margin-top: 10px; }
 .sspa-history-data-table td { vertical-align: top; }
 .sspa-history-fault-text { color: #b32d2e; font-weight: 600; }
-.sspa-table-scroll { overflow-x: auto; }
+.sspa-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; }
+#sspa_main div.tab-contents[data-tab="history"] { min-width: 0; max-width: 100%; }
+.sspa-history-compare-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.sspa-history-compare-controls label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; max-width: 100%; }
+.sspa-history-compare-controls select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.sspa-history-point-details { padding: 12px; border: 1px solid #c3c4c7; overflow-wrap: anywhere; }
+.sspa-history-run-notes { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 @media (max-width: 782px) {
 	.sspa-history-summary { display: block; }
 	.sspa-history-summary > div + div { margin-top: 10px; }
@@ -654,6 +661,7 @@
 	.sspa-history-chart-controls { margin-top: 12px; }
 	.sspa-history-chart-controls label { flex: 1 1 180px; }
 	.sspa-history-periods { grid-template-columns: 1fr; }
-	.sspa-history-chart { height: 390px; min-width: 560px; }
-	.sspa-history-chart-card { overflow-x: auto; padding: 12px; }
+	.sspa-history-chart { height: 390px; min-width: 0; }
+	.sspa-history-chart-card { min-width: 0; padding: 12px; }
+	.sspa-history-compare-controls label { width: 100%; }
 }

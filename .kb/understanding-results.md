@@ -23,18 +23,42 @@ A measured impact can be **negative** - shown as "saves Xms" in green. That mean
 
 ## Comparing points in time
 
-The first History chart automatically compares the **Current setup** with the **Previous setup**.
+Open **History** to compare saved measurements. **Selected runs** starts with the latest two
+eligible completed analyses. Choose the run taken before your plugin updates in **Before**, choose
+the run taken afterwards in **After**, then click **Compare**. The chart and comparison report use
+that exact pair, including when both runs measured the same plugin versions.
+
+Click a run number in the History list to open its saved on-screen report. Its page links open
+retained profile details without starting another analysis. The saved report has its own URL;
+use **Back to History** to return to the list and comparison controls.
+
+For automatic update-boundary selection, choose **Previous plugin configuration** and click
+**Compare**. The chart compares all retained points in the current setup period with the
+immediately preceding measured setup period. The accompanying report compares the selected
+After run with the last measured run in that previous period.
+
 A setup is the active plugins and theme plus the exact versions captured when each analysis ran.
 If three plugins are updated together, that starts one new setup period; Performance Analysis does
 not guess how an unmeasured combination would have behaved. Returning to an older combination
 later starts another period rather than merging separate dates.
 
-Each key page shows every valid retained request-time point and the median for both setup periods.
+Each key page shows every valid retained request-time point and the median for each selected run
+or setup period.
 Use the Metric control for generation time, database time, query count, outbound HTTP time, or peak
 memory. Those five views use one saved per-run median because older rows do not retain all of their
 raw samples. Blocked requests, transport errors, HTTP errors and missing measurements keep distinct
 labels, use a separate fault marker and never count towards a median. **View chart data** exposes the
 same points, medians, changes and evidence states as a table.
+
+With **Request wall time** selected, click a point or its table detail button to inspect the
+saved request. Amber outlined triangles identify retained PHP warnings or notices; inverted
+red outlined triangles identify retained PHP errors; solid red triangles identify failed
+requests. Details show the saved run, page and available diagnostic messages.
+
+Diagnostic coverage is explicit. A sample without retained diagnostics is unavailable, not a
+claim that no warning occurred. PHP handlers can consume events before PA observes them, and
+bounded capture can truncate messages or event lists. Summary-metric points represent a whole
+analysis's page median rather than one request; use Request wall time for request-level evidence.
 
 The History tab can compare any two completed full scans or spot checks. **Response time is
 the headline**, because Performance Analysis is primarily a performance tool. A newly observed

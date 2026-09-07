@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.36.0
+Stable tag: 0.36.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -24,7 +24,7 @@ Super Speedy Performance Analysis diagnoses your site's performance the way an e
 * History can also opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
 * Optionally share anonymised results with the community at superspeedy.org to help build an open database of plugin performance. You see the exact payload before anything is sent.
 
-This plugin is free. Download it from https://www.superspeedyplugins.com/ - once installed it checks for its own updates from superspeedyplugins.com, so new versions appear on your Plugins screen like any other update.
+This plugin is free. The build downloaded from https://www.superspeedyplugins.com/ includes automatic updates from superspeedyplugins.com; the WordPress.org build does not include this updater.
 
 == Installation ==
 
@@ -40,6 +40,14 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.
 * Fixed admin tabs following URL fragments when navigating to History or using browser Back and Forward.
+* Fixed failed chart metric changes leaving the selector inconsistent with the displayed measurements
+* Fixed comparison headlines treating unmatched or failed pages as performance improvements
+* Fixed automatic configuration comparisons to select the last measured run before the update
+* Added clickable History entries with saved on-screen reports and page-profile inspection without rerunning analyses
+* Added exact Before and After run selection that updates the chart and comparison report together, including unchanged plugin configurations
+* Added request-level PHP diagnostic markers and details for newly measured pages, with explicit unavailable coverage for older measurements
+* Fixed comparison exports using pending selector changes instead of the displayed comparison
+* Improved History chart and comparison controls for narrow mobile screens
 * Fixed History page filters being lost from the comparison table when changing chart metrics
 * Fixed quick-comparison charts rejecting their selected full-scan baseline when it measured additional pages
 * Added chart median change tooltips and clear labels distinguishing request samples from per-analysis summary medians

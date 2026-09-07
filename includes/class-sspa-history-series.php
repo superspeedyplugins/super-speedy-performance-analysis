@@ -22,16 +22,22 @@ class SSPA_History_Series {
     /**
      * @return array|WP_Error Immutable, renderer-neutral chart document.
      */
-    public static function build($after_id = 0, $metric = 'request_wall_ms', $before_id = 0) {
+    public static function build($after_id = 0, $metric = 'request_wall_ms', $before_id = 0, $mode = 'setup') {
         $metrics = self::metrics();
         $metric = sanitize_key($metric);
         if (!isset($metrics[$metric])) {
             return new WP_Error('sspa_history_metric', __('That History metric is not supported.', 'super-speedy-performance-analysis'));
         }
+        if (!in_array($mode, array('setup', 'pair'), true)) {
+            return new WP_Error('sspa_history_selection_mode', __('That History selection mode is not supported.', 'super-speedy-performance-analysis'));
+        }
 
         $runs = array_values(array_filter(self::recent_runs(), array(__CLASS__, 'is_candidate')));
         if (!$runs) {
             return new WP_Error('sspa_history_no_runs', __('Run an analysis to create the first measured setup.', 'super-speedy-performance-analysis'));
+        }
+        if ('pair' === $mode) {
+            return self::exact_pair($runs, $after_id, $before_id, $metric, $metrics[$metric]);
         }
 
         $warnings = array();
@@ -112,19 +118,57 @@ class SSPA_History_Series {
             }
         }
 
+        return self::document($anchor, $previous_group, $current_group, $metric, $metrics[$metric], 'setup', $warnings);
+    }
+
+    /** Explicit selection never expands a run into a setup period or substitutes another. */
+    private static function exact_pair($runs, $after_id, $before_id, $metric, $definition) {
+        $after_id = filter_var($after_id, FILTER_VALIDATE_INT);
+        $before_id = filter_var($before_id, FILTER_VALIDATE_INT);
+        if (!$after_id || !$before_id || $after_id < 1 || $before_id < 1 || $after_id === $before_id) {
+            return new WP_Error('sspa_history_pair_selection', __('Choose two different completed analyses for Before and After.', 'super-speedy-performance-analysis'));
+        }
+        $selected = array();
+        foreach ($runs as $run) {
+            if (in_array((int) $run['id'], array($before_id, $after_id), true)) {
+                $selected[(int) $run['id']] = $run;
+            }
+        }
+        if (count($selected) !== 2) {
+            return new WP_Error('sspa_history_pair_selection', __('Both selected analyses must be completed baseline or spot runs in the retained History window.', 'super-speedy-performance-analysis'));
+        }
+        foreach ($selected as &$run) {
+            $run['_sspa_setup_fingerprint'] = self::setup_fingerprint($run);
+            if (!$run['_sspa_setup_fingerprint'] || (int) $run['measurement_version'] !== (int) SSPA_Community_Schema::MEASUREMENT_VERSION) {
+                return new WP_Error('sspa_history_incompatible', __('A selected analysis has no versioned setup or uses an incompatible measurement format.', 'super-speedy-performance-analysis'));
+            }
+            $run['_sspa_profiles'] = self::profile_rows((int) $run['id']);
+        }
+        unset($run);
+        $compatible = self::pair_compatibility($selected[$before_id], $selected[$after_id]);
+        if (is_wp_error($compatible)) {
+            return $compatible;
+        }
+        return self::document($selected[$after_id], array($selected[$before_id]), array($selected[$after_id]), $metric, $definition, 'pair', array());
+    }
+
+    private static function document($anchor, $previous_group, $current_group, $metric, $definition, $mode, $warnings) {
         $current = self::period($current_group);
         $previous = $previous_group ? self::period($previous_group) : null;
-        $pages = self::pages($previous_group, $current_group, $metric, $metrics[$metric]);
+        $pages = self::pages($previous_group, $current_group, $metric, $definition);
 
         return array(
             'schema' => self::SCHEMA,
+            'selection_mode' => $mode,
+            'before_run_id' => $previous_group ? (int) $previous_group[0]['id'] : null,
+            'after_run_id' => (int) $anchor['id'],
             'metric' => array_merge(array(
                 'key' => $metric,
-                'description' => 'retained_request_samples' === $metrics[$metric]['source']
+                'description' => 'retained_request_samples' === $definition['source']
                     ? __('Each point is one retained request. Lines show the median of those request measurements.', 'super-speedy-performance-analysis')
                     : __("Each point is one analysis's page median. Lines show the median of those per-analysis medians, not a raw request distribution.", 'super-speedy-performance-analysis'),
                 'change_label' => __('Change', 'super-speedy-performance-analysis'),
-            ), $metrics[$metric]),
+            ), $definition),
             'anchor_run_id' => (int) $anchor['id'],
             'previous' => $previous,
             'current' => $current,
@@ -465,6 +509,7 @@ class SSPA_History_Series {
                     if (empty($seen[$period][$page['key']][(int) $run['id']])) {
                         $page[$period]['faults'][] = array(
                             'run_id' => (int) $run['id'],
+                            'profile_id' => null,
                             'sample' => null,
                             'response_code' => null,
                             'state' => 'missing',
@@ -496,15 +541,29 @@ class SSPA_History_Series {
 
     private static function add_profile(&$period, $run, $profile, $metric_key, $metric) {
         $run_id = (int) $run['id'];
+        $profile_id = (int) $profile['id'];
         if ('request_wall_ms' === $metric_key) {
             $samples = json_decode((string) $profile['samples'], true);
+            if (!is_array($samples) || !$samples) {
+                $period['faults'][] = array(
+                    'run_id' => $run_id,
+                    'profile_id' => $profile_id,
+                    'sample' => null,
+                    'response_code' => !empty($profile['response_code']) ? (int) $profile['response_code'] : null,
+                    'state' => !empty($profile['blocked_by']) ? 'blocked' : 'missing',
+                );
+                return;
+            }
             foreach ((array) $samples as $index => $sample) {
+                $sample = is_array($sample) ? $sample : array();
                 $code = isset($sample['code']) ? (int) $sample['code'] : 0;
                 $valid = empty($profile['blocked_by']) && empty($sample['error'])
                     && $code >= 200 && $code < 400 && isset($sample['wall_ms']) && is_numeric($sample['wall_ms']);
                 if ($valid) {
                     $period['points'][] = array(
                         'run_id' => $run_id,
+                        'profile_id' => $profile_id,
+                        'evidence' => self::sample_evidence($sample),
                         'sample' => (int) $index + 1,
                         'value' => round((float) $sample['wall_ms'], 2),
                         'response_code' => $code,
@@ -512,6 +571,8 @@ class SSPA_History_Series {
                 } else {
                     $period['faults'][] = array(
                         'run_id' => $run_id,
+                        'profile_id' => $profile_id,
+                        'evidence' => self::sample_evidence($sample),
                         'sample' => (int) $index + 1,
                         'response_code' => $code ?: null,
                         'state' => !empty($profile['blocked_by']) ? 'blocked'
@@ -530,6 +591,8 @@ class SSPA_History_Series {
         if ($valid) {
             $period['points'][] = array(
                 'run_id' => $run_id,
+                'profile_id' => $profile_id,
+                'evidence' => array('source' => 'per_run_median'),
                 'sample' => null,
                 'value' => round((float) $profile[$column], 2),
                 'response_code' => $code,
@@ -537,11 +600,78 @@ class SSPA_History_Series {
         } else {
             $period['faults'][] = array(
                 'run_id' => $run_id,
+                'profile_id' => $profile_id,
+                'evidence' => array('source' => 'per_run_median'),
                 'sample' => null,
                 'response_code' => $code ?: null,
                 'state' => !empty($profile['blocked_by']) ? 'blocked' : ($code < 200 || $code >= 400 ? 'http_error' : 'missing'),
             );
         }
+    }
+
+    /** Only fields retained on this request; the prunable median capture is separate. */
+    private static function sample_evidence($sample) {
+        $evidence = array(
+            'source' => 'retained_request_sample',
+            'php_diagnostics' => self::php_diagnostics(isset($sample['php_diagnostics']) ? $sample['php_diagnostics'] : null),
+        );
+        foreach (array('error', 'error_message') as $key) {
+            if (isset($sample[$key]) && is_scalar($sample[$key])) {
+                $evidence[$key] = substr(sanitize_text_field((string) $sample[$key]), 0, 1000);
+            }
+        }
+        if (isset($sample['cached'])) {
+            $evidence['cached'] = (bool) $sample['cached'];
+        }
+        if (isset($sample['gen_ms']) && is_numeric($sample['gen_ms'])) {
+            $evidence['gen_ms'] = round((float) $sample['gen_ms'], 2);
+        }
+        if (isset($sample['reactions']) && is_numeric($sample['reactions'])) {
+            $evidence['reactions'] = max(0, (int) $sample['reactions']);
+        }
+        if (!empty($sample['fatal']) && is_array($sample['fatal'])) {
+            $evidence['fatal'] = array();
+            foreach (array('component', 'type', 'fingerprint') as $key) {
+                if (isset($sample['fatal'][$key]) && is_scalar($sample['fatal'][$key])) {
+                    $evidence['fatal'][$key] = substr(sanitize_text_field((string) $sample['fatal'][$key]), 0, 191);
+                }
+            }
+        }
+        return $evidence;
+    }
+
+    /** Bounded local presentation of the request's own retained diagnostic section. */
+    private static function php_diagnostics($saved) {
+        $unavailable = array('schema' => 1, 'coverage' => 'unavailable', 'reason' => 'legacy_capture', 'count' => null, 'retained_count' => 0, 'truncated' => false, 'events' => array());
+        if (!is_array($saved) || !isset($saved['schema']) || 1 !== (int) $saved['schema']
+            || !isset($saved['coverage']) || !in_array($saved['coverage'], array('observer_delivery', 'partial', 'unavailable'), true)) {
+            return $unavailable;
+        }
+        $events = array();
+        foreach (array_slice(isset($saved['events']) && is_array($saved['events']) ? $saved['events'] : array(), 0, 20) as $event) {
+            if (!is_array($event)) {
+                continue;
+            }
+            $safe = array();
+            foreach (array('severity', 'component', 'component_type', 'file', 'message') as $key) {
+                if (isset($event[$key]) && is_scalar($event[$key])) {
+                    $safe[$key] = substr(sanitize_text_field((string) $event[$key]), 0, 'message' === $key ? 1000 : 191);
+                }
+            }
+            $safe['type'] = isset($event['type']) ? (int) $event['type'] : 0;
+            $safe['line'] = isset($event['line']) ? max(0, (int) $event['line']) : 0;
+            $safe['message_truncated'] = !empty($event['message_truncated']);
+            $events[] = $safe;
+        }
+        return array(
+            'schema' => 1,
+            'coverage' => $saved['coverage'],
+            'reason' => !empty($saved['reason']) ? sanitize_key($saved['reason']) : null,
+            'count' => 'unavailable' !== $saved['coverage'] && isset($saved['count']) ? max(0, (int) $saved['count']) : null,
+            'retained_count' => count($events),
+            'truncated' => !empty($saved['truncated']) || (isset($saved['events']) && is_array($saved['events']) && count($saved['events']) > count($events)),
+            'events' => $events,
+        );
     }
 
     private static function stable_output_signature($samples_json) {

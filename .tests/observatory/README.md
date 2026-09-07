@@ -29,6 +29,11 @@ The matrix measures the same six journeys against:
 Every run performs two warmups and seven recorded requests for each of 18 targets. The viewer is
 available at `http://127.0.0.1:8791/` while `observatory:view` is running.
 
+Each warmup and measured repetition starts from a neutral document in the same browser
+context. This forces a real document request even for repeated URLs ending in `#history`
+or another fragment, while preserving cookies and cache state. The browser timer starts
+after the neutral-document reset; target URLs receive no cache-busting parameters.
+
 The viewer starts with one x-axis column per feature. Click a feature label or point to open the
 key pages which exercised it. Build/version and point-state keys isolate a series or fault class.
 In the page view, clicking one request lists every repetition from the same page/build cell and
@@ -59,3 +64,8 @@ recording, plus the viewer's filter/selection model. `test:viewer` creates a tem
 through the real observatory schema and drives the feature drill-down, keys, repeated-request
 evidence and keyboard navigation in Chromium. The repeated-request browser assertion was
 mutation-tested: narrowing the list to the exact clicked sample made it fail `1 !== 2`.
+
+`npm test` also runs Chromium against a local HTTP fixture to prove that repeated fragment
+targets produce separate correlated responses after warmups, retain cookies and the exact
+target URL, and still reject an actual connection failure. This regression failed against
+the original navigation call because the second warmup never reached the server.

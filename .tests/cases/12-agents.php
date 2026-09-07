@@ -68,7 +68,7 @@ $traffic_observations_ability = wp_get_ability('super-speedy-performance/get-tra
 $traffic_compare_ability = wp_get_ability('super-speedy-performance/compare-traffic-collections');
 sspa_t(is_object($traffic_status_ability) && is_object($traffic_observations_ability) && is_object($traffic_compare_ability), 'traffic status, observations and comparison abilities registered');
 $traffic_started = wp_get_ability('super-speedy-performance/start-traffic-collection')->execute(array('duration' => '2h'));
-sspa_t(is_array($traffic_started) && !empty($traffic_started['active']), 'start-traffic-collection accepts a two-hour duration through the full pipeline');
+sspa_t(is_array($traffic_started) && !empty($traffic_started['active']), 'start-traffic-collection accepts a two-hour duration through the full pipeline' . (is_wp_error($traffic_started) ? ': ' . $traffic_started->get_error_code() . ' - ' . $traffic_started->get_error_message() : ''));
 if (is_array($traffic_started) && !empty($traffic_started['collection']['id'])) {
     $traffic_id = (int) $traffic_started['collection']['id'];
     $traffic_status = $traffic_status_ability->execute(array('collection_id' => $traffic_id));

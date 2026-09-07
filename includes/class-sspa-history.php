@@ -90,8 +90,7 @@ class SSPA_History {
             return new WP_Error('sspa_history_no_pages', __('These analyses contain no comparable page evidence.', 'super-speedy-performance-analysis'));
         }
 
-        $before_headline = self::headline_value($before['pages']);
-        $after_headline = self::headline_value($after['pages']);
+        $headline = self::headline_values($pages);
         $new_diagnostics = array(
             'fatals' => max(0, $after['diagnostics']['fatals'] - $before['diagnostics']['fatals']),
             'transport_errors' => max(0, $after['diagnostics']['transport_errors'] - $before['diagnostics']['transport_errors']),
@@ -126,10 +125,11 @@ class SSPA_History {
             'setup_changes_available' => is_array($setup_changes),
             'setup_changes' => is_array($setup_changes) ? $setup_changes : array(),
             'configuration_changes' => self::component_state_changes($before['identity']['component_state'], $after['identity']['component_state']),
-            'headline' => self::delta($before_headline, $after_headline, 'ms'),
+            'headline' => self::delta($headline['before'], $headline['after'], 'ms'),
             'new_diagnostics' => $new_diagnostics,
             'summary' => array(
                 'pages' => count($pages),
+                'headline_pages' => $headline['count'],
                 'output_changes' => $changed,
                 'failed_validity_cases' => $failed_validity,
                 'failed_declared_cases' => $failed_declared,
@@ -274,14 +274,18 @@ class SSPA_History {
         return 'pass';
     }
 
-    private static function headline_value($pages) {
-        $values = array();
+    private static function headline_values($pages) {
+        $before = array();
+        $after = array();
         foreach ((array) $pages as $page) {
-            if (null !== $page['ttfb_ms']) {
-                $values[] = $page['ttfb_ms'];
+            $timing = $page['metrics']['ttfb_ms'];
+            if ('pass' === $page['validity']['before'] && 'pass' === $page['validity']['after']
+                && null !== $timing['before'] && null !== $timing['after']) {
+                $before[] = $timing['before'];
+                $after[] = $timing['after'];
             }
         }
-        return SSPA_Profile_Store::median($values);
+        return array('before' => SSPA_Profile_Store::median($before), 'after' => SSPA_Profile_Store::median($after), 'count' => count($before));
     }
 
     private static function delta($before, $after, $unit) {
@@ -533,13 +537,17 @@ class SSPA_History {
                             <?php echo null !== $headline['percent'] ? esc_html(sprintf('(%+.1f%%)', $headline['percent'])) : ''; ?>
                         </span>
                     <?php endif; ?>
+                    <p class="description"><?php
+                        /* translators: %d: number of page scenarios contributing to both headline medians */
+                        printf(esc_html(_n('Median across %d matching page measured successfully in both runs.', 'Median across %d matching pages measured successfully in both runs.', $comparison['summary']['headline_pages'], 'super-speedy-performance-analysis')), (int) $comparison['summary']['headline_pages']);
+                    ?></p>
                 </div>
                 <div>
                     <?php if ($attention) : ?>
                         <strong><?php esc_html_e('Needs attention:', 'super-speedy-performance-analysis'); ?></strong>
                         <span><?php echo esc_html(implode(' · ', $attention)); ?></span>
                     <?php elseif ($comparison['summary']['output_changes']) : ?>
-                        <strong><?php /* translators: %d: number of changed page outputs */ printf(esc_html(_n('%d output changed for review', '%d outputs changed for review', $comparison['summary']['output_changes'], 'super-speedy-performance-analysis')), $comparison['summary']['output_changes']); ?></strong>
+                        <strong><?php /* translators: %d: number of changed page outputs */ echo esc_html(sprintf(_n('%d output changed for review', '%d outputs changed for review', $comparison['summary']['output_changes'], 'super-speedy-performance-analysis'), $comparison['summary']['output_changes'])); ?></strong>
                     <?php else : ?>
                         <strong><?php esc_html_e('No new fault or output change found', 'super-speedy-performance-analysis'); ?></strong>
                     <?php endif; ?>
@@ -561,9 +569,9 @@ class SSPA_History {
                             <code><?php echo esc_html($change['slug']); ?></code>
                             <span class="description">
                                 <?php if ('added' === $change['state']) : ?>
-                                    <?php echo esc_html(sprintf(__('added at %s', 'super-speedy-performance-analysis'), $change['after_version'] ?: __('unknown version', 'super-speedy-performance-analysis'))); ?>
+                                    <?php /* translators: %s: newly installed component version */ echo esc_html(sprintf(__('added at %s', 'super-speedy-performance-analysis'), $change['after_version'] ?: __('unknown version', 'super-speedy-performance-analysis'))); ?>
                                 <?php elseif ('removed' === $change['state']) : ?>
-                                    <?php echo esc_html(sprintf(__('removed (was %s)', 'super-speedy-performance-analysis'), $change['before_version'] ?: __('unknown version', 'super-speedy-performance-analysis'))); ?>
+                                    <?php /* translators: %s: previously installed component version */ echo esc_html(sprintf(__('removed (was %s)', 'super-speedy-performance-analysis'), $change['before_version'] ?: __('unknown version', 'super-speedy-performance-analysis'))); ?>
                                 <?php else : ?>
                                     <?php echo esc_html(($change['before_version'] ?: __('unknown', 'super-speedy-performance-analysis')) . ' → ' . ($change['after_version'] ?: __('unknown', 'super-speedy-performance-analysis'))); ?>
                                 <?php endif; ?>
@@ -585,7 +593,7 @@ class SSPA_History {
                 </details>
             <?php endif; ?>
 
-            <table class="widefat striped sspa-history-compare-table">
+            <div class="sspa-table-scroll"><table class="widefat striped sspa-history-compare-table">
                 <thead><tr>
                     <th><?php esc_html_e('Page / variant', 'super-speedy-performance-analysis'); ?></th>
                     <th><?php esc_html_e('Validity', 'super-speedy-performance-analysis'); ?></th>
@@ -621,7 +629,7 @@ class SSPA_History {
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
-            </table>
+            </table></div>
             <p class="sspa-history-export-actions">
                 <button type="button" class="button sspa-history-preview-export"><?php esc_html_e('Preview privacy-safe evidence', 'super-speedy-performance-analysis'); ?></button>
                 <button type="button" class="button sspa-history-download-export" disabled><?php esc_html_e('Download reviewed evidence', 'super-speedy-performance-analysis'); ?></button>
@@ -642,14 +650,31 @@ class SSPA_History {
 
     public static function ajax_compare() {
         self::ajax_guard();
-        $comparison = self::compare(
-            isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,
-            isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0
+        // Resolve once so the chart and report cannot silently describe different runs.
+        $mode = isset($_POST['selection_mode']) ? sanitize_key(wp_unslash($_POST['selection_mode'])) : 'pair';
+        $series = SSPA_History_Series::build(
+            isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0,
+            isset($_POST['metric']) ? sanitize_key(wp_unslash($_POST['metric'])) : 'request_wall_ms',
+            'pair' === $mode && isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,
+            $mode
         );
-        if (is_wp_error($comparison)) {
+        if (is_wp_error($series)) {
+            wp_send_json_error($series->get_error_message());
+        }
+        $before_ids = !empty($series['previous']['run_ids']) ? $series['previous']['run_ids'] : array();
+        // Period IDs are chronological: the baseline is the last run before the update.
+        $before_id = $before_ids ? (int) end($before_ids) : 0;
+        $comparison = $before_id ? self::compare($before_id, (int) $series['anchor_run_id']) : null;
+        if ($before_id && is_wp_error($comparison)) {
             wp_send_json_error($comparison->get_error_message());
         }
-        wp_send_json_success(array('html' => self::render($comparison), 'comparison' => $comparison));
+        wp_send_json_success(array(
+            'html' => $before_id ? self::render($comparison) : '<p>' . esc_html__('No previous compatible configuration has been measured.', 'super-speedy-performance-analysis') . '</p>',
+            'comparison' => $before_id ? $comparison : null,
+            'chart_html' => SSPA_History_Chart::render($series),
+            'before_run_id' => $before_id,
+            'after_run_id' => (int) $series['anchor_run_id'],
+        ));
     }
 
     public static function ajax_setting() {

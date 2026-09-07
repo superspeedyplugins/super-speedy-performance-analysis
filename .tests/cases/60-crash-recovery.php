@@ -14,7 +14,9 @@ global $wpdb;
 
 $dropin = WP_CONTENT_DIR . '/db.php';
 $hold = WP_CONTENT_DIR . '/db.php.sspa-hold';
-$ready = SSPA_PLUGIN_DIR . '.data/case-60-ready.json';
+$ready_dir = SSPA_PLUGIN_DIR . '.data/crash-recovery/' . md5(ABSPATH);
+wp_mkdir_p($ready_dir);
+$ready = $ready_dir . '/case-60-ready.json';
 $fake_qm = "<?php\n/**\n * Plugin Name: Query Monitor Database Class (Drop-in)\n */\nif (!defined('SAVEQUERIES')) { define('SAVEQUERIES', true); }\n";
 $active_before = array_values((array) get_option('active_plugins', array()));
 

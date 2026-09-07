@@ -86,6 +86,20 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		assert.ok(medianTooltip.includes(Math.abs(medianDelta).toFixed(1) + ' ms'), 'Current median tooltip shows the absolute measured change');
 		assert.ok(medianTooltip.includes(Math.abs(medianDelta / source.pages[0].previous.median * 100).toFixed(1) + '%'), 'Current median tooltip shows the percentage measured change');
 
+		// A rejected metric request must not relabel the measurements still on screen.
+		const rejectMetric = async route => {
+			if ((route.request().postData() || '').includes('action=sspa_history_series')) {
+				return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({success: false, data: 'Metric request rejected for regression test.'})});
+			}
+			return route.continue();
+		};
+		await page.route('**/admin-ajax.php', rejectMetric);
+		await page.locator('.sspa-history-metric').selectOption('generation_ms');
+		await page.locator('.sspa-history-chart-status').filter({hasText: 'Metric request rejected'}).waitFor();
+		assert.equal(await page.locator('.sspa-history-metric').inputValue(), source.metric.key,
+			'A failed metric change must keep the selector consistent with the displayed measurements');
+		assert.equal(await page.locator('[data-sspa-history-chart]').evaluate(card => card.sspaDocument.metric.key), source.metric.key);
+		await page.unroute('**/admin-ajax.php', rejectMetric);
 		await page.locator('.sspa-history-metric').selectOption('generation_ms');
 		await page.locator('.sspa-history-chart-status').filter({ hasText: 'Page generation time chart loaded' }).waitFor();
 		const generation = await page.locator('[data-sspa-history-chart]').evaluate((card) => card.sspaDocument);
@@ -113,7 +127,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		await filter.fill(generation.pages[0].label.toLowerCase());
 		assert.ok(await page.locator('.sspa-history-data-table tbody tr').evaluateAll((rows) => rows.filter((row) => !row.hidden).length) >= 1);
 
-		const dataSummary = page.locator('.sspa-history-data-details summary');
+		const dataSummary = page.locator('.sspa-history-data-details > summary');
 		await dataSummary.focus();
 		await page.keyboard.press('Enter');
 		assert.equal(await page.locator('.sspa-history-data-details').getAttribute('open'), '');
@@ -129,14 +143,117 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			});
 		}
 
-		await page.setViewportSize({ width: 480, height: 800 });
+		// Selecting exact runs must update the chart and report together, even with unchanged plugins.
+		const selected = await page.locator('#sspa-history-after option').evaluateAll(nodes => nodes.slice(0, 2).map(node => node.value));
+		await page.locator('#sspa-history-mode').selectOption('pair');
+		await page.locator('#sspa-history-before').selectOption(selected[1]);
+		await page.locator('#sspa-history-after').selectOption(selected[0]);
+		await page.locator('#sspa-history-compare').click();
+		await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
+		await page.locator('.sspa-history-chart-status').filter({hasText:'chart loaded'}).waitFor();
+		const exact = await page.locator('[data-sspa-history-chart]').evaluate(card => card.sspaDocument);
+		assert.deepEqual(exact.previous.run_ids, [Number(selected[1])]);
+		assert.deepEqual(exact.current.run_ids, [Number(selected[0])]);
+		assert.match(await page.locator('#sspa-history-comparison').innerText(), new RegExp('#' + selected[0]));
+		// Pending selector edits must not retarget actions attached to the displayed report.
+		await page.locator('#sspa-history-before').selectOption(selected[0]);
+		const exportRequest = page.waitForRequest(request => (request.postData() || '').includes('action=sspa_history_export'));
+		await page.locator('.sspa-history-preview-export').click();
+		const exported = new URLSearchParams((await exportRequest).postData());
+		assert.equal(exported.get('before_run_id'), selected[1], 'Export must use the displayed comparison, not unsubmitted selector changes');
+		await page.waitForFunction(() => jQuery.active === 0);
+		await page.locator('#sspa-history-before').selectOption(selected[1]);
+		await page.locator('.sspa-history-page-filter').fill('');
+		await page.locator('.sspa-history-data-details > summary').click();
+		await page.locator('.sspa-history-data-table tbody tr').first().locator('details > summary').click();
+		await page.locator('.sspa-history-inspect-point').first().click();
+		assert.match(await page.locator('.sspa-history-point-details').innerText(), /Analysis #/);
+		let starts = 0;
+		page.on('request', request => { if ((request.postData() || '').includes('action=sspa_start_run')) starts++; });
+		const savedLink = page.locator('.sspa-history-run-link[data-run-id="' + selected[1] + '"]');
+		await savedLink.click();
+		await page.locator('.sspa-history-saved-report').waitFor();
+		assert.match(await page.locator('.sspa-history-saved-report').innerText(), new RegExp('#' + selected[1]));
+		assert.equal(starts, 0, 'Opening saved evidence never starts another analysis');
+		await page.reload();
+		await page.locator('.sspa-history-saved-report').waitFor();
+		assert.equal(await page.locator('.sspa-history-saved-report').getAttribute('data-saved-run-id'), selected[1], 'A saved report URL survives reload');
+		await page.goBack();
 		await page.locator('.sspa-history-chart canvas').waitFor();
-		assert.ok((await page.locator('.sspa-history-chart').boundingBox()).width >= 560);
+		// A failed saved-report response must be visible and retry the same selected run.
+		const rejectSavedReport = async route => {
+			if ((route.request().postData() || '').includes('action=sspa_history_run')) {
+				await route.fulfill({status:200, contentType:'application/json', body:JSON.stringify({success:false, data:'Saved report test failure'})});
+			} else await route.continue();
+		};
+		await page.route('**/admin-ajax.php', rejectSavedReport);
+		await savedLink.click();
+		await page.locator('#sspa-history-saved-run [role="alert"]').waitFor();
+		assert.match(await page.locator('#sspa-history-saved-run').innerText(), /Saved report test failure/);
+		await page.unroute('**/admin-ajax.php', rejectSavedReport);
+		await page.locator('.sspa-history-retry').click();
+		await page.locator('.sspa-history-saved-report').waitFor();
+		assert.equal(await page.locator('.sspa-history-saved-report').getAttribute('data-saved-run-id'), selected[1]);
+		await page.locator('.sspa-history-back').click();
+		await page.locator('.sspa-history-chart canvas').waitFor();
+		await page.locator('#sspa-history-mode').selectOption('setup');
+		await page.locator('#sspa-history-compare').click();
+		await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
+		const setupPeriod = await page.locator('[data-sspa-history-chart]').evaluate(card => card.sspaDocument);
+		assert.ok(setupPeriod.previous.run_ids.length > 1, 'The setup fixture includes repeated measurements before the update');
+		assert.equal(Number(await page.locator('.sspa-history-comparison').getAttribute('data-before-run')), Math.max(...setupPeriod.previous.run_ids),
+			'Automatic setup comparison must use the last measured run before the configuration changed');
+		for (const width of [480, 320]) {
+			await page.setViewportSize({width, height:800});
+			await page.waitForFunction(() => {
+				const mount = document.querySelector('.sspa-history-chart');
+				return Math.abs(mount.sspaChart.getWidth() - mount.clientWidth) <= 1;
+			}, null, {timeout:2000});
+			assert.ok((await page.locator('.sspa-history-chart').boundingBox()).width > 100);
+			const overflow = await page.evaluate(() => ({width:innerWidth, document:document.documentElement.scrollWidth,
+				elements:Array.from(document.querySelectorAll('#sspa_main *')).filter(node => node.getBoundingClientRect().right > innerWidth + 1 && !node.closest('.sspa-table-scroll')).slice(0, 12).map(node => ({tag:node.tagName, cls:node.className, width:node.getBoundingClientRect().width}))}));
+			if (screenshot) await page.screenshot({path:screenshot, fullPage:true});
+			assert.ok(overflow.document <= width + 1, 'History must not overflow the viewport: ' + JSON.stringify(overflow));
+		}
 		if (screenshot) {
 			await page.screenshot({ path: screenshot, fullPage: true });
 		}
+		if (process.env.SSPA_E2E_DIAGNOSTIC_RUN) {
+			await page.setViewportSize({width:1400, height:900});
+			await page.locator('.sspa-history-metric').selectOption('request_wall_ms');
+			await page.waitForFunction(() => !document.querySelector('.sspa-history-metric').disabled);
+			await page.locator('#sspa-history-mode').selectOption('setup');
+			await page.locator('#sspa-history-after').selectOption(process.env.SSPA_E2E_DIAGNOSTIC_RUN);
+			await page.locator('#sspa-history-compare').click();
+			await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
+			await page.locator('.sspa-history-chart-status').filter({hasText:'chart loaded'}).waitFor();
+			await page.locator('.sspa-history-page-filter').fill('diagnostic-pair');
+			const diagnosticPoint = await page.locator('.sspa-history-chart').evaluate(mount => {
+				const points = mount.sspaChart.getOption().series[1].data;
+				const index = points.findIndex(point => (point.savedPoint.evidence.php_diagnostics.events || []).some(event => event.message.includes('diagnostic one')));
+				if (index < 0) return null;
+				const pixel = mount.sspaChart.convertToPixel({seriesIndex:1}, points[index].value);
+				return {index, symbol:points[index].symbol, x:pixel[0] + points[index].symbolOffset[0], y:pixel[1], message:points[index].savedPoint.evidence.php_diagnostics.events[0].message};
+			});
+			assert.ok(diagnosticPoint, 'The actual measured warning appears in a chart point');
+			assert.equal(diagnosticPoint.symbol, 'triangle', 'Observed diagnostics have a visible warning marker');
+			await page.locator('.sspa-history-chart').scrollIntoViewIfNeeded();
+			const chartBox = await page.locator('.sspa-history-chart').boundingBox();
+			await page.mouse.click(chartBox.x + diagnosticPoint.x, chartBox.y + diagnosticPoint.y);
+			await page.locator('.sspa-history-point-details').filter({hasText:'SSPA local diagnostic one'}).waitFor();
+			await page.locator('.sspa-history-data-details > summary').click();
+			const diagnosticRow = page.locator('.sspa-history-data-table tbody tr[data-page-label*="diagnostic-pair"]');
+			await diagnosticRow.locator('details > summary').click();
+			await diagnosticRow.locator('.sspa-history-inspect-point').filter({hasText:'After'}).first().click();
+			assert.ok((await page.locator('.sspa-history-point-details').innerText()).includes('SSPA local diagnostic one'));
+			assert.equal(await page.locator('.sspa-history-point-details script').count(), 0, 'Diagnostic message markup is inert text');
+			if (screenshot) {
+				const parsed = path.parse(screenshot);
+				await page.locator('[data-sspa-history-chart]').screenshot({path:path.join(parsed.dir, parsed.name + '-warnings' + parsed.ext)});
+			}
+		}
 		assert.deepEqual(browserErrors, []);
-		console.log('PASS: History chart plots exact source values, switches metrics, filters pages, honours reduced motion and remains usable at 480px');
+		console.log('PASS: History workflow opens saved reports and synchronises exact comparisons, plotted values, filters and diagnostics with 320px/480px viewport fit');
 	} finally {
 		await browser.close();
 	}

@@ -16,7 +16,7 @@ function sspa_63_run($args) {
         $status = SSPA_Run_Controller::status($id);
     } while (in_array($status['status'], array('crawling', 'analysing'), true) && time() < $deadline);
     if ('done' !== $status['status']) {
-        throw new RuntimeException('Run ended: ' . $status['status']);
+        throw new RuntimeException('Run ended: ' . $status['status'] . ' (run #' . (int) $id . ', 240-second deadline reached: ' . (time() >= $deadline ? 'yes' : 'no') . ')');
     }
     return (int) $id;
 }
