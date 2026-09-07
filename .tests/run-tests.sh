@@ -39,6 +39,14 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     fi
 done
 
+if [ -z "$FILTER" ] || [[ "admin-tabs-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-admin-tabs.sh"; then
+        FAILED=$((FAILED + 1))
+        FAILED_NAMES="$FAILED_NAMES admin-tabs-browser"
+    fi
+fi
+
 echo
 echo "$RAN case file(s) run, $FAILED failed"
 [ -n "$FAILED_NAMES" ] && echo "failed:$FAILED_NAMES"

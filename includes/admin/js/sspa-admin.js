@@ -1,6 +1,6 @@
 jQuery(function () {
-	var hash = window.location.hash.replace('#', '');
-	sspa_click_tab(hash || 'overview');
+	sspa_select_url_tab();
+	jQuery(window).on('hashchange popstate', sspa_select_url_tab);
 
 	// A finished run reloads the page, so sspa_autospot must be consumed exactly once -
 	// left in the URL it would re-arm on every reload and loop the analysis forever.
@@ -72,14 +72,23 @@ jQuery(document).on('click', '#sspa_main .nav-tab-wrapper .nav-tab', function (e
 	e.stopPropagation();
 });
 
+function sspa_select_url_tab() {
+	sspa_click_tab(window.location.hash.substring(1) || 'overview');
+}
+
 function sspa_click_tab(slug) {
-	if (!jQuery('#sspa_main .nav-tab-wrapper .nav-tab[data-tab="' + slug + '"]').length) {
+	var tabs = jQuery('#sspa_main .nav-tab-wrapper .nav-tab');
+	var tab = tabs.filter(function () { return jQuery(this).attr('data-tab') === slug; });
+	if (!tab.length) {
 		slug = 'overview';
+		tab = tabs.filter(function () { return jQuery(this).attr('data-tab') === slug; });
 	}
-	jQuery('#sspa_main .nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
-	jQuery('#sspa_main .nav-tab-wrapper .nav-tab[data-tab="' + slug + '"]').addClass('nav-tab-active').focus();
+	tabs.removeClass('nav-tab-active');
+	tab.addClass('nav-tab-active').focus();
 	jQuery('#sspa_main div.tab-contents').css('display', 'none');
-	var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').css('display', 'block');
+	var panel = jQuery('#sspa_main div.tab-contents').filter(function () {
+		return jQuery(this).attr('data-tab') === slug;
+	}).css('display', 'block');
 	if (panel.attr('data-sspa-tab-loaded') === '0' && panel.attr('data-sspa-tab-loading') !== '1') {
 		panel.attr('data-sspa-tab-loading', '1');
 		sspa_refresh_tabs([slug]);

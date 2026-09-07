@@ -15,10 +15,16 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/setup-site.sh --reset   # destroy and rebuild it from scratch
 .tests/run-tests.sh            # run all cases
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
+.tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 ```
 
 Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
 which zsh does not set when the file is sourced interactively.
+
+The registered admin-tabs browser case requires Node.js and the observatory's Playwright
+dependency with Chromium installed. `SSPA_PLAYWRIGHT_MODULE` can select an existing Playwright
+installation. It checks fresh History links, changed fragments, back/forward, reload and
+invalid fragments through the authenticated admin page without changing analysis data.
 
 ### Central E2E observatory
 
