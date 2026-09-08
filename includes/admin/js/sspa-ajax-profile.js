@@ -22,18 +22,19 @@ function headlines(doc) {
         var card=$('<section class="sspa-ajax-headline">').appendTo(wrap);
         $('<h3>').text(page.label).appendTo(card);
         $('<div class="sspa-ajax-big-times">').text(formatTime(page.previous.median)+' → '+formatTime(page.current.median)).appendTo(card);
-        if(page.delta.percent!==null)$('<strong class="sspa-ajax-reduction">').text((-page.delta.percent).toFixed(1)+'% reduction · '+formatTime(-page.delta.absolute)+' saved').appendTo(card);
+        if(page.delta.percent!==null)$('<strong class="sspa-ajax-reduction">').text(Math.abs(page.delta.percent).toFixed(1)+(page.delta.absolute>0 ? '% slower · ' : '% reduction · ')+formatTime(Math.abs(page.delta.absolute))+(page.delta.absolute>0 ? ' added' : ' saved')).appendTo(card);
         $('<p>').text('Server request median · '+page.previous.samples+' before / '+page.current.samples+' after samples · '+page.previous.errors+' / '+page.current.errors+' errors').appendTo(card);
         if(page.delta.absolute===null)$('<p>').text(page.warning).appendTo(card);
     });
     return wrap;
 }
+function visibleDocument() { var filter=($('.sspa-ajax-filter').val() || '').toLowerCase(); return Object.assign({},saved,{selection_filter:filter,pages:saved.pages.filter(function(p){return !filter || (p.label+' '+p.key).toLowerCase().indexOf(filter)!==-1;})}); }
 function paint() {
     if (!saved) return;
     var mount=document.querySelector('.sspa-ajax-chart');
     chart=chart || window.SSPAECharts.init(mount);
     var filter=($('.sspa-ajax-filter').val() || '').toLowerCase();
-    var visible=Object.assign({},saved,{pages:saved.pages.filter(function(p){return !filter || (p.label+' '+p.key).toLowerCase().indexOf(filter)!==-1;})});
+    var visible=visibleDocument();
     $('.sspa-ajax-headlines').empty().append(headlines(visible));
     chart.setOption(SSPAMeasurementChart.optionFor(saved, filter), true);
     chart.off('click'); chart.on('click', function (event) { if(event.data.savedPoint) $('.sspa-ajax-point').text(JSON.stringify(event.data.savedPoint,null,2)); });
@@ -45,7 +46,7 @@ function summary(documentData) {
         $('<h3>').text(page.label).appendTo(result);
         var before=page.previous, after=page.current;
         $('<p>').text('Median: '+before.median+' → '+after.median+' ms. p95: '+before.p95+' → '+after.p95+' ms. Successful samples: '+before.samples+' → '+after.samples+'. Errors: '+before.errors+' → '+after.errors+'.').appendTo(result);
-        if(page.delta.absolute !== null) $('<p>').text((-page.delta.absolute)+' ms saved per request'+(page.delta.percent !== null ? ' ('+(-page.delta.percent)+'% reduction)' : '')+'.').appendTo(result);
+        if(page.delta.absolute !== null) $('<p>').text(Math.abs(page.delta.absolute)+' ms '+(page.delta.absolute>0 ? 'added' : 'saved')+' per request'+(page.delta.percent !== null ? ' ('+Math.abs(page.delta.percent)+'% '+(page.delta.absolute>0 ? 'slower' : 'reduction')+')' : '')+'.').appendTo(result);
         $('<p>').text(page.warning).appendTo(result);
     });
     return result;
@@ -59,10 +60,10 @@ $(document).on('input', '.sspa-ajax-filter', paint);
 $(window).on('resize',function(){if(chart)chart.resize();});
 $(document).on('click','.sspa-ajax-export',function(){
     if(!saved || !chart)return;
-    var out=$('<main>'); $('<h1>').text('AJAX before/after: server request time').appendTo(out);
+    var exported=visibleDocument(); var out=$('<main>'); $('<h1>').text('AJAX before/after: server request time').appendTo(out);
     $('<img>').attr('src',chart.getDataURL({type:'png',pixelRatio:2,backgroundColor:'#fff'})).attr('alt','Measured AJAX request chart').appendTo(out);
-    out.append(headlines(saved)); out.append(summary(saved)); $('<pre>').text(JSON.stringify(saved,null,2)).appendTo(out);
-    var blob=new Blob(['<!doctype html><meta charset="utf-8"><title>AJAX measurements</title>'+out[0].outerHTML],{type:'text/html'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+    out.append(headlines(exported)); out.append(summary(exported)); $('<pre>').text(JSON.stringify(exported,null,2)).appendTo(out);
+    var blob=new Blob(['<!doctype html><meta charset="utf-8"><title>AJAX measurements</title><style>body{font:16px system-ui;max-width:1200px;margin:32px auto;padding:0 20px}img{max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere}.sspa-ajax-big-times{font-size:40px;font-weight:700}.sspa-ajax-headline{padding:20px;border:1px solid #ccc}.sspa-ajax-reduction{color:#135e96;font-size:20px}</style>'+out[0].outerHTML],{type:'text/html'}),url=URL.createObjectURL(blob),link=document.createElement('a');
     link.href=url;link.download='ajax-before-after.html';link.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
 });
 })(jQuery);
