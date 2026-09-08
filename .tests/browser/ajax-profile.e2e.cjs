@@ -20,6 +20,7 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  const filtered=await page.evaluate(html=>JSON.parse(new DOMParser().parseFromString(html,'text/html').querySelector('pre').textContent),filteredHtml);
  assert.equal(filtered.pages.length,0,'export JSON and summaries use the same filter as chart');
  assert.equal(await page.locator('.sspa-ajax-headlines h3').count(),0,'filtered visual summary matches exported selection');
+ assert.equal(await page.locator('.sspa-ajax-summary h3').count(),0,'detailed visible summary follows the same filter');
  await page.locator('.sspa-ajax-filter').fill('');
  
  console.log('PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors');

@@ -36,6 +36,7 @@ function paint() {
     var filter=($('.sspa-ajax-filter').val() || '').toLowerCase();
     var visible=visibleDocument();
     $('.sspa-ajax-headlines').empty().append(headlines(visible));
+    $('.sspa-ajax-summary').empty().append(summary(visible));
     chart.setOption(SSPAMeasurementChart.optionFor(saved, filter), true);
     chart.off('click'); chart.on('click', function (event) { if(event.data.savedPoint) $('.sspa-ajax-point').text(JSON.stringify(event.data.savedPoint,null,2)); });
 }
