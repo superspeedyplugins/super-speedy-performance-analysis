@@ -44,6 +44,16 @@ The Share preview browser case uses the same dependency and verifies both naviga
 Share alone, preview toggling and persistence across a real tab refresh. It requires an
 existing completed analysis and does not opt in or submit an analysis.
 
+### Community boot evidence
+
+`SSPA_SCENARIO=tests-ajax-retention bash .tests/run-tests.sh 70-community-boot`
+checks the real run exporter with retained synthetic boot evidence: exact timings,
+component versions, page relationships, consent version 5, custom callback redaction and
+invalid metrics. It creates no outbox item and sends no submission. Set
+`SSPA_BOOT_PAYLOAD_FILE=/tmp/sspa-boot-producer.json` to hand its complete payload to the
+receiver's `TestManifestRealBootProducer` test. Cases 20–23 cover the existing immutable
+outbox, evidence families, backfill and actual run controller.
+
 ### Central E2E observatory
 
 The separate observatory measures PHP request time and correlated PHP faults across declared
