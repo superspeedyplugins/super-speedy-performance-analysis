@@ -39,15 +39,9 @@ add_action('wp_footer', function () {
     // Sin 2: big result set - fetch 500+ rows in one query.
     $wpdb->get_results("SELECT meta_id, post_id, meta_key FROM {$wpdb->postmeta} LIMIT 600");
 
-    // Sin 3: slow query with a classifiable shape (ORDER BY rand()). Must land DECISIVELY
-    // over the critical line (slow_query_ms x 5 = 250ms): the plain 3-way self-join
-    // measured ~237ms on Apple Silicon - a knife-edge warn that broke the score assertion.
-    // The x2 factor pushes it to ~800ms here.
-    // Every alias is bounded. Unbounded, this is O(posts^3): tuned to ~800ms on a fresh
-    // container, it reached ~170 million rows once the environment had accumulated 440
-    // posts and every profiled request hit the 60s crawler timeout - which presents as
-    // "the analysis engine found nothing", not as a slow query.
-    $wpdb->get_results("SELECT p1.ID FROM (SELECT ID FROM {$wpdb->posts} LIMIT 120) p1, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p2, (SELECT ID FROM {$wpdb->posts} LIMIT 120) p3 ORDER BY rand() LIMIT 5");
+    // Sin 3: one deliberately slow, classifiable query. A single-row sleep exceeds the
+    // 250ms critical threshold independently of CPU speed and fixture table size.
+    $wpdb->get_results('SELECT SLEEP(0.35) AS fixture_delay ORDER BY rand()');
 
     // Sin 4: byte-identical duplicate queries (missing caching).
     for ($i = 0; $i < 8; $i++) {
@@ -115,6 +109,7 @@ if ($f) {
     $e = json_decode($f['evidence'], true);
     sspa_t($e['shape'] === 'rand', 'shape classified as rand (' . $e['shape'] . ')');
     sspa_t($f['recommendation_key'] === 'slow_query_rand', 'recommendation key mapped');
+    sspa_t($f['severity'] === 'critical', 'bounded slow-query fixture reaches critical severity');
 }
 
 $f = $named('dupe_queries');
@@ -134,6 +129,12 @@ $http_blob = $wpdb->get_var($wpdb->prepare(
     $run_id
 ));
 $http_capture = $http_blob ? json_decode(gzuncompress($http_blob), true) : null;
+$before_workloads = $http_capture;
+$workloads = SSPA_Attribution::query_workloads($http_capture);
+$caller_totals = SSPA_Attribution::caller_aggregate($http_capture);
+sspa_t($before_workloads === $http_capture, 'finding ownership leaves stored capture unchanged');
+sspa_t(array_sum(array_column($workloads, 'query_count')) === array_sum(array_column($caller_totals, 'query_count')), 'finding and caller ownership conserve query totals');
+sspa_t(isset($workloads['sspa-bad-plugin']) && $workloads['sspa-bad-plugin']['query_count'] >= 60, 'executing plugin workload survives theme caller attribution');
 $captured_http = is_array($http_capture) && !empty($http_capture['http']['calls']) ? $http_capture['http']['calls'][0] : null;
 sspa_t(is_array($captured_http) && 'http' === $captured_http['scheme'] && false === $captured_http['sslverify'], 'HTTP capture persists scheme and sslverify for the public inventory');
 

@@ -346,8 +346,10 @@ rows. Verify with a raw `$wpdb->get_var` before concluding it is a product bug -
 **Bounded fixtures.** Any test fixture doing deliberately expensive work must bound it against
 the table it reads. `run-tests.sh` reseeds the WooCommerce sample data whenever products drop
 below five, so `wp_posts` grows across runs, and an O(posts^3) join that cost ~800ms when it was
-written reached 99.9 million row combinations and an 82-second home page at 464 posts. Cases 07
-and 09 both use `(SELECT ID FROM posts LIMIT 120)` aliases for this reason. The symptom is never
+written reached 99.9 million row combinations and an 82-second home page at 464 posts. Case 09
+uses `(SELECT ID FROM posts LIMIT 120)` aliases for this reason. Case 07 uses one synthetic
+row with `SLEEP(0.35)` and `ORDER BY rand()` to test critical severity independently of CPU
+speed, with no table scan. The symptom of an unbounded fixture is never
 a slow-query failure: it is the crawler timing out, so the case fails with "deep run done:
 crawling" or "the analysis engine found nothing".
 

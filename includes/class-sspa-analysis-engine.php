@@ -889,11 +889,26 @@ class SSPA_Analysis_Engine {
     private function query_hogs() {
         $threshold = (int) SSPA_Rules::threshold('query_hog_count');
 
-        // CALLER mode, deliberately, and regardless of the display setting. This finding is
-        // the N+1 detector: a plugin calling wc_get_product() in a loop instead of one
-        // aggregate query is the plugin's fault, not WooCommerce's, and code-owner mode
-        // would file the whole thing under WooCommerce and let the plugin off.
-        $rows = SSPA_Attribution::component_rows($this->run_id, SSPA_Attribution::MODE_CALLER);
+        // Finding ownership differs from the display's caller mode: a theme rendering
+        // wp_footer must not hide the executing plugin's own query workload. A plugin
+        // looping over another plugin's API still owns that workload, with ran_in evidence.
+        $rows = array();
+        foreach ($this->profiles as $profile) {
+            if (!isset($this->captures[$profile['id']])) {
+                continue;
+            }
+            foreach (SSPA_Attribution::query_workloads($this->captures[$profile['id']]) as $component => $stats) {
+                $rows[] = array(
+                    'component' => $component,
+                    'component_type' => $stats['type'],
+                    'page_key' => $profile['page_key'],
+                    'query_count' => $stats['query_count'],
+                    'sql_ms' => $stats['sql_ms'],
+                    'rows_returned' => $stats['rows'],
+                    'ran_in' => $stats['ran_in'],
+                );
+            }
+        }
 
         $worst = array();
         foreach ($rows as $r) {

@@ -141,6 +141,24 @@ class SSPA_Attribution {
         return is_array($capture) ? self::aggregate_caller($capture) : array();
     }
 
+    /**
+     * Query-loop finding ownership, independent of the display's caller mode.
+     * Charge a calling plugin for library work. When the caller is a theme or core,
+     * retain the executing plugin so its own query workload can still be reported.
+     * Each execution is counted once; the stored capture and display modes are unchanged.
+     */
+    public static function query_workloads($capture) {
+        $queries = isset($capture['sql']['queries']) ? $capture['sql']['queries'] : array();
+        foreach ($queries as &$query) {
+            list($component, $type) = self::caller_of($query, isset($query['ctype']) ? $query['ctype'] : 'plugin');
+            if ('plugin' !== $type && isset($query['ctype']) && 'plugin' === $query['ctype']) {
+                unset($query['chain']);
+            }
+        }
+        unset($query);
+        return self::aggregate_caller(array('sql' => array('queries' => $queries)));
+    }
+
     private static function unpack($blob) {
         if (empty($blob)) {
             return null;
