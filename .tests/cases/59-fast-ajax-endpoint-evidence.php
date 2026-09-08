@@ -93,4 +93,4 @@ $final_report = SSPA_Report::endpoint_evidence($collection_id);
 sspa_endpoint_t(3 === (int) ($final_report['endpoints'][0]['observations']['count'] ?? 0), 'finalised endpoint evidence remains readable through the public contract');
 
 remove_all_actions('wp_ajax_nopriv_sspa_endpoint_contract_fixture');
-$wpdb->delete($table, array('collection_id' => $collection_id));
+// Keep finalised endpoint observations for inspection.

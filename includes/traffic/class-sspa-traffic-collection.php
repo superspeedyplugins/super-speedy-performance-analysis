@@ -76,6 +76,7 @@ class SSPA_Traffic_Collection {
         $disk_ceiling = max(1048576, (int) apply_filters('sspa_traffic_disk_ceiling_bytes', self::DEFAULT_DISK_CEILING));
         $configured_event_ceiling = max(100, (int) apply_filters('sspa_traffic_event_ceiling', self::DEFAULT_EVENT_CEILING));
         $event_ceiling = min($configured_event_ceiling, max(100, (int) floor($disk_ceiling / self::CONSERVATIVE_EVENT_BYTES)));
+        if (class_exists('SSPA_Ajax_Profile') && SSPA_Ajax_Profile::$pending) { $event_ceiling = min(200, $event_ceiling); }
         $sample_modulus = max(1, min(10000, (int) apply_filters('sspa_traffic_origin_sample_modulus', self::DEFAULT_SAMPLE_MODULUS)));
         $table = SSPA_Schema::table('traffic_collections');
         $inserted = $wpdb->insert($table, array(

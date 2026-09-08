@@ -20,7 +20,7 @@ foreach (array('traffic_collections', 'traffic_events', 'traffic_rollups', 'traf
     $table = SSPA_Schema::table($name);
     sspa_tl_t($table === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)), "$name table exists");
 }
-sspa_tl_t('2.6' === SSPA_Schema::DB_VERSION && '2.6' === get_option('sspa_db_version'), 'database schema version is 2.6');
+sspa_tl_t('2.7' === SSPA_Schema::DB_VERSION && '2.7' === get_option('sspa_db_version'), 'database schema version is 2.7');
 $event_columns = $wpdb->get_col('SHOW COLUMNS FROM ' . SSPA_Schema::table('traffic_events'));
 sspa_tl_t(in_array('automation_code', $event_columns, true) && in_array('ssf_protection_code', $event_columns, true), 'request rows have privacy-safe automation and SSF decision dimensions');
 
@@ -144,9 +144,4 @@ wp_remote_get(home_url('/'), array('timeout' => 15));
 $after = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . SSPA_Schema::table('traffic_events'));
 sspa_tl_t($before === $after, 'inactive collector performs no event write');
 
-foreach ($wpdb->get_col($wpdb->prepare("SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like('sspa_traffic_key_') . '%')) as $option) {
-    delete_option($option);
-}
-$wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_events'));
-$wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_endpoint_observations'));
-$wpdb->query('DELETE FROM ' . SSPA_Schema::table('traffic_collections'));
+// Retain final observations and keys for inspection; reset at next run's start.

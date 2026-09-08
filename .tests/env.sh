@@ -61,6 +61,17 @@ sync_plugin() {
 }
 
 sspa_require_site() {
+    case "$(realpath -m "$SSPA_SITE_DIR")" in "$(realpath -m "$SITES_ROOT")"/*) ;; *) echo "Refusing non-isolated test site" >&2; return 1;; esac
+    echo "Test site: $SSPA_SITE_URL ($SSPA_SITE_DIR)"
+    export SSPA_TEST_SITE_DIR="$SSPA_SITE_DIR" SSPA_TEST_SITE_URL="$SSPA_SITE_URL"
+    if [ -z "${SSPA_TEST_REAL_WP:-}" ]; then export SSPA_TEST_REAL_WP="$(command -v wp)"; fi
+    mkdir -p "$PLUGIN_DIR/.data/test-wp-shim"
+    cat > "$PLUGIN_DIR/.data/test-wp-shim/wp" <<'SHIM'
+#!/usr/bin/env bash
+exec "$SSPA_TEST_REAL_WP" --path="$SSPA_TEST_SITE_DIR" --url="$SSPA_TEST_SITE_URL" "$@"
+SHIM
+    chmod +x "$PLUGIN_DIR/.data/test-wp-shim/wp"
+    export PATH="$PLUGIN_DIR/.data/test-wp-shim:$PATH"
     if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
         echo "No test site at $SSPA_SITE_DIR" >&2
         echo "Create it with: .tests/setup-site.sh" >&2

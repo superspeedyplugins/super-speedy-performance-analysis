@@ -77,6 +77,7 @@ class SSPA_Traffic_Helper {
             'observer_path' => self::path(),
             'stopped_path' => self::stopped_path(),
         );
+        if (class_exists('SSPA_Ajax_Profile') && SSPA_Ajax_Profile::$pending) { $safe['ajax_profile'] = SSPA_Ajax_Profile::$pending; }
         $content = str_replace(
             array('/* %%SSPA_TRAFFIC_CONFIG_ASSIGNMENT%% */', '%%SSPA_TRAFFIC_PLUGIN_DIR%%'),
             array('$sspa_traffic_config = ' . var_export($safe, true) . ';', addslashes(trailingslashit(SSPA_PLUGIN_DIR))),
