@@ -36,6 +36,8 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 = 0.36 (8th September 2026) =
 * Removed the database insert-speed cutoff so traffic collection can start on slow databases.
+* Added local AJAX before-and-after charts with captured plugin selections, server request timings and chart export.
+* Added opt-in bounded AJAX plugin activity evidence with separate hook registration and execution observations.
 * Fixed identical REST responses appearing changed when pagination links include profiling cache busters.
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.

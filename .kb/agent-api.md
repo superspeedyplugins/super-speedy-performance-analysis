@@ -273,3 +273,18 @@ specified, so there is nothing to drift out of sync.
   `mixed` or `low` type confidence must not be auto-applied - either choice is wrong for part
   of the data. `complete: false` means insufficient evidence, never "nothing needed": a run
   whose CPT archive timed out has proved nothing about that archive.
+
+### AJAX windows and activity successor
+
+`SSPA_Ajax_Profile::start(['scenario' => 'safe label', 'label' => 'Before', 'detail' => false,
+'endpoints' => ['admin_ajax:registered_action']])` creates a local 15-minute / 200-observation
+window and returns its UUID and collection ID. Endpoints may be empty for discovery.
+`stop($uuid)` ends it; `windows()` returns saved metadata; `compare($before_uuid, $after_uuid)`
+returns `sspa/ajax-series@1`. Administrator AJAX operation `sspa_ajax_profile` checks
+`manage_options` and the `sspa_admin` nonce. No replay or external submission occurs.
+
+Endpoint reports with actual detail samples return `sspa/endpoint-evidence@2`; identity-only
+collections retain `@1`. Both advertise capabilities. `plugin_activity` contains plugin basename,
+sample count, include milliseconds, checkpoint registrations, named executed hooks, I/O attempt
+totals and partial-coverage gaps. Neither zero observations nor registration alone proves necessity
+or absence of work. Capture-time policy comes from `spro/endpoint-context@1` when available.

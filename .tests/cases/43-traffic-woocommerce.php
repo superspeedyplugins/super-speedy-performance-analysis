@@ -10,6 +10,12 @@ global $wpdb;
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
 
+// Clear only the previous run's fixture objects on entry.
+$old_user = get_user_by('login', 'sspa-traffic-planted');
+if ($old_user) { wp_delete_user($old_user->ID); }
+foreach (array('sspa_traffic_woo_fixture_order', 'sspa_traffic_woo_fixture_admin_order') as $option) {
+    $old_order = wc_get_order((int) get_option($option)); if ($old_order) { $old_order->delete(true); } delete_option($option);
+}
 $events = SSPA_Schema::table('traffic_events');
 $collections = SSPA_Schema::table('traffic_collections');
 SSPA_Traffic_Helper::remove();
@@ -210,22 +216,6 @@ sspa_tw_t($comparison && 'sspa/traffic-collection-comparison@1' === $comparison[
 $columns = $wpdb->get_col("SHOW COLUMNS FROM $events");
 sspa_tw_t(!array_intersect($columns, array('email', 'ip', 'user_id', 'session_id', 'order_id', 'product_id', 'coupon_code', 'user_agent')), 'event table has no prohibited customer-data columns');
 
-foreach (array($order_id, (int) get_option('sspa_traffic_woo_fixture_admin_order')) as $delete_id) {
-    $order = wc_get_order($delete_id);
-    if ($order) {
-        $order->delete(true);
-    }
-}
-if (!is_wp_error($user_id)) {
-    wp_delete_user($user_id);
-}
-deactivate_plugins('sspa-traffic-woo-fixture/fixture.php');
-unlink($fixture_file);
-rmdir($fixture_dir);
-delete_option('sspa_traffic_woo_fixture_token');
-delete_option('sspa_traffic_woo_fixture_order');
-delete_option('sspa_traffic_woo_fixture_admin_order');
 SSPA_Traffic_Collection::stop($collection_id, true);
-delete_option(SSPA_Traffic_Collection::key_option($collection_id));
-$wpdb->query("DELETE FROM $events");
-$wpdb->query("DELETE FROM $collections");
+// Disable the fixture trigger, retain plugin, users, orders and observation evidence.
+delete_option('sspa_traffic_woo_fixture_token');

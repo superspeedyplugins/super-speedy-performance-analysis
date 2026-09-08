@@ -16,6 +16,7 @@ class SSPA_Traffic_Hot_Path {
     private static $basket_was_non_empty = false;
     private static $collection_key = false;
 	private static $endpoint_identity = null;
+    private static $ajax_measurement = null;
 	private static $endpoint_started_ns = 0;
 	private static $endpoint_finished_ns = 0;
 	private static $endpoint_boundary = 'shutdown_fallback';
@@ -29,6 +30,10 @@ class SSPA_Traffic_Hot_Path {
         }
         self::$config = $config;
         self::$started_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
+        if (!empty($config['ajax_profile']) && time() <= (int) $config['collect_until']) {
+            require_once __DIR__ . '/class-sspa-ajax-measurement.php';
+            self::$ajax_measurement = new SSPA_Ajax_Measurement($config['ajax_profile']);
+        }
         self::$started_usage = function_exists('getrusage') ? getrusage() : null;
         self::$basket_was_non_empty = self::cookie_basket_non_empty();
         if (self::collecting_requests() && self::$basket_was_non_empty) {
@@ -274,7 +279,7 @@ class SSPA_Traffic_Hot_Path {
 	}
 
 	private static function insert_endpoint_observation($observer_us) {
-		if (!self::$endpoint_identity || empty(self::$config['endpoint_table']) || empty(self::$config['endpoint_id_stop'])) { return; }
+		if (!self::collecting_requests() || !self::$endpoint_identity || empty(self::$config['endpoint_table']) || empty(self::$config['endpoint_id_stop'])) { return; }
 		global $wpdb;
 		$now_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
 		$handler_end = self::$endpoint_finished_ns ?: $now_ns;
@@ -282,7 +287,8 @@ class SSPA_Traffic_Hot_Path {
 		$wall_ms = min(16777215, max(0, (int) round(($now_ns - self::$started_ns) / 1000000)));
 		$identity = self::$endpoint_identity;
 		$key = hash('sha256', implode("\0", array($identity['transport'], $identity['endpoint'], $identity['method'], $identity['context'])));
-		$inserted = $wpdb->insert(self::$config['endpoint_table'], array(
+		$measurement = self::$ajax_measurement ? self::$ajax_measurement->capture($identity) : null;
+        $inserted = $wpdb->insert(self::$config['endpoint_table'], array(
 			'collection_id' => (int) self::$config['collection_id'],
 			'identity_key' => hex2bin($key),
 			'transport' => $identity['transport'],
@@ -297,6 +303,7 @@ class SSPA_Traffic_Hot_Path {
 			'handler_ms' => $handler_ms,
 			'observer_us' => min(16777215, max(0, (int) $observer_us)),
 			'boundary' => self::$endpoint_boundary,
+            'measurement_json' => $measurement ? wp_json_encode($measurement) : null,
 		));
 		if (false === $inserted) { self::retire('database_error'); return; }
 		if ((int) $wpdb->insert_id >= (int) self::$config['endpoint_id_stop']) { self::retire('event_limit'); }

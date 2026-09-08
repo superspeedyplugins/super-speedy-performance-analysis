@@ -496,3 +496,22 @@ record and needs inspection.
   header; the real-QM path needs `wp plugin install query-monitor` + its symlink).
 - Customer variant (flagged test account) - lands with phase 2 catalogue work.
 - Crash-safety kill test: kill -9 mid-run, assert stale-hold self-heal on next load.
+
+## AJAX profiling integration
+
+`SSPA_SCENARIO=<dedicated-scenario> .tests/run-tests.sh fast-ajax` runs cases 59, 71–73 and the
+registered chart browser test. Case 72 requires the SPro endpoint feature installed on the same
+isolated site; case 71 prepares retained owner/delay fixtures for it. The suite refuses a
+non-isolated site and provides a real `wp` shim to child scripts. Nonzero PHP exits and zero matched
+cases fail the runner.
+
+Use the installed Node 20+ runtime and `SSPA_PLAYWRIGHT_MODULE` for an existing Playwright package.
+Browser evidence is saved in `.data/ajax-profile-browser/`. The separate
+`.tests/manual/ajax-overhead.php` measures identical local fixture requests with observer off,
+identity-only and explicit detail capture; it does not approve a production overhead budget.
+
+Case 71 was observed failing when execution evidence was deliberately removed, then passing with
+it restored. Case 72 exercises SPro's actual generated MU policy with unchanged installed versions.
+Case 73 checks real failed requests, method/mode compatibility, detail caps and collection expiry.
+Database append preflight rejects actual insert failures; successful insert latency is informational
+following core adb471e. A refused start is never a skipped/passed fixture or automatically retried.

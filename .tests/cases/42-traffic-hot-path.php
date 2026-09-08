@@ -70,9 +70,4 @@ if (!is_wp_error($next)) {
     SSPA_Traffic_Collection::stop($next_id, true);
 }
 
-SSPA_Traffic_Helper::remove();
-foreach ($wpdb->get_col($wpdb->prepare("SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like('sspa_traffic_key_') . '%')) as $option) {
-    delete_option($option);
-}
-$wpdb->query("DELETE FROM $events");
-$wpdb->query("DELETE FROM $collections");
+// The stopped collection and its observations remain for inspection.

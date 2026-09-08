@@ -352,6 +352,7 @@ class SSPA_Schema {
 			handler_ms mediumint(8) unsigned NULL,
 			observer_us mediumint(8) unsigned NULL,
 			boundary varchar(24) NOT NULL DEFAULT 'shutdown_fallback',
+            measurement_json longtext NULL,
 			PRIMARY KEY  (id),
 			KEY collection_identity (collection_id,identity_key,id),
 			KEY collection_id (collection_id,id)

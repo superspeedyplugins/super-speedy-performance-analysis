@@ -570,7 +570,7 @@ class SSPA_Report {
 		}
 		$limit = max(100, min(250000, (int) $collection['event_ceiling']));
 		$rows = $wpdb->get_results($wpdb->prepare(
-			'SELECT HEX(identity_key) identity_key, transport, endpoint, http_method, auth_context, observed_at, status_code, wall_ms, cpu_us, query_count, handler_ms, observer_us, boundary FROM %i WHERE collection_id = %d ORDER BY identity_key ASC, id ASC LIMIT %d',
+			'SELECT HEX(identity_key) identity_key, transport, endpoint, http_method, auth_context, observed_at, status_code, wall_ms, cpu_us, query_count, handler_ms, observer_us, boundary, measurement_json FROM %i WHERE collection_id = %d ORDER BY identity_key ASC, id ASC LIMIT %d',
 			SSPA_Schema::table('traffic_endpoint_observations'),
 			(int) $collection['id'],
 			$limit
@@ -589,6 +589,7 @@ class SSPA_Report {
 			$groups[$key]['rows'][] = $row;
 		}
 		$endpoints = array();
+        $detail_count = 0;
 		foreach ($groups as $key => $group) {
 			$identity = $group['identity'];
 			$wall = array();
@@ -612,6 +613,21 @@ class SSPA_Report {
 				$boundaries[(string) $row['boundary']] = true;
 			}
 			$owners = self::endpoint_owners($identity);
+            $activity = array();
+            foreach ($group['rows'] as $sample) {
+                $measurement = json_decode($sample['measurement_json'] ?? '', true);
+                if (empty($measurement['activity']['plugins'])) { continue; }
+                $detail_count++;
+                foreach ($measurement['activity']['plugins'] as $plugin) {
+                    $key_plugin = $plugin['plugin'];
+                    if (!isset($activity[$key_plugin])) { $activity[$key_plugin] = array('plugin' => $key_plugin, 'samples' => 0, 'include_ms' => 0, 'registered_hooks' => array(), 'executed_hooks' => array(), 'io' => array(), 'coverage' => 'partial'); }
+                    $activity[$key_plugin]['samples']++;
+                    $activity[$key_plugin]['include_ms'] += $plugin['include_ms'];
+                    foreach (array('registered_hooks', 'executed_hooks') as $field) { $activity[$key_plugin][$field] = array_slice(array_merge($activity[$key_plugin][$field], $plugin[$field]), 0, 1000); }
+                    foreach ($plugin['io'] as $field => $value) { $activity[$key_plugin]['io'][$field] = ($activity[$key_plugin]['io'][$field] ?? 0) + $value; }
+                    $activity[$key_plugin]['gaps'] = $measurement['activity']['gaps'];
+                }
+            }
 			$endpoints[] = array(
 				'key' => $key,
 				'identity' => array(
@@ -634,12 +650,12 @@ class SSPA_Report {
 					'observer_overhead_us' => self::numeric_distribution($observer, false),
 				),
 				'owners' => $owners,
-				'plugin_activity' => array(),
+				'plugin_activity' => array_values($activity),
 				'quality' => array(
 					'identity' => 'exact_registered_identity',
 					'frequency' => 'exact_during_bounded_collection',
 					'handler_boundary' => count($boundaries) === 1 ? (string) key($boundaries) : 'mixed',
-					'activity' => 'unknown',
+					'activity' => $activity ? 'partial' : 'unknown',
 					'excimer' => 'unavailable',
 				),
 			);
@@ -651,15 +667,16 @@ class SSPA_Report {
 		$ended_value = !empty($collection['finished_at']) ? $collection['finished_at'] : $collection['collect_until'];
 		$ended = $ended_value ? strtotime($ended_value . ' UTC') : 0;
 		return array(
-			'schema' => self::ENDPOINT_EVIDENCE_SCHEMA,
+			'schema' => $detail_count ? 'sspa/endpoint-evidence@2' : self::ENDPOINT_EVIDENCE_SCHEMA,
+            'capabilities' => array('bounded_activity' => true, 'ajax_windows' => true, 'browser_elapsed' => false),
 			'capture' => array(
 				'collection_id' => (int) $collection['id'],
 				'started_at' => $started ? gmdate('c', $started) : null,
 				'ended_at' => $ended ? gmdate('c', $ended) : null,
 				'duration_seconds' => $started && $ended ? max(0, $ended - $started) : 0,
 				'identity_observations' => count($rows),
-				'detailed_samples' => 0,
-				'detailed_sample_ceiling' => 0,
+				'detailed_samples' => $detail_count,
+				'detailed_sample_ceiling' => $detail_count ? 20 : 0,
 			),
 			'endpoints' => $endpoints,
 		);

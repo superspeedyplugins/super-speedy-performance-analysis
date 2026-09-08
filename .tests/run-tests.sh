@@ -43,8 +43,9 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     RAN=$((RAN + 1))
     echo "=== $name ==="
     output=$(cli eval-file "$case_file" 2>&1)
+    case_exit=$?
     echo "$output"
-    if echo "$output" | grep -q '^FAIL' || ! echo "$output" | grep -q '^PASS'; then
+    if [ "$case_exit" -ne 0 ] || echo "$output" | grep -q '^FAIL' || ! echo "$output" | grep -q '^PASS'; then
         FAILED=$((FAILED + 1))
         FAILED_NAMES="$FAILED_NAMES $name"
         echo "--- $name FAILED ---"
@@ -67,6 +68,14 @@ if [ -z "$FILTER" ] || [[ "share-preview-browser" == *"$FILTER"* ]]; then
         FAILED_NAMES="$FAILED_NAMES share-preview-browser"
     fi
 fi
+if [ -z "$FILTER" ] || [[ "fast-ajax-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-ajax-profile.sh"; then
+        FAILED=$((FAILED + 1))
+        FAILED_NAMES="$FAILED_NAMES fast-ajax-browser"
+    fi
+fi
+if [ "$RAN" -eq 0 ]; then echo "No cases matched: $FILTER" >&2; exit 1; fi
 echo "$RAN case file(s) run, $FAILED failed"
 [ -n "$FAILED_NAMES" ] && echo "failed:$FAILED_NAMES"
 exit $FAILED
