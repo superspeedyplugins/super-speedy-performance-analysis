@@ -43,8 +43,12 @@ try {
     if (is_wp_error($activation)) {
         throw new RuntimeException($activation->get_error_message());
     }
-    $before = sspa_63_run(array('type' => 'baseline'));
     $keys = SSPA_History_Series::quick_comparison_page_keys();
+    // Exercise the real baseline path with a strict superset of the quick scan.
+    // Whole-catalogue coverage belongs to case 05; unrelated catalogue growth must
+    // not turn this compatibility regression into a test of machine throughput.
+    $baseline_keys = array_values(array_unique(array_merge($keys, array('admin-dashboard'))));
+    $before = sspa_63_run(array('type' => 'baseline', 'page_keys' => $baseline_keys));
     sspa_63_check(count(SSPA_History_Series::profile_rows($before)) > count($keys), 'the real full baseline covers more pages than the quick scan');
     sspa_63_check(SSPA_History_Series::is_compatible_run_id($before, $keys), 'the administrator can select this full baseline for the quick comparison');
     file_put_contents($fixture, "<?php\n/** Plugin Name: SSPA Quick Baseline Fixture\n * Version: 2.0.$revision\n */\n");

@@ -94,7 +94,10 @@ foreach ((array) get_option('active_plugins') as $plugin_file) {
     }
 }
 if ($deep_suspect) {
-    $plan['deep'] = array('type' => 'deep', 'suspects' => array($deep_suspect), 'user_id' => 1);
+    // This case verifies automatic submission of a real deep run, not the size
+    // of its catalogue. Keep that workload bounded as other tests add page types;
+    // cases 09 and 27 exercise the measured isolation and sweep behaviour.
+    $plan['deep'] = array('type' => 'deep', 'suspects' => array($deep_suspect), 'page_keys' => array('home'), 'user_id' => 1);
 }
 
 foreach ($plan as $label => $args) {

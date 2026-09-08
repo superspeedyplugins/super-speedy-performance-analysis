@@ -17,7 +17,7 @@ const {chromium} = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory
    await page.goto(site+'/wp-admin/admin.php?page=sspa');
    for (const tab of order) {
     await page.locator('.nav-tab[data-tab="'+tab+'"]').click();
-    await page.locator('.tab-contents[data-tab="'+tab+'"] pre').waitFor({state:'attached'});
+    await page.locator('.tab-contents[data-tab="'+tab+'"] .sspa-payload-preview').waitFor({state:'attached'});
    }
    const share=page.locator('.tab-contents[data-tab="share"]');
    const history=page.locator('.tab-contents[data-tab="history"]');
