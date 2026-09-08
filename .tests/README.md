@@ -520,6 +520,8 @@ non-isolated site and provides a real `wp` shim to child scripts. Nonzero PHP ex
 cases fail the runner.
 
 Use the installed Node 20+ runtime and `SSPA_PLAYWRIGHT_MODULE` for an existing Playwright package.
+The AJAX browser wrapper records two real History spot checks so it can verify both tabs
+share one lazily loaded chart engine, including on a fresh site.
 Browser evidence is saved in `.data/ajax-profile-browser/`. The separate
 `.tests/manual/ajax-overhead.php` measures identical local fixture requests with observer off,
 identity-only and explicit detail capture; it does not approve a production overhead budget.

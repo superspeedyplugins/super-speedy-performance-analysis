@@ -19,7 +19,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 	const browserErrors = [];
 	page.on('pageerror', (error) => browserErrors.push(error.message));
 	page.on('console', (message) => {
-		if (message.type() === 'error') browserErrors.push(message.text());
+		if (message.type() === 'error') browserErrors.push(message.text() + ' [' + message.location().url + ']');
 	});
 
 	try {

@@ -7,6 +7,7 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(site+'/wp-login.php');await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);await Promise.all([page.waitForURL(/\/wp-admin\//),page.locator('#wp-submit').click()]);
  await page.goto(site+'/wp-admin/admin.php?page=sspa#ajax');await page.locator('.sspa-ajax-compare').waitFor();
+ assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').filter(x=>x.name.includes('echarts-history.min.js')).length),0,'AJAX loads the engine only when a comparison needs a chart');
  const choices=await page.locator('.sspa-ajax-compare select[name=before] option').evaluateAll(o=>o.map(x=>({value:x.value,label:x.textContent})));
  const before=choices.find(x=>x.label.startsWith('SPro before')),after=choices.find(x=>x.label.startsWith('SPro after'));assert.ok(before&&after,'real integration fixture windows exist');
  await page.locator('select[name=before]').selectOption(before.value);await page.locator('select[name=after]').selectOption(after.value);await page.locator('.sspa-ajax-compare button').click();await page.locator('.sspa-ajax-summary h3').first().waitFor();
@@ -23,6 +24,9 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  assert.equal(await page.locator('.sspa-ajax-summary h3').count(),0,'detailed visible summary follows the same filter');
  await page.locator('.sspa-ajax-filter').fill('');
 
+ await page.locator('.nav-tab[data-tab="history"]').click();await page.locator('.sspa-history-chart canvas').waitFor();
+ assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').filter(x=>x.name.includes('echarts-history.min.js')).length),1,'AJAX and History share one chart engine fetch');
+ assert.deepEqual(errors,[]);
  console.log('PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

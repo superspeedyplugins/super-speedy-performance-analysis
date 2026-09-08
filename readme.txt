@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.37 (8th September 2026) =
+* Load the chart library only when a History or AJAX chart is needed.
 * AJAX feature builds require recorded tests for the current source and an approved SQL review.
 * Shared profiling runs now retain plugin loading, selected hook, render and asset summaries with updated consent.
 * AJAX comparisons report an error when saved request provenance is incomplete.

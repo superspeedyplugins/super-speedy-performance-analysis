@@ -55,7 +55,15 @@ function summary(documentData) {
 $(document).on('change', '.sspa-ajax-saved', function () { if (!this.value) return; var item=JSON.parse(this.value); $('.sspa-ajax-compare [name=before]').val(item.before); $('.sspa-ajax-compare [name=after]').val(item.after); $('.sspa-ajax-compare [name=comparison_name]').val(item.name); $('.sspa-ajax-compare').trigger('submit'); });
 $(document).on('submit', '.sspa-ajax-compare', function(event) {
     event.preventDefault(); var data={operation:'compare'}; $(this).serializeArray().forEach(function(i){data[i.name]=i.value;});
-    request(data).then(function(result) { saved=result; $('.sspa-ajax-results').prop('hidden',false); $('.sspa-ajax-summary').empty().append(summary(result)); $('.sspa-ajax-status').text(result.pages.length ? 'Saved request measurements loaded.' : 'No comparable retained requests.'); paint(); },fail);
+    request(data).then(function(result) {
+        return SSPAChartLibrary.load().then(function () {
+            saved=result;
+            $('.sspa-ajax-results').prop('hidden',false);
+            $('.sspa-ajax-summary').empty().append(summary(result));
+            $('.sspa-ajax-status').text(result.pages.length ? 'Saved request measurements loaded.' : 'No comparable retained requests.');
+            paint();
+        });
+    }).catch(fail);
 });
 $(document).on('input', '.sspa-ajax-filter', paint);
 $(window).on('resize',function(){if(chart)chart.resize();});
