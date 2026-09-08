@@ -280,6 +280,10 @@ class SSPA_Crawler {
                 if (0 === strpos($name, 'content-security-policy')) {
                     $value = preg_replace("/'nonce-[^']*'/", "'nonce-0'", $value);
                 }
+                if ('link' === $name) {
+                    // REST pagination reflects our unique cache buster here.
+                    $value = preg_replace('/([?&;]sspa_nc=)[a-f0-9]+/i', '${1}0', $value);
+                }
                 $kept[] = $name . ': ' . $value;
             }
             sort($kept);
@@ -300,10 +304,13 @@ class SSPA_Crawler {
                 '/(["\'][a-z0-9_-]*nonce["\']\s*[:=]\s*["\'])[a-f0-9]{6,12}(["\'])/i',
                 // Script/CSP nonce attributes: <script nonce="...">.
                 '/(\snonce=["\'])[^"\']*(["\'])/i',
+                // Our per-request cache buster can be reflected into REST Link headers
+                // and response links; it is measurement noise, not site output.
+                '/([?&;]sspa_nc=)[a-f0-9]+/i',
                 // Millisecond/second timestamps in query strings (cache busters, analytics).
                 '/([?&;](?:t|ts|time|_)=)\d{10,13}/',
             ),
-            array('', '${1}0', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0'),
+            array('', '${1}0', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0${2}', '${1}0', '${1}0'),
             $body
         );
         if (null === $normalised) {

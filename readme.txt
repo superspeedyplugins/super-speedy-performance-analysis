@@ -34,6 +34,7 @@ This plugin is free. Download it from https://www.superspeedyplugins.com/ - once
 == Changelog ==
 
 = 0.35 (23rd-26th August 2026) =
+* Fixed identical REST responses appearing changed when pagination links include profiling cache busters.
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.
 * Fixed admin tabs following URL fragments when navigating to History or using browser Back and Forward.

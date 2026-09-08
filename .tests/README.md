@@ -155,6 +155,8 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 
 ## Cases
 
+- `69-response-cachebuster.php` - real REST pagination reflects PA cache busters without
+  making identical output unstable; meaningful body and pagination changes still differ.
 - `01-health.php` - tables, secret, helper-file install (mu-loader + db.php shim),
   placeholder replacement. Self-heals a leftover fake db.php from a crashed 06.
 - `02-token.php` - HMAC token mint/verify: path binding, tamper, expiry, flags.
