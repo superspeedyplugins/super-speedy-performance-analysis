@@ -40,6 +40,18 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then
         continue
     fi
+    # These core fixtures require wasteful checkout calls / no settings publisher.
+    # The integration case requires SPro loaded normally in the new CLI process.
+    case "$name" in
+        19-checkout-flow.php|37-component-state.php)
+            if cli plugin is-active scalability-pro >/dev/null 2>&1; then
+                cli plugin deactivate scalability-pro || exit 1
+            fi
+            ;;
+        72-fast-ajax-spro.php)
+            cli plugin activate scalability-pro || exit 1
+            ;;
+    esac
     RAN=$((RAN + 1))
     echo "=== $name ==="
     output=$(cli eval-file "$case_file" 2>&1)

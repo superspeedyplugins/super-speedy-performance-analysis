@@ -99,6 +99,7 @@ $fixture_code = <<<'PHP'
 <?php
 /**
  * Plugin Name: SSPA Traffic Woo Fixture
+ * Version: 1.0.0
  */
 add_action('wp_ajax_nopriv_sspa_traffic_woo_fixture', 'sspa_traffic_woo_fixture');
 function sspa_traffic_woo_fixture() {

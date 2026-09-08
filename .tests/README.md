@@ -511,7 +511,11 @@ record and needs inspection.
 
 `SSPA_SCENARIO=<dedicated-scenario> .tests/run-tests.sh fast-ajax` runs cases 59, 71–73 and the
 registered chart browser test. Case 72 requires the SPro endpoint feature installed on the same
-isolated site; case 71 prepares retained owner/delay fixtures for it. The suite refuses a
+isolated site; case 71 prepares retained owner/delay fixtures for it. The runner deactivates
+SPro before case 19 (deliberately wasteful checkout calls) and case 37 (no settings publisher),
+then activates it before case 72. Those are explicit fixture preconditions; SPro's own suite
+covers its Purge Shield and its settings publishing. SPro remains active after integration.
+The suite refuses a
 non-isolated site and provides a real `wp` shim to child scripts. Nonzero PHP exits and zero matched
 cases fail the runner.
 
