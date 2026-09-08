@@ -54,7 +54,9 @@ class SSPA_Ajax_Profile {
             $last_setup = array();
             foreach (self::rows($windows[$uuid]) as $row) {
                 $capture = json_decode($row['measurement_json'], true);
-                if (!is_array($capture) || ($capture['schema'] ?? '') !== 'sspa/ajax-measurement@1' || $capture['uuid'] !== $uuid) { continue; }
+                if (!self::valid_capture($capture, $uuid)) {
+                    return new WP_Error('sspa_ajax_capture_invalid', 'A saved AJAX request has incomplete or inconsistent measurement provenance. This comparison cannot be calculated.');
+                }
                 $identity = array($row['transport'], $row['endpoint'], $row['http_method'], $row['auth_context'], $capture['scenario'], $capture['mode'], $capture['detail_requested'] ?? false, $capture['boundary'], $capture['environment']);
                 $key = hash('sha256', wp_json_encode($identity));
                 if (!isset($pages[$key])) {
@@ -81,6 +83,20 @@ class SSPA_Ajax_Profile {
         return array('schema' => 'sspa/ajax-series@1', 'measurement_kind' => 'ajax', 'selection_mode' => 'pair', 'before' => $windows[$before_uuid], 'after' => $windows[$after_uuid], 'metric' => array('key' => 'request_wall_ms', 'label' => 'Server request time', 'unit' => 'ms', 'description' => 'MU observer entry to shutdown; not browser elapsed time or endpoint-handler time.'), 'pages' => array_values($pages), 'periods' => $periods, 'warnings' => array('Successful response timings use nearest-rank median and p95. Errors remain separate. A fast HTTP 200 does not prove functional success.', 'No combined group statistic: traffic mixes can differ. Chart is local only.'));
     }
     public static function comparisons() { return (array) get_option('sspa_ajax_comparisons', array()); }
+    private static function valid_capture($capture, $uuid) {
+        if (!is_array($capture) || ($capture['schema'] ?? '') !== 'sspa/ajax-measurement@1'
+            || ($capture['uuid'] ?? '') !== $uuid || !is_string($capture['scenario'] ?? null)
+            || '' === $capture['scenario'] || ($capture['boundary'] ?? '') !== 'mu_observer_to_shutdown'
+            || !in_array($capture['mode'] ?? '', array('identity@1', 'named-action-detail@1'), true)
+            || !is_array($capture['environment'] ?? null) || !is_array($capture['setup'] ?? null)
+            || !is_array($capture['setup']['plugins'] ?? null) || !is_array($capture['setup']['theme'] ?? null)
+            || !array_key_exists('spro', $capture['setup'])
+            || !is_string($capture['setup_hash'] ?? null)) { return false; }
+        foreach (array('wordpress', 'php', 'blog_id') as $field) {
+            if (!isset($capture['environment'][$field]) || '' === (string) $capture['environment'][$field]) { return false; }
+        }
+        return hash_equals(hash('sha256', wp_json_encode($capture['setup'])), $capture['setup_hash']);
+    }
     public static function ajax() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error('Permission denied.', 403); }

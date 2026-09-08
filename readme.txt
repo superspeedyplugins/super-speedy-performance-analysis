@@ -35,6 +35,9 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.36 (8th September 2026) =
+* AJAX feature builds require recorded tests for the current source and an approved SQL review.
+* Shared profiling runs now retain plugin loading, selected hook, render and asset summaries with updated consent.
+* AJAX comparisons report an error when saved request provenance is incomplete.
 * Removed the database insert-speed cutoff so traffic collection can start on slow databases.
 * Added local AJAX before-and-after charts with captured plugin selections, server request timings and chart export.
 * Added opt-in bounded AJAX plugin activity evidence with separate hook registration and execution observations.

@@ -37,3 +37,13 @@ SSPA_Ajax_Profile::stop($selected['uuid']);$selected_rows=SSPA_Ajax_Profile::row
 $selected_capture=$selected_rows?json_decode($selected_rows[0]['measurement_json'],true):array();
 sspa_boundary_check(get_option('sspa_ajax_slot_' . $selected['uuid'] . '_' . substr(hash('sha256', 'zz_ajax_workflow_fixture'), 0, 16) . '_0', false) === false, 'unselected action reserves no detail slot');
 sspa_boundary_check(count($selected_rows)===1&&!empty($selected_capture['activity']),'unselected endpoints consume no selected detail sample slots or AJAX window points');
+
+// Corrupt only one retained fixture, then restore it: incomplete provenance must never
+// become a configuration-free improvement claim when reopening a saved comparison.
+global $wpdb;
+$incomplete = $selected_capture;
+unset($incomplete['setup'], $incomplete['setup_hash']);
+$wpdb->update(SSPA_Schema::table('traffic_endpoint_observations'), array('measurement_json' => wp_json_encode($incomplete)), array('id' => $selected_rows[0]['id']));
+$invalid_comparison = SSPA_Ajax_Profile::compare($before['uuid'], $selected['uuid']);
+$wpdb->update(SSPA_Schema::table('traffic_endpoint_observations'), array('measurement_json' => $selected_rows[0]['measurement_json']), array('id' => $selected_rows[0]['id']));
+sspa_boundary_check(is_wp_error($invalid_comparison), 'incomplete saved provenance surfaces a comparison error instead of a speedup');
