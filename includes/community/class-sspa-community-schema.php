@@ -12,7 +12,8 @@ class SSPA_Community_Schema {
     // every field a 1.1 receiver reads is still present, with the same name and meaning.
     // Minor 3 adds `run.change_cycle` and sspa/component-state evidence.
     // Minor 4 adds privacy-normalised sspa/http-call evidence. Also additive.
-    const PAYLOAD_SCHEMA_MINOR = 4;
+    // Minor 5 adds consent-gated boot/include, selected-hook, render and asset summaries.
+    const PAYLOAD_SCHEMA_MINOR = 5;
     const ANONYMISATION_VERSION = 1;
     const MEASUREMENT_VERSION = 1;
     // Version 2 is the first to submit another plugin's settings, and only for plugins that have
@@ -25,7 +26,9 @@ class SSPA_Community_Schema {
     // Version 4 adds a coarse admin-save classification: post/page/product/order/custom post
     // type, classic/REST, real editor update/no-change workflow and mail handling mode. IDs,
     // content and custom post type slugs remain forbidden.
-    const CONSENT_VERSION = 4;
+    // Version 5 discloses bounded boot/include, callback and asset-attribution summaries.
+    // Ordinary traffic collections remain local-only.
+    const CONSENT_VERSION = 5;
     const MAX_COMPRESSED_BYTES = 33554432;
     const MAX_UNCOMPRESSED_BYTES = 268435456;
 
@@ -38,6 +41,7 @@ class SSPA_Community_Schema {
             'sspa/page-profile' => 2,
             'sspa/component-observation' => 1,
             'sspa/excimer-profile' => 1,
+            'sspa/boot-profile' => 1,
             'sspa/finding' => 1,
             'sspa/plugin-impact' => 1,
             'sspa/cache-impact' => 1,

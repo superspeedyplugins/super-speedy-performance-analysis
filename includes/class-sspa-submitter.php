@@ -108,6 +108,7 @@ class SSPA_Submitter {
             'sspa/page-profile' => __('page timings', 'super-speedy-performance-analysis'),
             'sspa/component-observation' => __('per-plugin measurements', 'super-speedy-performance-analysis'),
             'sspa/excimer-profile' => __('function-level samples', 'super-speedy-performance-analysis'),
+            'sspa/boot-profile' => __('plugin include timings, selected hook callbacks, render work and asset counts', 'super-speedy-performance-analysis'),
             'sspa/finding' => __('findings', 'super-speedy-performance-analysis'),
             'sspa/plugin-impact' => __('plugin impact measurements', 'super-speedy-performance-analysis'),
             'sspa/cache-impact' => __('object cache measurements', 'super-speedy-performance-analysis'),
