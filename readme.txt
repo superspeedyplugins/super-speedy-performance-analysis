@@ -34,7 +34,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Changelog ==
 
-= 0.36 (7th September 2026) =
+= 0.36 (8th September 2026) =
 * Removed the database insert-speed cutoff so traffic collection can start on slow databases.
 * Fixed identical REST responses appearing changed when pagination links include profiling cache busters.
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
