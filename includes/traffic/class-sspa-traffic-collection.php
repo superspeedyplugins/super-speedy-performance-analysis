@@ -119,14 +119,8 @@ class SSPA_Traffic_Collection {
             self::rollback_start($collection_id, $key_option);
             return $preflight;
         }
-        if ($preflight > 5.0) {
-            self::rollback_start($collection_id, $key_option);
-            return new WP_Error('sspa_traffic_insert_slow', sprintf(
-                /* translators: %s: measured p95 insert milliseconds */
-                __('The database append pre-flight measured %s ms at p95, above the 5 ms safety ceiling. Exact collection was not started.', 'super-speedy-performance-analysis'),
-                number_format_i18n($preflight, 2)
-            ));
-        }
+        // Successful writes permit collection regardless of elapsed time. Retain
+        // the measurement as information, not a target or a startup condition.
 
         $events = SSPA_Schema::table('traffic_events');
         $max_id = (int) $wpdb->get_var("SELECT COALESCE(MAX(id),0) FROM $events");

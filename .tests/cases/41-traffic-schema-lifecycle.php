@@ -32,8 +32,25 @@ sspa_tl_t(
     'short collection durations map to one, two and four hours'
 );
 
-$started = SSPA_Traffic_Collection::start('1h', 'test');
-sspa_tl_t(!is_wp_error($started) && !empty($started['active']), 'one-hour collection starts after database pre-flight');
+// Delay the real wpdb insert path, not a replica or a fabricated timing result.
+// SQL and its result are unchanged. This deterministically reproduces the former
+// latency refusal even on a fast database, without slowing any other request.
+$delayed_inserts = 0;
+$delay_event_insert = static function ($sql) use (&$delayed_inserts) {
+    if (0 === strpos($sql, 'INSERT INTO `' . SSPA_Schema::table('traffic_events') . '`')) {
+        usleep(20000);
+        $delayed_inserts++;
+    }
+    return $sql;
+};
+add_filter('query', $delay_event_insert);
+try {
+    $started = SSPA_Traffic_Collection::start('1h', 'test');
+} finally {
+    remove_filter('query', $delay_event_insert);
+}
+sspa_tl_t($delayed_inserts > 0, 'slow-write fixture delays actual event inserts');
+sspa_tl_t(!is_wp_error($started) && !empty($started['active']), 'one-hour collection starts despite slow successful event inserts');
 if (is_wp_error($started)) {
     echo 'FAIL: start error: ' . $started->get_error_message() . "\n";
     return;
@@ -46,7 +63,7 @@ sspa_tl_t(strlen($secret) === 64 && ctype_xdigit($secret), 'temporary collection
 sspa_tl_t(false === strpos($observer, $secret), 'generated observer contains no collection secret');
 sspa_tl_t(false === strpos($observer, '%%SSPA_') && false !== strpos($observer, "'collection_id' => " . $id), 'generated observer placeholders are replaced');
 sspa_tl_t($started['collection']['event_ceiling'] <= floor($started['collection']['disk_ceiling_bytes'] / SSPA_Traffic_Collection::CONSERVATIVE_EVENT_BYTES), 'event ceiling also respects conservative disk ceiling');
-sspa_tl_t($started['collection']['preflight_insert_ms_p95'] <= 5.0, 'database append pre-flight passed the 5 ms p95 ceiling');
+sspa_tl_t($started['collection']['preflight_insert_ms_p95'] >= 20.0, 'slow insert measurement is informational and does not refuse collection');
 
 $actual_duration = strtotime($started['collection']['collect_until']) - strtotime($started['collection']['started_at']);
 sspa_tl_t(HOUR_IN_SECONDS === $actual_duration, 'one-hour collection ends exactly one hour after it starts');
