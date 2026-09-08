@@ -32,7 +32,7 @@ try {
 	file_put_contents( $root . '/runtime.php', '<?php file_put_contents(".data/executed", "enabled and disabled", FILE_APPEND); if (getenv("SPRO_TEST_FAIL")) { exit(7); } if (!getenv("SPRO_TEST_NO_PROOF")) { echo "PASS: enabled\nPASS: disabled\n"; }' );
 	$m = json_decode( file_get_contents( $source . '/.github/feature-release-gate.json' ), true );
 	$m['plan'] = array( 'repository_environment' => 'SSPA_GATE_METADATA_REPOSITORY', 'ref' => 'main', 'path' => 'plan.md' );
-	
+
 	$m['release'] = array( 'runtime_sites' => array( 'SPRO_TEST_SITE_PATH' ), 'core_bugs' => array(), 'sql_reviews' => array( 'sql.md' ), 'dependencies' => array( array( 'id' => 'fixture', 'environment' => 'SPRO_TEST_DEPENDENCY', 'paths' => array( 'library.php' ) ) ), 'tests' => array( array( 'id' => 'runtime', 'command' => PHP_BINARY . ' runtime.php', 'covers' => array( 'focused', 'collector_active', 'collector_inactive' ), 'required_output' => array( 'PASS: enabled', 'PASS: disabled' ) ) ) );
 	file_put_contents( $root . '/.github/feature-release-gate.json', json_encode( $m ) );
 	commit( $root, 'synthetic core' );

@@ -22,7 +22,7 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  assert.equal(await page.locator('.sspa-ajax-headlines h3').count(),0,'filtered visual summary matches exported selection');
  assert.equal(await page.locator('.sspa-ajax-summary h3').count(),0,'detailed visible summary follows the same filter');
  await page.locator('.sspa-ajax-filter').fill('');
- 
+
  console.log('PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

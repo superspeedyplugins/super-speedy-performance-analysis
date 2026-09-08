@@ -34,13 +34,16 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Changelog ==
 
-= 0.36 (8th September 2026) =
+= 0.37 (8th September 2026) =
 * AJAX feature builds require recorded tests for the current source and an approved SQL review.
 * Shared profiling runs now retain plugin loading, selected hook, render and asset summaries with updated consent.
 * AJAX comparisons report an error when saved request provenance is incomplete.
-* Removed the database insert-speed cutoff so traffic collection can start on slow databases.
 * Added local AJAX before-and-after charts with captured plugin selections, server request timings and chart export.
 * Added opt-in bounded AJAX plugin activity evidence with separate hook registration and execution observations.
+* Added a privacy-safe 15-minute endpoint evidence contract for Scalability Pro with exact registered identities, request metrics, callback ownership and honest unknown activity
+
+= 0.36 (8th September 2026) =
+* Removed the database insert-speed cutoff so traffic collection can start on slow databases.
 * Fixed identical REST responses appearing changed when pagination links include profiling cache busters.
 * Fixed query-loop findings missing a plugin's queries when its callback is invoked by the theme.
 * Fixed Share payload previews opening in the wrong tab or disappearing during a background refresh.
@@ -63,7 +66,6 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 * Added before-and-after History comparisons with update-triggered quick scans, response/output validity checks, learned expectations, and a preview-first privacy-safe evidence contract available through wp-admin, WP-CLI and the Abilities API
 
 = 0.35 (23rd-26th August 2026) =
-* Added a privacy-safe 15-minute endpoint evidence contract for Scalability Pro with exact registered identities, request metrics, callback ownership and honest unknown activity
 * Added managed-host safeguards that skip unsafe platform-owned cache comparisons, learn undeclared plugin dependency groups after one isolated failure, and preflight exact Plugin Impact and checkout paths before work is queued; thanks to Glenn H for discovering and documenting all three cases
 * Relabelled direct PHP attribution so its bootstrap-timer boundary cannot be mistaken for a plugin's total causal impact
 * Changed the top-level `Performance Analysis` admin-bar item to run `Analyse this page`, matching its first submenu action
