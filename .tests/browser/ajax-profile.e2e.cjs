@@ -14,6 +14,14 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  await page.waitForFunction(()=>document.querySelector('.sspa-ajax-chart canvas'));
  const download=page.waitForEvent('download');await page.locator('.sspa-ajax-export').click();const file=await download;const output=process.env.SSPA_AJAX_ARTIFACT_DIR;require('node:fs').mkdirSync(output,{recursive:true});await file.saveAs(output+'/ajax-before-after.html');await page.screenshot({path:output+'/ajax-before-after.png',fullPage:true});
  const html=require('node:fs').readFileSync(output+'/ajax-before-after.html','utf8');assert.match(html,/sspa\/ajax-series@1/);assert.match(html,/data:image\/png/);assert.match(html,/spro\/endpoint-context@1/);assert.doesNotMatch(html,/request_body|response_body/);assert.deepEqual(errors,[]);
+ await page.locator('.sspa-ajax-filter').fill('no matching endpoint fixture');
+ const filteredDownload=page.waitForEvent('download');await page.locator('.sspa-ajax-export').click();await (await filteredDownload).saveAs(output+'/ajax-filtered.html');
+ const filteredHtml=require('node:fs').readFileSync(output+'/ajax-filtered.html','utf8');
+ const filtered=await page.evaluate(html=>JSON.parse(new DOMParser().parseFromString(html,'text/html').querySelector('pre').textContent),filteredHtml);
+ assert.equal(filtered.pages.length,0,'export JSON and summaries use the same filter as chart');
+ assert.equal(await page.locator('.sspa-ajax-headlines h3').count(),0,'filtered visual summary matches exported selection');
+ await page.locator('.sspa-ajax-filter').fill('');
+ 
  console.log('PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

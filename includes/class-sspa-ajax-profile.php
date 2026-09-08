@@ -55,7 +55,7 @@ class SSPA_Ajax_Profile {
             foreach (self::rows($windows[$uuid]) as $row) {
                 $capture = json_decode($row['measurement_json'], true);
                 if (!is_array($capture) || ($capture['schema'] ?? '') !== 'sspa/ajax-measurement@1' || $capture['uuid'] !== $uuid) { continue; }
-                $identity = array($row['transport'], $row['endpoint'], $row['http_method'], $row['auth_context'], $capture['scenario'], $capture['mode'], $capture['boundary'], $capture['environment']);
+                $identity = array($row['transport'], $row['endpoint'], $row['http_method'], $row['auth_context'], $capture['scenario'], $capture['mode'], $capture['detail_requested'] ?? false, $capture['boundary'], $capture['environment']);
                 $key = hash('sha256', wp_json_encode($identity));
                 if (!isset($pages[$key])) {
                     $empty = array('points' => array(), 'faults' => array(), 'setups' => array());
