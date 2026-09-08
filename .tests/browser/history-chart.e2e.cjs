@@ -236,10 +236,26 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			await page.locator('#sspa-history-compare').click();
 			await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
 			await page.locator('.sspa-history-chart-status').filter({hasText:'chart loaded'}).waitFor();
+			// setOption publishes coordinates before its animation finishes. Arm the
+			// real render-completion signal before filtering, rather than sleeping.
+			await page.locator('.sspa-history-chart').evaluate(mount => {
+				mount.sspaDiagnosticRendered = new Promise(resolve => {
+					const finished = () => {
+						const labels = mount.sspaChart.getOption().xAxis[0].data;
+						if (labels.length !== 1 || labels[0] !== 'Diagnostic Pair') return;
+						mount.sspaChart.off('finished', finished);
+						resolve();
+					};
+					mount.sspaChart.on('finished', finished);
+				});
+			});
 			await page.locator('.sspa-history-page-filter').fill('diagnostic-pair');
+			await page.locator('.sspa-history-chart').evaluate(mount => mount.sspaDiagnosticRendered);
 			const diagnosticPoint = await page.locator('.sspa-history-chart').evaluate(mount => {
 				const points = mount.sspaChart.getOption().series[1].data;
-				const index = points.findIndex(point => (point.savedPoint.evidence.php_diagnostics.events || []).some(event => event.message.includes('diagnostic one')));
+				// Sample two is drawn last and may cover sample one's centre when their
+				// real timings are close. The table check below still opens sample one.
+				const index = points.findLastIndex(point => (point.savedPoint.evidence.php_diagnostics.events || []).some(event => event.message.includes('diagnostic two')));
 				if (index < 0) return null;
 				const pixel = mount.sspaChart.convertToPixel({seriesIndex:1}, points[index].value);
 				return {index, symbol:points[index].symbol, x:pixel[0] + points[index].symbolOffset[0], y:pixel[1], message:points[index].savedPoint.evidence.php_diagnostics.events[0].message};
@@ -249,7 +265,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			await page.locator('.sspa-history-chart').scrollIntoViewIfNeeded();
 			const chartBox = await page.locator('.sspa-history-chart').boundingBox();
 			await page.mouse.click(chartBox.x + diagnosticPoint.x, chartBox.y + diagnosticPoint.y);
-			await page.locator('.sspa-history-point-details').filter({hasText:'SSPA local diagnostic one'}).waitFor();
+			await page.locator('.sspa-history-point-details').filter({hasText:'SSPA local diagnostic two'}).waitFor();
 			await page.locator('.sspa-history-data-details > summary').click();
 			const diagnosticRow = page.locator('.sspa-history-data-table tbody tr[data-page-label*="diagnostic-pair"]');
 			await diagnosticRow.locator('details > summary').click();
