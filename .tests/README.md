@@ -44,6 +44,16 @@ The Share preview browser case uses the same dependency and verifies both naviga
 Share alone, preview toggling and persistence across a real tab refresh. It requires an
 existing completed analysis and does not opt in or submit an analysis.
 
+### Community boot evidence
+
+`SSPA_SCENARIO=tests-ajax-retention bash .tests/run-tests.sh 70-community-boot`
+checks the real run exporter with retained synthetic boot evidence: exact timings,
+component versions, page relationships, consent version 5, custom callback redaction and
+invalid metrics. It creates no outbox item and sends no submission. Set
+`SSPA_BOOT_PAYLOAD_FILE=/tmp/sspa-boot-producer.json` to hand its complete payload to the
+receiver's `TestManifestRealBootProducer` test. Cases 20–23 cover the existing immutable
+outbox, evidence families, backfill and actual run controller.
+
 ### Central E2E observatory
 
 The separate observatory measures PHP request time and correlated PHP faults across declared
@@ -162,8 +172,12 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 ### Harness gotchas (learned the hard way)
 
 - **opcache revalidation**: php-fpm revalidates changed PHP files at most every 2s
-  (`opcache.revalidate_freq`). Tests that swap `wp-content/db.php` sleep 3s before
-  sending profiled requests.
+  (`opcache.revalidate_freq`). Tests that swap `wp-content/db.php` or regenerate the
+  traffic observer from CLI sleep 3s before sending HTTP requests. CLI invalidation
+  does not invalidate FPM's cache. Case 73 waits after each generated-observer change
+  and verifies the GET window has a real request before comparing methods.
+  When relocating a retained site to another checkout, refresh its dedicated FPM
+  process so cached resolved plugin paths cannot produce stale asset URLs.
 - **Sample data can vanish** (observed Jul 2026: 0 products, 0 orders in a long-lived
   env). The symptom is a 5-case failure cluster: sector "general" instead of e-commerce,
   "product page profiled" fails, deep deltas tiny (~25ms - the bad plugin's queries are
@@ -496,3 +510,28 @@ record and needs inspection.
   header; the real-QM path needs `wp plugin install query-monitor` + its symlink).
 - Customer variant (flagged test account) - lands with phase 2 catalogue work.
 - Crash-safety kill test: kill -9 mid-run, assert stale-hold self-heal on next load.
+
+## AJAX profiling integration
+
+`SSPA_SCENARIO=<dedicated-scenario> .tests/run-tests.sh fast-ajax` runs cases 59, 71–73 and the
+registered chart browser test. Case 72 requires the SPro endpoint feature installed on the same
+isolated site; case 71 prepares retained owner/delay fixtures for it. The runner deactivates
+SPro before case 19 (deliberately wasteful checkout calls) and case 37 (no settings publisher),
+then activates it before case 72. Those are explicit fixture preconditions; SPro's own suite
+covers its Purge Shield and its settings publishing. SPro remains active after integration.
+The suite refuses a
+non-isolated site and provides a real `wp` shim to child scripts. Nonzero PHP exits and zero matched
+cases fail the runner.
+
+Use the installed Node 20+ runtime and `SSPA_PLAYWRIGHT_MODULE` for an existing Playwright package.
+The AJAX browser wrapper records two real History spot checks so it can verify both tabs
+share one lazily loaded chart engine, including on a fresh site.
+Browser evidence is saved in `.data/ajax-profile-browser/`. The separate
+`.tests/manual/ajax-overhead.php` measures identical local fixture requests with observer off,
+identity-only and explicit detail capture; it does not approve a production overhead budget.
+
+Case 71 was observed failing when execution evidence was deliberately removed, then passing with
+it restored. Case 72 exercises SPro's actual generated MU policy with unchanged installed versions.
+Case 73 checks real failed requests, method/mode compatibility, detail caps and collection expiry.
+Database append preflight rejects actual insert failures; successful insert latency is informational
+following core adb471e. A refused start is never a skipped/passed fixture or automatically retried.

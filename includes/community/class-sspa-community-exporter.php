@@ -92,6 +92,11 @@ class SSPA_Community_Exporter {
                 self::page_profile($profile, $page_ref, $consent_version),
                 $page_ref
             );
+            if ($consent_version >= 5 && isset($capture['boot'])) {
+                $boot = SSPA_Community_Boot::project($capture['boot'], $page_ref, $submission_uuid, $inventory);
+                if (is_wp_error($boot)) { return $boot; }
+                self::add_evidence($evidence, 'sspa/boot-profile', $measurement_version, $boot);
+            }
             if (isset($capture['profile']) && is_array($capture['profile'])) {
                 $excimer = self::excimer_profile($capture['profile'], $page_ref, $submission_uuid, $versions);
                 if ($excimer) {

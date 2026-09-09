@@ -44,6 +44,7 @@ class SSPA_Bootstrap {
         }
 
         $ajax = array(
+            'sspa_ajax_profile' => array('SSPA_Ajax_Profile', 'ajax'),
             'sspa_start_run' => array('SSPA_Run_Controller', 'ajax_start_run'),
             'sspa_process_batch' => array('SSPA_Run_Controller', 'ajax_process_batch'),
             'sspa_run_status' => array('SSPA_Run_Controller', 'ajax_run_status'),

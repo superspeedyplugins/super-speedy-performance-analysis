@@ -34,6 +34,15 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Changelog ==
 
+= 0.37 (8th September 2026) =
+* Load the chart library only when a History or AJAX chart is needed.
+* AJAX feature builds require recorded tests for the current source and an approved SQL review.
+* Shared profiling runs now retain plugin loading, selected hook, render and asset summaries with updated consent.
+* AJAX comparisons report an error when saved request provenance is incomplete.
+* Added local AJAX before-and-after charts with captured plugin selections, server request timings and chart export.
+* Added opt-in bounded AJAX plugin activity evidence with separate hook registration and execution observations.
+* Added a privacy-safe 15-minute endpoint evidence contract for Scalability Pro with exact registered identities, request metrics, callback ownership and honest unknown activity
+
 = 0.36 (8th September 2026) =
 * Removed the database insert-speed cutoff so traffic collection can start on slow databases.
 * Fixed identical REST responses appearing changed when pagination links include profiling cache busters.

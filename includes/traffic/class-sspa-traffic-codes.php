@@ -4,7 +4,7 @@ defined('ABSPATH') || exit;
 /** Stable numeric storage codes for the experimental traffic collector. */
 class SSPA_Traffic_Codes {
 
-    const OBSERVER_VERSION = 2;
+    const OBSERVER_VERSION = 4;
 
     const COLLECTION_PLANNED = 1;
     const COLLECTION_RUNNING = 2;

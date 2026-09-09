@@ -107,8 +107,11 @@ class SSPA_Admin_Page {
     }
 
     public static function enqueue_assets() {
+        wp_enqueue_script('sspa-chart-library', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-chart-library.js', array('sspa-admin'), sspa_asset_version('includes/admin/js/sspa-chart-library.js'), true);
+        wp_enqueue_script('sspa-measurement-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-measurement-chart.js', array('jquery', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-measurement-chart.js'), true);
+        wp_enqueue_script('sspa-ajax-profile', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-ajax-profile.js', array('jquery', 'sspa-measurement-chart', 'sspa-chart-library'), sspa_asset_version('includes/admin/js/sspa-ajax-profile.js'), true);
         wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery', 'sspa-transport'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
-        wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-admin', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
+        wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-chart-library', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
         wp_localize_script('sspa-history-chart', 'sspa_history_chart', array(
             /* translators: 1: analysis ID, 2: request sample number */
             'sample_heading' => __('Analysis #%1$d, request sample %2$d', 'super-speedy-performance-analysis'),
@@ -207,6 +210,7 @@ class SSPA_Admin_Page {
             'workflows' => __('Workflows', 'super-speedy-performance-analysis'),
             'pages' => __('Pages', 'super-speedy-performance-analysis'),
             'plugins' => __('Plugins', 'super-speedy-performance-analysis'),
+            'ajax' => __('AJAX', 'super-speedy-performance-analysis'),
             'history' => __('History', 'super-speedy-performance-analysis'),
             'tools' => __('Tools', 'super-speedy-performance-analysis'),
             'traffic' => __('Traffic', 'super-speedy-performance-analysis'),

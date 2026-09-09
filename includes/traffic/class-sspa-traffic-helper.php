@@ -72,9 +72,12 @@ class SSPA_Traffic_Helper {
             'observer_version' => SSPA_Traffic_Codes::OBSERVER_VERSION,
             'key_option' => sanitize_key($config['key_option']),
             'table' => SSPA_Schema::table('traffic_events'),
+			'endpoint_table' => SSPA_Schema::table('traffic_endpoint_observations'),
+			'endpoint_id_stop' => max(1, isset($config['endpoint_id_stop']) ? (int) $config['endpoint_id_stop'] : 4294967295),
             'observer_path' => self::path(),
             'stopped_path' => self::stopped_path(),
         );
+        if (class_exists('SSPA_Ajax_Profile') && SSPA_Ajax_Profile::$pending) { $safe['ajax_profile'] = SSPA_Ajax_Profile::$pending; }
         $content = str_replace(
             array('/* %%SSPA_TRAFFIC_CONFIG_ASSIGNMENT%% */', '%%SSPA_TRAFFIC_PLUGIN_DIR%%'),
             array('$sspa_traffic_config = ' . var_export($safe, true) . ';', addslashes(trailingslashit(SSPA_PLUGIN_DIR))),

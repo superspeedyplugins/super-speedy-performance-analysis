@@ -155,6 +155,21 @@ marks browser and Cloudflare evidence unavailable and anonymous WordPress-origin
 Early reads do not stop or shorten collection. Destructive raw-data deletion is only available
 in the Traffic tab and `wp sspa traffic delete`, not through MCP.
 
+### Fast Ajax endpoint evidence
+
+The local PHP contract for Scalability Pro is `sspa/endpoint-evidence@1`. It is additive to the main report and is not exposed through WP-CLI, Abilities or MCP. Consumers call:
+
+- `SSPA_Report::start_endpoint_evidence()` to start one bounded 15-minute collection.
+- `SSPA_Report::endpoint_evidence_status($collection_id)` to read its lifecycle state.
+- `SSPA_Report::stop_endpoint_evidence($collection_id)` to stop and finalise it.
+- `SSPA_Report::endpoint_evidence($collection_id)` to read evidence during or after collection.
+
+Each endpoint is keyed by the exact registered transport, action or REST route pattern, method and authentication context. Its evidence includes count, first/last seen, status classes, whole-request wall-time median/p95/sum, handler timing, query-count distribution and observer-overhead distribution. `owners` separates execution callbacks from REST permission callbacks, adds recursive `Requires Plugins` dependencies, states whether resolution was `complete`, `partial` or `unresolved`, and supplies a fingerprint for invalidation.
+
+The first contract intentionally returns `plugin_activity: []`, `quality.activity: "unknown"`, `capture.detailed_samples: 0` and `capture.detailed_sample_ceiling: 0`. Consumers must not interpret that as proof that a plugin did no work. Detailed per-plugin activity remains unavailable until its production overhead has been measured and bounded.
+
+The observer stores no request or response body, cookie, query value, account identifier or literal dynamic REST path. Unregistered and ambiguous request input cannot create evidence. The Traffic tab displays the same identities, frequency, timing, query, failure and evidence-quality data for administrator review.
+
 ### Page
 
 `page_key`, `variant` (anon|customer|admin), `generation_ms`, `ttfb_ms`, `sql_ms`,
@@ -258,3 +273,18 @@ specified, so there is nothing to drift out of sync.
   `mixed` or `low` type confidence must not be auto-applied - either choice is wrong for part
   of the data. `complete: false` means insufficient evidence, never "nothing needed": a run
   whose CPT archive timed out has proved nothing about that archive.
+
+### AJAX windows and activity successor
+
+`SSPA_Ajax_Profile::start(['scenario' => 'safe label', 'label' => 'Before', 'detail' => false,
+'endpoints' => ['admin_ajax:registered_action']])` creates a local 15-minute / 200-observation
+window and returns its UUID and collection ID. Endpoints may be empty for discovery.
+`stop($uuid)` ends it; `windows()` returns saved metadata; `compare($before_uuid, $after_uuid)`
+returns `sspa/ajax-series@1`. Administrator AJAX operation `sspa_ajax_profile` checks
+`manage_options` and the `sspa_admin` nonce. No replay or external submission occurs.
+
+Endpoint reports with actual detail samples return `sspa/endpoint-evidence@2`; identity-only
+collections retain `@1`. Both advertise capabilities. `plugin_activity` contains plugin basename,
+sample count, include milliseconds, checkpoint registrations, named executed hooks, I/O attempt
+totals and partial-coverage gaps. Neither zero observations nor registration alone proves necessity
+or absence of work. Capture-time policy comes from `spro/endpoint-context@1` when available.

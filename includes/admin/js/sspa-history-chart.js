@@ -1,36 +1,10 @@
 (function ($) {
 	'use strict';
 
-	var echartsPromise = null;
 	var strings = sspa_history_chart;
 	var sprintf = wp.i18n.sprintf;
 	function escapeText(text) { return $('<span>').text(text).html(); }
 
-	function loadECharts() {
-		if (window.SSPAECharts) {
-			return Promise.resolve(window.SSPAECharts);
-		}
-		if (echartsPromise) {
-			return echartsPromise;
-		}
-		echartsPromise = new Promise(function (resolve, reject) {
-			var script = document.createElement('script');
-			script.src = sspa_admin.history_chart_asset;
-			script.async = true;
-			script.onload = function () {
-				if (window.SSPAECharts) {
-					resolve(window.SSPAECharts);
-				} else {
-					reject(new Error('ECharts did not initialise.'));
-				}
-			};
-			script.onerror = function () {
-				reject(new Error('The local chart library could not be loaded.'));
-			};
-			document.head.appendChild(script);
-		});
-		return echartsPromise;
-	}
 
 	function readDocument(card) {
 		var node = card.querySelector('.sspa-history-chart-document');
@@ -201,7 +175,7 @@
 			return;
 		}
 		status.textContent = 'Loading chart…';
-		loadECharts().then(function (echarts) {
+		SSPAChartLibrary.load().then(function (echarts) {
 			var chart = mount.sspaChart || echarts.init(mount, null, {renderer: 'canvas'});
 			mount.sspaChart = chart;
 			card.sspaDocument = documentData;

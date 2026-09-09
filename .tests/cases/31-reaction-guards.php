@@ -25,6 +25,9 @@ function sspa_rg_t($ok, $label) {
 
 global $wpdb;
 
+// A retained site may contain a notice from builds before core 8663a12.
+delete_option('sspa_reaction_notice');
+
 function sspa_rg_index_exists() {
     global $wpdb;
     return (bool) $wpdb->get_var("SHOW INDEX FROM {$wpdb->options} WHERE Key_name = 'sspa_guard_idx'");
@@ -32,6 +35,10 @@ function sspa_rg_index_exists() {
 
 // --- Setup: an index to protect, and the two fixtures ---
 
+// Reset the previous interrupted run's fixture before creating this run's index.
+if (sspa_rg_index_exists()) {
+    $wpdb->query("ALTER TABLE {$wpdb->options} DROP INDEX sspa_guard_idx");
+}
 $wpdb->query("ALTER TABLE {$wpdb->options} ADD INDEX sspa_guard_idx (autoload)");
 sspa_rg_t(sspa_rg_index_exists(), 'guard index created');
 
@@ -154,6 +161,7 @@ sspa_rg_t($sspa_s && 'done' === $sspa_s['status'], 'source run done: ' . ($sspa_
 
 $sspa_sweep = SSPA_Run_Controller::start(array(
     'type' => 'deep',
+    'swap_dropin' => true, // The retained crash fixture may own db.php.
     'suspects' => array('sspa-guard-dep'),
     'page_keys' => array('home'),
     'cache_modes' => false,
@@ -205,6 +213,8 @@ if (is_wp_error($sspa_sweep)) {
         $sspa_built = SSPA_Community_Exporter::build($sspa_sweep);
         $sspa_shared_finding = null;
         if (!is_wp_error($sspa_built)) {
+            // Assert the actual JSON submission representation, including evidence objects.
+            $sspa_built = json_decode(wp_json_encode($sspa_built), true, 512, JSON_THROW_ON_ERROR);
             foreach ((array) $sspa_built['evidence'] as $sspa_item) {
                 if ('sspa/finding' === $sspa_item['type'] && 'isolation_reaction' === $sspa_item['data']['finding_type']) {
                     $sspa_shared_finding = $sspa_item['data'];
@@ -235,19 +245,10 @@ if (is_wp_error($sspa_sweep)) {
         );
     }
 
-    // Notified: a sweep can finish with nobody on the analysis screen.
-    $sspa_notice = (array) get_option(SSPA_Run_Controller::REACTION_NOTICE_OPTION, array());
+    // Core 8663a12 removed cross-admin reaction notices; evidence stays on the run.
     sspa_rg_t(
-        isset($sspa_notice['sspa-guard-dep|sspa-guard-reactor']),
-        'the admin notice is armed with the pair'
-    );
-    ob_start();
-    wp_set_current_user(1); // the notice is for whoever can manage plugins
-    SSPA_Admin_Page::reaction_notice();
-    $sspa_notice_html = ob_get_clean();
-    sspa_rg_t(
-        false !== strpos($sspa_notice_html, 'sspa-guard-reactor') && false !== strpos($sspa_notice_html, 'sspa-guard-dep'),
-        'and it renders naming the reactor and the excluded plugin'
+        !get_option('sspa_reaction_notice'),
+        'the guarded sweep does not arm the retired admin notice'
     );
     $sspa_notes = json_decode((string) $wpdb->get_var($wpdb->prepare(
         'SELECT notes FROM ' . SSPA_Schema::table('runs') . ' WHERE id = %d',
@@ -271,6 +272,7 @@ if (is_wp_error($sspa_sweep)) {
     $sspa_before = (int) get_option('sspa_guard_orphaned');
     $sspa_again = SSPA_Run_Controller::start(array(
         'type' => 'deep',
+        'swap_dropin' => true,
         'suspects' => array('sspa-guard-dep'),
         'page_keys' => array('home'),
         'cache_modes' => false,

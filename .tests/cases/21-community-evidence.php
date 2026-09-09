@@ -181,7 +181,10 @@ $run_ids[] = $checkout_id;
 $checkout_capture = $capture;
 $checkout_capture['marks'] = array('payment_complete' => 30);
 $checkout_capture['mail'] = array('count' => 1, 'total_construct_ms' => 2, 'calls' => array());
-$checkout_capture['http'] = array('calls' => array(array('ms' => 3)));
+$checkout_capture['http'] = array('calls' => array(array(
+    'ms' => 3, 'url' => 'https://example.test/checkout-fixture',
+    'component' => 'woocommerce', 'method' => 'POST', 'blocking' => true, 'code' => 200,
+)));
 $profile_ids[] = sspa_evidence_profile($checkout_id, 'flow-place-order', $checkout_capture);
 $profile_ids[] = sspa_evidence_profile($checkout_id, 'flow-order-received', $capture);
 $checkout = sspa_evidence_payload($checkout_id, $outbox_ids);
