@@ -172,8 +172,12 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 ### Harness gotchas (learned the hard way)
 
 - **opcache revalidation**: php-fpm revalidates changed PHP files at most every 2s
-  (`opcache.revalidate_freq`). Tests that swap `wp-content/db.php` sleep 3s before
-  sending profiled requests.
+  (`opcache.revalidate_freq`). Tests that swap `wp-content/db.php` or regenerate the
+  traffic observer from CLI sleep 3s before sending HTTP requests. CLI invalidation
+  does not invalidate FPM's cache. Case 73 waits after each generated-observer change
+  and verifies the GET window has a real request before comparing methods.
+  When relocating a retained site to another checkout, refresh its dedicated FPM
+  process so cached resolved plugin paths cannot produce stale asset URLs.
 - **Sample data can vanish** (observed Jul 2026: 0 products, 0 orders in a long-lived
   env). The symptom is a 5-case failure cluster: sector "general" instead of e-commerce,
   "product page profiled" fails, deep deltas tiny (~25ms - the bad plugin's queries are
