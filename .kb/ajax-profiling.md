@@ -1,52 +1,80 @@
 # Profile AJAX and compare plugin selections
 
-Open **Performance Analysis → AJAX**. Start a named window, give the workflow a scenario label,
-then perform it in another tab. Stop the window, change the endpoint's selected plugins in
-Scalability Pro, and record an after window while repeating the same workflow.
+The **AJAX** tab in Performance Analysis records the requests made while you perform a workflow. Capture a Before window, change the plugins selected for that endpoint in Scalability Pro, then capture an After window to see the measured difference.
 
-Scalability Pro changes loading only for endpoints an administrator explicitly enables for
-optimisation. PA measures the resulting requests. Starting a profile never enables optimisation,
-changes selected plugins or replays a request.
+*Available since 0.37.*
 
-Choose individual previously observed endpoints or select an endpoint group from SPro's
-deterministic classification. Leave endpoints unselected to discover registered endpoints.
-Unknown actions remain unknown. Windows stop after 15 minutes or 200 observations.
+Performance Analysis measures requests. Scalability Pro controls which plugins load, and only for endpoints you explicitly enable for optimisation. Starting a recording does not change plugin loading or replay requests.
 
-## Reading the chart
+## Record the Before window
 
-The AJAX chart reuses the History measurement renderer. Each point is an actual retained request;
-median and p95 come from the successful requests, with failed response samples retained separately.
-The metric is server time from MU observer entry to shutdown. Browser elapsed time is unavailable.
-A fast HTTP 200 does not establish functional success: test the workflow's actual result.
+1. Open **Performance Analysis → AJAX**.
+2. Enter a **Window name**, such as “Before product variation”.
+3. Enter a **Scenario** describing repeatable inputs, such as “Same product, select blue, quantity one”. Use the same scenario for the After window and avoid personal information in labels.
+4. Select observed endpoints, or leave the endpoint selection empty to discover registered AJAX and REST requests. When Scalability Pro supplies purpose groups, use **Endpoint group** to narrow the choices.
+5. Leave **Sample plugin activity** unticked for an ordinary timing comparison.
+6. Choose **Start window**, perform the workflow in another tab, then choose **Stop window**.
 
-Select Before and After windows. An optional comparison name saves the pair for reopening.
-Export downloads a standalone HTML chart with the same measured summary and retained evidence.
-These files stay local until you choose to share them yourself.
+A window stops after 15 minutes or 200 observations. Repeat the interaction enough times to see normal variation, keeping its inputs, login state and cache conditions consistent. Do not mix unrelated journeys into one scenario.
 
-Different methods, authentication contexts, scenarios, environments or actual instrumentation
-modes do not produce a comparison. Effective loaded plugin versions, theme and SPro policy are
-recorded with each request. If a setup changes inside a window, its points and setup periods
-remain visible but no combined headline reduction is shown. Repeat a stable window to compare it.
-Installed plugin inventory at window start is kept separately from the effective loaded set.
+## Apply the endpoint selection and record After
 
-## Optional plugin activity
+In Scalability Pro, review the endpoint's required and suggested plugins, decide whether its active theme is needed, and enable the exact rule. Return to Performance Analysis and record a second window while repeating the same scenario.
 
-Detailed sampling is off by default. Opt in only when investigating plugin activity: it adds
-measurable overhead and has no approved production overhead budget. At most 20 requests per
-window and five per AJAX action receive detail instrumentation. Other requests remain identity-only
-and belong to a different instrumentation series.
+Keep the site's environment and plugin versions stable between recordings. Change the plugin selection you want to test between windows, rather than halfway through a window.
 
-The report separates include deltas, hook registrations at checkpoints, executed named actions
-and SQL/HTTP/mail attempts. Registrations are not executions; include or init work is not evidence
-that a plugin is required. Coverage is explicitly partial. Filters, direct REST permission and
-handler callbacks, callbacks added during dispatch, and reference callbacks are not fully timed.
-A callback that exits the request has a count but incomplete duration. Inclusive nested callback
-times overlap and cannot be added together. SQL timing and mail delivery timing are unavailable;
-HTTP timing covers only completed transports counted in `http_timed_count`.
+:::callout{variant="recommended" title="Check correctness alongside speed"}
+For a variation lookup, check the selected variation and price. For a cart or checkout request, check totals, discounts, tax, shipping and the resulting state. HTTP 200 only tells you that the request returned successfully at the HTTP level; it does not prove the business result is correct.
+:::
 
-## Sharing
+## Compare the windows
 
-Traffic and AJAX measurements stay local and are not submitted by run-sharing consent. Boot,
-include, selected-hook, render and asset evidence from conventional saved profiling runs is
-included only with consent version 5 or explicit **Share this analysis**. That separate submission
-contract is payload 1.5, evidence `boot-profile@1`.
+Under **Compare saved windows**, select **Before** and **After**, optionally enter **Save as**, then choose **Compare**. A saved comparison lets you reopen the same pair.
+
+The chart uses the History measurement renderer, in a separate AJAX view. Each point represents a retained request. The summary calculates median and p95 from successful requests and keeps failed response samples separate. Use **Filter endpoint or scenario** to focus the view and select a point to inspect its setup and available activity evidence.
+
+Timings run from the MU observer's entry to request shutdown. They include server work beyond the endpoint handler. They are not a browser waterfall, network transfer time or a measurement of when the page finishes updating.
+
+:::callout{variant="note" title="Use your measured result"}
+The before-and-after figures come from the requests captured on your site. There is no promised target time or reduction: the saving depends on the plugins omitted and the work the endpoint still needs to perform.
+:::
+
+## Why a comparison may be unavailable
+
+Different HTTP methods, authentication contexts, scenarios, environments or actual instrumentation modes do not form an equivalent pair. Check these details before drawing a conclusion from two windows.
+
+Each request records the effective loaded plugin versions, theme and Scalability Pro policy. If the setup changes within a window, its points and setup periods remain visible, but the report withholds a combined headline reduction. Record another window with a stable setup.
+
+The installed plugin inventory at the start of a window is distinct from the plugins that actually loaded for a request. Use the selected request's setup when checking whether the intended optimisation ran.
+
+## Investigate plugin activity
+
+Tick **Sample plugin activity** when you need more evidence about what plugins do during the request. Detailed sampling is a diagnostic option and adds overhead. It covers at most 20 requests per window and five per AJAX action; other requests use a different instrumentation series.
+
+| Evidence | What it helps you investigate | What it does not prove |
+| --- | --- | --- |
+| Include deltas | Work while plugin files load | That the plugin is required |
+| Hook-registration checkpoints | Hooks the plugin has attached callbacks to | That those callbacks ran |
+| Executed named actions | Observed callback activity during sampled actions | A complete trace of all PHP execution |
+| SQL, HTTP and mail attempts | Recorded external work attributed during sampling | Complete SQL duration or mail delivery time |
+
+Coverage is partial. Filters and direct REST permission and handler callbacks are not fully timed, nor are callbacks added during dispatch or reference callbacks. A callback that exits the request can have a count with incomplete duration. Nested inclusive callback times overlap, so adding them together overstates total time. HTTP timing covers completed transports counted by the report.
+
+A plugin that only appears during startup may be worth investigating, but missing activity is not proof that it does nothing. Use the evidence to choose what to test in Scalability Pro, not as an automatic instruction to unload a plugin.
+
+## Use the evidence in Scalability Pro
+
+Performance Analysis supplies registered endpoint identities, request metrics, callback ownership and available activity evidence. Scalability Pro uses that information alongside its deterministic purpose groups and plugin suggestions.
+
+An endpoint selection remains an administrator decision. Collecting evidence does not enable a rule or alter the list of plugins that load.
+
+## Export and privacy
+
+Choose **Export chart and measured summary** to download a standalone HTML report. It contains the measured summary and retained evidence. Review it before sharing it with another person.
+
+Traffic observations and AJAX measurements stay on your site. They are not sent by profiling-run sharing consent. The endpoint identity record excludes request bodies, response bodies, cookies and literal dynamic REST paths.
+
+Sharing a conventional saved performance analysis is a separate action. Its boot, include, selected-hook, render and asset evidence can be included with the applicable run-sharing consent or **Share this analysis**. That does not submit your AJAX windows.
+
+:::related{slugs="super-speedy-performance-analysis,scalability-pro"}
+:::

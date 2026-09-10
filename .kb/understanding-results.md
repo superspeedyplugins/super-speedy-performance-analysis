@@ -21,86 +21,6 @@ Attribution from query backtraces is **inferred** - accurate, but circumstantial
 
 A measured impact can be **negative** - shown as "saves Xms" in green. That means the page got *slower* when the plugin was excluded: the plugin is actively speeding your site up. This is normal for performance plugins that replace a slow core or WooCommerce feature (search, filtering, archives).
 
-## Comparing points in time
-
-Open **History** to compare saved measurements. **Selected runs** starts with the latest two
-eligible completed analyses. Choose the run taken before your plugin updates in **Before**, choose
-the run taken afterwards in **After**, then click **Compare**. The chart and comparison report use
-that exact pair, including when both runs measured the same plugin versions.
-
-Click a run number in the History list to open its saved on-screen report. Its page links open
-retained profile details without starting another analysis. The saved report has its own URL;
-use **Back to History** to return to the list and comparison controls.
-
-In a selected chart point's details, **Open measured page** opens its saved page address in
-a new tab, below **Open saved page profile**. The profile shows **Measured URL / workflow**
-above its action buttons, including the saved request method and page or workflow key.
-Action-only endpoints remain labelled evidence without a link that could replay the action.
-
-For automatic update-boundary selection, choose **Previous plugin configuration** and click
-**Compare**. The chart compares all retained points in the current setup period with the
-immediately preceding measured setup period. The accompanying report compares the selected
-After run with the last measured run in that previous period.
-
-A setup is the active plugins and theme plus the exact versions captured when each analysis ran.
-If three plugins are updated together, that starts one new setup period; Performance Analysis does
-not guess how an unmeasured combination would have behaved. Returning to an older combination
-later starts another period rather than merging separate dates.
-
-Each key page shows every valid retained request-time point, with grey dots for previous
-measurements and blue dots for recent measurements. The chart has no median lines.
-Use the Metric control for generation time, database time, query count, outbound HTTP time, or peak
-memory. Those five views use one saved per-run median because older rows do not retain all of their
-raw samples. Blocked requests, transport errors, HTTP errors and missing measurements keep distinct
-labels, use a separate fault marker and never count towards a median. **View chart data** exposes the
-points, summary medians, changes and evidence states as a table.
-
-With **Request wall time** selected, click a point or its table detail button to inspect the
-saved request. Amber outlined triangles identify retained PHP warnings or notices; inverted
-solid red triangles identify retained PHP errors; upright solid red triangles identify failed
-requests. Details show the saved run, page and available diagnostic messages.
-
-Diagnostic coverage is explicit. A sample without retained diagnostics is unavailable, not a
-claim that no warning occurred. PHP handlers can consume events before PA observes them, and
-bounded capture can truncate messages or event lists. Summary-metric points represent a whole
-analysis's page median rather than one request; use Request wall time for request-level evidence.
-
-The History tab can compare any two completed full scans or spot checks. **Response time is
-the headline**, because Performance Analysis is primarily a performance tool. A newly observed
-fatal, transport/HTTP failure, warning, or failed validity check is shown ahead of timing because
-a very fast error page is not an improvement.
-
-Open **Setup changes** in the comparison to see plugins or themes added, removed, or moved between
-versions. Those identities come from the two completed runs, so the report shows the setup that
-was actually measured rather than today's installed versions.
-
-**Configuration changes** appear when a plugin has deliberately published a small privacy-checked
-state declaration to Performance Analysis. PA never dumps another plugin's option table or guesses
-which free-text settings are safe.
-
-Performance Analysis also compares a normalised hash of each stable response. It stores no HTML
-for this check. **Changed** means the visible/meaningful output differed and should be reviewed;
-it does not automatically mean the site is wrong. Products can go out of stock, catalogue data
-can change, and ranking rules can be intentionally adjusted. When a stable result is important,
-**Use After as expected** turns that learned signature into a lightweight declared check for
-future comparisons.
-
-Plugin-change detection is enabled by default. After plugin updates, activation, or deactivation,
-the admin notice offers a quick comparison and explicitly tells you to finish any remaining
-updates first. The notice shows the exact compatible earlier analysis it will use before you start;
-if none exists, it explains that the new run will become the first saved comparison point. Detection
-can be disabled under **History → Advanced history settings**. The updater request only records the
-changed plugin/version; it never runs an analysis itself.
-
-The comparison's privacy-safe evidence must be previewed before it can be downloaded. It contains
-run/component identities, measurements, cases, diagnostic fingerprints, and output-change state;
-it excludes response bodies, URLs, cookies, nonces, personal data, SQL text, and filesystem paths.
-Downloading this local file does not enable community sharing.
-
-For local automation, `wp sspa history-compare <before-run-id> <after-run-id>` and the readonly
-`compare-history` ability return that same versioned evidence contract without contacting a
-remote service. This is the PA input intended for Release Confidence and other test runners.
-
 ## The attribution trap (read this before blaming a plugin)
 
 The SQL/query columns credit work to **whichever component runs it**. A plugin that *replaces* a slow feature - say a search plugin that takes over product or order search - runs the search query itself. The search time then appears under *its* name, while the slow native code it replaced does not run at all and is credited to nobody. On the attribution columns alone, the plugin making your search fast can look like your biggest SQL spender.
@@ -112,6 +32,16 @@ The **Measured impact** column is the antidote: it compares the real page with a
 - **baseline** - a near-empty request measuring your server's noise floor.
 - **mail-probe** - the cost of building (not sending) an email through your mail stack.
 - **write-save-product / write-order-processing** - opt-in: the full save/status-change hook cascade, measured against temporary objects that are deleted immediately after.
+
+## Reading AJAX comparisons
+
+The **AJAX** tab compares requests captured in named Before and After windows. Each point is a retained request; successful-request median and p95 are separate from failed responses. The timing covers server work from MU observer entry to shutdown, not browser elapsed time.
+
+Compare the same scenario, method, authentication context, environment and instrumentation mode. Select a point to inspect the effective plugins, theme and Scalability Pro policy. If a setup changes within a window, the points remain visible but a combined headline reduction is withheld.
+
+Optional activity sampling distinguishes plugin include work, hook registrations, named-action callback execution and I/O attempts. Coverage is partial, and nested inclusive callback times overlap. Do not add those durations together or treat an empty sample as proof a plugin can be unloaded.
+
+Scalability Pro applies only the exact endpoint rules an administrator enables. Performance Analysis collects evidence; it does not select or unload plugins automatically. A successful HTTP response still needs a functional check of its returned data and the resulting workflow.
 
 ## Further reading
 

@@ -8,7 +8,7 @@ Super Speedy Performance Analysis finds out what is actually slowing your WordPr
 2. Plugins -> Add New -> Upload Plugin -> activate.
 3. Go to **Super Speedy -> Performance Analysis**.
 
-On activation the plugin installs two small helpers: an mu-plugin loader and a conditional `db.php` drop-in. Both are inert for normal traffic - they only wake up for the plugin's own signed profiling requests - and both are removed automatically when you deactivate the plugin. The Overview tab's Health box shows their status.
+On activation the plugin installs two small helpers: an mu-plugin loader and a conditional `db.php` drop-in. The profiling helpers operate on signed profiling requests. Separately, an explicitly started traffic or AJAX collection window observes matching real requests on the site. The Overview tab's Health box shows their status.
 
 ## Your first analysis
 
@@ -24,7 +24,14 @@ When it finishes you get a site score and the Top Insights - plain-English findi
 - **Plugins tab**: per-plugin totals, plus a **Measure** button per plugin - a targeted sweep proving that one plugin's real cost (or saving) on every page.
 - **Run Plugin Impact Analysis**: the one-button sweep, in two phases. Phase 1 quickly screens every eligible plugin on its busiest pages; phase 2 automatically gives only the plugins that showed a measurable impact the full treatment - every page, plus object-cache-disabled and cache-priming measurements when you have Redis/Memcached. Start it, walk away, and the floating monitor shows where it is up to and roughly how long the current phase has left whenever you come back.
 - **Function-level detail**: install the free `excimer` extension and every profile gains a by-function breakdown. See [Installing the Optional Profiling Extras](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/setup-server/installing-profiling-extensions/) and [Function-Level Profiling](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/features/function-level-profiling/).
-- **History tab**: re-run monthly - if your site is getting slower as it grows, this is where you see it.
+- **History tab**: compare saved page measurements and inspect the setup used for each measurement.
+- **AJAX tab**: record a Before window while performing a real workflow, stop it, change the endpoint selection in Scalability Pro, and repeat the same scenario in an After window. Compare equivalent requests and export the chart for review. Recording does not enable optimisation or replay requests.
+
+## AJAX timing and plugin activity
+
+Leave **Sample plugin activity** off for ordinary timing comparisons. Enable it when investigating what plugins do during sampled requests; it adds overhead and offers partial coverage. Hook registrations and executed callbacks are different evidence, and a missing observation does not prove a plugin is unnecessary.
+
+AJAX windows stop after 15 minutes or 200 observations. Their data stays on your site and is not included in profiling-run submissions. Check returned data and workflow correctness alongside the measured server time.
 
 ## Things that trip people up
 
