@@ -59,12 +59,22 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		assert.match(malformedStatus, /could not be read/i, 'Malformed chart data must surface a visible error');
 
 		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
+		const axis = await page.locator('.sspa-history-chart').evaluate(mount => {
+			const option = mount.sspaChart.getOption();
+			return {rotate:option.xAxis[0].axisLabel.rotate, lines:option.xAxis[0].splitLine.show,
+				labels:option.xAxis[0].data.map(key => option.xAxis[0].axisLabel.formatter ? option.xAxis[0].axisLabel.formatter(key) : key)};
+		});
+		assert.equal(axis.rotate, 90, 'Page labels must be vertical so neighbouring categories do not overlap');
+		assert.equal(axis.lines, true, 'Faint category dividers must align labels with measurements');
+		assert.ok(axis.labels.every(label => !label.includes(' · normal')), 'Default transport context is not axis text');
+		assert.ok(source.pages.some(item => item.relative_url), 'Retained measured URLs must reach the chart document');
 		const tooltipHeadings = await page.locator('.sspa-history-chart').evaluate(mount => {
 			const option = mount.sspaChart.getOption();
 			return option.series.flatMap((series, index) => series.data.map(data => {
 				const node = document.createElement('div');
 				node.innerHTML = option.tooltip[0].formatter({seriesName:series.name, seriesIndex:index, data});
-				return {actual:node.querySelector('strong').textContent, expected:data.value[0] + ' (' + (index === 0 || data.period === 'previous' || data.period === 'Before' ? 'previous' : 'recent') + ')'};
+				const label = option.xAxis[0].axisLabel.formatter(data.value[0]).split('\n')[0];
+				return {actual:node.querySelector('strong').textContent, expected:label + ' (' + (index === 0 || data.period === 'previous' || data.period === 'Before' ? 'previous' : 'recent') + ')'};
 			}));
 		});
 		assert.ok(tooltipHeadings.length > 0);
@@ -242,7 +252,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 				mount.sspaDiagnosticRendered = new Promise(resolve => {
 					const finished = () => {
 						const labels = mount.sspaChart.getOption().xAxis[0].data;
-						if (labels.length !== 1 || labels[0] !== 'Diagnostic Pair') return;
+						if (labels.length !== 1 || mount.sspaChart.getOption().xAxis[0].axisLabel.formatter(labels[0]).split('\n')[0] !== 'Diagnostic Pair') return;
 						mount.sspaChart.off('finished', finished);
 						resolve();
 					};

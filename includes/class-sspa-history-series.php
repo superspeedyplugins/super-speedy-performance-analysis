@@ -390,7 +390,7 @@ class SSPA_History_Series {
             return $cache[$run_id];
         }
         $cache[$run_id] = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, page_key, method, variant, object_cache_mode, samples,
+            "SELECT id, page_key, url, method, variant, object_cache_mode, samples,
                     page_gen_ms, ttfb_ms, sql_ms, sql_count, rows_returned_total,
                     http_ms, php_ms, peak_mem_bytes, dupe_query_count, mail_count,
                     response_code, blocked_by
@@ -491,6 +491,7 @@ class SSPA_History_Series {
                             'variant' => sanitize_key($profile['variant']),
                             'object_cache_mode' => sanitize_key($profile['object_cache_mode']),
                             'label' => self::page_label($profile['page_key']),
+                            'relative_url' => self::relative_url($profile['url']),
                             'previous' => array('points' => array(), 'faults' => array(), 'output_signatures' => array()),
                             'current' => array('points' => array(), 'faults' => array(), 'output_signatures' => array()),
                         );
@@ -735,5 +736,22 @@ class SSPA_History_Series {
 
     private static function page_label($page_key) {
         return ucwords(str_replace(array('-', '_'), ' ', sanitize_key($page_key)));
+    }
+
+    private static function relative_url($url) {
+        $parts = wp_parse_url($url);
+        if (!$parts || empty($parts['path'])) {
+            return '';
+        }
+        $query = array();
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+        foreach (array_keys($query) as $key) {
+            if (preg_match('/sspa|nonce|token|password|secret|auth|signature/i', $key)) {
+                unset($query[$key]);
+            }
+        }
+        return $parts['path'] . ($query ? '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : '');
     }
 }

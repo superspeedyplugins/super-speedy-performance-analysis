@@ -43,10 +43,8 @@
 	}
 
 	function axisLabel(page) {
-		if (page.method === 'GET' && page.variant === 'anon' && page.object_cache_mode === 'normal') {
-			return page.label;
-		}
-		return page.label + '\n' + page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode;
+		var name = page.label.replace(/^Admin\s+/i, 'wp-admin ').replace(/^Wc\s+/i, '');
+		return name + (page.relative_url ? '\n' + page.relative_url : '');
 	}
 
 	function point(pageLabel, point, offset) {
@@ -85,11 +83,13 @@
 		}).join(', ');
 	}
 
-	function optionFor(documentData, filter) {
+	function optionFor(documentData, filter, width) {
 		var pages = documentData.pages.filter(function (page) {
 			return !filter || (page.label + ' ' + page.key).toLowerCase().indexOf(filter) !== -1;
 		});
-		var labels = pages.map(axisLabel);
+		var labels = pages.map(function (page) { return page.key; });
+		var byKey = {};
+		pages.forEach(function (page) { byKey[page.key] = page; });
 		var previousPoints = [];
 		var currentPoints = [];
 		var failures = [];
@@ -112,6 +112,7 @@
 		});
 
 		var unit = documentData.metric.unit;
+		var visibleEnd = Math.max(0, Math.min(labels.length - 1, Math.floor((width - 100) / 32) - 1));
 		var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		return {
 			animation: !reduceMotion,
@@ -122,12 +123,18 @@
 			},
 			color: ['#6b7280', '#2271b1', '#d63638'],
 			legend: {top: 0},
-			grid: {left: 72, right: 28, top: 54, bottom: labels.length > 5 ? 116 : 86},
+			grid: {left: 72, right: 28, top: 54, bottom: 250},
 			tooltip: {
 				trigger: 'item',
 				formatter: function (params) {
 					var data = params.data || {};
-					var heading = '<strong>' + escapeText(data.value[0] + ' (' + data.period + ')') + '</strong>';
+					var page = byKey[data.value[0]];
+					var title = page ? axisLabel(page).split('\n')[0] : data.value[0];
+					var heading = '<strong>' + escapeText(title + ' (' + data.period + ')') + '</strong>';
+					if (page) {
+						heading += (page.relative_url ? '<br>' + escapeText(page.relative_url) : '')
+							+ '<br>' + escapeText(page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode);
+					}
 					if (data.summary) {
 						return heading + '<br>' + data.summary;
 					}
@@ -148,7 +155,11 @@
 			xAxis: {
 				type: 'category',
 				data: labels,
-				axisLabel: {interval: 0, rotate: labels.length > 5 ? 28 : 0}
+				axisLabel: {interval: 0, rotate: 90, fontSize: 11, lineHeight: 12, width: 205,
+					overflow: 'truncate', margin: 12, formatter: function (key) { return axisLabel(byKey[key]); }},
+				axisTick: {alignWithLabel: false},
+				splitLine: {show: true, interval: 0, lineStyle: {color: '#e8eaed', width: 1}},
+				boundaryGap: true
 			},
 			yAxis: {
 				type: 'value',
@@ -156,9 +167,9 @@
 				min: 0,
 				axisLabel: {formatter: function (value) { return unitValue(value, unit); }}
 			},
-			dataZoom: labels.length > 5 ? [
-				{type: 'inside', xAxisIndex: 0, filterMode: 'filter'},
-				{type: 'slider', xAxisIndex: 0, bottom: 14, height: 24, filterMode: 'filter'}
+			dataZoom: labels.length > 5 || visibleEnd < labels.length - 1 ? [
+				{type: 'inside', xAxisIndex: 0, filterMode: 'filter', startValue: 0, endValue: visibleEnd},
+				{type: 'slider', xAxisIndex: 0, bottom: 14, height: 24, filterMode: 'filter', startValue: 0, endValue: visibleEnd}
 			] : [{type: 'inside', xAxisIndex: 0, filterMode: 'filter'}],
 			series: [
 				{name: 'Previous measurements', type: 'scatter', symbolSize: 9, itemStyle: {color: '#6b7280'}, data: previousPoints},
@@ -184,14 +195,24 @@
 			$(card).find('.sspa-history-data-table tbody tr').each(function () {
 				this.hidden = !!filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1;
 			});
-			chart.setOption(optionFor(documentData, filter), true);
+			chart.setOption(optionFor(documentData, filter, mount.clientWidth), true);
 			chart.off('click');
 			chart.on('click', function (event) {
 				if (event.data && event.data.savedPoint) inspectPoint(card, event.data.savedPoint);
 			});
 			status.textContent = documentData.metric.label + ' chart loaded.';
 			if (!mount.sspaResizeObserver && window.ResizeObserver) {
-				mount.sspaResizeObserver = new ResizeObserver(function () { chart.resize(); });
+				mount.sspaResizeObserver = new ResizeObserver(function () {
+					chart.resize();
+					var option = chart.getOption();
+					var count = option.xAxis[0].data.length;
+					var capacity = Math.max(1, Math.floor((mount.clientWidth - 100) / 32));
+					if (count > 1 && capacity !== mount.sspaAxisCapacity) {
+						var start = Math.max(0, Math.min(Number(option.dataZoom[0].startValue) || 0, count - capacity));
+						chart.dispatchAction({type: 'dataZoom', startValue: start, endValue: Math.min(count - 1, start + capacity - 1)});
+					}
+					mount.sspaAxisCapacity = capacity;
+				});
 				mount.sspaResizeObserver.observe(mount);
 			}
 		}).catch(function (error) {
