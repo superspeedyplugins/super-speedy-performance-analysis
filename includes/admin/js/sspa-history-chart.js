@@ -43,8 +43,13 @@
 	}
 
 	function axisLabel(page) {
-		var name = page.label.replace(/^Admin\s+/i, 'wp-admin ').replace(/^Wc\s+/i, '');
-		return name + (page.relative_url ? '\n' + page.relative_url : '');
+		return page.label.replace(/^Admin\s+/i, 'wp-admin ').replace(/^Wc\s+/i, '');
+	}
+
+	function pageTooltip(page, period) {
+		return '<strong>' + escapeText(axisLabel(page) + (period ? ' (' + period + ')' : '')) + '</strong>'
+			+ (page.relative_url ? '<br>' + escapeText(page.relative_url) : '')
+			+ '<br>' + escapeText(page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode);
 	}
 
 	function point(pageLabel, point, offset) {
@@ -123,18 +128,24 @@
 			},
 			color: ['#6b7280', '#2271b1', '#d63638'],
 			legend: {top: 0},
-			grid: {left: 72, right: 28, top: 54, bottom: 250},
+			grid: {left: 72, right: 28, top: 54, bottom: 180},
 			tooltip: {
 				trigger: 'item',
+				renderMode: 'html',
+				className: 'sspa-history-tooltip',
+				showDelay: 0,
+				hideDelay: 0,
+				transitionDuration: 0,
+				confine: true,
+				backgroundColor: '#343d6c',
+				borderColor: '#59648f',
+				textStyle: {color: '#fff', fontSize: 14},
+				extraCssText: 'max-width:min(420px,calc(100vw - 32px));white-space:normal;overflow-wrap:anywhere;line-height:1.5;',
 				formatter: function (params) {
 					var data = params.data || {};
 					var page = byKey[data.value[0]];
-					var title = page ? axisLabel(page).split('\n')[0] : data.value[0];
-					var heading = '<strong>' + escapeText(title + ' (' + data.period + ')') + '</strong>';
-					if (page) {
-						heading += (page.relative_url ? '<br>' + escapeText(page.relative_url) : '')
-							+ '<br>' + escapeText(page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode);
-					}
+					var heading = page ? pageTooltip(page, data.period)
+						: '<strong>' + escapeText(data.value[0] + ' (' + data.period + ')') + '</strong>';
 					if (data.summary) {
 						return heading + '<br>' + data.summary;
 					}
@@ -155,7 +166,8 @@
 			xAxis: {
 				type: 'category',
 				data: labels,
-				axisLabel: {interval: 0, rotate: 90, fontSize: 11, lineHeight: 12, width: 205,
+				tooltip: {show: true, formatter: function (params) { return pageTooltip(byKey[params.value]); }},
+				axisLabel: {interval: 0, rotate: 90, fontSize: 11, lineHeight: 12, width: 140,
 					overflow: 'truncate', margin: 12, formatter: function (key) { return axisLabel(byKey[key]); }},
 				axisTick: {alignWithLabel: false},
 				splitLine: {show: true, interval: 0, lineStyle: {color: '#e8eaed', width: 1}},

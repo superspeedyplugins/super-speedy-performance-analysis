@@ -23,9 +23,14 @@ SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts
 
 The History browser journey also verifies that changing metrics preserves the page filter
 in both the plotted categories and accessible comparison table.
-It verifies vertical compact name/URL labels and category dividers; the chart uses unique
+It verifies vertical compact name labels and category dividers; the chart uses unique
 scenario keys so simplified labels cannot combine separate measurements. Case 62 checks that
 the retained Home URL reaches the chart without profiling arguments.
+
+`.tests/run-tests.sh history-tooltips-browser` uses the retained completed Home comparison
+without starting an analysis. It verifies actual axis/point hover, name-only labels, instant
+HTML tooltip timing, escaped label/URL content, pointer exit and narrow-screen containment.
+Prepare the usual History browser fixtures first if the isolated site has no completed runs.
 
 For a manually requested warning demonstration on a dedicated local site, install
 `.tests/fixtures/history-shop-warning.php` as an MU plugin on that site only, then run a full

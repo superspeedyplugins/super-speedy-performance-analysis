@@ -87,6 +87,13 @@ if [ -z "$FILTER" ] || [[ "fast-ajax-browser" == *"$FILTER"* ]]; then
         FAILED_NAMES="$FAILED_NAMES fast-ajax-browser"
     fi
 fi
+if [ -z "$FILTER" ] || [[ "history-tooltips-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-history-tooltips.sh"; then
+        FAILED=$((FAILED + 1))
+        FAILED_NAMES="$FAILED_NAMES history-tooltips-browser"
+    fi
+fi
 if [ "$RAN" -eq 0 ]; then echo "No cases matched: $FILTER" >&2; exit 1; fi
 echo "$RAN case file(s) run, $FAILED failed"
 [ -n "$FAILED_NAMES" ] && echo "failed:$FAILED_NAMES"

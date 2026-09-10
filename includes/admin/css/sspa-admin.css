@@ -641,7 +641,7 @@
 .sspa-history-chart-changes { margin: 12px 0; }
 .sspa-history-chart-changes ul { display: flex; gap: 6px 14px; flex-wrap: wrap; margin: 6px 0 0 20px; }
 .sspa-history-chart-status { min-height: 20px; color: #50575e; }
-.sspa-history-chart { width: 100%; height: 660px; }
+.sspa-history-chart { width: 100%; height: 590px; }
 .sspa-history-data-details { margin-top: 10px; }
 .sspa-history-data-details > summary { cursor: pointer; font-weight: 600; }
 .sspa-history-data-table { margin-top: 10px; }
@@ -661,7 +661,7 @@
 	.sspa-history-chart-controls { margin-top: 12px; }
 	.sspa-history-chart-controls label { flex: 1 1 180px; }
 	.sspa-history-periods { grid-template-columns: 1fr; }
-	.sspa-history-chart { height: 590px; min-width: 0; }
+	.sspa-history-chart { height: 520px; min-width: 0; }
 	.sspa-history-chart-card { min-width: 0; padding: 12px; }
 	.sspa-history-compare-controls label { width: 100%; }
 }

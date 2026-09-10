@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.38 (10th September 2026) =
+* History axis labels show page names, with URLs and request details in instant hover tooltips.
 * History charts use vertical page names and relative URLs, with faint category dividers and measurement context in tooltips.
 
 = 0.37 (8th September 2026) =
