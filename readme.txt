@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.37 (8th September 2026) =
+* History charts use vertical page names and relative URLs, with faint category dividers and measurement context in tooltips.
 * Load the chart library only when a History or AJAX chart is needed.
 * AJAX feature builds require recorded tests for the current source and an approved SQL review.
 * Shared profiling runs now retain plugin loading, selected hook, render and asset summaries with updated consent.

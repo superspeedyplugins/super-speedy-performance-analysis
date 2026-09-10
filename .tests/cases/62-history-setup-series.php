@@ -114,6 +114,7 @@ sspa_62_t(
 );
 
 $page = isset($document['pages'][0]) ? $document['pages'][0] : array();
+sspa_62_t(isset($page['relative_url']) && '/' === $page['relative_url'], 'the home axis URL is the retained relative measured URL without profiling arguments');
 sspa_62_t(
     !empty($page['previous']['points']) && !empty($page['current']['points'])
         && null !== $page['previous']['median'] && null !== $page['current']['median'],
