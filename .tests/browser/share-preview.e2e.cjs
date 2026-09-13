@@ -10,7 +10,8 @@ const {chromium} = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory
   page.on('pageerror', e => errors.push(e.message));
   page.on('request', r => {const action = new URLSearchParams(r.postData() || '').get('action'); if (['sspa_share_optin','sspa_share_run','sspa_submit_now','sspa_community_backfill'].includes(action)) writes.push(action);});
   await page.goto(site+'/wp-login.php');
-  await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);
+  await page.waitForFunction(() => document.activeElement?.id === 'user_login');
+	await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);
   await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);
   await Promise.all([page.waitForURL(/\/wp-admin\//),page.locator('#wp-submit').click()]);
   for (const order of [['history','share'],['share','history','share'],['share']]) {

@@ -12,8 +12,8 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 
 ```bash
 .tests/setup-site.sh           # create/top up the test site (idempotent)
-.tests/setup-site.sh --reset   # destroy and rebuild it from scratch
-.tests/run-tests.sh            # run all cases
+.tests/setup-site.sh --reset   # reset this dedicated site at entry, then retain it
+.tests/run-tests.sh            # all PHP cases and registered browser journeys
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
@@ -44,8 +44,9 @@ For package smoke tests from a parallel worktree, supply a unique `SSPA_SMOKE_TA
 Run these from **bash**, not zsh: `env.sh` derives the plugin directory from `BASH_SOURCE`,
 which zsh does not set when the file is sourced interactively.
 
-The registered admin-tabs browser case requires Node.js and the observatory's Playwright
-dependency with Chromium installed. `SSPA_PLAYWRIGHT_MODULE` can select an existing Playwright
+Browser cases require Node.js and the pinned Playwright 1.61.1 dependencies installed with
+`npm ci --prefix .tests`. Install its matching Chromium with
+`.tests/node_modules/.bin/playwright install chromium` if Chromium revision 1228 is absent. `SSPA_PLAYWRIGHT_MODULE` can select an existing Playwright
 installation. It checks fresh History links, changed fragments, back/forward, reload and
 invalid fragments through the authenticated admin page without changing analysis data.
 The Share preview browser case uses the same dependency and verifies both navigation orders,
@@ -258,7 +259,7 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   attributed, mail really delivered in deliver mode, the Excimer roll-up, and both named
   failure paths. Plus the payment-mode safety assertions: a flow token with no `pm` flag,
   a junk one, or `pm=s` with no gateway adapter must all take the no-payment path.
-  Two fixture plugins are planted and removed by the case itself.
+  Two fixture plugins are planted by the case and retained afterward; the next PHP case resets their activation at entry.
   The whole purchase then runs again against the CLASSIC shortcode checkout: the store is
   pointed at throwaway `[woocommerce_cart]`/`[woocommerce_checkout]` pages and put back
   afterwards, so the block pages are never edited. Its session cookie is renamed through
@@ -543,3 +544,51 @@ it restored. Case 72 exercises SPro's actual generated MU policy with unchanged 
 Case 73 checks real failed requests, method/mode compatibility, detail caps and collection expiry.
 Database append preflight rejects actual insert failures; successful insert latency is informational
 following core adb471e. A refused start is never a skipped/passed fixture or automatically retried.
+
+### Feature regression journeys
+
+The default scenario is `tests-feature-regressions`. The plugin symlink must resolve to the
+invoking checkout. Detached worktrees use `SUPERSPEEDY_WORKSPACE` for the shared native tools;
+all subprocesses receive the guarded WordPress path through the exported executable shim.
+Direct browser scripts also reject a missing or mismatched native target.
+
+`bash .tests/browser/run-regressions.sh` runs the existing History chart journey and all new
+browser journeys. An optional filename substring selects one journey. The normal PHP
+runner registers this aggregate as `feature-browser`. Cases74–77 cover actual authenticated
+Abilities HTTP, all registered CLI commands, and real linked-plugin attribution. Failing
+product expectations remain failing; the harness does not turn known defects into passes.
+
+Browser preparation measures two actual Home captures and retains them; no successful report
+or waterfall is fabricated. Each journey resets its own prior test state at entry. Evidence
+is written under `.data/feature-browser/`. `SSPA_NEGATIVE=panel-hidden` deliberately hides the
+actual report panel for the report-panels visibility negative control. Remove that variable
+and rerun the focused journey for restored evidence.
+
+Setup uses local SMTP capture and a WordPress HTTP boundary that rejects external requests.
+The sharing journey permits only its local registration/reservation fixture; remote receipt
+and delivery remain unverified. Mail construction and actual SMTP hooks still run. Local
+servers, captures, orders in Trash, fixtures and database records remain available afterward.
+Redis uses the site's key prefix with selective flushing enabled; do not globally flush Redis.
+Scalability Pro is copied from its recorded immutable revision rather than linked to a mutable
+checkout. Excimer and other unavailable runtime branches are reported explicitly; seeing a
+capability message does not prove that runtime works.
+
+The runner prints each suite-owned plugin deactivated at a new PHP case's entry. Each case
+reactivates the fixtures it needs and retains their files, final observations and results.
+Recorded post/run identifiers are reset only when that same case next begins; actual
+product cleanup/deletion assertions remain intact. Retained synthetic plugin headers carry
+explicit versions so later History comparisons can evaluate their real setup inventory.
+
+### Direct entry and narrow History labels
+
+The feature PHP helpers, retained-fixture resets and browser preparation require WP-CLI,
+the declared dedicated native site, its configured native root and the invoking checkout's
+plugin symlink. Direct `wp eval-file` callers must first source `.tests/env.sh` and call
+`sspa_require_site`. Missing targets and mismatched sources fail before fixture mutations.
+Retention messages use `RETAINED`, not successful assertion markers.
+
+`bash .tests/browser/run-regressions.sh history-mobile` checks actual rendered History
+axis and legend text rectangles at 1280px and 320px, retaining both screenshots. It is
+included in the default feature-browser run. An unmatched browser filter exits nonzero.
+The current narrow-label overlap is tracked in issue38; the separate mobile report action
+clipping remains tracked in issue35.

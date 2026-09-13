@@ -21,7 +21,7 @@
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
 
-PD="$HOME/dev/super-speedy/tools/parallel-dev/bin"
+PD="$WORKSPACE/tools/parallel-dev/bin"
 RESET="${1:-}"
 
 if [ "$RESET" = "--reset" ] || [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
@@ -47,9 +47,39 @@ else
     ln -s "$PLUGIN_DIR" "$PLUGIN_LINK"
 fi
 
+sspa_require_site || exit 1
+sync_plugin || exit 1
+# parallel-dev isolates prefixes; Redis database indices can repeat across sites.
+cli config set WP_REDIS_SELECTIVE_FLUSH true --raw --anchor="if ( ! defined(" --placement=before --quiet || exit 1
+# The delivery boundary is installed before activation or fixture order creation.
+mkdir -p "$SSPA_SITE_DIR/wp-content/mu-plugins"
+ln -sfn "$PLUGIN_DIR/.tests/fixtures/local-delivery.php" "$SSPA_SITE_DIR/wp-content/mu-plugins/sspa-regression-delivery.php"
+source "$PLUGIN_DIR/.tests/local-services.sh" || exit 1
+cli option update admin_email synthetic-admin@example.invalid --quiet
+for vendor in woocommerce wordpress-importer redis-cache; do
+    if [ ! -e "$SSPA_SITE_DIR/wp-content/plugins/$vendor" ]; then
+        for source in "$MAIN_SITE/wp-content/plugins/$vendor" "$SITES_ROOT/$PLUGIN_SLUG"/*/wp-content/plugins/"$vendor"; do
+            if [ -d "$source" ]; then ln -s "$source" "$SSPA_SITE_DIR/wp-content/plugins/$vendor"; break; fi
+        done
+    fi
+done
+# Freeze the actual endpoint-policy integration instead of sharing an edited checkout.
+if [ ! -d "$SSPA_SITE_DIR/wp-content/plugins/scalability-pro" ]; then
+    target="$SSPA_SITE_DIR/wp-content/plugins/scalability-pro"
+    revision=$(git -C "$WORKSPACE/scalability-pro" rev-parse HEAD)
+    mkdir -p "$target"
+    git -C "$WORKSPACE/scalability-pro" archive "$revision" | tar -x -C "$target"
+    while read -r key subpath; do
+        subrev=$(git -C "$WORKSPACE/scalability-pro" ls-tree "$revision" "$subpath" | awk '{print $3}')
+        mkdir -p "$target/$subpath"
+        git -C "$WORKSPACE/scalability-pro/$subpath" archive "$subrev" | tar -x -C "$target/$subpath"
+    done < <(git -C "$WORKSPACE/scalability-pro" config --file .gitmodules --get-regexp path)
+    printf '%s\n' "$revision" > "$target/.regression-source-commit"
+fi
+
 echo "==> plugins"
-cli plugin install woocommerce --activate --quiet 2>/dev/null
-cli plugin install wordpress-importer --activate --quiet 2>/dev/null
+cli plugin activate woocommerce --quiet || exit 1
+cli plugin activate wordpress-importer --quiet || exit 1
 cli plugin activate "$PLUGIN_SLUG" --quiet 2>/dev/null
 
 WP_VERSION=$(cli core version 2>/dev/null)
@@ -63,9 +93,10 @@ fi
 # environment ran a redis container for exactly this.
 #
 # parallel-dev already gives each site its own WP_REDIS_DATABASE and WP_CACHE_KEY_SALT, so
-# sites cannot share a keyspace.
+# namespaces are distinct, but database indices can repeat. Selective flushing above is
+# required so the test never flushes another site sharing a database index.
 if php -r 'exit(extension_loaded("redis") ? 0 : 1);' 2>/dev/null && redis-cli ping >/dev/null 2>&1; then
-    cli plugin install redis-cache --activate --quiet 2>/dev/null
+    cli plugin activate redis-cache --quiet || exit 1
     cli redis enable --quiet 2>/dev/null
 else
     echo "  ! no redis PHP extension or no redis-server - cases 10 and 09 will cover less"
@@ -92,7 +123,7 @@ if (count(wc_get_orders(array("limit" => -1, "return" => "ids"))) < 3) {
     foreach (get_posts(array("post_type" => "product", "numberposts" => 3)) as $prod) {
         $order = wc_create_order();
         $order->add_product(wc_get_product($prod->ID), 2);
-        $order->set_address(array("first_name" => "Test", "last_name" => "Customer", "email" => "test@example.com"), "billing");
+        $order->set_address(array("first_name" => "Test", "last_name" => "Customer", "email" => "synthetic-customer@example.invalid"), "billing");
         $order->calculate_totals();
         $order->update_status("processing");
     }

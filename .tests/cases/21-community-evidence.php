@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("21");
 // One coherent versioned payload for every current analysis run type.
 
 function sspa_evidence_t($ok, $label) {
@@ -213,19 +215,7 @@ $host = (string) wp_parse_url(home_url('/'), PHP_URL_HOST);
 sspa_evidence_t(false === strpos($all_json, 'private-customer-page') && false === strpos($all_json, 'private@example.com'), 'all run-type payloads exclude URL-derived and customer data');
 sspa_evidence_t(!$host || false === strpos($all_json, $host), 'all run-type payloads exclude the site host');
 
-foreach ($outbox_ids as $outbox_id) {
-    $wpdb->delete(SSPA_Schema::table('submission_events'), array('outbox_id' => $outbox_id));
-    $wpdb->delete(SSPA_Schema::table('submission_outbox'), array('id' => $outbox_id));
-}
-foreach ($impact_ids as $impact_id) {
-    $wpdb->delete(SSPA_Schema::table('plugin_impacts'), array('id' => $impact_id));
-}
-foreach ($profile_ids as $profile_id) {
-    $wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $profile_id));
-}
-foreach ($run_ids as $run_id) {
-    $wpdb->delete(SSPA_Schema::table('runs'), array('id' => $run_id));
-}
+sspa_retained_save('21', array('runs'=>$run_ids));
 if (null === $old_optin) {
     delete_option('sspa_share_optin');
 } else {
@@ -237,4 +227,4 @@ if (null === $old_consent) {
     update_option('sspa_share_consent_version', $old_consent, false);
 }
 wp_clear_scheduled_hook('sspa_submission_worker_event');
-sspa_evidence_t(true, 'run-type fixtures cleaned up');
+echo 'RETAINED: run-type fixtures retained' . PHP_EOL;

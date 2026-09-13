@@ -16,13 +16,4 @@ export SSPA_E2E_SCREENSHOT="${SSPA_E2E_SCREENSHOT:-$PLUGIN_DIR/.data/history-bro
 
 mkdir -p "$(dirname "$SSPA_E2E_SCREENSHOT")"
 
-NODE_BIN="/mnt/c/Users/dave/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe"
-PLAYWRIGHT_DIR="/mnt/c/Users/dave/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"
-if [ -x "$NODE_BIN" ] && [ -d "$PLAYWRIGHT_DIR" ]; then
-    export SSPA_PLAYWRIGHT_MODULE="$(wslpath -w "$PLAYWRIGHT_DIR")"
-    export SSPA_E2E_SCREENSHOT="$(wslpath -w "$SSPA_E2E_SCREENSHOT")"
-    export WSLENV="${WSLENV:+$WSLENV:}SSPA_E2E_URL:SSPA_E2E_USER:SSPA_E2E_PASSWORD:SSPA_E2E_SCREENSHOT:SSPA_PLAYWRIGHT_MODULE:SSPA_E2E_DIAGNOSTIC_RUN"
-    "$NODE_BIN" "$(wslpath -w "$PLUGIN_DIR/.tests/browser/history-chart.e2e.cjs")"
-else
-    node "$PLUGIN_DIR/.tests/browser/history-chart.e2e.cjs"
-fi
+node "$PLUGIN_DIR/.tests/browser/history-chart.e2e.cjs"

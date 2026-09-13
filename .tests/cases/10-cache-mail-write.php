@@ -29,13 +29,15 @@ $plant = function ($slug, $code) {
 };
 $remove = function ($slug) {
     deactivate_plugins($slug . '/' . $slug . '.php');
-    unlink(WP_PLUGIN_DIR . '/' . $slug . '/' . $slug . '.php');
-    rmdir(WP_PLUGIN_DIR . '/' . $slug);
+    // Scenario transition retains its source and observations.
 };
 
 $plant('sspa-blind-plugin', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Blind Plugin (test fixture) */
+/**
+ * Plugin Name: SSPA Blind Plugin (test fixture)
+ * Version: 1.0.0
+ */
 add_action('wp_footer', function () {
     global $wpdb;
     for ($i = 1; $i <= 30; $i++) {
@@ -46,7 +48,10 @@ PHP
 );
 $plant('sspa-friendly-plugin', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Friendly Plugin (test fixture) */
+/**
+ * Plugin Name: SSPA Friendly Plugin (test fixture)
+ * Version: 1.0.0
+ */
 add_action('wp_footer', function () {
     global $wpdb;
     for ($i = 1; $i <= 30; $i++) {

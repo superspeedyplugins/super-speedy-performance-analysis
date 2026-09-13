@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("34");
 // Site cohort dimensions: what kind of site this is and roughly how big, in terms
 // superspeedy.org can group by without ever learning which site it was.
 //
@@ -344,19 +346,10 @@ sspa_sc_t(
     'and null for every WooCommerce-only environment fact'
 );
 
-// --- Cleanup ---
-
-$wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $sspa_profile_id));
-$wpdb->delete(SSPA_Schema::table('runs'), array('id' => $sspa_run_id));
-foreach ($sspa_metrics_ids as $sspa_metrics_id) {
-    $wpdb->delete(SSPA_Schema::table('site_metrics'), array('id' => $sspa_metrics_id));
-}
-foreach ($sspa_cpt_posts as $sspa_post_id) {
-    wp_delete_post($sspa_post_id, true);
-}
+sspa_retained_save('34', array('runs'=>array($sspa_run_id),'site_metrics'=>$sspa_metrics_ids));
 if (null === $sspa_old_optin) {
     delete_option('sspa_share_optin');
 } else {
     update_option('sspa_share_optin', $sspa_old_optin, false);
 }
-sspa_sc_t(true, 'fixtures removed');
+echo 'RETAINED: fixtures retained' . PHP_EOL;

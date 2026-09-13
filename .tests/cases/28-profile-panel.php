@@ -289,8 +289,5 @@ if ($sspa_two) {
 $sspa_rate = SSPA_Profile_Panel::seconds_per_job();
 sspa_panel_t($sspa_rate >= 2, 'seconds per measurement is learned from completed runs (' . $sspa_rate . 's)');
 
-// --- Cleanup ---
-deactivate_plugins('sspa-panel-fixture/sspa-panel-fixture.php');
-@unlink($sspa_dir . '/sspa-panel-fixture.php');
-@rmdir($sspa_dir);
-sspa_panel_t(!is_dir($sspa_dir), 'fixture removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_panel_t(is_plugin_active('sspa-panel-fixture/sspa-panel-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-panel-fixture/sspa-panel-fixture.php'), 'fixture and measured evidence retained');

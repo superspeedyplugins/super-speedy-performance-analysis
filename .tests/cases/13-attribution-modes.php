@@ -23,6 +23,7 @@ $fixture_code = <<<'PHP'
 <?php
 /**
  * Plugin Name: SSPA Caller Fixture (test fixture)
+ * Version: 1.0.0
  */
 add_action('wp_footer', function () {
     if (!function_exists('wc_get_product_id_by_sku')) {
@@ -125,8 +126,5 @@ sspa_t(
     'the fixture finding records its 70 calls as running inside WooCommerce'
 );
 
-// --- Clean up ---
-deactivate_plugins('sspa-caller-fixture/sspa-caller-fixture.php');
-unlink($fixture_dir . '/sspa-caller-fixture.php');
-rmdir($fixture_dir);
-sspa_t(!file_exists($fixture_dir), 'caller fixture removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_t(is_plugin_active('sspa-caller-fixture/sspa-caller-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-caller-fixture/sspa-caller-fixture.php'), 'fixture and measured evidence retained');

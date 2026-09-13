@@ -62,6 +62,7 @@ $code = <<<'PHP'
 <?php
 /**
  * Plugin Name: SSPA Explain Fixture (test fixture)
+ * Version: 1.0.0
  */
 add_action('wp_footer', function () {
     global $wpdb;
@@ -115,8 +116,5 @@ sspa_t($has_indexes, 'findings retain relevant existing index metadata');
 $rec = SSPA_Rules::recommendation('unindexed_query');
 sspa_t(!empty($rec['title']) && $rec['title'] !== 'unindexed_query', 'unindexed_query recommendation text present: ' . $rec['title']);
 
-// --- Clean up ---
-deactivate_plugins('sspa-explain-fixture/sspa-explain-fixture.php');
-unlink($fixture_dir . '/sspa-explain-fixture.php');
-rmdir($fixture_dir);
-sspa_t(!file_exists($fixture_dir), 'explain fixture removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_t(is_plugin_active('sspa-explain-fixture/sspa-explain-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-explain-fixture/sspa-explain-fixture.php'), 'fixture and measured evidence retained');

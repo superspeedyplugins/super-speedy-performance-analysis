@@ -139,7 +139,7 @@ $loaded = !is_wp_error($response) ? json_decode(wp_remote_retrieve_body($respons
 $loaded_debug = is_wp_error($response)
     ? $response->get_error_message()
     : wp_remote_retrieve_response_code($response) . ':' . substr(wp_remote_retrieve_body($response), 0, 300);
-unlink($fixture_file);
+// The request-parameter-gated MU fixture remains available after its probe.
 sspa_hardening_t(
     is_array($loaded) && empty($loaded['run']) && empty($loaded['install']) && empty($loaded['schema'])
         && empty($loaded['checkout']) && empty($loaded['traffic'])

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("35");
 // Commerce flow evidence: the customer's wait and the shop owner's admin work leave as two
 // separate records, and a management sequence that did not finish says so.
 //
@@ -303,8 +305,7 @@ if (is_wp_error($sspa_outbox)) {
         $sspa_replayed && isset($sspa_replayed['payload_schema']['minor']),
         'and still decodes to its stored payload, schema and all'
     );
-    $wpdb->delete(SSPA_Schema::table('submission_events'), array('outbox_id' => $sspa_outbox_id));
-    $wpdb->delete(SSPA_Schema::table('submission_outbox'), array('id' => $sspa_outbox_id));
+    // Retain the replayed outbox evidence until this case next starts.
 }
 if (null === $sspa_old_optin) {
     delete_option('sspa_share_optin');
@@ -312,14 +313,6 @@ if (null === $sspa_old_optin) {
     update_option('sspa_share_optin', $sspa_old_optin, false);
 }
 
-// --- Cleanup ---
-
-foreach ($sspa_fe_profiles as $sspa_profile_id) {
-    $wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $sspa_profile_id));
-}
-foreach ($sspa_fe_runs as $sspa_run_id) {
-    $wpdb->delete(SSPA_Schema::table('submission_outbox'), array('run_id' => $sspa_run_id));
-    $wpdb->delete(SSPA_Schema::table('runs'), array('id' => $sspa_run_id));
-}
+sspa_retained_save('35', array('runs'=>$sspa_fe_runs));
 wp_clear_scheduled_hook('sspa_submission_worker_event');
-sspa_fe_t(true, 'flow fixtures cleaned up');
+echo 'RETAINED: flow fixtures retained' . PHP_EOL;

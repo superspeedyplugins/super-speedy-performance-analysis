@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("50");
 // Interactive admin-save profiling. This drives WordPress's real classic-editor POST to
 // wp-admin/post.php, including its redirect, rather than calling wp_update_post() in the
 // test process. A fixture makes the real save slow enough that the captured request must
@@ -89,6 +91,9 @@ wp_set_current_user(1);
 $expiry = time() + 300;
 $session_token = wp_generate_password(43, false, false);
 $sessions = WP_Session_Tokens::get_instance(1);
+$previous_token = get_option('sspa_case50_session');
+if ($previous_token) $sessions->destroy($previous_token);
+update_option('sspa_case50_session', $session_token, false);
 $sessions->update($session_token, array(
     'expiration' => $expiry,
     'ip' => '127.0.0.1',
@@ -302,7 +307,7 @@ if (is_wp_error($rest_prepared)) {
     }
 }
 
-$sessions->destroy($session_token);
+// The authenticated test session remains until its natural expiry.
 unset($_COOKIE[LOGGED_IN_COOKIE], $_COOKIE[AUTH_COOKIE], $_COOKIE[SECURE_AUTH_COOKIE]);
 if ($prepared_run_id && SSPA_Run_Controller::active_run_id() === $prepared_run_id) {
     SSPA_Run_Controller::cancel($prepared_run_id);
@@ -311,11 +316,5 @@ if (!is_wp_error($rest_prepared) && SSPA_Run_Controller::active_run_id() === (in
     SSPA_Run_Controller::cancel($rest_prepared['run_id']);
 }
 
-wp_delete_post($post_id, true);
-delete_option('sspa_admin_save_fixture_post');
-delete_option('sspa_admin_save_fixture_seen');
-delete_option('sspa_admin_save_fixture_mail');
-deactivate_plugins('sspa-admin-save-fixture/sspa-admin-save-fixture.php');
-@unlink($fixture_dir . '/sspa-admin-save-fixture.php');
-@rmdir($fixture_dir);
-sspa_admin_save_t(!is_dir($fixture_dir), 'fixture removed');
+sspa_retained_save('50', array('posts'=>array($post_id)));
+sspa_admin_save_t(is_plugin_active('sspa-admin-save-fixture/sspa-admin-save-fixture.php') && is_file($fixture_dir . '/sspa-admin-save-fixture.php'), 'active fixture, saved posts and observations retained');

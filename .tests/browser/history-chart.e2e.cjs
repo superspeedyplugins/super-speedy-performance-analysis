@@ -24,6 +24,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 
 	try {
 		await page.goto(siteUrl + '/wp-login.php');
+		await page.waitForFunction(() => document.activeElement?.id === 'user_login');
 		await page.locator('#user_login').fill(adminUser);
 		await page.locator('#user_pass').fill(adminPassword);
 		await Promise.all([

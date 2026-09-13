@@ -1,0 +1,1 @@
+{"private":true,"description":"Pinned native regression browser runtime","devDependencies":{"@playwright/test":"1.61.1","playwright":"1.61.1"}}

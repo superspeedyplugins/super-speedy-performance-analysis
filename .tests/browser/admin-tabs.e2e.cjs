@@ -10,7 +10,8 @@ const { chromium } = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observato
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(site + '/wp-login.php');
-        await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);
+        await page.waitForFunction(() => document.activeElement?.id === 'user_login');
+	await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);
         await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);
         await Promise.all([page.waitForURL(/\/wp-admin\//), page.locator('#wp-submit').click()]);
         const selected = async slug => {

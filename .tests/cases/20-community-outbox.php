@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("20");
 // Durable community outbox: versioned evidence, privacy gate, immutable bytes and idempotency.
 
 function sspa_outbox_t($ok, $label) {
@@ -330,19 +332,11 @@ if (null === $old_secret) {
     update_option($secret_key, $old_secret, false);
 }
 
-if (!is_wp_error($queued)) {
-    $wpdb->delete(SSPA_Schema::table('submission_events'), array('outbox_id' => (int) $queued['id']));
-    $wpdb->delete(SSPA_Schema::table('submission_outbox'), array('id' => (int) $queued['id']));
-}
-$wpdb->delete(SSPA_Schema::table('findings'), array('id' => $finding_id));
-$wpdb->delete(SSPA_Schema::table('findings'), array('id' => $empty_finding_id));
-$wpdb->delete(SSPA_Schema::table('component_stats'), array('id' => $component_id));
-$wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $profile_id));
-$wpdb->delete(SSPA_Schema::table('runs'), array('id' => $run_id));
+sspa_retained_save('20', array('runs'=>array($run_id)));
 if (null === $old_optin) {
     delete_option('sspa_share_optin');
 } else {
     update_option('sspa_share_optin', $old_optin, false);
 }
 wp_clear_scheduled_hook('sspa_submission_worker_event');
-sspa_outbox_t(true, 'test records cleaned up');
+echo 'RETAINED: test records retained' . PHP_EOL;

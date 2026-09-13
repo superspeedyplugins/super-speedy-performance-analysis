@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("51");
 // Settings-page workflow analysis. This proves the target picker discovers a newly
 // registered public CPT without a hard-coded list, defaults to its most recently modified
 // item, exposes both supported WooCommerce order transports, and runs a real no-change REST
@@ -111,6 +113,9 @@ if ($order_ids) {
 $expiry = time() + 300;
 $session_token = wp_generate_password(43, false, false);
 $sessions = WP_Session_Tokens::get_instance(1);
+$previous_token = get_option('sspa_case51_session');
+if ($previous_token) $sessions->destroy($previous_token);
+update_option('sspa_case51_session', $session_token, false);
 $sessions->update($session_token, array(
     'expiration' => $expiry,
     'ip' => '127.0.0.1',
@@ -242,17 +247,10 @@ $workflow_html = isset($tab_payload['data']['tabs']['workflows']) ? $tab_payload
 sspa_workflow_t(false !== strpos($workflow_html, 'sspa-workflow-object-type'), 'opening the lazy Workflows tab renders the target picker');
 sspa_workflow_t(false !== strpos($workflow_html, 'sspa-ck-open'), 'the rendered Workflows tab includes checkout analysis');
 
-$sessions->destroy($session_token);
+// The authenticated test session remains until its natural expiry.
 unset($_COOKIE[LOGGED_IN_COOKIE], $_COOKIE[AUTH_COOKIE], $_COOKIE[SECURE_AUTH_COOKIE]);
 if (!is_wp_error($prepared) && SSPA_Run_Controller::active_run_id() === (int) $prepared['run_id']) {
     SSPA_Run_Controller::cancel($prepared['run_id']);
 }
-wp_delete_post($older_id, true);
-wp_delete_post($latest_id, true);
-delete_option('sspa_workflow_fixture_target');
-delete_option('sspa_workflow_fixture_delivered');
-delete_option('sspa_workflow_fixture_transport_reached');
-deactivate_plugins('sspa-workflow-fixture/sspa-workflow-fixture.php');
-@unlink($fixture_dir . '/sspa-workflow-fixture.php');
-@rmdir($fixture_dir);
-sspa_workflow_t(!is_dir($fixture_dir), 'fixture removed');
+sspa_retained_save('51', array('posts'=>array($older_id,$latest_id)));
+sspa_workflow_t(is_plugin_active('sspa-workflow-fixture/sspa-workflow-fixture.php') && is_file($fixture_dir . '/sspa-workflow-fixture.php'), 'active fixture, saved posts and observations retained');

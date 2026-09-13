@@ -19,6 +19,9 @@ if (!class_exists('WooCommerce')) {
     return;
 }
 
+// This lifecycle regression specifically exercises WooCommerce's block checkout.
+wp_update_post(array('ID' => (int)get_option('woocommerce_checkout_page_id'), 'post_content' => '<!-- wp:woocommerce/checkout /-->'));
+
 // A fixture that records the moment an order is marked completed - proof the cascade ran
 // inside the measured loopback step, in a different process from this test.
 $sspa_om_dir = WP_PLUGIN_DIR . '/sspa-om-fixture';
@@ -31,6 +34,12 @@ file_put_contents($sspa_om_dir . '/sspa-om-fixture.php', <<<'PHP'
  * Plugin Name: SSPA Order-Management Fixture (test fixture)
  * Version: 1.0.0
  */
+add_action('woocommerce_before_order_object_save', function ($order) {
+    if ($order->get_status() !== 'completed') { return; }
+    global $wpdb;
+    $stored = $wpdb->get_var($wpdb->prepare("SELECT status FROM {$wpdb->prefix}wc_orders WHERE id=%d", $order->get_id()));
+    update_option('sspa_om_before_complete', array('order_id' => $order->get_id(), 'stored_status' => $stored, 'next_status' => $order->get_status()), false);
+}, 10, 1);
 add_action('woocommerce_order_status_completed', function ($order_id) {
     update_option('sspa_om_completed_fired', (int) $order_id, false);
 }, 10, 1);
@@ -44,6 +53,7 @@ PHP
 );
 activate_plugin('sspa-om-fixture/sspa-om-fixture.php');
 delete_option('sspa_om_completed_fired');
+delete_option('sspa_om_before_complete');
 delete_option('sspa_om_refunded_fired');
 delete_option('sspa_om_trashed_fired');
 wp_cache_flush();
@@ -103,6 +113,10 @@ if ('ok' === $sspa_outcome) {
     $sspa_trashed = (int) get_option('sspa_om_trashed_fired');
     sspa_om_t($sspa_fired > 0 && $sspa_fired === $sspa_refunded, 'the full-refund cascade fired for the completed order');
     sspa_om_t($sspa_fired > 0 && $sspa_fired === $sspa_trashed, 'the trash cascade fired for the refunded order');
+
+    wp_cache_delete('sspa_om_before_complete', 'options');
+    $sspa_before = get_option('sspa_om_before_complete');
+    sspa_om_t(is_array($sspa_before) && (int)$sspa_before['order_id'] === $sspa_fired && $sspa_before['stored_status'] === 'wc-processing', 'actual HPOS row was processing immediately before completion: ' . wp_json_encode($sspa_before));
 
     // --- The transition is named honestly, processing -> completed on physical goods ---
     sspa_om_t(
@@ -272,11 +286,5 @@ if ('ok' === $sspa_outcome) {
     }
 }
 
-// --- Cleanup ---
-deactivate_plugins('sspa-om-fixture/sspa-om-fixture.php', true);
-@unlink($sspa_om_dir . '/sspa-om-fixture.php');
-@rmdir($sspa_om_dir);
-delete_option('sspa_om_completed_fired');
-delete_option('sspa_om_refunded_fired');
-delete_option('sspa_om_trashed_fired');
-sspa_om_t(!is_dir($sspa_om_dir), 'fixture removed');
+// Retain the fixture, hook observations and recoverable order for inspection.
+sspa_om_t(is_plugin_active('sspa-om-fixture/sspa-om-fixture.php') && is_file($sspa_om_dir . '/sspa-om-fixture.php'), 'measurement fixture and hook evidence remain available');

@@ -24,6 +24,7 @@ file_put_contents($fixture_dir . '/sspa-option-fixture.php', <<<'PHP'
 <?php
 /**
  * Plugin Name: SSPA Option Fixture (test fixture)
+ * Version: 1.0.0
  */
 add_action('init', function () {
     get_option('sspafix_hot');
@@ -139,10 +140,5 @@ if (!is_wp_error($thin)) {
     sspa_opt_t(0 === (int) $thin_finding, 'a single-page run makes no autoload recommendation');
 }
 
-// --- Cleanup ---
-deactivate_plugins('sspa-option-fixture/sspa-option-fixture.php');
-@unlink($fixture_dir . '/sspa-option-fixture.php');
-@rmdir($fixture_dir);
-delete_option('sspafix_cold');
-delete_option('sspafix_hot');
-sspa_opt_t(!is_dir($fixture_dir), 'fixture plugin removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_opt_t(is_plugin_active('sspa-option-fixture/sspa-option-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-option-fixture/sspa-option-fixture.php'), 'fixture and measured evidence retained');

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("45-http");
 // Stable outbound WordPress HTTP API inventory for Scalability Pro and community evidence.
 //
 // The raw capture blob is deliberately NOT the contract: this case plants two supported
@@ -146,10 +148,7 @@ $profile_ids[] = sspa_http_profile($run_id, 'admin-edit-order', 'admin', sspa_ht
 
 sspa_http_t(method_exists('SSPA_Report', 'http_calls'), 'stable SSPA_Report::http_calls surface exists');
 if (!method_exists('SSPA_Report', 'http_calls')) {
-    foreach ($profile_ids as $profile_id) {
-        $wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $profile_id));
-    }
-    $wpdb->delete(SSPA_Schema::table('runs'), array('id' => $run_id));
+    sspa_retained_save('45-http', array('runs'=>array($run_id)));
     return;
 }
 
@@ -232,10 +231,4 @@ $legacy_profile_id = sspa_http_profile($legacy_run_id, 'home', 'anon', array(
 $legacy = SSPA_Report::http_calls($legacy_run_id);
 sspa_http_t(is_array($legacy) && empty($legacy['complete']) && in_array('old_capture_schema', $legacy['incomplete_reasons'], true) && in_array('no_wp_admin_profiles', $legacy['incomplete_reasons'], true), 'old storage remains readable and names why coverage is partial');
 
-$wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $legacy_profile_id));
-$wpdb->delete(SSPA_Schema::table('runs'), array('id' => $legacy_run_id));
-foreach ($profile_ids as $profile_id) {
-    $wpdb->delete(SSPA_Schema::table('profiles'), array('id' => $profile_id));
-}
-$wpdb->delete(SSPA_Schema::table('runs'), array('id' => $run_id));
-sspa_http_t(true, 'HTTP contract fixtures removed');
+sspa_retained_save('45-http', array('runs'=>array($run_id,$legacy_run_id)));

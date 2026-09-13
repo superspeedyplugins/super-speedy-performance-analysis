@@ -151,8 +151,7 @@ sspa_grp_t(
 );
 
 deactivate_plugins('wordfence/wordfence.php');
-@unlink($sspa_fragile_dir . '/wordfence.php');
-@rmdir($sspa_fragile_dir);
+// The following scenario deactivates the fragile fixture but retains its source.
 delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
 delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
 wp_cache_flush();
@@ -246,13 +245,6 @@ if (is_wp_error($sspa_sweep)) {
     );
 }
 
-// --- Cleanup ---
-deactivate_plugins(array('sspa-grp-free/sspa-grp-free.php', 'sspa-grp-pro/sspa-grp-pro.php'));
-@unlink($sspa_free_dir . '/sspa-grp-free.php');
-@unlink($sspa_pro_dir . '/sspa-grp-pro.php');
-@rmdir($sspa_free_dir);
-@rmdir($sspa_pro_dir);
-delete_option('sspa_grp_orphaned');
-delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
-delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
-sspa_grp_t(!is_dir($sspa_free_dir) && !is_dir($sspa_pro_dir), 'fixtures removed');
+// Retain both active fixtures and their measured evidence.
+sspa_grp_t(is_plugin_active('sspa-grp-free/sspa-grp-free.php') && is_file(WP_PLUGIN_DIR . '/sspa-grp-free/sspa-grp-free.php'), 'sspa-grp-free source and active state retained');
+sspa_grp_t(is_plugin_active('sspa-grp-pro/sspa-grp-pro.php') && is_file(WP_PLUGIN_DIR . '/sspa-grp-pro/sspa-grp-pro.php'), 'sspa-grp-pro source and active state retained');

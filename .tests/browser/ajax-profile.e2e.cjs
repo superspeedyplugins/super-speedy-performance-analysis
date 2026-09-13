@@ -5,7 +5,8 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  const browser=await chromium.launch({headless:true});
  try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(site+'/wp-login.php');await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);await Promise.all([page.waitForURL(/\/wp-admin\//),page.locator('#wp-submit').click()]);
+ await page.goto(site+'/wp-login.php');await page.waitForFunction(() => document.activeElement?.id === 'user_login');
+	await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);await Promise.all([page.waitForURL(/\/wp-admin\//),page.locator('#wp-submit').click()]);
  await page.goto(site+'/wp-admin/admin.php?page=sspa#ajax');await page.locator('.sspa-ajax-compare').waitFor();
  assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').filter(x=>x.name.includes('echarts-history.min.js')).length),0,'AJAX loads the engine only when a comparison needs a chart');
  const choices=await page.locator('.sspa-ajax-compare select[name=before] option').evaluateAll(o=>o.map(x=>({value:x.value,label:x.textContent})));

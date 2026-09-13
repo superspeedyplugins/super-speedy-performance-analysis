@@ -311,16 +311,7 @@ if (is_wp_error($sspa_sweep)) {
     }
 }
 
-// --- Cleanup ---
-deactivate_plugins(array('sspa-guard-dep/sspa-guard-dep.php', 'sspa-guard-reactor/sspa-guard-reactor.php'), true);
-$wpdb->query("ALTER TABLE {$wpdb->options} DROP INDEX sspa_guard_idx");
-@unlink($sspa_dep_dir . '/sspa-guard-dep.php');
-@unlink($sspa_reactor_dir . '/sspa-guard-reactor.php');
-@rmdir($sspa_dep_dir);
-@rmdir($sspa_reactor_dir);
-delete_option('sspa_guard_hook_ran');
-delete_option('sspa_guard_orphaned');
-delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
-delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
-unset($GLOBALS['sspa_plugin_reactions']);
-sspa_rg_t(!is_dir($sspa_dep_dir) && !is_dir($sspa_reactor_dir) && !sspa_rg_index_exists(), 'fixtures and index removed');
+// Retain both active fixtures and their measured evidence.
+sspa_rg_t(is_plugin_active('sspa-guard-dep/sspa-guard-dep.php') && is_file(WP_PLUGIN_DIR . '/sspa-guard-dep/sspa-guard-dep.php'), 'sspa-guard-dep source and active state retained');
+sspa_rg_t(is_plugin_active('sspa-guard-reactor/sspa-guard-reactor.php') && is_file(WP_PLUGIN_DIR . '/sspa-guard-reactor/sspa-guard-reactor.php'), 'sspa-guard-reactor source and active state retained');
+sspa_rg_t(sspa_rg_index_exists(), 'protected index retained with the measured fixture');

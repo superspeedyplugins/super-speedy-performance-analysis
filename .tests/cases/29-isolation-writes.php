@@ -160,14 +160,6 @@ if (is_wp_error($sspa_sweep)) {
     sspa_iso_t(!get_transient('sspa_plugin_toggled'), 'no plugin-toggle prompt was armed by the measurement');
 }
 
-// --- Cleanup ---
-deactivate_plugins(array($sspa_dep_file, $sspa_dependant_file));
-@unlink($sspa_dep_dir . '/sspa-dep-fixture.php');
-@unlink($sspa_dependant_dir . '/sspa-dependant-fixture.php');
-@rmdir($sspa_dep_dir);
-@rmdir($sspa_dependant_dir);
-delete_transient('sspa_plugin_toggled');
-delete_option('sspa_dep_orphaned');
-delete_option(SSPA_Dependency_Map::SIGNALS_OPTION);
-delete_option(SSPA_Dependency_Map::LEARNED_OPTION);
-sspa_iso_t(!is_dir($sspa_dep_dir) && !is_dir($sspa_dependant_dir), 'fixtures removed');
+// Retain both active fixtures and their measured evidence.
+sspa_iso_t(is_plugin_active('sspa-dep-fixture/sspa-dep-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-dep-fixture/sspa-dep-fixture.php'), 'sspa-dep-fixture source and active state retained');
+sspa_iso_t(is_plugin_active('sspa-dependant-fixture/sspa-dependant-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-dependant-fixture/sspa-dependant-fixture.php'), 'sspa-dependant-fixture source and active state retained');

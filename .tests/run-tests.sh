@@ -9,6 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
 sspa_require_site || exit 1
 sync_plugin || exit 1
+source "$PLUGIN_DIR/.tests/local-services.sh" || exit 1
 
 # A killed history-comparison case must not leave its deliberate REST slowdown
 # armed for an unrelated later suite run.
@@ -54,6 +55,7 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     esac
     RAN=$((RAN + 1))
     echo "=== $name ==="
+    cli eval-file "$PLUGIN_DIR/.tests/fixtures/reset-retained-plugins.php" || exit 1
     output=$(cli eval-file "$case_file" 2>&1)
     case_exit=$?
     echo "$output"
@@ -92,6 +94,18 @@ if [ -z "$FILTER" ] || [[ "history-tooltips-browser" == *"$FILTER"* ]]; then
     if ! bash "$PLUGIN_DIR/.tests/browser/run-history-tooltips.sh"; then
         FAILED=$((FAILED + 1))
         FAILED_NAMES="$FAILED_NAMES history-tooltips-browser"
+    fi
+fi
+if [ -n "$FILTER" ] && [[ "history-chart-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-history-chart.sh"; then
+        FAILED=$((FAILED + 1)); FAILED_NAMES="$FAILED_NAMES history-chart-browser"
+    fi
+fi
+if [ -z "$FILTER" ] || [[ "feature-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-regressions.sh"; then
+        FAILED=$((FAILED + 1)); FAILED_NAMES="$FAILED_NAMES feature-browser"
     fi
 fi
 if [ "$RAN" -eq 0 ]; then echo "No cases matched: $FILTER" >&2; exit 1; fi

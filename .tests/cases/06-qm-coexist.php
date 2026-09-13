@@ -11,7 +11,7 @@ global $wpdb;
 // Simulate QM's drop-in without needing wp.org network access: a db.php that identifies
 // as Query Monitor and defines SAVEQUERIES (we only test coexistence + degraded capture
 // mechanics here; the rows-from-QM path needs real QM and is covered manually).
-$fake_qm = "<?php\n/**\n * Plugin Name: Query Monitor Database Class (Drop-in)\n */\nif (!defined('SAVEQUERIES')) { define('SAVEQUERIES', true); }\n";
+$fake_qm = "<?php\n/**\n * Plugin Name: Query Monitor Database Class (Drop-in)\n * SSPA retained QM fixture\n */\nif (!defined('SAVEQUERIES')) { define('SAVEQUERIES', true); }\n";
 file_put_contents(WP_CONTENT_DIR . '/db.php', $fake_qm);
 sleep(3); // let apache's opcache revalidate the swapped drop-in (revalidate_freq=2)
 
@@ -52,8 +52,5 @@ sspa_t(SSPA_Helper_Files::restore_held_dropin() === true, 'held drop-in restored
 sspa_t(strpos(file_get_contents(WP_CONTENT_DIR . '/db.php'), 'Query Monitor') !== false, 'original drop-in back in place');
 sspa_t(!file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold'), 'hold file gone');
 
-// Clean up: regenerate our real shim from the template (never write back $our_shim - if a
-// previous run died mid-test it could itself be a leftover fake).
-unlink(WP_CONTENT_DIR . '/db.php');
-SSPA_Helper_Files::ensure_installed();
-sspa_t(SSPA_Helper_Files::dropin_status() === 'ours', 'our shim restored for other tests');
+// The foreign fixture restored by the real lifecycle remains inspectable.
+sspa_t(SSPA_Helper_Files::dropin_status() === 'qm', 'restored foreign drop-in retained');

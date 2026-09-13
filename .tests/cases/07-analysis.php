@@ -18,6 +18,7 @@ $bad_code = <<<'PHP'
 /**
  * Plugin Name: SSPA Bad Plugin (test fixture)
  * Description: Deliberately terrible. Every sin here must be caught by the analysis engine.
+ * Version: 1.0.0
  */
 
 // Sleep endpoint so the blocking-HTTP sin has a slow target without leaving the container.
@@ -200,8 +201,5 @@ sspa_t(
     'asset optimiser activation produces a qualified configuration review, not removal advice'
 );
 
-// --- Clean up ---
-deactivate_plugins('sspa-bad-plugin/sspa-bad-plugin.php');
-unlink($bad_dir . '/sspa-bad-plugin.php');
-rmdir($bad_dir);
-sspa_t(!file_exists($bad_dir), 'bad plugin removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_t(is_plugin_active('sspa-bad-plugin/sspa-bad-plugin.php') && is_file(WP_PLUGIN_DIR . '/sspa-bad-plugin/sspa-bad-plugin.php'), 'fixture and measured evidence retained');

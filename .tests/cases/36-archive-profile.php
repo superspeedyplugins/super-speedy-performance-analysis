@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("36");
 // The archive query profile: what Super Speedy Archives needs in order to configure its mirror
 // table from a measured run instead of from a human filling in a settings tab.
 //
@@ -169,10 +171,7 @@ if (is_array($big_profile)) {
 }
 sspa_t($has_terms, 'the seeded archive produced a composite carrying the term columns');
 
-foreach ($big_posts as $big_post) {
-    wp_delete_post($big_post, true);
-}
-wp_delete_term($big_term_id, 'category');
+sspa_retained_save('36', array('posts'=>$big_posts,'terms'=>array(array((int)$big_term_id,'category'))));
 
 // --- The WooCommerce case: ordering that query vars alone cannot see ---
 //

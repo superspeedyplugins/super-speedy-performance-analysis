@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("23");
 // Real analyses, opted in, must automatically queue one community payload each.
 //
 // Case 21 proves the exporters can build a payload for every run type, but it inserts its own
@@ -198,10 +200,7 @@ if (isset($optout['error'])) {
     }
 }
 
-foreach ($queued_ids as $outbox_id) {
-    $wpdb->delete(SSPA_Schema::table('submission_events'), array('outbox_id' => $outbox_id));
-    $wpdb->delete($outbox_table, array('id' => $outbox_id));
-}
+sspa_retained_save('23', array('outbox'=>$queued_ids));
 foreach ($sspa_parked as $sspa_parked_id) {
     SSPA_Community_Outbox::resume($sspa_parked_id);
 }
@@ -214,4 +213,4 @@ if (null === $old_optin) {
     update_option('sspa_share_optin', $old_optin, false);
 }
 delete_option('sspa_submission_build_errors');
-sspa_run_int_t(true, 'outbox fixtures cleaned up');
+echo 'RETAINED: outbox fixtures retained' . PHP_EOL;

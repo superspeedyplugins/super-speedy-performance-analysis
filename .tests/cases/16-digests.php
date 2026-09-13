@@ -73,6 +73,7 @@ $code = <<<'PHP'
 <?php
 /**
  * Plugin Name: SSPA Digest Fixture (test fixture)
+ * Version: 1.0.0
  */
 add_action('wp_footer', function () {
     global $wpdb;
@@ -126,7 +127,7 @@ if ($readable) {
     // The whole point: our own capture cannot see this. It returned almost nothing.
     sspa_t(true, 'this query returns ~0 rows, so only performance_schema could expose it');
 } else {
-    echo "PASS: performance_schema not readable here - real digest path untested (expected on this MariaDB, and on most hosts)\n";
+    echo "UNVERIFIED: performance_schema is unreadable; the real digest capture path was not exercised\n";
     $findings = (int) $wpdb->get_var($wpdb->prepare(
         'SELECT COUNT(*) FROM ' . SSPA_Schema::table('findings') . " WHERE run_id = %d AND finding_type = 'over_examining_query'",
         $run_id
@@ -134,12 +135,8 @@ if ($readable) {
     sspa_t($findings === 0, 'no digest findings invented when the source is unavailable');
 }
 
-// --- Clean up ---
-deactivate_plugins('sspa-digest-fixture/sspa-digest-fixture.php');
-unlink($fixture_dir . '/sspa-digest-fixture.php');
-rmdir($fixture_dir);
-sspa_t(!file_exists($fixture_dir), 'digest fixture removed');
-
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_t(is_plugin_active('sspa-digest-fixture/sspa-digest-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-digest-fixture/sspa-digest-fixture.php'), 'fixture and measured evidence retained');
 // Recommendation copy must exist or the insight renders with a bare key as its title.
 $rec = SSPA_Rules::recommendation('over_examining_query');
 sspa_t(!empty($rec['title']) && $rec['title'] !== 'over_examining_query', 'over_examining_query recommendation text present: ' . $rec['title']);

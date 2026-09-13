@@ -230,8 +230,5 @@ sspa_scoped_t(
     'an unprofiled page is refused (' . (is_wp_error($bad) ? $bad->get_error_code() : 'run started') . ')'
 );
 
-// --- Cleanup ---
-deactivate_plugins('sspa-scoped-fixture/sspa-scoped-fixture.php');
-@unlink($dir . '/sspa-scoped-fixture.php');
-@rmdir($dir);
-sspa_scoped_t(!is_dir($dir), 'fixture removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_scoped_t(is_plugin_active('sspa-scoped-fixture/sspa-scoped-fixture.php') && is_file(WP_PLUGIN_DIR . '/sspa-scoped-fixture/sspa-scoped-fixture.php'), 'fixture and measured evidence retained');

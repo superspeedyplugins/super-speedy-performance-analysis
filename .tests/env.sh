@@ -18,11 +18,11 @@
 PLUGIN_SLUG=super-speedy-performance-analysis
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-SSPA_SCENARIO="${SSPA_SCENARIO:-tests}"
+SSPA_SCENARIO="${SSPA_SCENARIO:-tests-feature-regressions}"
 
 # Derive the path and URL from parallel-dev rather than hardcoding /opt/homebrew: that root
 # is machine-local (PD_SITES_ROOT), and this repository is meant to work on the WSL2 box too.
-PD_LIB="${PD_LIB:-$HOME/dev/super-speedy/tools/parallel-dev/bin/lib.sh}"
+PD_LIB="${PD_LIB:-${SUPERSPEEDY_WORKSPACE:-$HOME/dev/super-speedy}/tools/parallel-dev/bin/lib.sh}"
 if [ -f "$PD_LIB" ]; then
     # lib.sh sets -e, which these scripts must not inherit - they are built on `grep -q ...`
     # idioms where a non-zero exit is a normal outcome. Restoring `set -uo pipefail` does NOT
@@ -34,9 +34,8 @@ if [ -f "$PD_LIB" ]; then
     SSPA_SITE_DIR=$(pd_site_dir "$PLUGIN_SLUG" "$SSPA_SCENARIO")
     SSPA_SITE_URL=$(pd_site_url "$PLUGIN_SLUG" "$SSPA_SCENARIO")
 else
-    echo "  ! parallel-dev not found at $PD_LIB - falling back to the Mac default paths" >&2
-    SSPA_SITE_DIR="/opt/homebrew/var/www/sites/${PLUGIN_SLUG}/${SSPA_SCENARIO}"
-    SSPA_SITE_URL="http://${SSPA_SCENARIO}.${PLUGIN_SLUG}.localhost:8081"
+    echo "parallel-dev is required: $PD_LIB" >&2
+    return 1
 fi
 
 # Case files are addressed on the host filesystem now - there is no container to copy into,
@@ -46,7 +45,7 @@ CONTAINER_PLUGIN_DIR="$PLUGIN_DIR"
 
 # Same name and shape the Docker helper exposed, so no case file changed when this landed.
 cli() {
-    wp --path="$SSPA_SITE_DIR" --url="$SSPA_SITE_URL" "$@"
+    "${SSPA_TEST_REAL_WP:-wp}" "$@" --path="$SSPA_SITE_DIR" --url="$SSPA_SITE_URL"
 }
 
 # The plugin is symlinked into the site by parallel-dev, so edits are already live. The
@@ -57,6 +56,10 @@ sync_plugin() {
         echo "  ! $SSPA_SITE_DIR has no $PLUGIN_SLUG - run .tests/setup-site.sh" >&2
         return 1
     fi
+    if [ "$(realpath "$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG")" != "$PLUGIN_DIR" ]; then
+        echo "Plugin under test does not resolve to the invoking checkout" >&2
+        return 1
+    fi
     return 0
 }
 
@@ -64,11 +67,15 @@ sspa_require_site() {
     case "$(realpath -m "$SSPA_SITE_DIR")" in "$(realpath -m "$SITES_ROOT")"/*) ;; *) echo "Refusing non-isolated test site" >&2; return 1;; esac
     echo "Test site: $SSPA_SITE_URL ($SSPA_SITE_DIR)"
     export SSPA_TEST_SITE_DIR="$SSPA_SITE_DIR" SSPA_TEST_SITE_URL="$SSPA_SITE_URL"
-    if [ -z "${SSPA_TEST_REAL_WP:-}" ]; then export SSPA_TEST_REAL_WP="$(command -v wp)"; fi
+    if [ -z "${SSPA_TEST_REAL_WP:-}" ]; then export SSPA_TEST_REAL_WP="$(type -P wp)"; fi
+    if [ ! -x "$SSPA_TEST_REAL_WP" ]; then echo "A real wp executable is required" >&2; return 1; fi
+    case "$(realpath "$SSPA_TEST_REAL_WP")" in
+        */.data/*/wp) echo "Refusing to wrap a generated wp shim recursively" >&2; return 1 ;;
+    esac
     mkdir -p "$PLUGIN_DIR/.data/test-wp-shim"
     cat > "$PLUGIN_DIR/.data/test-wp-shim/wp" <<'SHIM'
 #!/usr/bin/env bash
-exec "$SSPA_TEST_REAL_WP" --path="$SSPA_TEST_SITE_DIR" --url="$SSPA_TEST_SITE_URL" "$@"
+exec "$SSPA_TEST_REAL_WP" "$@" --path="$SSPA_TEST_SITE_DIR" --url="$SSPA_TEST_SITE_URL"
 SHIM
     chmod +x "$PLUGIN_DIR/.data/test-wp-shim/wp"
     export PATH="$PLUGIN_DIR/.data/test-wp-shim:$PATH"
@@ -79,3 +86,5 @@ SHIM
     fi
     return 0
 }
+
+export SSPA_PLAYWRIGHT_MODULE="${SSPA_PLAYWRIGHT_MODULE:-$PLUGIN_DIR/.tests/node_modules/playwright}"

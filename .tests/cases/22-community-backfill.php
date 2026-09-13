@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . "/../lib/retained-fixtures.php";
+sspa_retained_reset("22");
 // Historical backfill inventory, bounded batches and resumability.
 
 function sspa_backfill_t($ok, $label) {
@@ -111,16 +113,7 @@ $share_html = ob_get_clean();
 sspa_backfill_t(false !== strpos($share_html, 'Submission history') && false !== strpos($share_html, 'sspa-outbox-table'), 'Share tab renders the operational outbox table');
 sspa_backfill_t(false !== strpos($share_html, 'sspa-preview-outbox') && false !== strpos($share_html, 'schema 1.5'), 'Share tab exposes exact-payload controls and versioned rows');
 
-foreach ($outbox_ids as $outbox_id) {
-    $wpdb->delete($events_table, array('outbox_id' => $outbox_id));
-    $wpdb->delete($outbox_table, array('id' => $outbox_id));
-}
-foreach ($profile_ids as $profile_id) {
-    $wpdb->delete($profiles_table, array('id' => $profile_id));
-}
-foreach ($run_ids as $run_id) {
-    $wpdb->delete($runs_table, array('id' => $run_id));
-}
+sspa_retained_save('22', array('runs'=>$run_ids));
 foreach ($existing_statuses as $run_id => $status) {
     $wpdb->update($runs_table, array('status' => $status), array('id' => $run_id));
 }
@@ -140,7 +133,7 @@ if (null === $old_errors) {
     update_option('sspa_submission_build_errors', $old_errors, false);
 }
 wp_clear_scheduled_hook('sspa_submission_worker_event');
-sspa_backfill_t(true, 'backfill fixtures and prior run statuses restored');
+echo 'RETAINED: backfill fixtures retained and borrowed prior run statuses restored' . PHP_EOL;
 
 // --- Seeing what would be sent must not queue it ---
 // "Turn sharing on, then look at what you agreed to" is the wrong order for a consent decision.

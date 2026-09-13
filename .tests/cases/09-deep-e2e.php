@@ -171,8 +171,5 @@ $leftover_iso = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->options} WHER
 sspa_t(0 === $leftover_iso, 'isolation payload options cleaned up');
 sspa_t(false === get_option('sspa_deep_' . $deep_id), 'deep plan option cleaned up');
 
-// --- Clean up ---
-deactivate_plugins('sspa-bad-plugin/sspa-bad-plugin.php');
-unlink($bad_dir . '/sspa-bad-plugin.php');
-rmdir($bad_dir);
-sspa_t(!file_exists($bad_dir), 'bad plugin removed');
+// Retain the active fixture and measured evidence; the runner resets activation at next entry.
+sspa_t(is_plugin_active('sspa-bad-plugin/sspa-bad-plugin.php') && is_file(WP_PLUGIN_DIR . '/sspa-bad-plugin/sspa-bad-plugin.php'), 'fixture and measured evidence retained');

@@ -20,7 +20,10 @@ if (!is_dir($dir)) {
 }
 file_put_contents($dir . '/' . $slug . '.php', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Turnstile Checkout Fixture */
+/**
+ * Plugin Name: SSPA Turnstile Checkout Fixture
+ * Version: 1.0.0
+ */
 
 // Detection surface exposed by Simple Cloudflare Turnstile when configured.
 function cfturnstile_field_show() {}
@@ -57,15 +60,15 @@ sspa_turnstile_t(!is_wp_error($activated), 'Turnstile validation fixture activat
 $product = SSPA_Checkout_Flow::default_product();
 if (!$product) {
     echo "FAIL: no purchasable product on the test site (run .tests/setup-site.sh)\n";
-    deactivate_plugins($slug . '/' . $slug . '.php');
-    @unlink($dir . '/' . $slug . '.php');
-    @rmdir($dir);
     return;
 }
 
 // Ensure a physical default product has a real shipping method available.
 $zone = new WC_Shipping_Zone(0);
+$prior_method = (int)get_option('sspa_case38_shipping');
+if ($prior_method) $zone->delete_shipping_method($prior_method);
 $method_id = $zone->add_shipping_method('flat_rate');
+update_option('sspa_case38_shipping', $method_id, false);
 
 $run_id = SSPA_Run_Controller::start(array(
     'type' => 'checkout',
@@ -97,10 +100,4 @@ if (is_wp_error($run_id)) {
     );
 }
 
-if (false !== $method_id) {
-    $zone->delete_shipping_method($method_id);
-}
-deactivate_plugins($slug . '/' . $slug . '.php');
-@unlink($dir . '/' . $slug . '.php');
-@rmdir($dir);
-wp_cache_flush();
+sspa_turnstile_t(is_plugin_active($slug . '/' . $slug . '.php') && is_file($dir . '/' . $slug . '.php'), 'Turnstile fixture and shipping rate retained');

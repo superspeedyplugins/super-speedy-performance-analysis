@@ -37,9 +37,17 @@ if ($block_checkout_page) {
 }
 wp_cache_flush();
 
+require __DIR__ . '/../fixtures/temp-option-observer.php';
+require_once __DIR__ . '/../lib/retained-fixtures.php';
+sspa_retained_reset('19-product');
 $profiles_table = SSPA_Schema::table('profiles');
 $sessions_table = $wpdb->prefix . 'woocommerce_sessions';
 
+// Reset only this case's retained page fixtures on entry.
+foreach ((array) get_option('sspa_case19_classic_pages', array()) as $prior_page) {
+    if ('1' === get_post_meta((int) $prior_page, '_sspa_case19_fixture', true)) wp_delete_post((int) $prior_page, true);
+}
+delete_option('sspa_test_mail_log');
 // ---------------------------------------------------------------- fixtures
 
 $plant = function ($slug, $code, $load_first = false) {
@@ -62,8 +70,7 @@ $plant = function ($slug, $code, $load_first = false) {
 };
 $remove = function ($slug) {
     deactivate_plugins($slug . '/' . $slug . '.php');
-    @unlink(WP_PLUGIN_DIR . '/' . $slug . '/' . $slug . '.php');
-    @rmdir(WP_PLUGIN_DIR . '/' . $slug);
+    // A new scenario deactivates this fixture; its source and observations remain inspectable.
 };
 
 // A third-party integration that phones home while the customer waits. It calls back into
@@ -72,7 +79,10 @@ $remove = function ($slug) {
 // finding under test has a threshold, and a test that trips it by luck proves nothing.
 $plant('sspa-slow-integration', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Slow Integration (test fixture) */
+/**
+ * Plugin Name: SSPA Slow Integration (test fixture)
+ * Version: 1.0.0
+ */
 add_action('init', function () {
     if (isset($_GET['sspa_test_slow'])) {
         usleep(isset($_GET['long']) ? 1400000 : 150000);
@@ -107,7 +117,10 @@ PHP
 // succeeds) for some entirely different reason. That difference is the proof.
 $plant('sspa-mail-observer', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Mail Observer (test fixture) */
+/**
+ * Plugin Name: SSPA Mail Observer (test fixture)
+ * Version: 1.0.0
+ */
 function sspa_mail_observer_record($ok, $message) {
     $log = get_option('sspa_test_mail_log', array());
     $log[] = array('ok' => $ok, 'message' => (string) $message);
@@ -130,8 +143,6 @@ sspa_t(in_array('sspa-slow-integration/sspa-slow-integration.php', $active_plugi
 $target = SSPA_Checkout_Flow::default_product();
 if (!$target) {
     echo "FAIL: no purchasable product on the test site (run .tests/setup-site.sh)\n";
-    $remove('sspa-slow-integration');
-    $remove('sspa-mail-observer');
     return;
 }
 $target_id = $target->get_id();
@@ -141,9 +152,12 @@ sspa_t('hidden' === $target->get_catalog_visibility() && !$target->managing_stoc
 
 // WooCommerce's sample import does not configure shipping. Add one real rest-of-world rate
 // so the block flow exercises select-shipping-rate instead of correctly recording that the
-// step was skipped. Remove this exact method during teardown.
+// step was skipped. Replace only this case's recorded method at the next test entry.
 $shipping_zone = new WC_Shipping_Zone(0);
+$prior_shipping = (int) get_option('sspa_case19_shipping_method');
+if ($prior_shipping) $shipping_zone->delete_shipping_method($prior_shipping);
 $shipping_method_id = $shipping_zone->add_shipping_method('flat_rate');
+update_option('sspa_case19_shipping_method', $shipping_method_id, false);
 sspa_t(false !== $shipping_method_id, 'temporary flat-rate shipping method added');
 
 // ---------------------------------------------------------------- 1. snapshots
@@ -168,8 +182,6 @@ $run_id = SSPA_Run_Controller::start(array(
 ));
 if (is_wp_error($run_id)) {
     echo 'FAIL: checkout start: ' . $run_id->get_error_message() . "\n";
-    $remove('sspa-slow-integration');
-    $remove('sspa-mail-observer');
     return;
 }
 $deadline = time() + 300;
@@ -513,7 +525,10 @@ sspa_t(is_array($unarmed) && empty($unarmed['pre_mark_hooked']),
 
 $plant('sspa-mail-api-mimic', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Mail API Mimic (test fixture) */
+/**
+ * Plugin Name: SSPA Mail API Mimic (test fixture)
+ * Version: 1.0.0
+ */
 // Mimics Mailgun's HTTP mode: replaces the pluggable wp_mail(), applies the wp_mail
 // filter like core does, then "sends" without PHPMailer and without firing
 // wp_mail_succeeded or wp_mail_failed. The guard is how real override plugins do it too:
@@ -572,7 +587,6 @@ if (is_wp_error($acct_run)) {
 }
 update_option('woocommerce_enable_guest_checkout', $guest_before);
 $remove('sspa-mail-api-mimic');
-delete_option('sspa_test_api_mail_log');
 wp_cache_flush();
 
 // ---------------------------------------------------------------- 13. hostile product ids cannot select real inventory
@@ -604,10 +618,8 @@ $orders_post_fail = count(wc_get_orders(array('limit' => -1, 'return' => 'ids', 
 sspa_t($orders_post_fail === $orders_pre_fail + 2, "hostile-id run retained only its recoverable order and refund ($orders_pre_fail -> $orders_post_fail records)");
 sspa_t(0 === (int) wc_get_product($oos_id)->get_stock_quantity(), 'hostile-id run left the real product stock alone');
 
-// Remove them before the classic section: they are cheaper than the real target product,
-// so leaving them published would have the next run buy one of THEM, and the stock
-// assertions below would then be checking a product the run never touched.
-wp_delete_post($oos_id, true);
+// Keep the rejected catalogue product as evidence; the real flow must use its dedicated product.
+sspa_retained_save('19-product', array('posts'=>array($oos_id)));
 wc_delete_product_transients($target_id);
 
 // ---------------------------------------------------------------- 14. the classic checkout
@@ -621,6 +633,8 @@ $orig_cart_page = (int) get_option('woocommerce_cart_page_id');
 $orig_checkout_page = (int) get_option('woocommerce_checkout_page_id');
 $classic_cart = wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'SSPA classic cart', 'post_content' => '[woocommerce_cart]'));
 $classic_checkout = wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'SSPA classic checkout', 'post_content' => '[woocommerce_checkout]'));
+foreach (array($classic_cart, $classic_checkout) as $fixture_page) update_post_meta($fixture_page, '_sspa_case19_fixture', '1');
+update_option('sspa_case19_classic_pages', array($classic_cart, $classic_checkout), false);
 update_option('woocommerce_cart_page_id', $classic_cart);
 update_option('woocommerce_checkout_page_id', $classic_checkout);
 wp_cache_flush();
@@ -632,7 +646,10 @@ sspa_t('classic' === SSPA_Checkout_Preflight::checkout_type(), 'shortcode checko
 // wp_woocommerce_session_* default, or it stops after a successful add-to-cart with no_session.
 $plant('sspa-renamed-session-cookie', <<<'PHP'
 <?php
-/** Plugin Name: SSPA Renamed Session Cookie (test fixture) */
+/**
+ * Plugin Name: SSPA Renamed Session Cookie (test fixture)
+ * Version: 1.0.0
+ */
 add_filter('woocommerce_cookie', function ($name) {
     return 0 === strpos((string) $name, 'wp_woocommerce_session_')
         ? str_replace('wp_woocommerce_session_', 'sspa_test_session_', (string) $name)
@@ -753,17 +770,9 @@ if (is_wp_error($classic_run)) {
 
 update_option('woocommerce_cart_page_id', $orig_cart_page);
 update_option('woocommerce_checkout_page_id', $orig_checkout_page);
-wp_delete_post($classic_cart, true);
-wp_delete_post($classic_checkout, true);
+// Both checkout fixture pages remain available after the tested switch back to blocks.
 wp_cache_flush();
 sspa_t('block' === SSPA_Checkout_Preflight::checkout_type(), 'store put back on the block checkout');
 
-// ---------------------------------------------------------------- teardown
-
-if (false !== $shipping_method_id) {
-    $shipping_zone->delete_shipping_method($shipping_method_id);
-}
-delete_option('sspa_test_mail_log');
-$remove('sspa-slow-integration');
-$remove('sspa-mail-observer');
-$remove('sspa-renamed-session-cookie');
+// Retain the active integration, SMTP observer, shipping method, session fixture and logs.
+sspa_t(is_plugin_active('sspa-slow-integration/sspa-slow-integration.php') && is_plugin_active('sspa-mail-observer/sspa-mail-observer.php'), 'checkout fixtures and real mail evidence remain available');
