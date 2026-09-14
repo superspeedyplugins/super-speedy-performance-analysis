@@ -67,7 +67,10 @@ const {
     const download = page.waitForEvent("download");
     await panel.locator(".sspa-markdown-download").click();
     await (await download).saveAs(output + "/page-report.md");
-    expect(fs.readFileSync(output + "/page-report.md", "utf8")).toBe(markdown);
+    // The copy and the download are two generations of the same report, a moment apart; only
+    // the "Generated:" timestamp may differ between them, and it may cross a second boundary.
+    const withoutGenerated = (text) => text.replace(/^- Generated: .*$/m, "- Generated: <time>");
+    expect(withoutGenerated(fs.readFileSync(output + "/page-report.md", "utf8"))).toBe(withoutGenerated(markdown));
     const diagnostic = page.waitForEvent("download");
     await panel.locator(".sspa-adhoc-export").click();
     await (await diagnostic).saveAs(output + "/page-diagnostic.json");
