@@ -20,16 +20,13 @@ class SSPA_History {
         if (!empty($context['change_set']) && is_array($context['change_set'])) {
             $change_set = $context['change_set'];
             $changes = array();
+            // The same record model the change set writes with: a stored change it would
+            // reject is dropped here rather than rendered with a missing or impossible version.
             foreach (isset($change_set['changes']) ? (array) $change_set['changes'] : array() as $change) {
-                if (!is_array($change) || empty($change['slug'])) {
-                    continue;
+                $record = SSPA_Plugin_Change::from_array($change);
+                if ($record) {
+                    $changes[] = $record->to_array();
                 }
-                $changes[] = array(
-                    'slug' => sanitize_key($change['slug']),
-                    'action' => sanitize_key(isset($change['action']) ? $change['action'] : ''),
-                    'from_version' => self::safe_version(isset($change['from_version']) ? $change['from_version'] : ''),
-                    'to_version' => self::safe_version(isset($change['to_version']) ? $change['to_version'] : ''),
-                );
             }
             $out['change_set'] = array(
                 'id' => self::safe_uuid(isset($change_set['id']) ? $change_set['id'] : ''),

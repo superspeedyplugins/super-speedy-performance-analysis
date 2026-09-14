@@ -24,6 +24,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 83-history-declared # declared expectations judge the approved HTTP response code separately from the output signature
 .tests/run-tests.sh 84-history-export # planted foreign fields never cross the History export boundary; every level holds its declared key set (JSON, CLI, Abilities)
 .tests/run-tests.sh 85-version # one plugin-version normaliser at every History entry point, with explicit invalid/pre-release behaviour
+.tests/run-tests.sh 86-plugin-change # one validated plugin-change record shared by capture, the run context and History
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence

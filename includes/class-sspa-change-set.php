@@ -102,12 +102,19 @@ class SSPA_Change_Set {
         $existing = isset($state['changes'][$slug]) && is_array($state['changes'][$slug])
             ? $state['changes'][$slug] : array();
         $events = isset($existing['events']) && is_array($existing['events']) ? $existing['events'] : array();
-        $event = array(
+        // One record model decides what a valid change is; a combination it rejects (an
+        // update with no previous version, an activation carrying one) is not stored.
+        $record = SSPA_Plugin_Change::from_array(array(
+            'slug' => $slug,
             'action' => $action,
-            'from_version' => self::safe_version($from_version),
-            'to_version' => self::safe_version($to_version),
-            'detected_at' => $now,
-        );
+            'from_version' => $from_version,
+            'to_version' => $to_version,
+        ));
+        if (!$record) {
+            return null;
+        }
+        $event = array_merge($record->to_array(), array('detected_at' => $now));
+        unset($event['slug']);
         $events[] = $event;
         $events = array_slice($events, -self::MAX_EVENTS_PER_PLUGIN);
 
@@ -188,15 +195,10 @@ class SSPA_Change_Set {
         }
         $changes = array();
         foreach ((array) $state['changes'] as $change) {
-            if (!is_array($change) || empty($change['slug'])) {
-                continue;
+            $record = SSPA_Plugin_Change::from_array($change);
+            if ($record) {
+                $changes[] = $record->to_array();
             }
-            $changes[] = array(
-                'slug' => sanitize_key($change['slug']),
-                'action' => sanitize_key(isset($change['action']) ? $change['action'] : ''),
-                'from_version' => self::safe_version(isset($change['from_version']) ? $change['from_version'] : ''),
-                'to_version' => self::safe_version(isset($change['to_version']) ? $change['to_version'] : ''),
-            );
         }
         return array(
             'id' => sanitize_text_field($state['id']),

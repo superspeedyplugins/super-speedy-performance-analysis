@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.39 (14th September 2026) =
+* Detected plugin changes are recorded through one validated record, so an update, activation or deactivation always carries the versions it needs.
 * Plugin version strings are validated by one shared rule everywhere History, change detection and sharing handle them.
 * History expectations now check the approved HTTP response code as well as the page output, and say which one failed.
 * Block checkout analyses record the order's real processing status before completion instead of a stale checkout-draft.
