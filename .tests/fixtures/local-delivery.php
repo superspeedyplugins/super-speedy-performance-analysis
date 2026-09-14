@@ -1,6 +1,7 @@
 <?php
 // Test transport only. Construction and real PHPMailer completion hooks still run.
-if (!defined('ABSPATH') || !str_starts_with(basename(rtrim(ABSPATH, '/')), 'tests-')) return;
+// Only on this plugin's isolated test sites: the default scenario `tests` and any `tests-*`.
+if (!defined('ABSPATH') || !preg_match('/^tests(-|$)/', basename(rtrim(ABSPATH, '/')))) return;
 add_action('phpmailer_init', static function ($mailer) {
     $port = (int) get_option('sspa_regression_smtp_port');
     if (!$port) throw new RuntimeException('Local regression SMTP port is required');
