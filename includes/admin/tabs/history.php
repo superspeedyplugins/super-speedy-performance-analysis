@@ -6,9 +6,7 @@ $sspa_runs = SSPA_History_Series::recent_runs();
 $sspa_optin = SSPA_Submitter::opted_in();
 $sspa_remove_on_uninstall = (bool) sspa_get_option('remove_data_on_uninstall');
 $sspa_update_detection = (bool) sspa_get_option('plugin_update_detection');
-$sspa_comparable_runs = array_values(array_filter($sspa_runs, function ($sspa_run) {
-    return 'done' === $sspa_run['status'] && in_array($sspa_run['run_type'], array('baseline', 'spot'), true);
-}));
+$sspa_comparable_runs = $sspa_runs;
 $sspa_after_run_id = $sspa_comparable_runs ? (int) $sspa_comparable_runs[0]['id'] : 0;
 $sspa_before_run_id = isset($sspa_comparable_runs[1]) ? (int) $sspa_comparable_runs[1]['id'] : 0;
 $sspa_history_series = $sspa_after_run_id ? SSPA_History_Series::build($sspa_after_run_id, 'request_wall_ms', $sspa_before_run_id, $sspa_before_run_id ? 'pair' : 'setup') : null;
@@ -54,17 +52,11 @@ $sspa_share_states = array(
 <div id="sspa-history-saved-run" hidden aria-live="polite"></div>
 <div id="sspa-history-list">
 <?php
-if (count($sspa_comparable_runs) >= 2) : ?>
+if ($sspa_comparable_runs) : ?>
     <section class="sspa-history-compare-picker">
         <h3><?php esc_html_e('Compare points in time', 'super-speedy-performance-analysis'); ?></h3>
         <p class="description"><?php esc_html_e('Response time is the headline. New errors, warnings, failed validity checks, and declared expectations are shown first when they appear.', 'super-speedy-performance-analysis'); ?></p>
         <div class="sspa-history-compare-controls">
-            <label><?php esc_html_e('Compare', 'super-speedy-performance-analysis'); ?>
-                <select id="sspa-history-mode">
-                    <option value="pair" selected><?php esc_html_e('Selected runs', 'super-speedy-performance-analysis'); ?></option>
-                    <option value="setup"><?php esc_html_e('Previous plugin configuration', 'super-speedy-performance-analysis'); ?></option>
-                </select>
-            </label>
             <label><?php esc_html_e('Before', 'super-speedy-performance-analysis'); ?>
                 <select id="sspa-history-before">
                     <?php foreach ($sspa_comparable_runs as $sspa_run) : ?>

@@ -2331,9 +2331,6 @@ class SSPA_Run_Controller {
         if ('spot' === $args['type'] && is_array($pending_change)
             && isset($pending_change['id']) && hash_equals((string) $pending_change['id'], $change_set_id)) {
             $baseline_run_id = isset($_POST['baseline_run_id']) ? (int) $_POST['baseline_run_id'] : 0;
-            if ($baseline_run_id && !SSPA_History_Series::is_compatible_run_id($baseline_run_id, $args['page_keys'])) {
-                wp_send_json_error(__('The comparison analysis shown before starting is no longer compatible. Reopen the update notice and try again.', 'super-speedy-performance-analysis'));
-            }
             $args['trigger'] = 'plugin_change';
             $args['share_context'] = array(
                 'history_comparison' => array(

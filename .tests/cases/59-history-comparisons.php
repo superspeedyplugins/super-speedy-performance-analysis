@@ -239,10 +239,10 @@ $quick_notice = ob_get_clean();
 wp_set_current_user($notice_user_id);
 $quick_baseline_id = SSPA_History_Series::latest_compatible_run_id($quick_page_keys);
 sspa_history_t(
-    (int) $quick_prompt_baseline_id === (int) $quick_baseline_id
+    (int) $before_id === (int) $quick_baseline_id
         && false !== strpos($quick_notice, 'Analysis #' . $quick_baseline_id)
         && false !== strpos($quick_notice, 'sspa_baseline_run_id=' . $quick_baseline_id),
-    'the quick-comparison prompt shows and binds its compatible Before analysis before starting'
+    'the quick-comparison prompt binds the newest saved analysis despite different page coverage'
 );
 $after_id = sspa_history_drive_run(array(
     'type' => 'spot',
@@ -444,7 +444,11 @@ sspa_history_t(false !== strpos($history_html, 'sspa-history-before') && false !
 
 sspa_history_t($before_row_original === SSPA_Run_Controller::run_row($before_id), 'comparison does not mutate the completed Before run');
 sspa_history_t($after_row_original === SSPA_Run_Controller::run_row($after_id), 'comparison does not mutate the completed After run');
-sspa_history_t(is_wp_error(SSPA_History::compare($before_id, $before_id)), 'the comparison fails closed for an invalid run pair');
+$same_run = SSPA_History::compare($before_id, $before_id);
+sspa_history_t(!is_wp_error($same_run) && !empty($same_run['pages'])
+    && isset($same_run['headline']['delta']) && 0.0 === (float) $same_run['headline']['delta'],
+    'comparing the same saved run retains its pages with zero response-time difference');
+sspa_history_t(is_wp_error(SSPA_History::compare($before_id, PHP_INT_MAX)), 'a nonexistent saved analysis is reported as missing');
 
 $identity_comparison = SSPA_History::compare($before_id, $after_id);
 $identity_pages = is_wp_error($identity_comparison) ? array() : wp_list_pluck($identity_comparison['pages'], 'present', 'key');
@@ -476,8 +480,8 @@ $wpdb->update(
 );
 $incompatible_comparison = SSPA_History::compare($before_id, $after_id);
 sspa_history_t(
-    is_wp_error($incompatible_comparison) && 'sspa_history_incompatible' === $incompatible_comparison->get_error_code(),
-    'History rejects a pair with incompatible measurement identities instead of reporting a pass'
+    !is_wp_error($incompatible_comparison) && count($incompatible_comparison['pages']) > 0,
+    'History displays retained page evidence across measurement versions'
 );
 $wpdb->update(
     SSPA_Schema::table('runs'),

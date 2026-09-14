@@ -77,7 +77,12 @@ include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
 $list = ob_get_clean();
 sspa_65_t((bool) preg_match('/<a[^>]+class="sspa-history-run-link"[^>]+data-run-id="' . $ids[0] . '"/', $list), 'the older retained run has a genuine saved-report link');
 sspa_65_t(strpos($list, 'id="sspa-history-before"') < strpos($list, 'data-sspa-history-chart'), 'Before and After choices appear before the chart');
-sspa_65_t(false !== strpos($list, 'id="sspa-history-mode"'), 'configuration comparison is an explicit choice');
+foreach (array('before', 'after') as $side) {
+    preg_match('/<select id="sspa-history-' . $side . '">(.*?)<\/select>/s', $list, $selector);
+    sspa_65_t(isset($selector[1]) && false !== strpos($selector[1], 'value="' . $ids[0] . '"')
+        && false !== strpos($selector[1], 'value="' . $ids[1] . '"'),
+        'both saved analyses are selectable as ' . $side . ' without a configuration mode');
+}
 if (!class_exists('SSPA_History_Run_View')) {
     sspa_65_t(false, 'the selected saved run can be read on screen');
     return;

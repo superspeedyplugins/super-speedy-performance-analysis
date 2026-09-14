@@ -5,6 +5,11 @@
 # No Docker. The environment is created by .tests/setup-site.sh; this script only checks
 # it is there and runs the cases against it.
 set -uo pipefail
+# Pure production-logic regressions also run when a database is unavailable.
+if [ "${1:-}" = "history-graceful-unit" ]; then
+    php -d xdebug.mode=off "$(dirname "${BASH_SOURCE[0]}")/history-graceful-unit.php"
+    exit $?
+fi
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
 sspa_require_site || exit 1

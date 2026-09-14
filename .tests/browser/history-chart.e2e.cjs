@@ -165,7 +165,6 @@ if (!siteUrl || !adminUser || !adminPassword) {
 
 		// Selecting exact runs must update the chart and report together, even with unchanged plugins.
 		const selected = await page.locator('#sspa-history-after option').evaluateAll(nodes => nodes.slice(0, 2).map(node => node.value));
-		await page.locator('#sspa-history-mode').selectOption('pair');
 		await page.locator('#sspa-history-before').selectOption(selected[1]);
 		await page.locator('#sspa-history-after').selectOption(selected[0]);
 		await page.locator('#sspa-history-compare').click();
@@ -216,13 +215,12 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		assert.equal(await page.locator('.sspa-history-saved-report').getAttribute('data-saved-run-id'), selected[1]);
 		await page.locator('.sspa-history-back').click();
 		await page.locator('.sspa-history-chart canvas').waitFor();
-		await page.locator('#sspa-history-mode').selectOption('setup');
 		await page.locator('#sspa-history-compare').click();
 		await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
 		const setupPeriod = await page.locator('[data-sspa-history-chart]').evaluate(card => card.sspaDocument);
-		assert.ok(setupPeriod.previous.run_ids.length > 1, 'The setup fixture includes repeated measurements before the update');
+		assert.equal(setupPeriod.previous.run_ids.length, 1, 'The comparison keeps exactly the selected Before run');
 		assert.equal(Number(await page.locator('.sspa-history-comparison').getAttribute('data-before-run')), Math.max(...setupPeriod.previous.run_ids),
-			'Automatic setup comparison must use the last measured run before the configuration changed');
+			'Chart and summary must use the same selected Before run');
 		for (const width of [480, 320]) {
 			await page.setViewportSize({width, height:800});
 			await page.waitForFunction(() => {
@@ -242,7 +240,6 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			await page.setViewportSize({width:1400, height:900});
 			await page.locator('.sspa-history-metric').selectOption('request_wall_ms');
 			await page.waitForFunction(() => !document.querySelector('.sspa-history-metric').disabled);
-			await page.locator('#sspa-history-mode').selectOption('setup');
 			await page.locator('#sspa-history-after').selectOption(process.env.SSPA_E2E_DIAGNOSTIC_RUN);
 			await page.locator('#sspa-history-compare').click();
 			await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);

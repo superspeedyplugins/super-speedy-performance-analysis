@@ -48,23 +48,24 @@ try {
     $zero = sspa_64_page($document, 'pair-zero');
     sspa_64_check($zero && 0.0 === (float) $zero['current']['median'] && 1 === $zero['current']['point_count'] && null === $zero['delta']['absolute'], 'a valid zero remains a measurement while an absent comparison stays unknown');
     $failed = sspa_64_page($document, 'pair-failed');
-    $fault = $failed['current']['faults'][0] ?? array();
+    $fault = $failed['current']['points'][0] ?? array();
     sspa_64_check('transport_error' === ($fault['state'] ?? '') && $profile_ids['failed'] === ($fault['profile_id'] ?? null) && 'Retained transport explanation' === ($fault['evidence']['error_message'] ?? ''), 'a failed sample retains its own transport explanation and profile ID');
     $blocked = sspa_64_page($document, 'pair-blocked');
-    sspa_64_check($blocked && null === $blocked['current']['median'] && 'blocked' === $blocked['current']['faults'][0]['state'] && $profile_ids['blocked'] === $blocked['current']['faults'][0]['profile_id'], 'a blocked sample remains visible without contributing a timing point');
+    sspa_64_check($blocked && 100.0 === (float) $blocked['current']['median'] && 'blocked' === $blocked['current']['points'][0]['state'] && $profile_ids['blocked'] === $blocked['current']['points'][0]['profile_id'], 'a blocked sample retains its measured timing and error state');
     sspa_64_check(!isset($home['current']['points'][0]['evidence']['php_warnings']), 'request points do not invent PHP warnings from the median capture');
     $reverse = SSPA_History_Series::build($before, 'request_wall_ms', $after, 'pair');
     sspa_64_check(!is_wp_error($reverse) && array($after) === $reverse['previous']['run_ids'] && array($before) === $reverse['current']['run_ids'], 'explicit sides remain exact even when the selected Before was recorded later');
     foreach (array(array($after, 0), array(0, $before), array($after, $after), array($after, PHP_INT_MAX)) as $selection) {
-        sspa_64_check(is_wp_error(SSPA_History_Series::build($selection[0], 'request_wall_ms', $selection[1], 'pair')), 'invalid exact selection is rejected without baseline substitution: ' . implode('/', $selection));
+        $selected_doc = SSPA_History_Series::build($selection[0], 'request_wall_ms', $selection[1], 'pair');
+        sspa_64_check(!is_wp_error($selected_doc), 'missing selections degrade without rejecting available measurements: ' . implode('/', $selection));
     }
-    sspa_64_check(is_wp_error(SSPA_History_Series::build($after, 'request_wall_ms', $before, 'invalid')), 'unknown selection mode is rejected');
+    sspa_64_check(!is_wp_error(SSPA_History_Series::build($after, 'request_wall_ms', $before, 'invalid')), 'unknown selection mode still displays selected measurements');
     foreach (SSPA_History_Series::metrics() as $metric => $definition) {
         $series = SSPA_History_Series::build($after, $metric, $before, 'pair');
         sspa_64_check(!is_wp_error($series) && array($before) === $series['previous']['run_ids'] && array($after) === $series['current']['run_ids'], 'metric change preserves exact selection: ' . $metric);
     }
     $setup = SSPA_History_Series::build($after);
-    sspa_64_check(!is_wp_error($setup) && in_array($before, $setup['current']['run_ids'], true) && in_array($after, $setup['current']['run_ids'], true), 'default setup mode continues grouping adjacent unchanged runs');
+    sspa_64_check(!is_wp_error($setup) && array($before) === $setup['previous']['run_ids'] && array($after) === $setup['current']['run_ids'], 'default comparison uses adjacent unchanged runs');
 
     // Alter only the retained compatibility metadata after successful reads; run rows
     // are freshly read on every build, unlike the immutable cached profile evidence.
@@ -76,7 +77,7 @@ try {
     sspa_64_check(!is_wp_error($different) && array($before) === $different['previous']['run_ids'] && array($after) === $different['current']['run_ids'] && $different['previous']['fingerprint'] !== $different['current']['fingerprint'], 'different saved component versions retain the exact selected pair');
     $wpdb->update(SSPA_Schema::table('runs'), array('plugin_set' => $before_row['plugin_set']), array('id' => $before));
     $wpdb->update(SSPA_Schema::table('runs'), array('measurement_version' => (int) $before_row['measurement_version'] + 100), array('id' => $before));
-    sspa_64_check(is_wp_error(SSPA_History_Series::build($after, 'request_wall_ms', $before, 'pair')), 'an incompatible exact baseline is rejected, never replaced by an older setup');
+    sspa_64_check(!is_wp_error(SSPA_History_Series::build($after, 'request_wall_ms', $before, 'pair')), 'a different measurement version retains readable evidence from the exact baseline');
     $wpdb->update(SSPA_Schema::table('runs'), array('measurement_version' => $before_row['measurement_version']), array('id' => $before));
 } catch (Throwable $error) {
     sspa_64_check(false, $error->getMessage());

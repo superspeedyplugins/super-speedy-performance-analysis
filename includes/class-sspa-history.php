@@ -45,20 +45,12 @@ class SSPA_History {
     public static function compare($before_id, $after_id) {
         $before_id = (int) $before_id;
         $after_id = (int) $after_id;
-        if (!$before_id || !$after_id || $before_id === $after_id) {
-            return new WP_Error('sspa_history_pair', __('Choose two different completed analyses.', 'super-speedy-performance-analysis'));
-        }
-
         $before_run = SSPA_Run_Controller::run_row($before_id);
         $after_run = SSPA_Run_Controller::run_row($after_id);
         foreach (array($before_run, $after_run) as $run) {
-            if (!$run || 'done' !== $run['status'] || !in_array($run['run_type'], array('baseline', 'spot'), true)) {
-                return new WP_Error('sspa_history_incompatible', __('Only completed full scans and spot checks can be compared.', 'super-speedy-performance-analysis'));
+            if (!$run) {
+                return new WP_Error('sspa_history_missing', sprintf(__('No saved analysis exists for one of the selected IDs (%1$d, %2$d).', 'super-speedy-performance-analysis'), $before_id, $after_id));
             }
-        }
-        $compatibility = SSPA_History_Series::pair_compatibility($before_run, $after_run);
-        if (is_wp_error($compatibility)) {
-            return $compatibility;
         }
 
         $before = self::snapshot($before_run);
@@ -84,10 +76,6 @@ class SSPA_History {
             $expected = isset($assertions[$key]) ? $assertions[$key]
                 : (isset($assertions[$legacy_key]) ? $assertions[$legacy_key] : null);
             $pages[] = self::compare_page($key, $left, $right, $expected);
-        }
-
-        if (!$pages) {
-            return new WP_Error('sspa_history_no_pages', __('These analyses contain no comparable page evidence.', 'super-speedy-performance-analysis'));
         }
 
         $headline = self::headline_values($pages);
@@ -169,9 +157,6 @@ class SSPA_History {
 
         $pages = array();
         foreach (SSPA_History_Series::profile_rows((int) $run['id']) as $page) {
-            if ('baseline' === $page['page_key']) {
-                continue;
-            }
             $key = SSPA_History_Series::page_identity($page);
             $extra = isset($usage_pages[$key]) ? $usage_pages[$key] : array();
             $pages[$key] = array(
@@ -279,8 +264,7 @@ class SSPA_History {
         $after = array();
         foreach ((array) $pages as $page) {
             $timing = $page['metrics']['ttfb_ms'];
-            if ('pass' === $page['validity']['before'] && 'pass' === $page['validity']['after']
-                && null !== $timing['before'] && null !== $timing['after']) {
+            if (null !== $timing['before'] && null !== $timing['after']) {
                 $before[] = $timing['before'];
                 $after[] = $timing['after'];
             }
@@ -655,7 +639,7 @@ class SSPA_History {
         $series = SSPA_History_Series::build(
             isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0,
             isset($_POST['metric']) ? sanitize_key(wp_unslash($_POST['metric'])) : 'request_wall_ms',
-            'pair' === $mode && isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,
+            isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,
             $mode
         );
         if (is_wp_error($series)) {
@@ -669,7 +653,7 @@ class SSPA_History {
             wp_send_json_error($comparison->get_error_message());
         }
         wp_send_json_success(array(
-            'html' => $before_id ? self::render($comparison) : '<p>' . esc_html__('No previous compatible configuration has been measured.', 'super-speedy-performance-analysis') . '</p>',
+            'html' => $before_id ? self::render($comparison) : '<p>' . esc_html__('No saved Before run selected. Available After measurements are shown.', 'super-speedy-performance-analysis') . '</p>',
             'comparison' => $before_id ? $comparison : null,
             'chart_html' => SSPA_History_Chart::render($series),
             'before_run_id' => $before_id,

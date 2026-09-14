@@ -15,6 +15,8 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/setup-site.sh --reset   # reset this dedicated site at entry, then retain it
 .tests/run-tests.sh            # all PHP cases and registered browser journeys
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
+.tests/run-tests.sh history-graceful-unit # production comparison logic with storage adapters, no database
+.tests/run-tests.sh 78-history-graceful # real WordPress retained-record comparison regressions
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23
@@ -219,7 +221,7 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   measured setup periods and retains their request points and medians.
 - `63-history-quick-baseline.php` - measures a full baseline and a version-changed quick scan,
   proving that the chart retains the exact offered baseline despite different page coverage
-  and marks pages outside the quick scan as missing instead of improvements.
+    and marks pages outside the quick scan as missing instead of improvements.
 - `64-history-exact-pairs.php` - verifies exact selected run pairs, unchanged setups, incompatible
   selections, retained profile identities and missing samples without invented zero values.
 - `65-history-saved-view.php` - opens exact retained reports, checks profile links and permissions,

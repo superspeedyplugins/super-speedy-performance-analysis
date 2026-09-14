@@ -53,12 +53,14 @@ const {chromium} = require(process.env.SSPA_PLAYWRIGHT_MODULE || path.resolve(__
   assert.equal(escaped.markup,0,'Labels and URLs render as inert text in the custom tooltip');
   const point=await mount.evaluate(el=>{
    const o=el.sspaChart.getOption();const home=el.closest('[data-sspa-history-chart]').sspaDocument.pages.find(p=>p.page_key==='home');
-   const d=o.series[1].data.filter(d=>d.value[0]===home.key).at(-1);
-   const pixel=el.sspaChart.convertToPixel({seriesIndex:1},d.value);
-   return {x:pixel[0]+d.symbolOffset[0],y:pixel[1]};
+   const seriesIndex=[1,0].find(i=>o.series[i].data.some(d=>d.value[0]===home.key));
+   if(seriesIndex===undefined) throw Error('Neither selected run contains a measured Home point');
+   const d=o.series[seriesIndex].data.filter(d=>d.value[0]===home.key).at(-1);
+   const pixel=el.sspaChart.convertToPixel({seriesIndex},d.value);
+   return {x:pixel[0]+d.symbolOffset[0],y:pixel[1],period:seriesIndex===1?'recent':'previous'};
   });
   await page.mouse.move(box.x+point.x,box.y+point.y);await tip.waitFor({state:'visible',timeout:1000});
-  assert.equal(await tip.locator('strong').innerText(),'Home (recent)','Measurement tooltip retains period and repeated page name');
+  assert.equal(await tip.locator('strong').innerText(),`Home (${point.period})`,'Measurement tooltip retains period and repeated page name');
   assert.ok((await tip.innerText()).includes(state.home.relative_url));
   await page.setViewportSize({width:360,height:900});
   await page.locator('.sspa-history-page-filter').fill('home');

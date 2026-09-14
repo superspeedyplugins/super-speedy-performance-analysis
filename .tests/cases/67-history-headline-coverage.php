@@ -31,8 +31,8 @@ function sspa_67_run($pages) {
 try {
     $cases = array(
         'unmatched slow page cannot create an improvement' => array(array('home' => array(100, 200), 'shop' => array(900, 200)), array('home' => array(100, 200)), 100, 100),
-        'failed page cannot change the successful matched-page headline' => array(array('home' => array(100, 200), 'shop' => array(900, 200)), array('home' => array(120, 200), 'shop' => array(10, 500)), 100, 120),
-        'no successful matched pages yields unknown on both sides' => array(array('home' => array(100, 200)), array('home' => array(10, 500)), null, null),
+        'failed page retains its numeric timing in the matched-page headline' => array(array('home' => array(100, 200), 'shop' => array(900, 200)), array('home' => array(120, 200), 'shop' => array(10, 500)), 500, 65),
+        'failed matched page still has comparable recorded timings' => array(array('home' => array(100, 200)), array('home' => array(10, 500)), 100, 10),
         'valid zero response time remains a comparable measurement' => array(array('home' => array(0, 200)), array('home' => array(10, 200)), 0, 10),
     );
     foreach ($cases as $label => $case) {

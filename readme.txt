@@ -34,6 +34,9 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Changelog ==
 
+= 0.39 (14th September 2026) =
+* History comparisons display retained measurements across old runs, partial analyses, test configurations and changed environments, without requiring complete version metadata.
+
 = 0.38 (10th September 2026) =
 * History axis labels show page names, with URLs and request details in instant hover tooltips.
 * History charts use vertical page names and relative URLs, with faint category dividers and measurement context in tooltips.

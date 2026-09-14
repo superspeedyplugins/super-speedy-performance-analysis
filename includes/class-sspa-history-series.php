@@ -2,158 +2,61 @@
 defined('ABSPATH') || exit;
 
 /**
- * Resolves two contiguous measured setups into one renderer-neutral chart document.
- * Storage, compatibility and aggregation stay here; the browser only plots the result.
+ * Presents retained measurements from two selected runs without metadata eligibility gates.
  */
 class SSPA_History_Series {
 
     const SCHEMA = 'sspa/history-series@1';
     const SCENARIO_REVISION = 1;
 
-    /** The same bounded run window the History tab has always used. */
+    /** All retained runs are selectable, regardless of age, status or type. */
     public static function recent_runs() {
         global $wpdb;
         return $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM %i ORDER BY id DESC LIMIT 50',
+            'SELECT * FROM %i ORDER BY id DESC',
             SSPA_Schema::table('runs')
         ), ARRAY_A);
     }
 
-    /**
-     * @return array|WP_Error Immutable, renderer-neutral chart document.
-     */
+    /** Plot retained fields; inventory and environment metadata never determine eligibility. */
     public static function build($after_id = 0, $metric = 'request_wall_ms', $before_id = 0, $mode = 'setup') {
         $metrics = self::metrics();
         $metric = sanitize_key($metric);
         if (!isset($metrics[$metric])) {
-            return new WP_Error('sspa_history_metric', __('That History metric is not supported.', 'super-speedy-performance-analysis'));
+            $metric = 'request_wall_ms';
         }
-        if (!in_array($mode, array('setup', 'pair'), true)) {
-            return new WP_Error('sspa_history_selection_mode', __('That History selection mode is not supported.', 'super-speedy-performance-analysis'));
+        $runs = (!$after_id || (!$before_id && 'pair' !== $mode)) ? self::recent_runs() : array();
+        // Defaults choose adjacent saved runs, including unchanged and incomplete setups.
+        if (!$after_id && 'pair' !== $mode && $runs) {
+            $after_id = (int) $runs[0]['id'];
         }
-
-        $runs = array_values(array_filter(self::recent_runs(), array(__CLASS__, 'is_candidate')));
-        if (!$runs) {
-            return new WP_Error('sspa_history_no_runs', __('Run an analysis to create the first measured setup.', 'super-speedy-performance-analysis'));
+        if (!$after_id && !$before_id && $runs) {
+            $after_id = (int) $runs[0]['id'];
         }
-        if ('pair' === $mode) {
-            return self::exact_pair($runs, $after_id, $before_id, $metric, $metrics[$metric]);
-        }
-
-        $warnings = array();
-        if (!$after_id) {
-            foreach ($runs as $candidate) {
-                if ((int) $candidate['measurement_version'] !== (int) SSPA_Community_Schema::MEASUREMENT_VERSION
-                    || !self::setup_fingerprint($candidate)) {
-                    $warnings[] = sprintf(
-                        /* translators: %d: run id */
-                        __('Run #%d was skipped because it is not compatible with the current measurement format.', 'super-speedy-performance-analysis'),
-                        (int) $candidate['id']
-                    );
-                    continue;
-                }
-                $candidate_identity = self::compatibility_identity($candidate);
-                if (is_wp_error($candidate_identity)) {
-                    $warnings[] = sprintf(
-                        /* translators: 1: run id, 2: reason */
-                        __('Run #%1$d was skipped: %2$s', 'super-speedy-performance-analysis'),
-                        (int) $candidate['id'],
-                        $candidate_identity->get_error_message()
-                    );
-                    continue;
-                }
-                $after_id = (int) $candidate['id'];
-                break;
-            }
-        } else {
-            $after_id = (int) $after_id;
-        }
-        if (!$after_id) {
-            return new WP_Error('sspa_history_no_compatible_run', __('No compatible measured setup is available yet.', 'super-speedy-performance-analysis'));
-        }
-        $anchor_index = null;
-        foreach ($runs as $index => $run) {
-            if ((int) $run['id'] === $after_id) {
-                $anchor_index = $index;
-                break;
-            }
-        }
-        if (null === $anchor_index) {
-            return new WP_Error('sspa_history_anchor', __('That completed History run is outside the retained comparison window.', 'super-speedy-performance-analysis'));
-        }
-        $runs = array_slice($runs, $anchor_index);
-
-        $groups = self::setup_groups($runs);
-        if (is_wp_error($groups)) {
-            return $groups;
-        }
-        $anchor = $runs[0];
-        $compatibility = self::compatibility_identity($anchor);
-        if (is_wp_error($compatibility)) {
-            return $compatibility;
-        }
-
-        $current_group = self::compatible_group($groups[0], $compatibility, $warnings);
-        if (!$current_group) {
-            return new WP_Error('sspa_history_current_incompatible', __('The latest analysis has no compatible page evidence to chart.', 'super-speedy-performance-analysis'));
-        }
-
-        $preferred_before_id = $before_id ? (int) $before_id : self::bound_before_id($anchor);
-        $previous_group = array();
-        if ($preferred_before_id) {
-            foreach (array_slice($groups, 1) as $group) {
-                if (in_array($preferred_before_id, array_map('intval', wp_list_pluck($group, 'id')), true)) {
-                    $previous_group = self::compatible_group($group, $compatibility, $warnings);
+        if (!$before_id && 'pair' !== $mode) {
+            foreach ($runs as $index => $run) {
+                if ((int) $run['id'] === (int) $after_id && isset($runs[$index + 1])) {
+                    $before_id = (int) $runs[$index + 1]['id'];
                     break;
                 }
             }
         }
-        if (!$previous_group) {
-            foreach (array_slice($groups, 1) as $group) {
-                $candidate = self::compatible_group($group, $compatibility, $warnings);
-                if ($candidate) {
-                    $previous_group = $candidate;
-                    break;
-                }
-            }
-        }
-
-        return self::document($anchor, $previous_group, $current_group, $metric, $metrics[$metric], 'setup', $warnings);
+        $after = $after_id ? SSPA_Run_Controller::run_row((int) $after_id) : null;
+        $before = $before_id ? SSPA_Run_Controller::run_row((int) $before_id) : null;
+        $current = $after ? array(self::prepared_run($after)) : array();
+        $previous = $before ? array(self::prepared_run($before)) : array();
+        $anchor = $after ? $after : array('id' => (int) $after_id);
+        return self::document($anchor, $previous, $current, $metric, $metrics[$metric], 'pair', array());
     }
 
-    /** Explicit selection never expands a run into a setup period or substitutes another. */
-    private static function exact_pair($runs, $after_id, $before_id, $metric, $definition) {
-        $after_id = filter_var($after_id, FILTER_VALIDATE_INT);
-        $before_id = filter_var($before_id, FILTER_VALIDATE_INT);
-        if (!$after_id || !$before_id || $after_id < 1 || $before_id < 1 || $after_id === $before_id) {
-            return new WP_Error('sspa_history_pair_selection', __('Choose two different completed analyses for Before and After.', 'super-speedy-performance-analysis'));
-        }
-        $selected = array();
-        foreach ($runs as $run) {
-            if (in_array((int) $run['id'], array($before_id, $after_id), true)) {
-                $selected[(int) $run['id']] = $run;
-            }
-        }
-        if (count($selected) !== 2) {
-            return new WP_Error('sspa_history_pair_selection', __('Both selected analyses must be completed baseline or spot runs in the retained History window.', 'super-speedy-performance-analysis'));
-        }
-        foreach ($selected as &$run) {
-            $run['_sspa_setup_fingerprint'] = self::setup_fingerprint($run);
-            if (!$run['_sspa_setup_fingerprint'] || (int) $run['measurement_version'] !== (int) SSPA_Community_Schema::MEASUREMENT_VERSION) {
-                return new WP_Error('sspa_history_incompatible', __('A selected analysis has no versioned setup or uses an incompatible measurement format.', 'super-speedy-performance-analysis'));
-            }
-            $run['_sspa_profiles'] = self::profile_rows((int) $run['id']);
-        }
-        unset($run);
-        $compatible = self::pair_compatibility($selected[$before_id], $selected[$after_id]);
-        if (is_wp_error($compatible)) {
-            return $compatible;
-        }
-        return self::document($selected[$after_id], array($selected[$before_id]), array($selected[$after_id]), $metric, $definition, 'pair', array());
+    private static function prepared_run($run) {
+        $run['_sspa_setup_fingerprint'] = self::setup_fingerprint($run);
+        $run['_sspa_profiles'] = self::profile_rows((int) $run['id']);
+        return $run;
     }
 
     private static function document($anchor, $previous_group, $current_group, $metric, $definition, $mode, $warnings) {
-        $current = self::period($current_group);
+        $current = $current_group ? self::period($current_group) : null;
         $previous = $previous_group ? self::period($previous_group) : null;
         $pages = self::pages($previous_group, $current_group, $metric, $definition);
 
@@ -172,12 +75,12 @@ class SSPA_History_Series {
             'anchor_run_id' => (int) $anchor['id'],
             'previous' => $previous,
             'current' => $current,
-            'setup_changes' => $previous
+            'setup_changes' => $previous && $current
                 ? self::component_changes($previous_group[0], $current_group[0])
                 : array(),
             'pages' => $pages,
             'warnings' => array_values(array_unique($warnings)),
-            'empty_state' => $previous ? null : __('Run Performance Analysis again after changing plugins or the theme to compare two measured setups.', 'super-speedy-performance-analysis'),
+            'empty_state' => $previous ? null : __('Select saved runs to compare their available measurements.', 'super-speedy-performance-analysis'),
         );
     }
 
@@ -221,164 +124,28 @@ class SSPA_History_Series {
         );
     }
 
-    /** Latest saved run that is structurally usable as a quick-comparison baseline. */
+    /** Kept for existing callers; every retained run can be selected. */
     public static function latest_compatible_run_id($page_keys = array()) {
-        return self::compatible_candidate_id(0, $page_keys);
+        $runs = self::recent_runs();
+        return $runs ? (int) $runs[0]['id'] : 0;
     }
 
-    /** Validate the exact baseline shown to the administrator before a quick comparison. */
     public static function is_compatible_run_id($run_id, $page_keys = array()) {
-        $run_id = (int) $run_id;
-        return $run_id > 0 && $run_id === self::compatible_candidate_id($run_id, $page_keys);
+        return (bool) SSPA_Run_Controller::run_row((int) $run_id);
     }
 
-    /** The bounded customer-facing quick scan, limited to pages this site can measure. */
     public static function quick_comparison_page_keys() {
         $available = array_map('sanitize_key', wp_list_pluck(SSPA_Catalogue::build(), 'page_key'));
         return array_values(array_intersect(array('home', 'shop', 'baseline'), $available));
     }
 
-    private static function compatible_candidate_id($wanted_id, $page_keys) {
-        $page_keys = array_values(array_unique(array_map('sanitize_key', (array) $page_keys)));
-        foreach (self::recent_runs() as $run) {
-            if ($wanted_id && (int) $run['id'] !== (int) $wanted_id) {
-                continue;
-            }
-            if (!self::is_candidate($run)
-                || (int) $run['measurement_version'] !== (int) SSPA_Community_Schema::MEASUREMENT_VERSION
-                || !self::setup_fingerprint($run)) {
-                if ($wanted_id) {
-                    return 0;
-                }
-                continue;
-            }
-            $identity = self::compatibility_identity($run);
-            if (is_wp_error($identity)) {
-                if ($wanted_id) {
-                    return 0;
-                }
-                continue;
-            }
-            $covered = array_values(array_unique(array_map('sanitize_key', wp_list_pluck($identity['profiles'], 'page_key'))));
-            if (array_diff($page_keys, $covered)) {
-                if ($wanted_id) {
-                    return 0;
-                }
-                continue;
-            }
-            return (int) $run['id'];
-        }
-        return 0;
-    }
-
-    private static function is_candidate($run) {
-        return is_array($run)
-            && 'done' === $run['status']
-            && in_array($run['run_type'], array('baseline', 'spot'), true);
-    }
-
-    /** Groups newest-first candidate rows by adjacent, version-aware setup identity. */
-    private static function setup_groups($runs) {
-        $groups = array();
-        $boundary = true;
-        foreach ($runs as $run) {
-            $fingerprint = self::setup_fingerprint($run);
-            if (!$fingerprint) {
-                $boundary = true;
-                continue;
-            }
-            $last = count($groups) - 1;
-            if ($boundary || $last < 0 || $groups[$last][0]['_sspa_setup_fingerprint'] !== $fingerprint) {
-                $groups[] = array();
-                $last++;
-            }
-            $run['_sspa_setup_fingerprint'] = $fingerprint;
-            $groups[$last][] = $run;
-            $boundary = false;
-        }
-        if (!$groups) {
-            return new WP_Error('sspa_history_setup_unknown', __('Saved runs do not contain versioned plugin and theme inventories.', 'super-speedy-performance-analysis'));
-        }
-        return $groups;
-    }
-
     public static function setup_fingerprint($run) {
-        if (!is_array($run) || empty($run['plugin_set'])) {
-            return '';
-        }
-        $components = SSPA_Run_Controller::decode_component_versions($run['plugin_set']);
+        $components = SSPA_Run_Controller::decode_component_versions(isset($run['plugin_set']) ? $run['plugin_set'] : '');
         if (!$components) {
             return '';
         }
         ksort($components, SORT_STRING);
-        foreach ($components as $version) {
-            if (null === $version || '' === trim((string) $version)) {
-                return '';
-            }
-        }
         return hash('sha256', wp_json_encode($components));
-    }
-
-    private static function bound_before_id($run) {
-        $context = json_decode((string) $run['share_context'], true);
-        return is_array($context) && !empty($context['history_comparison']['baseline_run_id'])
-            ? (int) $context['history_comparison']['baseline_run_id'] : 0;
-    }
-
-    private static function compatible_group($group, $anchor_identity, &$warnings) {
-        $compatible = array();
-        foreach ($group as $run) {
-            $identity = self::compatibility_identity($run);
-            if (is_wp_error($identity)) {
-                $warnings[] = sprintf(
-                    /* translators: 1: run id, 2: reason */
-                    __('Run #%1$d was excluded: %2$s', 'super-speedy-performance-analysis'),
-                    (int) $run['id'],
-                    $identity->get_error_message()
-                );
-                continue;
-            }
-            if ($identity['fingerprint'] !== $anchor_identity['fingerprint']
-                || !array_intersect($identity['coverage'], $anchor_identity['coverage'])) {
-                $warnings[] = sprintf(
-                    /* translators: %d: run id */
-                    __('Run #%d was excluded because its measurement environment or page scenarios differ.', 'super-speedy-performance-analysis'),
-                    (int) $run['id']
-                );
-                continue;
-            }
-            $run['_sspa_profiles'] = $identity['profiles'];
-            $compatible[] = $run;
-        }
-        return $compatible;
-    }
-
-    /** Complete non-component identity for one run. */
-    private static function compatibility_identity($run) {
-        $profiles = self::profile_rows((int) $run['id']);
-        if (!$profiles) {
-            return new WP_Error('sspa_history_profiles_missing', __('no full-setup page profiles were retained', 'super-speedy-performance-analysis'));
-        }
-        $environment = self::environment_identity($run);
-        if (is_wp_error($environment)) {
-            return $environment;
-        }
-        $coverage = array();
-        foreach ($profiles as $profile) {
-            $coverage[] = self::page_identity($profile);
-        }
-        sort($coverage, SORT_STRING);
-        $identity = array(
-            'scenario_revision' => self::SCENARIO_REVISION,
-            'measurement_version' => (int) $run['measurement_version'],
-            'environment' => $environment,
-        );
-        return array(
-            'fingerprint' => hash('sha256', wp_json_encode($identity)),
-            'identity' => $identity,
-            'coverage' => $coverage,
-            'profiles' => $profiles,
-        );
     }
 
     /** Purpose-specific, bounded evidence read documented in the SQL review. */
@@ -390,74 +157,23 @@ class SSPA_History_Series {
             return $cache[$run_id];
         }
         $cache[$run_id] = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, page_key, url, method, variant, object_cache_mode, samples,
+            "SELECT id, page_key, url, method, variant, object_cache_mode, plugin_set_hash, samples,
                     page_gen_ms, ttfb_ms, sql_ms, sql_count, rows_returned_total,
                     http_ms, php_ms, peak_mem_bytes, dupe_query_count, mail_count,
                     response_code, blocked_by
-             FROM %i WHERE run_id = %d AND plugin_set_hash = '' ORDER BY id ASC",
+             FROM %i WHERE run_id = %d ORDER BY id ASC",
             SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
         return $cache[$run_id];
     }
 
-    private static function environment_identity($run) {
-        global $wpdb;
-        static $cache = array();
-        $metrics_id = isset($run['site_metrics_id']) ? (int) $run['site_metrics_id'] : 0;
-        if (!$metrics_id) {
-            return new WP_Error('sspa_history_environment_missing', __('its measurement environment was not retained', 'super-speedy-performance-analysis'));
-        }
-        if (!array_key_exists($metrics_id, $cache)) {
-            $cache[$metrics_id] = $wpdb->get_row($wpdb->prepare(
-                'SELECT id, metrics, sector, created FROM %i WHERE id = %d LIMIT 1',
-                SSPA_Schema::table('site_metrics'),
-                $metrics_id
-            ), ARRAY_A);
-        }
-        if (!$cache[$metrics_id]) {
-            return new WP_Error('sspa_history_environment_missing', __('its measurement environment was not retained', 'super-speedy-performance-analysis'));
-        }
-        $metrics = json_decode((string) $cache[$metrics_id]['metrics'], true);
-        if (!is_array($metrics)) {
-            return new WP_Error('sspa_history_environment_invalid', __('its measurement environment is unreadable', 'super-speedy-performance-analysis'));
-        }
-        $identity = array();
-        foreach (array(
-            'wp', 'php', 'mysql', 'db_family', 'object_cache', 'object_cache_category',
-            'page_cache', 'hpos', 'checkout_type', 'multisite', 'locale', 'environment_type',
-        ) as $key) {
-            $identity[$key] = array_key_exists($key, $metrics) ? $metrics[$key] : null;
-        }
-        return $identity;
-    }
-
     public static function page_identity($profile) {
         return sanitize_key($profile['page_key']) . '|'
             . strtoupper(sanitize_key(isset($profile['method']) ? $profile['method'] : 'GET')) . '|'
             . sanitize_key(isset($profile['variant']) ? $profile['variant'] : 'anon') . '|'
-            . sanitize_key(isset($profile['object_cache_mode']) ? $profile['object_cache_mode'] : 'normal');
-    }
-
-    /** Compatibility gate shared by direct Before/After comparison. */
-    public static function pair_compatibility($before, $after) {
-        if ((int) $before['measurement_version'] !== (int) $after['measurement_version']) {
-            return new WP_Error('sspa_history_incompatible', __('These analyses use different measurement formats.', 'super-speedy-performance-analysis'));
-        }
-        $before_environment = self::environment_identity($before);
-        $after_environment = self::environment_identity($after);
-        if (is_wp_error($before_environment) || is_wp_error($after_environment)) {
-            return new WP_Error('sspa_history_incompatible', __('One analysis has no readable measurement environment.', 'super-speedy-performance-analysis'));
-        }
-        if (wp_json_encode($before_environment) !== wp_json_encode($after_environment)) {
-            return new WP_Error('sspa_history_incompatible', __('These analyses were measured in different environments.', 'super-speedy-performance-analysis'));
-        }
-        $before_keys = array_map(array(__CLASS__, 'page_identity'), self::profile_rows((int) $before['id']));
-        $after_keys = array_map(array(__CLASS__, 'page_identity'), self::profile_rows((int) $after['id']));
-        if (!array_intersect($before_keys, $after_keys)) {
-            return new WP_Error('sspa_history_incompatible', __('These analyses contain no matching page scenarios.', 'super-speedy-performance-analysis'));
-        }
-        return true;
+            . sanitize_key(isset($profile['object_cache_mode']) ? $profile['object_cache_mode'] : 'normal')
+            . (!empty($profile['plugin_set_hash']) ? '|' . sanitize_key($profile['plugin_set_hash']) : '');
     }
 
     private static function period($runs) {
@@ -468,6 +184,8 @@ class SSPA_History_Series {
             'fingerprint' => $runs[0]['_sspa_setup_fingerprint'],
             'run_ids' => array_map('intval', wp_list_pluck($ascending, 'id')),
             'run_count' => count($runs),
+            'status' => $runs[0]['status'],
+            'measurement_version' => (int) $runs[0]['measurement_version'],
             'started' => (string) $ascending[0]['started'],
             'finished' => (string) $runs[0]['finished'],
             'components' => $components,
@@ -492,6 +210,7 @@ class SSPA_History_Series {
                             'object_cache_mode' => sanitize_key($profile['object_cache_mode']),
                             'label' => self::page_label($profile['page_key']),
                             'relative_url' => self::relative_url($profile['url']),
+                            'configuration' => !empty($profile['plugin_set_hash']) ? $profile['plugin_set_hash'] : '',
                             'previous' => array('points' => array(), 'faults' => array(), 'output_signatures' => array()),
                             'current' => array('points' => array(), 'faults' => array(), 'output_signatures' => array()),
                         );
@@ -558,8 +277,7 @@ class SSPA_History_Series {
             foreach ((array) $samples as $index => $sample) {
                 $sample = is_array($sample) ? $sample : array();
                 $code = isset($sample['code']) ? (int) $sample['code'] : 0;
-                $valid = empty($profile['blocked_by']) && empty($sample['error'])
-                    && $code >= 200 && $code < 400 && isset($sample['wall_ms']) && is_numeric($sample['wall_ms']);
+                $valid = isset($sample['wall_ms']) && is_numeric($sample['wall_ms']) && is_finite((float) $sample['wall_ms']);
                 if ($valid) {
                     $period['points'][] = array(
                         'run_id' => $run_id,
@@ -568,6 +286,9 @@ class SSPA_History_Series {
                         'sample' => (int) $index + 1,
                         'value' => round((float) $sample['wall_ms'], 2),
                         'response_code' => $code,
+                        'state' => !empty($profile['blocked_by']) ? 'blocked'
+                            : (!empty($sample['error']) ? 'transport_error'
+                                : ($code < 200 || $code >= 400 ? 'http_error' : null)),
                     );
                 } else {
                     $period['faults'][] = array(
@@ -587,8 +308,7 @@ class SSPA_History_Series {
 
         $code = isset($profile['response_code']) ? (int) $profile['response_code'] : 0;
         $column = $metric['column'];
-        $valid = empty($profile['blocked_by']) && $code >= 200 && $code < 400
-            && isset($profile[$column]) && '' !== $profile[$column] && is_numeric($profile[$column]);
+        $valid = isset($profile[$column]) && '' !== $profile[$column] && is_numeric($profile[$column]) && is_finite((float) $profile[$column]);
         if ($valid) {
             $period['points'][] = array(
                 'run_id' => $run_id,
@@ -597,6 +317,7 @@ class SSPA_History_Series {
                 'sample' => null,
                 'value' => round((float) $profile[$column], 2),
                 'response_code' => $code,
+                'state' => !empty($profile['blocked_by']) ? 'blocked' : ($code < 200 || $code >= 400 ? 'http_error' : null),
             );
         } else {
             $period['faults'][] = array(
@@ -718,7 +439,7 @@ class SSPA_History_Series {
                 'slug' => sanitize_key($slug),
                 'before_version' => $old,
                 'after_version' => $new,
-                'state' => null === $old ? 'added' : (null === $new ? 'removed' : 'version_changed'),
+                'state' => !array_key_exists($key, $before) ? 'added' : (!array_key_exists($key, $after) ? 'removed' : 'version_changed'),
             );
         }
         return $changes;
