@@ -13,6 +13,15 @@ $plugins_before = get_option('active_plugins');
 // (orphans from previous failed runs are the hourly cron's job, not this test's).
 $wpdb->query('DELETE FROM ' . SSPA_Schema::table('captures'));
 
+// The Home query fixture runs four known queries on every front-page request, so the Home
+// profile below can prove real query capture rather than infer it from a count that a warm
+// object cache drives down to two or three. Installed on entry, kept current, retained.
+$home_query_fixture = WPMU_PLUGIN_DIR . '/sspa-home-query-fixture.php';
+wp_mkdir_p(WPMU_PLUGIN_DIR);
+if (!file_exists($home_query_fixture) || md5_file($home_query_fixture) !== md5_file(__DIR__ . '/../fixtures/home-query-fixture.php')) {
+    copy(__DIR__ . '/../fixtures/home-query-fixture.php', $home_query_fixture);
+    sleep(3); // php-fpm opcache revalidation
+}
 $run_id = SSPA_Run_Controller::start(array('type' => 'baseline', 'trigger' => 'manual', 'user_id' => 1));
 if (is_wp_error($run_id)) {
     echo 'FAIL: start(): ' . $run_id->get_error_message() . "\n";
@@ -43,7 +52,23 @@ $home = isset($by_key['home']) ? $by_key['home'] : null;
 sspa_t($home !== null, 'home profiled');
 if ($home) {
     sspa_t($home['page_gen_ms'] > 0, 'home page_gen_ms > 0 (' . $home['page_gen_ms'] . ')');
-    sspa_t($home['sql_count'] > 3, 'home ran queries (' . $home['sql_count'] . ')'); // low with warm Redis
+    // Query capture is proved by the four known queries the Home query fixture runs on every
+    // front-page request, matched in the stored capture by their marker literal and by four
+    // distinct fingerprints. A warm persistent object cache can leave core itself at two or
+    // three queries, so the raw count alone never proved capture; with the fixture present
+    // the count is at least four whatever the cache state.
+    $home_blob = $wpdb->get_var($wpdb->prepare("SELECT profile_blob FROM $profiles_table WHERE run_id = %d AND page_key = 'home'", $run_id));
+    $home_capture = $home_blob ? json_decode(gzuncompress($home_blob), true) : null;
+    $fixture_rows = array();
+    foreach ((is_array($home_capture) && isset($home_capture['sql']['queries'])) ? $home_capture['sql']['queries'] : array() as $q) {
+        if (false !== strpos((string) $q['sql'], 'sspa_home_query_fixture')) {
+            $fixture_rows[] = $q;
+        }
+    }
+    $fixture_fps = array_unique(array_map(function ($q) { return $q['fp']; }, $fixture_rows));
+    sspa_t(4 === count($fixture_rows), 'the four Home query fixture queries were captured (' . count($fixture_rows) . ' of 4)');
+    sspa_t(4 === count($fixture_fps), 'each fixture query carries its own fingerprint (' . count($fixture_fps) . ' distinct)');
+    sspa_t($home['sql_count'] >= 4, 'home query count includes the fixture queries (' . $home['sql_count'] . ')');
     sspa_t($home['rows_returned_total'] !== null && $home['rows_returned_total'] > 0, 'row counts captured via shim (' . $home['rows_returned_total'] . ')');
     sspa_t((float) $home['sql_ms'] <= (float) $home['page_gen_ms'] * 1.1, 'sql_ms <= page_gen_ms');
     sspa_t((int) $home['response_code'] === 200, 'home responded 200');
