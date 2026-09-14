@@ -1545,6 +1545,10 @@ class SSPA_Checkout_Flow {
 
     /** Type-aware: a user entry must never be dropped by an order id collision. */
     private static function forget_temp_entries($type, $ids) {
+        // The registry is shared with the loopback place-order request, which appends the
+        // auto-created customer from its own process. Read it fresh before rewriting it, or
+        // this process's cached copy silently drops that entry and the account outlives the run.
+        wp_cache_delete(self::TEMP_OPTION, 'options');
         $temp = get_option(self::TEMP_OPTION, array());
         if (!is_array($temp)) {
             delete_option(self::TEMP_OPTION);

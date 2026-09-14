@@ -19,6 +19,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 78-history-graceful # real WordPress retained-record comparison regressions
 .tests/run-tests.sh 79-admin-bar # admin-bar "This site" nodes deep-link to Tools by fragment; no MySQL digests node exists
 .tests/run-tests.sh 80-checkout-type # preflight names a checkout block, shortcode or unsupported page by its real content
+.tests/run-tests.sh 81-temp-registry # checkout temp registry survives a cross-process write before cleanup
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23
