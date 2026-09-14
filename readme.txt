@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.39 (14th September 2026) =
+* Admin bar links to the Tools tab now open it, and the MySQL query fingerprints indicator says whether performance_schema is off or just unreadable, matching the Tools card.
 * History comparisons display retained measurements across old runs, partial analyses, test configurations and changed environments, without requiring complete version metadata.
 
 = 0.38 (10th September 2026) =

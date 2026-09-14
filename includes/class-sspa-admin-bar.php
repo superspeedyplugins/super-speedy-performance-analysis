@@ -267,7 +267,7 @@ class SSPA_Admin_Bar {
             'title' => wp_using_ext_object_cache()
                 ? esc_html__('Object cache: persistent', 'super-speedy-performance-analysis')
                 : '<span class="sspa-bar-warn">' . esc_html__('Object cache: none', 'super-speedy-performance-analysis') . '</span>',
-            'href' => admin_url('admin.php?page=sspa&tab=tools'),
+            'href' => admin_url('admin.php?page=sspa#tools'),
         ));
 
         // Ask the extension directly rather than through SSPA_Excimer::available().
@@ -283,23 +283,38 @@ class SSPA_Admin_Bar {
             'title' => $excimer
                 ? esc_html__('Excimer: installed', 'super-speedy-performance-analysis')
                 : '<span class="sspa-bar-warn">' . esc_html__('Excimer not installed - no function-level detail', 'super-speedy-performance-analysis') . '</span>',
-            'href' => admin_url('admin.php?page=sspa&tab=tools'),
+            'href' => admin_url('admin.php?page=sspa#tools'),
             'meta' => array('title' => $excimer
                 ? __('Profiles carry a by-function breakdown.', 'super-speedy-performance-analysis')
                 : __('Install the free excimer extension to see which PHP functions the time went into. The Tools tab generates the commands for this server.', 'super-speedy-performance-analysis')),
         ));
 
-        $digests = class_exists('SSPA_Digests') && SSPA_Digests::readable();
+        // Name this the way the Tools card names it, and let performance_schema() supply the
+        // one-sentence state, so the bar cannot drift from the card it links to. "Off" and
+        // "on but unreadable" are different fixes - a my.cnf change plus restart versus one
+        // GRANT - and the old fixed wording only described the second.
+        $ps = SSPA_Tools::performance_schema();
+        $caps = SSPA_Tools::capabilities();
+        $card = $caps['performance_schema']['label'];
+        if ($ps['readable']) {
+            $state = esc_html($card . ': ' . __('active', 'super-speedy-performance-analysis'));
+        } elseif ($ps['on']) {
+            $state = '<span class="sspa-bar-warn">' . esc_html($card . ': ' . __('needs permission - no rows-examined', 'super-speedy-performance-analysis')) . '</span>';
+        } else {
+            $state = '<span class="sspa-bar-warn">' . esc_html($card . ': ' . __('off - no rows-examined', 'super-speedy-performance-analysis')) . '</span>';
+        }
         $bar->add_node(array(
             'id' => 'sspa-state-digests',
             'parent' => 'sspa-state',
-            'title' => $digests
-                ? esc_html__('MySQL digests: readable', 'super-speedy-performance-analysis')
-                : '<span class="sspa-bar-warn">' . esc_html__('MySQL digests unavailable - no rows-examined', 'super-speedy-performance-analysis') . '</span>',
-            'href' => admin_url('admin.php?page=sspa&tab=tools'),
-            'meta' => array('title' => $digests
-                ? __('Queries reading far more rows than they return can be detected.', 'super-speedy-performance-analysis')
-                : __('performance_schema is off or unreadable, so hidden full scans cannot be seen. The Tools tab writes the one GRANT needed.', 'super-speedy-performance-analysis')),
+            'title' => $state,
+            'href' => admin_url('admin.php?page=sspa#tools'),
+            'meta' => array('title' => $ps['readable']
+                ? $ps['detail'] . ' ' . __('Queries reading far more rows than they return can be detected.', 'super-speedy-performance-analysis')
+                : $ps['detail'] . ' ' . sprintf(
+                    /* translators: %s: the Tools tab card name. */
+                    __('Hidden full scans cannot be seen until this is fixed. The "%s" card on the Tools tab shows the exact steps for this server.', 'super-speedy-performance-analysis'),
+                    $card
+                )),
         ));
     }
 

@@ -38,6 +38,17 @@ const { chromium } = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observato
             await page.evaluate(value => { location.hash = value; }, fragment);
             await selected('overview');
         }
+        // The admin bar's "This site" nodes deep-link to Tools. They must use the fragment the
+        // page actually reads, not a ?tab= parameter it ignores, or a real click lands on Overview.
+        await page.goto(site + '/wp-admin/admin.php?page=sspa#overview');
+        await selected('overview');
+        const digestsHref = await page.locator('#wp-admin-bar-sspa-state-digests a').getAttribute('href');
+        assert.ok(digestsHref && !digestsHref.includes('tab='), 'admin-bar digests node must not use a ?tab= parameter: ' + digestsHref);
+        // The node sits in a hover-revealed submenu; a DOM click still follows the anchor's
+        // real href, which is what the assertion is about.
+        await page.$eval('#wp-admin-bar-sspa-state-digests a', a => a.click());
+        await selected('tools');
+        console.log('PASS admin-bar digests node opens Tools');
         assert.deepEqual(errors, [], 'URL fragments must not cause JavaScript errors');
         console.log('PASS no JavaScript errors');
     } finally {
