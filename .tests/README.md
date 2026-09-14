@@ -161,6 +161,16 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   (case 19 failed with `gen=0ms` on a step that is fine, and case 42 tripped a p95 timing
   ceiling).
 
+  **PHP 8.5 on Linux with a distro build: works.** Measured 14 September 2026 on WSL2 Ubuntu
+  24.04 with deb.sury.org's `php8.5-excimer` 1.2.6 loaded into the shared PHP 8.5.10 php-fpm
+  that serves every parallel-dev site. Case 18 passed all 13 assertions through the real
+  HTTP-serving SAPI (462 samples against 564ms generation, phases and attribution intact),
+  and a bounded run of 100 further requests produced no non-200 responses and zero
+  segfault or "exited on signal" lines in the php-fpm and kernel journals, with the FPM
+  master keeping its PID throughout. So the crash count above is a property of the
+  Homebrew/PECL build, not of Excimer on PHP 8.5. Install it with
+  `sudo apt install php8.5-excimer`; the package enables itself and apt restarts php-fpm.
+
   Case 18 therefore FAILS on the original environment without Excimer, and that is the honest state - it is not skipped,
   because a skip that reads as a pass is how coverage rots. If you need it, the options are a
   different PHP build or a pinned-version environment, decided deliberately.
