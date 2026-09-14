@@ -11,6 +11,7 @@ if (!class_exists('SSPA_Component_Map')) {
         private $theme_dirs = array();
         private $abspath;
         private $own_dir;
+        private $plugin_realpaths = array();
         private $reflection_cache = array();
         private $db_layer_cache = array();
 
@@ -67,6 +68,22 @@ if (!class_exists('SSPA_Component_Map')) {
             } else {
                 $this->theme_dirs[] = $this->norm($content . '/themes');
             }
+            // WordPress's own symlink map (wp_register_plugin_realpath): the plugins-directory
+            // path a plugin was registered under => its resolved real path. PHP reports frames
+            // by the resolved path, so without this a symlinked plugin classifies as core or
+            // other. Same source, same direction, as plugin_basename().
+            if (!empty($GLOBALS['wp_plugin_paths']) && is_array($GLOBALS['wp_plugin_paths'])) {
+                foreach ($GLOBALS['wp_plugin_paths'] as $registered => $real) {
+                    $real = $this->norm($real);
+                    if ('' !== $real && $real !== $this->norm($registered)) {
+                        $this->plugin_realpaths[$real] = $this->norm($registered);
+                    }
+                }
+                // Longest prefix first, so a nested real path wins over its parent.
+                uksort($this->plugin_realpaths, static function ($a, $b) {
+                    return strlen($b) - strlen($a);
+                });
+            }
         }
 
         private function norm($path) {
@@ -78,6 +95,15 @@ if (!class_exists('SSPA_Component_Map')) {
          */
         public function classify_file($file) {
             $file = str_replace('\\', '/', (string) $file);
+
+            // A frame inside a symlinked plugin arrives by its real path; put it back under the
+            // plugins directory it was registered from so the ordinary plugin branch owns it.
+            foreach ($this->plugin_realpaths as $real => $registered) {
+                if ($file === $real || strpos($file, $real . '/') === 0) {
+                    $file = $registered . substr($file, strlen($real));
+                    break;
+                }
+            }
 
             if ($this->plugin_dir && strpos($file, $this->plugin_dir . '/') === 0) {
                 $rest = substr($file, strlen($this->plugin_dir) + 1);

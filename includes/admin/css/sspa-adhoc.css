@@ -356,6 +356,9 @@
 
 #sspa-adhoc-pop .sspa-adhoc-topbar {
 	display: flex;
+	/* Four actions plus provenance do not fit one row at phone widths; without wrapping the
+	   last button rendered outside the panel and was clipped. */
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 10px;
 	padding: 2px 0 10px;

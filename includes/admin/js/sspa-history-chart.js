@@ -130,7 +130,7 @@
 			},
 			color: ['#6b7280', '#2271b1', '#d63638'],
 			legend: {top: 0},
-			grid: {left: 72, right: 28, top: 54, bottom: 180},
+			grid: {left: 96, right: 28, top: 54, bottom: 180},
 			tooltip: {
 				trigger: 'item',
 				renderMode: 'html',
@@ -181,6 +181,10 @@
 			yAxis: {
 				type: 'value',
 				name: documentData.metric.label + (unit === 'ms' ? ' (ms)' : ''),
+				// Rotated along the axis rather than sat above it: at phone widths the legend
+				// wraps to a second row exactly where an end-positioned title sits.
+				nameLocation: 'middle',
+				nameGap: 50,
 				min: 0,
 				axisLabel: {formatter: function (value) { return unitValue(value, unit); }}
 			},

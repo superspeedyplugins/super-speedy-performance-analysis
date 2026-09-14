@@ -16,31 +16,39 @@ const nativeRoot = execFileSync(
   ],
   { encoding: "utf8" },
 ).trim();
+// The site is whichever scenario env.sh resolved (SSPA_SCENARIO, default
+// tests-feature-regressions). Three guards stay: it must be an isolated parallel-dev site for
+// this plugin, its plugin symlink must resolve to the checkout running the test, and its
+// hostname must match. Each failure names what was found, so a wrong site reads as a wrong
+// site rather than as a plugin defect.
 const target = process.env.SSPA_TEST_SITE_DIR;
 const site = process.env.SSPA_TEST_SITE_URL;
-if (
-  !target ||
-  !site ||
-  path.resolve(target) !==
-    path.join(
-      nativeRoot,
-      "super-speedy-performance-analysis",
-      "tests-feature-regressions",
-    ) ||
-  path.basename(target) !== "tests-feature-regressions" ||
-  path.basename(path.dirname(target)) !== "super-speedy-performance-analysis" ||
-  fs.realpathSync(
-    path.join(target, "wp-content/plugins/super-speedy-performance-analysis"),
-  ) !== root
-)
+if (!target || !site)
   throw Error(
-    "Matching dedicated native target and invoking plugin checkout are required",
+    "SSPA_TEST_SITE_DIR and SSPA_TEST_SITE_URL are required; source .tests/env.sh first",
   );
-if (
-  new URL(site).hostname !==
-  "tests-feature-regressions.super-speedy-performance-analysis.localhost"
-)
-  throw Error("Unexpected native regression hostname");
+const scenario = path.basename(target);
+const expectedDir = path.join(
+  nativeRoot,
+  "super-speedy-performance-analysis",
+  scenario,
+);
+if (path.resolve(target) !== expectedDir)
+  throw Error(
+    `Refusing non-isolated site ${target}; expected a parallel-dev site under ${expectedDir}`,
+  );
+const linked = fs.realpathSync(
+  path.join(target, "wp-content/plugins/super-speedy-performance-analysis"),
+);
+if (linked !== root)
+  throw Error(
+    `Site ${scenario} loads the plugin from ${linked}, not this checkout ${root}`,
+  );
+const expectedHost = `${scenario}.super-speedy-performance-analysis.localhost`;
+if (new URL(site).hostname !== expectedHost)
+  throw Error(
+    `Unexpected hostname ${new URL(site).hostname}; expected ${expectedHost}`,
+  );
 const wp = (...args) =>
   execFileSync(
     process.env.SSPA_TEST_REAL_WP || "wp",

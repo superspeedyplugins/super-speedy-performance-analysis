@@ -37,8 +37,13 @@ $order_count = count(wc_get_orders(array('limit' => -1, 'return' => 'ids')));
 $preflight = json_decode(sspa_fleet_cli(array('sspa', 'checkout-flow', '--dry-run')), true);
 sspa_fleet_assert(!empty($preflight['woocommerce']) && count(wc_get_orders(array('limit' => -1, 'return' => 'ids'))) === $order_count, 'CLI checkout preflight creates no order');
 $checkout = (int) sspa_fleet_cli(array('sspa', 'checkout-flow', '--payment=no_payment', '--mail=construct', '--porcelain'));
-sspa_fleet_cli(array('sspa', 'checkout-flow', '--payment=no_payment', '--mail=construct', '--no-integrations', '--no-webhooks', '--porcelain'));
+$quiet = (int) sspa_fleet_cli(array('sspa', 'checkout-flow', '--payment=no_payment', '--mail=construct', '--no-integrations', '--no-webhooks', '--porcelain'));
 sspa_fleet_assert($checkout > 0 && SSPA_Run_Controller::run_row($checkout)['status'] === 'done', 'CLI checkout completes real offline purchase lifecycle');
+$default_notes = json_decode((string) SSPA_Run_Controller::run_row($checkout)['notes'], true);
+$quiet_notes = $quiet > 0 ? json_decode((string) SSPA_Run_Controller::run_row($quiet)['notes'], true) : null;
+sspa_fleet_assert($quiet > 0 && is_array($quiet_notes) && 'done' === SSPA_Run_Controller::run_row($quiet)['status'], 'documented --no-integrations --no-webhooks switches parse and the run completes');
+sspa_fleet_assert(is_array($default_notes) && true === $default_notes['flow']['allow_integrations'] && true === $default_notes['flow']['allow_webhooks'], 'without the switches the run records integrations and webhooks allowed');
+sspa_fleet_assert(is_array($quiet_notes) && false === $quiet_notes['flow']['allow_integrations'] && false === $quiet_notes['flow']['allow_webhooks'], 'with the switches the run records integrations and webhooks disabled');
 $collections = array();
 for ($i = 0; $i < 2; $i++) {
     $start = json_decode(sspa_fleet_cli(array('sspa', 'traffic', 'start', '--duration=15m', '--format=json')), true);

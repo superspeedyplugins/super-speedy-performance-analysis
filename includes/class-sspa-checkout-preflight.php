@@ -105,9 +105,13 @@ class SSPA_Checkout_Preflight {
      * @return string block|classic|unknown
      */
     public static function checkout_type() {
+        // WooCommerce's helper proves a block checkout, including one a block theme template
+        // supplies without it appearing in post_content. It does not prove a shortcode: "not
+        // the block" also covers a page holding neither, so fall through and check the page.
         if (class_exists('\Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils')
-            && method_exists('\Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils', 'is_checkout_block_default')) {
-            return \Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils::is_checkout_block_default() ? 'block' : 'classic';
+            && method_exists('\Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils', 'is_checkout_block_default')
+            && \Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils::is_checkout_block_default()) {
+            return 'block';
         }
         $page_id = function_exists('wc_get_page_id') ? wc_get_page_id('checkout') : 0;
         $page = $page_id > 0 ? get_post($page_id) : null;

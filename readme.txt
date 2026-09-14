@@ -35,6 +35,12 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.39 (14th September 2026) =
+* The checkout-flow WP-CLI command accepts its documented --no-integrations and --no-webhooks switches.
+* Plugins loaded through a symlinked directory are attributed to the plugin, not to core.
+* Browser-driven analyses no longer pause for fifteen seconds when the same driver renews its lease within the same second.
+* The checkout preflight reports a checkout page holding neither the shortcode nor the block as unsupported instead of offering a purchase.
+* Report actions wrap inside the panel on phone-width screens instead of being clipped.
+* The History chart's axis title no longer collides with the legend on narrow screens.
 * Admin bar links to the Tools tab now open it, and the misleading MySQL digests warning is gone from the admin bar; the Tools tab still explains the performance_schema setting.
 * History comparisons display retained measurements across old runs, partial analyses, test configurations and changed environments, without requiring complete version metadata.
 

@@ -46,6 +46,12 @@ class SSPA_Atomic_Claim {
             $key
         ));
         list($current_owner, $current_expires) = array_pad(explode('|', $current, 2), 2, '0');
+        // Same owner renewing within the same second: the row already holds exactly the value
+        // we would write, so MySQL reports zero affected rows for the UPDATE. That is a held
+        // lease, not a lost one.
+        if ($current === $value) {
+            return $owner;
+        }
         if ($current_owner === $owner || (int) $current_expires < time()) {
             $updated = $wpdb->query($wpdb->prepare(
                 "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",

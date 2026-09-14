@@ -8,7 +8,10 @@ if (!username_exists('sspa-browser-customer')) wp_insert_user(array('user_login'
 update_option('sspa_share_optin', false);
 update_option('sspa_fleet_enabled', true);
 update_option('sspa_fleet_browser_transport', false);
-update_option('sspa_fleet_http_error', false);
+// update_option() with false on a missing option writes nothing (false equals the "missing"
+// read), which left this row absent on fresh sites and made case 52's result depend on which
+// browser test had run first. Write an explicit stored scalar.
+update_option('sspa_fleet_http_error', '0', true);
 $plugin = WP_PLUGIN_DIR . '/sspa-browser-fixture';
 wp_mkdir_p($plugin);
 copy(__DIR__ . '/browser-runtime.php', $plugin . '/sspa-browser-fixture.php');

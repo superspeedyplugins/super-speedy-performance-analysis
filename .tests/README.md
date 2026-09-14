@@ -18,6 +18,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh history-graceful-unit # production comparison logic with storage adapters, no database
 .tests/run-tests.sh 78-history-graceful # real WordPress retained-record comparison regressions
 .tests/run-tests.sh 79-admin-bar # admin-bar "This site" nodes deep-link to Tools by fragment; no MySQL digests node exists
+.tests/run-tests.sh 80-checkout-type # preflight names a checkout block, shortcode or unsupported page by its real content
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23
@@ -560,8 +561,9 @@ following core adb471e. A refused start is never a skipped/passed fixture or aut
 
 ### Feature regression journeys
 
-The default scenario is `tests-feature-regressions`. The plugin symlink must resolve to the
-invoking checkout. Detached worktrees use `SUPERSPEEDY_WORKSPACE` for the shared native tools;
+The default scenario is `tests-feature-regressions`; any `SSPA_SCENARIO` site works, as the
+journeys take the site `env.sh` resolved. The plugin symlink must resolve to the
+invoking checkout, and the guard's error names the site it found and the checkout it loads. Detached worktrees use `SUPERSPEEDY_WORKSPACE` for the shared native tools;
 all subprocesses receive the guarded WordPress path through the exported executable shim.
 Direct browser scripts also reject a missing or mismatched native target.
 

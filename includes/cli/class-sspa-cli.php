@@ -124,11 +124,11 @@ class SSPA_CLI {
      * [--mail=<mode>]
      * : deliver (default - real emails, really sent, really timed), construct or suppress.
      *
-     * [--no-integrations]
-     * : Unhook third-party order callbacks. The number is then not a real-store number.
+     * [--[no-]integrations]
+     * : --no-integrations unhooks third-party order callbacks. The number is then not a real-store number.
      *
-     * [--no-webhooks]
-     * : Do not fire webhooks.
+     * [--[no-]webhooks]
+     * : --no-webhooks stops webhooks firing.
      *
      * [--dry-run]
      * : Print the pre-flight inventory and create nothing.
@@ -165,8 +165,10 @@ class SSPA_CLI {
         if (!empty($assoc_args['mail'])) {
             $start_args['mail_mode'] = $assoc_args['mail'];
         }
-        $start_args['allow_integrations'] = empty($assoc_args['no-integrations']);
-        $start_args['allow_webhooks'] = empty($assoc_args['no-webhooks']);
+        // WP-CLI parses --no-integrations as integrations=false; the [--[no-]x] synopsis is what
+        // lets the switch through validation at all.
+        $start_args['allow_integrations'] = !isset($assoc_args['integrations']) || filter_var($assoc_args['integrations'], FILTER_VALIDATE_BOOLEAN);
+        $start_args['allow_webhooks'] = !isset($assoc_args['webhooks']) || filter_var($assoc_args['webhooks'], FILTER_VALIDATE_BOOLEAN);
 
         $repeats = max(1, (int) (isset($assoc_args['repeats']) ? $assoc_args['repeats'] : 1));
         $run_ids = array();

@@ -9,7 +9,9 @@ add_action('template_redirect', static function () {
     global $wpdb;
     $wpdb->get_var('SELECT SLEEP(0.08)');
     $wpdb->get_results("SELECT ID, post_title FROM {$wpdb->posts} WHERE post_title LIKE 'Synthetic PA browser%' LIMIT 5");
-    if (get_option('sspa_fleet_http_error') && isset($GLOBALS['sspa_capture'])) {
+    // Captured requests only: an unprofiled anonymous request must not read an sspa_ option,
+    // which case 52 asserts.
+    if (isset($GLOBALS['sspa_capture']) && get_option('sspa_fleet_http_error')) {
         status_header(503);
         echo 'Synthetic measured upstream failure';
         exit;
