@@ -8,6 +8,18 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Catalogue {
 
+    /** The words a person sees for a measurement variant. Keys stay keys everywhere else. */
+    public static function variant_label($variant) {
+        switch ($variant) {
+            case 'admin':
+                return __('administrator', 'super-speedy-performance-analysis');
+            case 'customer':
+                return __('logged-in customer', 'super-speedy-performance-analysis');
+            default:
+                return __('logged-out visitor', 'super-speedy-performance-analysis');
+        }
+    }
+
     /**
      * @param array $only_page_keys Optional filter (spot runs / tests).
      * @return array[] jobs: {page_key, url, variant}
@@ -69,6 +81,24 @@ class SSPA_Catalogue {
                 $pid = wc_get_page_id($wc_page);
                 if ($pid > 0) {
                     $add('wc-' . $wc_page, get_permalink($pid));
+                }
+            }
+            // --- The same store as a logged-in customer ---
+            // Most full-page caches bypass logged-in accounts, so a customer sees the PHP
+            // speed that an anonymous measurement hides. Same URLs as the visitor pages, so
+            // the only difference measured is being logged in. wc-myaccount above stays the
+            // login form a visitor sees; customer-account is the account a customer sees.
+            if (SSPA_Auth::test_customer_id()) {
+                $account = wc_get_page_id('myaccount');
+                if ($account > 0) {
+                    $add('customer-account', get_permalink($account), 'customer');
+                    $add('customer-orders', wc_get_account_endpoint_url('orders'), 'customer');
+                }
+                if ($shop > 0) {
+                    $add('customer-shop', get_permalink($shop), 'customer');
+                }
+                if ($product) {
+                    $add('customer-product', get_permalink($product[0]), 'customer');
                 }
             }
         }

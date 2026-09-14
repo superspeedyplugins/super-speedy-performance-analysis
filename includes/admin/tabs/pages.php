@@ -82,7 +82,7 @@ if (!$sspa_last_run_id) : ?>
         <?php foreach ($sspa_newest as $p) : ?>
             <tr class="sspa-page-row" data-profile-id="<?php echo (int) $p['id']; ?>" title="<?php esc_attr_e('Click for the full profile of this page', 'super-speedy-performance-analysis'); ?>">
                 <td><code><?php echo esc_html($p['page_key']); ?></code></td>
-                <td><?php echo esc_html($p['variant']); ?></td>
+                <td><?php echo esc_html(SSPA_Catalogue::variant_label($p['variant'])); ?></td>
                 <td>
                     <?php echo esc_html(get_date_from_gmt($p['created'], get_option('date_format') . ' ' . get_option('time_format'))); ?>
                     <?php if ('adhoc' === $p['run_type']) : ?>

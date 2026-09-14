@@ -303,9 +303,11 @@ class SSPA_Profile_Panel {
             . '</span>';
         $html .= '<span class="sspa-adhoc-note"><strong>' . esc_html($cached ? self::ago($age) : __('just now', 'super-speedy-performance-analysis')) . '</strong> · '
             . esc_html($when) . ' · <code>' . esc_html($row['page_key']) . '</code> · '
-            . esc_html('admin' === $row['variant']
-                ? __('profiled as admin', 'super-speedy-performance-analysis')
-                : __('profiled as a logged-out visitor', 'super-speedy-performance-analysis'));
+            . esc_html(sprintf(
+                /* translators: %s: who the page was measured as, e.g. "logged-in customer". */
+                __('profiled as %s', 'super-speedy-performance-analysis'),
+                'admin' === $row['variant'] ? __('admin', 'super-speedy-performance-analysis') : ('customer' === $row['variant'] ? __('a logged-in customer', 'super-speedy-performance-analysis') : __('a logged-out visitor', 'super-speedy-performance-analysis'))
+            ));
         if ('adhoc' === $run_type) {
             $html .= ' · ' . esc_html__('one-page analysis', 'super-speedy-performance-analysis');
         } elseif ('admin_save' === $run_type) {
