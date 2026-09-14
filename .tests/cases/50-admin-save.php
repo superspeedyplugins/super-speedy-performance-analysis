@@ -213,7 +213,14 @@ if (is_wp_error($prepared)) {
         sspa_admin_save_t('admin-save-post' === $profile['page_key'], 'the profile is classified as a post save');
         sspa_admin_save_t((float) $profile['page_gen_ms'] >= 650, 'the real slow save callback is inside the profile (' . $profile['page_gen_ms'] . 'ms)');
         sspa_admin_save_t(is_array($capture) && !empty($capture['boot']['segments']), 'the save has full request-phase diagnostics');
-        sspa_admin_save_t((int) $profile['mail_count'] >= 1 && (int) get_option('sspa_admin_save_fixture_mail') === 1, 'mail ran normally and was measured');
+        // The fixture sets this flag in the measured web request. This process deleted the
+        // previous run's row on entry, which primed its own not-options cache, so read the
+        // option fresh or a leftover row from an earlier run makes the flag read as unset.
+        wp_cache_delete('sspa_admin_save_fixture_mail', 'options');
+        wp_cache_delete('notoptions', 'options');
+        wp_cache_delete('alloptions', 'options');
+        $fixture_mail = (int) get_option('sspa_admin_save_fixture_mail');
+        sspa_admin_save_t((int) $profile['mail_count'] >= 1 && 1 === $fixture_mail, 'mail ran normally and was measured (measured ' . (int) $profile['mail_count'] . ', fixture flag ' . $fixture_mail . ')');
 
         $page_evidence = sspa_admin_save_evidence($prepared['run_id'], 'sspa/page-profile');
         $save_evidence = sspa_admin_save_evidence($prepared['run_id'], 'sspa/admin-save');
