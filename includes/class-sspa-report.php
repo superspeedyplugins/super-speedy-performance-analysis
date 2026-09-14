@@ -301,15 +301,12 @@ class SSPA_Report {
     const PAGE_PLUGIN_USAGE_SCHEMA = 1;
 
     /**
-     * The same normalisation SSPA_Community_Exporter::safe_version() applies when the
-     * sweep stamps plugin_impacts.plugin_version - duplicated here because that method
-     * is deliberately private to the exporter. Keep the two in step: a divergence
-     * makes measured_version comparisons fail on formatting and silently blocks
-     * consumers' promotions.
+     * The same normalisation the exporter applies when the sweep stamps
+     * plugin_impacts.plugin_version: both call SSPA_Version::shared(), so a measured_version
+     * comparison cannot fail on formatting alone.
      */
     private static function comparable_version($version) {
-        $version = trim((string) $version);
-        return preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $version) ? $version : null;
+        return SSPA_Version::shared($version);
     }
 
     public static function page_plugin_usage($run_id = 0) {

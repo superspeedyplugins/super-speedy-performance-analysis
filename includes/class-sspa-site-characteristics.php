@@ -283,10 +283,6 @@ class SSPA_Site_Characteristics {
     }
 
     private static function safe_version($version) {
-        $version = trim((string) $version);
-        if ('' === $version || !preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $version)) {
-            return null;
-        }
-        return $version;
+        return SSPA_Version::shared($version);
     }
 }

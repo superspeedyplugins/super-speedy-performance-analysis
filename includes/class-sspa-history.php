@@ -750,8 +750,7 @@ class SSPA_History {
     }
 
     private static function safe_version($version) {
-        $version = trim((string) $version);
-        return preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$/', $version) ? $version : '';
+        return SSPA_Version::normalise($version);
     }
 
     private static function safe_uuid($uuid) {

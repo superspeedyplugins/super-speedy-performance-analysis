@@ -259,8 +259,7 @@ class SSPA_Change_Set {
     }
 
     private static function safe_version($version) {
-        $version = trim(sanitize_text_field((string) $version));
-        return preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$/', $version) ? $version : '';
+        return SSPA_Version::normalise($version);
     }
 
     private static function migrate_legacy_toggle() {

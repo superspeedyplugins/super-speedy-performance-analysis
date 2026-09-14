@@ -188,7 +188,7 @@ class SSPA_Community_Privacy {
             // scheme, '@' or '/', so a version-shaped value under a version key cannot be a
             // URL, an email or a path either. Exempt only that exact combination.
             $is_version = ('version' === $key_name || '_version' === substr($key_name, -8))
-                && preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $value);
+                && null !== SSPA_Version::shared($value);
 
             if (!$is_version
                 && (preg_match('#https?://#i', $value)

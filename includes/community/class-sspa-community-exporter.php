@@ -980,8 +980,7 @@ class SSPA_Community_Exporter {
     }
 
     private static function safe_version($version) {
-        $version = trim((string) $version);
-        return ('' !== $version && preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$/', $version)) ? $version : null;
+        return SSPA_Version::shared($version);
     }
 
     private static function sort_inventory($a, $b) {
