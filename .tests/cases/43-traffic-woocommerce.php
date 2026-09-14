@@ -22,7 +22,9 @@ SSPA_Traffic_Helper::remove();
 $wpdb->query("DELETE FROM $events");
 $wpdb->query("DELETE FROM $collections");
 
-$product_ids = wc_get_products(array('status' => 'publish', 'type' => 'simple', 'limit' => 1, 'return' => 'ids'));
+// In stock, or WooCommerce refuses the add-to-cart and there is no basket to observe. On a
+// retained site the newest simple product can be another case's out-of-stock fixture.
+$product_ids = wc_get_products(array('status' => 'publish', 'type' => 'simple', 'stock_status' => 'instock', 'limit' => 1, 'return' => 'ids'));
 $product_id = $product_ids ? (int) $product_ids[0] : 0;
 sspa_tw_t($product_id > 0, 'fixture has a simple WooCommerce product');
 if (!$product_id) {
@@ -45,6 +47,11 @@ SSPA_Traffic_Helper::install(array(
     'origin_sample_modulus' => 1,
     'key_option' => SSPA_Traffic_Collection::key_option($collection_id),
 ));
+// The observer is a generated MU file carrying this collection's id and window. php-fpm's
+// opcache revalidates files every opcache.revalidate_freq seconds (2 here), so requests made
+// before that run the PREVIOUS collection's observer, whose window is closed, and the first
+// basket and cart events of this collection are never recorded. Same wait as case 75.
+sleep(3);
 
 $plain_anonymous = wp_remote_get(add_query_arg('sspa_traffic_fixture', 'plain-anonymous', wc_get_page_permalink('shop')), array(
     'timeout' => 20,
@@ -57,6 +64,11 @@ $basket_events = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $even
 $cart_events = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $events WHERE collection_id = %d AND event_code = %d", $collection_id, SSPA_Traffic_Codes::EVENT_CART_VIEWED));
 $basket_request = $wpdb->get_row($wpdb->prepare("SELECT actor_key,actor_state,flags FROM $events WHERE collection_id = %d AND event_code = 1 AND actor_state = %d ORDER BY id DESC LIMIT 1", $collection_id, SSPA_Traffic_Codes::ACTOR_GUEST_NON_EMPTY_BASKET), ARRAY_A);
 sspa_tw_t(!is_wp_error($add) && !is_wp_error($cart), 'guest basket requests complete');
+$cart_cookie_set = false;
+foreach ($cookies as $cookie) {
+    if (0 === strpos($cookie->name, 'woocommerce_items_in_cart')) { $cart_cookie_set = true; }
+}
+sspa_tw_t($cart_cookie_set, 'WooCommerce accepted the add-to-cart and set its cart cookie (product ' . $product_id . ')');
 sspa_tw_t($basket_events >= 1 && $cart_events >= 1, 'empty-to-non-empty basket and cart view events are observed');
 sspa_tw_t($basket_request && strlen($basket_request['actor_key']) === 12, 'guest basket request has only a twelve-byte keyed actor join');
 
