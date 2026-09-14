@@ -110,8 +110,18 @@ foreach (get_posts(array('post_type' => $sspa_cpt_slug, 'numberposts' => -1, 'po
 }
 
 // Enough of them to be this site's primary content, ahead of the sample store's products and
-// posts - that is the case where a bespoke slug would escape if anything could let it.
-$sspa_cpt_count = 200;
+// posts - that is the case where a bespoke slug would escape if anything could let it. Sized
+// from the site as it stands, not a fixed number: on a retained site earlier cases leave
+// hundreds of posts behind, and a fixed 200 then loses to them, which is the classifier
+// being right about the site rather than wrong about the slug.
+$sspa_largest_other = 0;
+foreach (get_post_types(array('public' => true), 'names') as $sspa_type) {
+    if (in_array($sspa_type, array($sspa_cpt_slug, 'page', 'attachment'), true)) {
+        continue;
+    }
+    $sspa_largest_other = max($sspa_largest_other, (int) wp_count_posts($sspa_type)->publish);
+}
+$sspa_cpt_count = max(200, $sspa_largest_other + 50);
 $sspa_cpt_posts = array();
 for ($sspa_i = 0; $sspa_i < $sspa_cpt_count; $sspa_i++) {
     $sspa_cpt_posts[] = wp_insert_post(array(
