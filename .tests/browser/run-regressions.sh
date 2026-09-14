@@ -17,7 +17,7 @@ for check in browser-transport loopback-fallback quick-comparison measurement me
     matched=$((matched + 1))
     if [ "$check" = traffic-workflow ]; then cli plugin activate scalability-pro --quiet || exit 1; fi
     if [ "$check" = traffic-workflow ] && [ ! -f "$SSPA_SITE_DIR/wp-content/plugins/zz-ajax-owner/fixture.php" ]; then
-        bash "$PLUGIN_DIR/.tests/run-tests.sh" 71-ajax-profile > "$SSPA_FLEET_OUTPUT/ajax-prerequisite.log" 2>&1 || exit 1
+        bash "$PLUGIN_DIR/.tests/run-tests.sh" 71-fast-ajax-profile > "$SSPA_FLEET_OUTPUT/ajax-prerequisite.log" 2>&1 || exit 1
         bash "$PLUGIN_DIR/.tests/run-tests.sh" 72-fast-ajax-spro >> "$SSPA_FLEET_OUTPUT/ajax-prerequisite.log" 2>&1 || exit 1
     fi
     cli eval-file "$PLUGIN_DIR/.tests/fixtures/browser-prepare.php" > "$SSPA_FLEET_OUTPUT/$check-fixtures.json" || exit 1
