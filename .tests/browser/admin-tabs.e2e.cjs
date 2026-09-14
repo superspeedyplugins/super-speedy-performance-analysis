@@ -42,13 +42,14 @@ const { chromium } = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observato
         // page actually reads, not a ?tab= parameter it ignores, or a real click lands on Overview.
         await page.goto(site + '/wp-admin/admin.php?page=sspa#overview');
         await selected('overview');
-        const digestsHref = await page.locator('#wp-admin-bar-sspa-state-digests a').getAttribute('href');
-        assert.ok(digestsHref && !digestsHref.includes('tab='), 'admin-bar digests node must not use a ?tab= parameter: ' + digestsHref);
+        const excimerHref = await page.locator('#wp-admin-bar-sspa-state-excimer a').getAttribute('href');
+        assert.ok(excimerHref && !excimerHref.includes('tab='), 'admin-bar Excimer node must not use a ?tab= parameter: ' + excimerHref);
+        assert.equal(await page.locator('#wp-admin-bar-sspa-state-digests').count(), 0, 'the admin bar must not carry a MySQL digests node');
         // The node sits in a hover-revealed submenu; a DOM click still follows the anchor's
         // real href, which is what the assertion is about.
-        await page.$eval('#wp-admin-bar-sspa-state-digests a', a => a.click());
+        await page.$eval('#wp-admin-bar-sspa-state-excimer a', a => a.click());
         await selected('tools');
-        console.log('PASS admin-bar digests node opens Tools');
+        console.log('PASS admin-bar Excimer node opens Tools');
         assert.deepEqual(errors, [], 'URL fragments must not cause JavaScript errors');
         console.log('PASS no JavaScript errors');
     } finally {

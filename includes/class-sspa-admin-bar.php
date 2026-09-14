@@ -289,33 +289,11 @@ class SSPA_Admin_Bar {
                 : __('Install the free excimer extension to see which PHP functions the time went into. The Tools tab generates the commands for this server.', 'super-speedy-performance-analysis')),
         ));
 
-        // Name this the way the Tools card names it, and let performance_schema() supply the
-        // one-sentence state, so the bar cannot drift from the card it links to. "Off" and
-        // "on but unreadable" are different fixes - a my.cnf change plus restart versus one
-        // GRANT - and the old fixed wording only described the second.
-        $ps = SSPA_Tools::performance_schema();
-        $caps = SSPA_Tools::capabilities();
-        $card = $caps['performance_schema']['label'];
-        if ($ps['readable']) {
-            $state = esc_html($card . ': ' . __('active', 'super-speedy-performance-analysis'));
-        } elseif ($ps['on']) {
-            $state = '<span class="sspa-bar-warn">' . esc_html($card . ': ' . __('needs permission - no rows-examined', 'super-speedy-performance-analysis')) . '</span>';
-        } else {
-            $state = '<span class="sspa-bar-warn">' . esc_html($card . ': ' . __('off - no rows-examined', 'super-speedy-performance-analysis')) . '</span>';
-        }
-        $bar->add_node(array(
-            'id' => 'sspa-state-digests',
-            'parent' => 'sspa-state',
-            'title' => $state,
-            'href' => admin_url('admin.php?page=sspa#tools'),
-            'meta' => array('title' => $ps['readable']
-                ? $ps['detail'] . ' ' . __('Queries reading far more rows than they return can be detected.', 'super-speedy-performance-analysis')
-                : $ps['detail'] . ' ' . sprintf(
-                    /* translators: %s: the Tools tab card name. */
-                    __('Hidden full scans cannot be seen until this is fixed. The "%s" card on the Tools tab shows the exact steps for this server.', 'super-speedy-performance-analysis'),
-                    $card
-                )),
-        ));
+        // Deliberately no performance_schema / MySQL digests node here. It read as "no rows
+        // examined" - as if the query view were missing - when queries and their counts are
+        // fully visible; the schema only adds the server's own rows-examined and no-index
+        // counters, which does not earn a warning on every admin page. Excimer is the one
+        // capability worth surfacing. The Tools card still explains the setting.
     }
 
     /** E. Hand the result to a person or an LLM. */

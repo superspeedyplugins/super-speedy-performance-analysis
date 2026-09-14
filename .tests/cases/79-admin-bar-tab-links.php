@@ -21,7 +21,7 @@ $bar->initialize();
 SSPA_Admin_Bar::nodes($bar);
 
 $tools = admin_url('admin.php?page=sspa#tools');
-foreach (array('sspa-state-object-cache', 'sspa-state-excimer', 'sspa-state-digests') as $id) {
+foreach (array('sspa-state-object-cache', 'sspa-state-excimer') as $id) {
     $node = $bar->get_node($id);
     sspa_79_t($node && is_string($node->href), $id . ' renders with an href');
     $href = $node ? (string) $node->href : '';
@@ -38,18 +38,20 @@ foreach ($bar->get_nodes() as $node) {
 }
 sspa_79_t(!$guessed, 'no sspa admin-bar node uses a ?tab= parameter (' . implode(', ', $guessed) . ')');
 
-// The digests node reports the real performance_schema state in the Tools card's own words.
-$ps = SSPA_Tools::performance_schema();
-$caps = SSPA_Tools::capabilities();
-$card_label = $caps['performance_schema']['label'];
-$node = $bar->get_node('sspa-state-digests');
-$title = $node ? wp_strip_all_tags((string) $node->title) : '';
-$tooltip = $node && isset($node->meta['title']) ? (string) $node->meta['title'] : '';
-echo "INFO: performance_schema status on this database: " . $ps['status'] . "\n";
-sspa_79_t(false !== strpos($title, $card_label), 'digests node names the Tools card it points at (' . $title . ')');
-sspa_79_t(false !== strpos($tooltip, $ps['detail']), 'digests tooltip carries the performance_schema detail for this server (' . $tooltip . ')');
-if (!$ps['on']) {
-    sspa_79_t(false === stripos($tooltip, 'one GRANT'), 'with performance_schema off, the tooltip does not claim one GRANT is enough');
+// There is no digests node. "no rows-examined" read as "the query view is missing" when
+// queries and counts are fully visible; performance_schema only adds the server's own
+// rows-examined and no-index counters, and that does not earn a warning on every admin page.
+// The Tools card still explains the setting for anyone who goes looking.
+sspa_79_t(null === $bar->get_node('sspa-state-digests'), 'the admin bar carries no MySQL digests / query fingerprints node');
+$mentions = array();
+foreach ($bar->get_nodes() as $node) {
+    $text = wp_strip_all_tags((string) $node->title) . ' ' . (isset($node->meta['title']) ? $node->meta['title'] : '');
+    if (0 === strpos((string) $node->id, 'sspa-') && preg_match('/rows-examined|query fingerprints|MySQL digests|performance_schema/i', $text)) {
+        $mentions[] = $node->id;
+    }
 }
+sspa_79_t(!$mentions, 'no admin-bar node mentions digests, fingerprints or rows-examined (' . implode(', ', $mentions) . ')');
+$excimer = $bar->get_node('sspa-state-excimer');
+sspa_79_t($excimer && '' !== wp_strip_all_tags((string) $excimer->title), 'the Excimer node remains, as the capability worth surfacing');
 
 if ($GLOBALS['sspa_79_failures']) { exit(1); }

@@ -17,7 +17,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
 .tests/run-tests.sh history-graceful-unit # production comparison logic with storage adapters, no database
 .tests/run-tests.sh 78-history-graceful # real WordPress retained-record comparison regressions
-.tests/run-tests.sh 79-admin-bar # admin-bar "This site" nodes deep-link to Tools by fragment and describe the real performance_schema state
+.tests/run-tests.sh 79-admin-bar # admin-bar "This site" nodes deep-link to Tools by fragment; no MySQL digests node exists
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23
