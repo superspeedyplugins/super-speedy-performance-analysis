@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.40 (14th September 2026) =
+* A traffic collection stopped early now keeps a fixed observed duration, so its projected daily figures and any comparison built on them no longer drift until the planned end time passes.
 * When an analysis temporarily swaps out another plugin's db.php drop-in, the serving PHP's opcache is invalidated on the swap and on the restore, so the first profiled requests no longer run the displaced file.
 * Scans now measure My Account, Orders, the shop and a product page as a logged-in customer, using a synthetic account that is recreated for every run and cannot be logged into by a person.
 

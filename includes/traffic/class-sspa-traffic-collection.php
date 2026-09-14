@@ -731,7 +731,13 @@ class SSPA_Traffic_Collection {
         if (!$started || !$until) {
             return 0;
         }
-        return max(1, min(time(), $until) - $started);
+        // An emergency stop records finished_at but leaves the planned collect_until in
+        // place. The window observed nothing after the stop, so the duration every projected
+        // figure is normalised by ends there; otherwise a stopped window's per-day numbers
+        // kept shrinking until the planned end passed.
+        $finished = !empty($collection['finished_at']) ? strtotime($collection['finished_at']) : 0;
+        $end = $finished ? min($until, $finished) : $until;
+        return max(1, min(time(), $end) - $started);
     }
 
     /**
