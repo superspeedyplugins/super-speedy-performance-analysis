@@ -47,8 +47,33 @@
 		pop().find('.sspa-adhoc-body').html(html);
 	}
 
+	// Whatever opened the panel gets focus back when it closes, so a keyboard user is not
+	// dropped at the top of the document after Escape. The opener is the focused element at
+	// the moment the panel appears, or, for a mouse click on something that cannot hold focus,
+	// the last thing pressed.
+	var opener = null;
+	var lastPressed = null;
+	$(document).on('mousedown', function (e) {
+		lastPressed = e.target;
+	});
 	function show() {
-		pop().show();
+		var el = pop();
+		if (!el.is(':visible')) {
+			var active = document.activeElement;
+			opener = (active && active !== document.body && !el[0].contains(active)) ? active : lastPressed;
+		}
+		el.show();
+	}
+	function hide() {
+		pop().hide();
+		var target = opener;
+		opener = null;
+		if (target && document.contains(target)) {
+			if (!target.hasAttribute('tabindex') && !/^(a|button|input|select|textarea)$/i.test(target.tagName)) {
+				target.setAttribute('tabindex', '-1');
+			}
+			target.focus();
+		}
 	}
 
 	// Which page the panel is currently showing, so a re-run or a finished impact sweep knows
@@ -282,19 +307,19 @@
 		e.preventDefault();
 		var el = pop();
 		if (el.is(':visible')) {
-			el.hide();
+			hide();
 			return;
 		}
 		openUrl(pageUrl());
 	});
 
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-close', function () {
-		pop().hide();
+		hide();
 	});
 
 	$(document).on('keydown', function (e) {
 		if ('Escape' === e.key && $('#sspa-adhoc-pop').is(':visible')) {
-			pop().hide();
+			hide();
 		}
 	});
 

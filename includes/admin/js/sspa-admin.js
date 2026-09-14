@@ -374,6 +374,13 @@ jQuery(document).on('click', '.sspa-history-download-export', function () {
 // by the same PHP partial. This used to build its own markup here with html += concatenation,
 // which is precisely how the two views ended up showing different subsets of one capture.
 
+// A row is a button: it opens by click, and by Enter or Space from the keyboard.
+jQuery(document).on('keydown', '.sspa-page-row', function (e) {
+	if ('Enter' === e.key || ' ' === e.key) {
+		e.preventDefault();
+		jQuery(this).trigger('click');
+	}
+});
 jQuery(document).on('click', '.sspa-page-row', function () {
 	if (!window.sspaPanel) {
 		return;

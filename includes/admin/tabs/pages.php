@@ -80,7 +80,7 @@ if (!$sspa_last_run_id) : ?>
         </thead>
         <tbody>
         <?php foreach ($sspa_newest as $p) : ?>
-            <tr class="sspa-page-row" data-profile-id="<?php echo (int) $p['id']; ?>" title="<?php esc_attr_e('Click for the full profile of this page', 'super-speedy-performance-analysis'); ?>">
+            <tr class="sspa-page-row" data-profile-id="<?php echo (int) $p['id']; ?>" tabindex="0" role="button" title="<?php esc_attr_e('Click for the full profile of this page', 'super-speedy-performance-analysis'); ?>">
                 <td><code><?php echo esc_html($p['page_key']); ?></code></td>
                 <td><?php echo esc_html(SSPA_Catalogue::variant_label($p['variant'])); ?></td>
                 <td>
