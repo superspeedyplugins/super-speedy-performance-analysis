@@ -940,7 +940,11 @@ class SSPA_Checkout_Flow {
      */
     private static function run_order_management($crawler, $flags, &$result, $user_id) {
         $order_id = (int) end($result['order_ids']);
-        $order = ($order_id && function_exists('wc_get_order')) ? wc_get_order($order_id) : null;
+        // Read from the database, not from this process's cache: remember_order() loaded the
+        // order while it was still a checkout draft, and the Store API purchase completed it
+        // in another process. The cached object would report "checkout-draft" as the status
+        // the checkout left it at.
+        $order = ($order_id && function_exists('wc_get_order')) ? self::fresh_order($order_id) : null;
         if (!$order) {
             $result['steps'][] = self::skipped_step('flow-view-order', __('no order to manage', 'super-speedy-performance-analysis'));
             $result['steps'][] = self::skipped_step('flow-complete-order', __('no order to manage', 'super-speedy-performance-analysis'));

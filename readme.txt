@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.39 (14th September 2026) =
+* Block checkout analyses record the order's real processing status before completion instead of a stale checkout-draft.
 * The customer account WooCommerce auto-creates during a checkout analysis on stores without guest checkout is now deleted at the end of the run.
 * The checkout-flow WP-CLI command accepts its documented --no-integrations and --no-webhooks switches.
 * Plugins loaded through a symlinked directory are attributed to the plugin, not to core.
