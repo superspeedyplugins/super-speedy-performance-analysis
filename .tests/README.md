@@ -26,6 +26,9 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 85-version # one plugin-version normaliser at every History entry point, with explicit invalid/pre-release behaviour
 .tests/run-tests.sh 86-plugin-change # one validated plugin-change record shared by capture, the run context and History
 .tests/run-tests.sh 87-customer-variant # logged-in customer measurements: catalogue, fresh synthetic account, labels, export, History
+.tests/run-tests.sh 88-query-monitor # real Query Monitor agreement on its dedicated site: tolerances, hold-and-restore of QM's db.php
+.tests/browser/run-regressions.sh loopback-fallback # real loopback failure falls back to browser transport with complete evidence
+.tests/browser/run-regressions.sh quick-comparison # detected plugin update -> notice -> one spot run -> History names the change
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence

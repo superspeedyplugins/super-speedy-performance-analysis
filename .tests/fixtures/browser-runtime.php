@@ -17,6 +17,16 @@ add_action('template_redirect', static function () {
         exit;
     }
 });
+// A real loopback failure for the fallback journey: while the flag is on, the server's own
+// profiler requests (the ones carrying the token header) are refused at the HTTP layer, as
+// a host firewall would refuse them. Browser access is untouched, and nothing forces the
+// transport, so the plugin's own decision is what gets exercised.
+add_filter('pre_http_request', static function ($pre, $args, $url) {
+    if (false !== $pre) return $pre;
+    $headers = isset($args['headers']) && is_array($args['headers']) ? array_change_key_case($args['headers'], CASE_LOWER) : array();
+    if (!isset($headers[strtolower(SSPA_Token::HEADER)]) || !get_option('sspa_fleet_loopback_blocked')) return $pre;
+    return new WP_Error('http_request_failed', 'cURL error 7: Failed to connect (synthetic loopback block)');
+}, 5, 3);
 add_filter('sspa_transport', static function ($transport, $type) {
     return get_option('sspa_fleet_browser_transport') && $type !== 'deep' && $type !== 'checkout' ? 'browser' : $transport;
 }, 10, 2);
