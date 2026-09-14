@@ -1,7 +1,7 @@
 <?php
 // Client History charts use the same public series document as the wp-admin adapter.
 // This case drives real spot checks on an unchanged active-plugin list, then changes
-// only one active plugin's version and proves the two contiguous measured setups split.
+// only one active plugin's version and compares the exact retained measurements.
 
 defined('ABSPATH') || exit;
 
@@ -93,7 +93,7 @@ if (!class_exists('SSPA_History_Series')) {
     return;
 }
 
-$document = SSPA_History_Series::build(end($current_ids), 'request_wall_ms');
+$document = SSPA_History_Series::build(end($current_ids), 'request_wall_ms', end($previous_ids), 'pair');
 sspa_62_t(!is_wp_error($document), 'the current run resolves a setup-series document');
 if (is_wp_error($document)) {
     echo 'FAIL: series: ' . $document->get_error_message() . "\n";
@@ -105,8 +105,8 @@ sspa_62_t(
     'the chart document has a stable versioned schema'
 );
 sspa_62_t(
-    $previous_ids === $document['previous']['run_ids'] && $current_ids === $document['current']['run_ids'],
-    'three adjacent old-version runs and two adjacent new-version runs form separate periods'
+    array(end($previous_ids)) === $document['previous']['run_ids'] && array(end($current_ids)) === $document['current']['run_ids'],
+    'selected old-version and new-version runs stay exact without period substitution'
 );
 sspa_62_t(
     $document['previous']['fingerprint'] !== $document['current']['fingerprint'],
@@ -131,9 +131,9 @@ $restored = SSPA_History_Series::build($restored_id, 'request_wall_ms');
 sspa_62_t(
     !is_wp_error($restored)
         && array($restored_id) === $restored['current']['run_ids']
-        && $current_ids === $restored['previous']['run_ids']
+        && array(end($current_ids)) === $restored['previous']['run_ids']
         && !array_intersect($previous_ids, $restored['current']['run_ids']),
-    'returning to setup 1 creates a new period instead of merging non-adjacent setup 1 runs'
+    'returning to setup 1 compares the immediately previous saved run'
 );
 
 $chart_html = SSPA_History_Chart::render($restored);
@@ -143,8 +143,8 @@ if (preg_match('/<script type="application\/json" class="sspa-history-chart-docu
 }
 sspa_62_t(
     false !== strpos($chart_html, 'data-sspa-history-chart')
-        && false !== strpos($chart_html, 'Previous setup')
-        && false !== strpos($chart_html, 'Current setup')
+        && false !== strpos($chart_html, 'Before run')
+        && false !== strpos($chart_html, 'After run')
         && false !== strpos($chart_html, 'View chart data')
         && SSPA_History_Series::SCHEMA === (isset($embedded_document['schema']) ? $embedded_document['schema'] : ''),
     'the History adapter renders the chart mount and accessible table from the same document'
@@ -160,7 +160,7 @@ foreach (SSPA_History_Series::metrics() as $metric_key => $metric_definition) {
     );
 }
 
-// A newer corrupt/incompatible saved candidate must not replace the latest usable chart.
+// A newer run's metadata cannot exclude its retained measurements.
 $incompatible_id = sspa_62_drive_run();
 sspa_62_t(!is_wp_error($incompatible_id), 'the newer compatibility-candidate measurement completes');
 if (!is_wp_error($incompatible_id)) {
@@ -184,12 +184,12 @@ if (!is_wp_error($incompatible_id)) {
     );
     $automatic = SSPA_History_Series::build(0, 'request_wall_ms');
     sspa_62_t(
-        !is_wp_error($automatic) && (int) $restored_id === (int) $automatic['anchor_run_id'],
-        'automatic History selection skips a newer incompatible measurement candidate'
+        !is_wp_error($automatic) && (int) $incompatible_id === (int) $automatic['anchor_run_id'],
+        'automatic History selection retains the newest measurement regardless of format version'
     );
     sspa_62_t(
-        !SSPA_History_Series::is_compatible_run_id($incompatible_id),
-        'an exact quick-comparison baseline cannot bind an incompatible run'
+        SSPA_History_Series::is_compatible_run_id($incompatible_id),
+        'a quick-comparison baseline may use any retained format version'
     );
     $wpdb->update(
         SSPA_Schema::table('runs'),
@@ -206,19 +206,20 @@ if (!is_wp_error($incompatible_id)) {
     sort($fault_states, SORT_STRING);
     sspa_62_t(
         !empty($fault_page)
-            && array('missing', 'transport_error') === $fault_states
-            && 2 === (int) $fault_page['current']['fault_count']
+            && array('missing') === $fault_states
+            && 1 === (int) $fault_page['current']['fault_count']
+            && 'transport_error' === $fault_page['current']['points'][0]['state']
             && count($fault_page['current']['points']) === (int) $fault_page['current']['point_count'],
-        'transport errors and missing measurements keep distinct states and cannot contribute to the timing median'
+        'transport error timings remain measured while missing values stay missing'
     );
     $fault_html = SSPA_History_Chart::render($fault_document);
     sspa_62_t(
-        false !== strpos($fault_html, 'transport error') && false !== strpos($fault_html, 'missing measurement'),
+        false !== strpos($fault_html, 'transport_error') && false !== strpos($fault_html, 'missing measurement'),
         'the accessible chart table names each failed evidence state'
     );
 }
 
-// An unreadable run is a period boundary. It cannot silently join known A runs on either side.
+// A missing inventory cannot exclude the immediately preceding run.
 $unknown_boundary_id = sspa_62_drive_run();
 $boundary_anchor_id = sspa_62_drive_run();
 sspa_62_t(!is_wp_error($unknown_boundary_id) && !is_wp_error($boundary_anchor_id), 'the unknown-boundary fixture measurements complete');
@@ -227,8 +228,9 @@ if (!is_wp_error($unknown_boundary_id) && !is_wp_error($boundary_anchor_id)) {
     $wpdb->update(SSPA_Schema::table('runs'), array('plugin_set' => ''), array('id' => $unknown_boundary_id));
     $boundary_document = SSPA_History_Series::build($boundary_anchor_id, 'request_wall_ms');
     sspa_62_t(
-        !is_wp_error($boundary_document) && array($boundary_anchor_id) === $boundary_document['current']['run_ids'],
-        'a run without a versioned setup breaks contiguity instead of joining setup periods across it'
+        !is_wp_error($boundary_document) && array($boundary_anchor_id) === $boundary_document['current']['run_ids']
+            && array($unknown_boundary_id) === $boundary_document['previous']['run_ids'],
+        'a run without version metadata does not prevent the next run comparison'
     );
     $wpdb->update(SSPA_Schema::table('runs'), array('plugin_set' => $unknown_row['plugin_set']), array('id' => $unknown_boundary_id));
 }

@@ -111,6 +111,7 @@ class SSPA_History_Chart {
                             <th scope="row">
                                 <?php echo esc_html($page['label']); ?><br>
                                 <span class="description"><?php echo esc_html($page['method'] . ' · ' . $page['variant'] . ' · ' . $page['object_cache_mode']); ?></span>
+                                <?php if (!empty($page['configuration'])) : ?><br><span class="description"><?php echo esc_html(sprintf(__('Test configuration: %s', 'super-speedy-performance-analysis'), $page['configuration'])); ?></span><?php endif; ?>
                             </th>
                             <td><?php echo esc_html(self::value_list($previous_values, $unit)); ?></td>
                             <td><?php echo esc_html(self::value($page['previous']['median'], $unit)); ?></td>
@@ -136,7 +137,7 @@ class SSPA_History_Chart {
                                                     $point['sample']
                                                 ) : __('page summary', 'super-speedy-performance-analysis')
                                             )); ?>
-                                        </button></li>
+                                        </button><?php if (!empty($point['state'])) : ?> <span><?php echo esc_html(str_replace('_', ' ', $point['state'])); ?></span><?php endif; ?></li>
                                         <?php endforeach;
                                     endforeach; ?>
                                     </ul>
@@ -178,9 +179,13 @@ class SSPA_History_Chart {
             </div>
             <div class="sspa-history-period sspa-history-period-current">
                 <span><?php echo esc_html('pair' === ($document['selection_mode'] ?? 'setup') ? __('After run', 'super-speedy-performance-analysis') : __('Current setup', 'super-speedy-performance-analysis')); ?></span>
+                <?php if ($document['current']) : ?>
                 <strong><?php echo esc_html(self::dates($document['current'])); ?></strong>
                 <small><?php echo esc_html('#' . implode(', #', $document['current']['run_ids'])); ?></small>
                 <small><?php /* translators: %d: number of analysis runs */ printf(esc_html(_n('%d analysis', '%d analyses', $document['current']['run_count'], 'super-speedy-performance-analysis')), (int) $document['current']['run_count']); ?></small>
+                <?php else : ?>
+                    <strong><?php esc_html_e('No saved measurements selected', 'super-speedy-performance-analysis'); ?></strong>
+                <?php endif; ?>
             </div>
         </div>
         <?php if (!empty($document['setup_changes'])) : ?>

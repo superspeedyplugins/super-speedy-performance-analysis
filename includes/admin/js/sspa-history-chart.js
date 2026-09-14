@@ -43,28 +43,30 @@
 	}
 
 	function axisLabel(page) {
-		return page.label.replace(/^Admin\s+/i, 'wp-admin ').replace(/^Wc\s+/i, '');
+		return page.label.replace(/^Admin\s+/i, 'wp-admin ').replace(/^Wc\s+/i, '')
+			+ (page.configuration ? ' (test ' + page.configuration.slice(0, 8) + ')' : '');
 	}
 
 	function pageTooltip(page, period) {
 		return '<strong>' + escapeText(axisLabel(page) + (period ? ' (' + period + ')' : '')) + '</strong>'
 			+ (page.relative_url ? '<br>' + escapeText(page.relative_url) : '')
-			+ '<br>' + escapeText(page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode);
+			+ '<br>' + escapeText(page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode)
+			+ (page.configuration ? '<br>Test configuration: ' + escapeText(page.configuration) : '');
 	}
 
 	function point(pageLabel, point, offset) {
 		var diagnostics = point.evidence && point.evidence.php_diagnostics;
 		var hasDiagnostics = diagnostics && diagnostics.events && diagnostics.events.length;
-		var hasError = hasDiagnostics && diagnostics.events.some(function (event) { return event.severity === 'error'; });
+		var hasError = !!point.state || (hasDiagnostics && diagnostics.events.some(function (event) { return event.severity === 'error'; }));
 		return {
 			value: [pageLabel, point.value],
 			runId: point.run_id,
 			sample: point.sample,
 			responseCode: point.response_code,
 			savedPoint: point,
-			symbol: hasDiagnostics ? 'triangle' : 'circle',
+			symbol: hasDiagnostics || hasError ? 'triangle' : 'circle',
 			symbolRotate: hasError ? 180 : 0,
-			symbolSize: hasDiagnostics ? 14 : 9,
+			symbolSize: hasDiagnostics || hasError ? 14 : 9,
 			itemStyle: hasError ? {color: '#d63638', borderColor: '#d63638', borderWidth: 3} : (hasDiagnostics ? {borderColor: '#996800', borderWidth: 3} : {}),
 			symbolOffset: [offset + (((point.run_id + (point.sample || 0)) % 5) - 2) * 2, 0]
 		};
@@ -151,6 +153,9 @@
 					}
 					var value = Array.isArray(data.value) ? data.value[1] : data.value;
 					var lines = [heading, unitValue(value, unit)];
+					if (data.savedPoint && data.savedPoint.state) {
+						lines.push(escapeText(data.savedPoint.state.replace(/_/g, ' ') + (data.responseCode ? ' (HTTP ' + data.responseCode + ')' : '')));
+					}
 					if (data.runId) {
 						lines.push('Analysis #' + data.runId + (data.sample ? ', sample ' + data.sample : ''));
 					}
