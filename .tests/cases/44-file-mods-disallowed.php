@@ -27,6 +27,18 @@ $sspa_saved_mu = file_exists($sspa_mu) ? file_get_contents($sspa_mu) : null;
 $sspa_saved_dropin = (SSPA_Helper_Files::dropin_status() === 'ours') ? file_get_contents($sspa_dropin) : null;
 
 // ---------------------------------------------------------------- preconditions
+// A traffic collection or analysis left running by an earlier case keeps the web SAPI - where
+// DISALLOW_FILE_MODS is not defined - reinstalling the observer and drop-in underneath this
+// process, and the "was NOT written" assertions then fail for a reason that is not the guard.
+// Establish the quiet site this case needs on the way in; nothing is torn down on the way out.
+$sspa_active_collection = class_exists('SSPA_Traffic_Collection') ? SSPA_Traffic_Collection::active() : null;
+if ($sspa_active_collection) {
+    SSPA_Traffic_Collection::stop((int) $sspa_active_collection['id'], true);
+}
+$sspa_active_run = SSPA_Run_Controller::active_run_id();
+if ($sspa_active_run) {
+    SSPA_Run_Controller::cancel($sspa_active_run);
+}
 // Remove our helper files, so ensure_installed() has real work to do. Without this it would
 // return true from the "content already matches" branch and the case would pass whether or
 // not the guard exists - testing nothing.

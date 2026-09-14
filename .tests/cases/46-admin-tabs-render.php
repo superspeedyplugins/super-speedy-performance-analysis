@@ -19,6 +19,13 @@ function sspa_t($ok, $label) {
 global $wpdb;
 wp_set_current_user(1);
 
+// The Traffic tab replaces its duration selector with the running collection's controls
+// while a collection is active, so a collection left running by an earlier case fails the
+// duration assertions for a reason that is not a rendering defect. Stop it on the way in.
+$sspa_active_collection = class_exists('SSPA_Traffic_Collection') ? SSPA_Traffic_Collection::active() : null;
+if ($sspa_active_collection) {
+    SSPA_Traffic_Collection::stop((int) $sspa_active_collection['id'], true);
+}
 $sspa_tabs = array('overview', 'workflows', 'pages', 'plugins', 'history', 'traffic', 'share');
 
 // A tab that renders almost nothing is a broken tab, not a passing one. These floors are
