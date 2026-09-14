@@ -121,4 +121,22 @@ class SSPA_Auth {
         update_user_meta($user_id, self::TEST_ACCOUNT_META, '1');
         return (int) $user_id;
     }
+
+    /**
+     * A new synthetic customer for this run: every marked account is removed and one is
+     * created. Called on the way IN to a run, never on the way out, so the account a run
+     * measured as stays inspectable until the next run replaces it. The account owns
+     * nothing, so nothing is reassigned.
+     *
+     * @return int The fresh account's id, or 0 when one could not be created.
+     */
+    public static function fresh_test_customer() {
+        if (!function_exists('wp_delete_user')) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+        }
+        foreach (get_users(array('meta_key' => self::TEST_ACCOUNT_META, 'meta_value' => '1', 'fields' => 'ID')) as $stale) {
+            wp_delete_user((int) $stale);
+        }
+        return self::test_customer_id();
+    }
 }

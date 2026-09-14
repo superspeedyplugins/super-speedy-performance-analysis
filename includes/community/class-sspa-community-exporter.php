@@ -297,7 +297,7 @@ class SSPA_Community_Exporter {
                 : SSPA_Community_Privacy::page_class($row['page_key'], $row['variant']),
             'classification_version' => 1,
             'method' => in_array($row['method'], array('GET', 'POST'), true) ? $row['method'] : 'OTHER',
-            'variant' => in_array($row['variant'], array('anon', 'admin', 'guest'), true) ? $row['variant'] : 'other',
+            'variant' => in_array($row['variant'], array('anon', 'admin', 'guest', 'customer'), true) ? $row['variant'] : 'other',
             'object_cache_mode' => sanitize_key($row['object_cache_mode']),
             'metrics' => self::numeric_fields($row, array(
                 'ttfb_ms', 'page_gen_ms', 'sql_ms', 'sql_count', 'http_ms', 'http_count',

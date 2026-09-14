@@ -34,6 +34,9 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Changelog ==
 
+= 0.40 (14th September 2026) =
+* Scans now measure My Account, Orders, the shop and a product page as a logged-in customer, using a synthetic account that is recreated for every run and cannot be logged into by a person.
+
 = 0.39 (14th September 2026) =
 * Detected plugin changes are recorded through one validated record, so an update, activation or deactivation always carries the versions it needs.
 * Plugin version strings are validated by one shared rule everywhere History, change detection and sharing handle them.

@@ -49,7 +49,8 @@ class SSPA_Community_Privacy {
         $known = array(
             'baseline', 'mail-probe', 'home', 'blog', 'post-single', 'post-cat', 'post-tag',
             'search-many', 'search-zero', '404', 'feed', 'rest-posts', 'shop', 'product-cat',
-            'product-single', 'wc-cart', 'wc-checkout', 'wc-myaccount', 'admin-dashboard',
+            'product-single', 'wc-cart', 'wc-checkout', 'wc-myaccount',
+            'customer-account', 'customer-orders', 'customer-shop', 'customer-product', 'admin-dashboard',
             'admin-plugins', 'admin-media', 'admin-posts', 'admin-edit-post', 'admin-new-post',
             'admin-products', 'admin-edit-product', 'admin-new-product', 'admin-orders',
             'admin-orders-search', 'admin-edit-order', 'write-save-post', 'write-save-product',
