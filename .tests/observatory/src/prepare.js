@@ -5,10 +5,15 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import {
-  dataDir, loadManifest, parallelDevBin, recorderConfig, siteDirectory, workspaceRoot, wp,
+  checkPrerequisites, dataDir, loadManifest, parallelDevBin, recorderConfig, siteDirectory, workspaceRoot, wp,
 } from './common.js';
 
 const { manifest } = loadManifest();
+
+// Nothing is created or changed until every prerequisite is present. A missing tool fails
+// here with one actionable message and leaves the previous retained evidence untouched.
+const prerequisites = checkPrerequisites();
+console.log(`Prerequisites: node ${prerequisites.nodeVersion}, sqlite3 on PATH, dependencies under ${prerequisites.packageDir}, browser ${prerequisites.browser}`);
 
 function pluginVersion(filename) {
   const match = readFileSync(filename, 'utf8').match(/^ \* Version:\s*([^\r\n]+)/m);

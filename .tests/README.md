@@ -30,6 +30,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/browser/run-regressions.sh loopback-fallback # real loopback failure falls back to browser transport with complete evidence
 .tests/browser/run-regressions.sh quick-comparison # detected plugin update -> notice -> one spot run -> History names the change
 .tests/run-tests.sh 89-traffic-window # two real traffic windows with a controlled slowdown: normalised deltas, unavailable states, CLI and Abilities agree
+.tests/observatory: npm test # 19 node tests, including sites-root discovery from parallel-dev and the preparation prerequisite checks
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence

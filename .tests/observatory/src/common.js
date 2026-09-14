@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
@@ -52,11 +53,64 @@ function validateManifest(manifest, filename) {
   }
 }
 
+let discoveredSitesRoot = null;
+// The parallel-dev sites root, from the one place that knows it on every supported host:
+// tools/parallel-dev/bin/lib.sh (Homebrew tree on macOS, /var/www/sites on WSL2, or the
+// PD_SITES_ROOT override). Asking the shell script keeps the Observatory in step with the
+// same rule every other tool applies, instead of carrying its own copy of one machine's path.
+export function sitesRoot() {
+  if (process.env.PD_SITES_ROOT) return path.resolve(process.env.PD_SITES_ROOT);
+  if (discoveredSitesRoot) return discoveredSitesRoot;
+  const lib = path.join(parallelDevBin, 'lib.sh');
+  if (!existsSync(lib)) throw new Error(`Cannot discover the parallel-dev sites root: ${lib} is missing. Set SSPA_WORKSPACE_ROOT to the workspace or PD_SITES_ROOT to the sites directory.`);
+  const root = execFileSync('bash', ['-c', 'source "$1"; printf "%s" "$SITES_ROOT"', 'sites-root', lib], { encoding: 'utf8' }).trim();
+  if (!root.startsWith('/')) throw new Error(`parallel-dev reported no sites root from ${lib}`);
+  discoveredSitesRoot = root;
+  return root;
+}
+
 export function siteDirectory(plugin, scenario) {
-  const root = process.env.PD_SITES_ROOT || '/opt/homebrew/var/www/sites';
+  const root = sitesRoot();
   const directory = path.join(root, plugin, scenario);
   if (!path.resolve(directory).startsWith(`${path.resolve(root)}${path.sep}`)) throw new Error(`Unsafe site path: ${directory}`);
   return directory;
+}
+
+/**
+ * Everything preparation needs, checked before anything is created or changed, each failing
+ * with one message that says what to do. The overrides exist so the checks themselves can be
+ * tested without uninstalling anything.
+ */
+export function checkPrerequisites(overrides = {}) {
+  const nodeVersion = overrides.nodeVersion || process.version;
+  const major = Number(String(nodeVersion).replace(/^v/, '').split('.')[0]);
+  if (!Number.isFinite(major) || major < 20) {
+    throw new Error(`Node.js 20 or newer is required; this is ${nodeVersion}. Install Node 20 and run again.`);
+  }
+  const searchPath = overrides.path !== undefined ? overrides.path : process.env.PATH || '';
+  const hasSqlite = searchPath.split(path.delimiter).some((dir) => dir && existsSync(path.join(dir, 'sqlite3')));
+  if (!hasSqlite) {
+    throw new Error('sqlite3 is not on PATH; the Observatory stores its measurements in SQLite. Install sqlite3 (apt install sqlite3 / brew install sqlite) and run again.');
+  }
+  const packageDir = overrides.packageDir || observatoryDir;
+  for (const dependency of ['playwright', 'yaml']) {
+    if (!existsSync(path.join(packageDir, 'node_modules', dependency, 'package.json'))) {
+      throw new Error(`The Observatory's package dependencies are not installed (${dependency} is missing under ${packageDir}). Run npm install in .tests/observatory and run again.`);
+    }
+  }
+  let browser = overrides.browser;
+  if (browser === undefined) {
+    try {
+      const require = createRequire(path.join(packageDir, 'package.json'));
+      browser = require('playwright').chromium.executablePath();
+    } catch (error) {
+      throw new Error(`The browser runtime could not be resolved from playwright (${error.message}). Run npx playwright install chromium in .tests/observatory and run again.`);
+    }
+  }
+  if (!browser || !existsSync(browser)) {
+    throw new Error(`Chromium is not installed for playwright (expected ${browser || 'an executable'}). Run npx playwright install chromium in .tests/observatory and run again.`);
+  }
+  return { nodeVersion, sqlite: true, packageDir, browser };
 }
 
 export function wp(site, args, options = {}) {
