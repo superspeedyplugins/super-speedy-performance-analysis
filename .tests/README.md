@@ -21,6 +21,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 80-checkout-type # preflight names a checkout block, shortcode or unsupported page by its real content
 .tests/run-tests.sh 81-temp-registry # checkout temp registry survives a cross-process write before cleanup
 .tests/run-tests.sh 05-run-e2e # full baseline; installs the Home query fixture (four known queries on Home) to prove real query capture
+.tests/run-tests.sh 83-history-declared # declared expectations judge the approved HTTP response code separately from the output signature
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence

@@ -217,14 +217,41 @@ class SSPA_History {
             );
         }
 
-        $declared = array('state' => 'not_declared', 'expected_signature' => null, 'source_run_uuid' => null);
+        // A declared expectation carries two independent claims from the approved run: the
+        // output signature and the HTTP response code. Each is judged on its own, so a
+        // code mismatch is never mistaken for a body change or for missing evidence, and the
+        // overall verdict fails if either claim fails.
+        $declared = array(
+            'state' => 'not_declared',
+            'expected_signature' => null,
+            'source_run_uuid' => null,
+            'signature_state' => 'not_declared',
+            'response_code' => array('expected' => null, 'actual' => $after ? $after['response_code'] : null, 'state' => 'not_declared'),
+        );
         if (is_array($expected)) {
             $declared['expected_signature'] = isset($expected['output_signature']) ? $expected['output_signature'] : null;
             $declared['source_run_uuid'] = isset($expected['source_run_uuid']) ? $expected['source_run_uuid'] : null;
             if (!$after || empty($after['output_signature']) || empty($expected['output_signature'])) {
+                $declared['signature_state'] = 'unknown';
+            } else {
+                $declared['signature_state'] = hash_equals((string) $expected['output_signature'], (string) $after['output_signature']) ? 'pass' : 'fail';
+            }
+            $expected_code = isset($expected['response_code']) && null !== $expected['response_code'] ? (int) $expected['response_code'] : null;
+            $declared['response_code']['expected'] = $expected_code;
+            if (null === $expected_code) {
+                $declared['response_code']['state'] = 'not_declared';
+            } elseif (!$after || null === $after['response_code']) {
+                $declared['response_code']['state'] = 'unknown';
+            } else {
+                $declared['response_code']['state'] = $expected_code === (int) $after['response_code'] ? 'pass' : 'fail';
+            }
+            $verdicts = array($declared['signature_state'], $declared['response_code']['state']);
+            if (in_array('fail', $verdicts, true)) {
+                $declared['state'] = 'fail';
+            } elseif (in_array('unknown', $verdicts, true)) {
                 $declared['state'] = 'unknown';
             } else {
-                $declared['state'] = hash_equals((string) $expected['output_signature'], (string) $after['output_signature']) ? 'pass' : 'fail';
+                $declared['state'] = 'pass';
             }
         }
 
@@ -603,6 +630,16 @@ class SSPA_History {
                         <td><span class="sspa-history-output-<?php echo esc_attr($page['output']['state']); ?>"><?php echo esc_html($page['output']['state']); ?></span></td>
                         <td>
                             <span class="sspa-history-declared-<?php echo esc_attr($page['declared']['state']); ?>"><?php echo esc_html($page['declared']['state']); ?></span>
+                            <?php if ('fail' === $page['declared']['response_code']['state']) : ?>
+                                <br><small><?php echo esc_html(sprintf(
+                                    /* translators: 1: expected HTTP status code, 2: actual HTTP status code. */
+                                    __('HTTP %1$d expected, got %2$d', 'super-speedy-performance-analysis'),
+                                    (int) $page['declared']['response_code']['expected'],
+                                    (int) $page['declared']['response_code']['actual']
+                                )); ?></small>
+                            <?php elseif ('fail' === $page['declared']['signature_state']) : ?>
+                                <br><small><?php esc_html_e('Output differs from the approved run', 'super-speedy-performance-analysis'); ?></small>
+                            <?php endif; ?>
                             <?php if (!empty($page['output']['after_signature'])) : ?>
                                 <button type="button" class="button button-small sspa-history-assert" data-mode="approve" data-page-identity="<?php echo esc_attr($page['key']); ?>"><?php esc_html_e('Use After as expected', 'super-speedy-performance-analysis'); ?></button>
                             <?php endif; ?>
