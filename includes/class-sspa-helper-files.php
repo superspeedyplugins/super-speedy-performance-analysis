@@ -167,6 +167,13 @@ class SSPA_Helper_Files {
             delete_option('sspa_dropin_hold');
             return false;
         }
+        // db.php keeps its path across the swap, so a serving PHP with a warm opcache keeps
+        // running the displaced drop-in until its next revalidation. Invalidate where we can
+        // (the same php-fpm when the run starts from the browser); a run started from the
+        // CLI cannot reach php-fpm's cache and has to wait out opcache.revalidate_freq.
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($path, true);
+        }
         return true;
     }
 
@@ -188,6 +195,9 @@ class SSPA_Helper_Files {
         $ok = rename($hold, $path);
         if ($ok) {
             delete_option('sspa_dropin_hold');
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($path, true); // same reason as in hold_foreign_dropin()
+            }
         }
         return $ok;
     }
