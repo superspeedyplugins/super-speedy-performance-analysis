@@ -61,7 +61,7 @@ if ($home) {
     $home_capture = $home_blob ? json_decode(gzuncompress($home_blob), true) : null;
     $fixture_rows = array();
     foreach ((is_array($home_capture) && isset($home_capture['sql']['queries'])) ? $home_capture['sql']['queries'] : array() as $q) {
-        if (false !== strpos((string) $q['sql'], 'sspa_home_query_fixture')) {
+        if (false !== strpos((string) $q['sql'], 'synthetic_home_query_fixture')) {
             $fixture_rows[] = $q;
         }
     }
