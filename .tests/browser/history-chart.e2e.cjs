@@ -59,6 +59,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		});
 		assert.match(malformedStatus, /could not be read/i, 'Malformed chart data must surface a visible error');
 
+		assert.deepEqual(await page.locator('.sspa-history-chart').evaluate(mount => mount.sspaChart.getOption().legend[0].data), ['Previous measurements', 'Recent measurements'], 'The period legend does not offer a competing partial error toggle');
 		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
 		const axis = await page.locator('.sspa-history-chart').evaluate(mount => {
 			const option = mount.sspaChart.getOption();
@@ -269,7 +270,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 				return {index, symbol:points[index].symbol, x:pixel[0] + points[index].symbolOffset[0], y:pixel[1], message:points[index].savedPoint.evidence.php_diagnostics.events[0].message};
 			});
 			assert.ok(diagnosticPoint, 'The actual measured warning appears in a chart point');
-			assert.equal(diagnosticPoint.symbol, 'triangle', 'Observed diagnostics have a visible warning marker');
+			assert.equal(diagnosticPoint.symbol, 'rect', 'Observed warnings use a square, distinct from error triangles');
 			await page.locator('.sspa-history-chart').scrollIntoViewIfNeeded();
 			const chartBox = await page.locator('.sspa-history-chart').boundingBox();
 			await page.mouse.click(chartBox.x + diagnosticPoint.x, chartBox.y + diagnosticPoint.y);
@@ -296,6 +297,59 @@ if (!siteUrl || !adminUser || !adminPassword) {
 				const parsed = path.parse(screenshot);
 				await page.locator('[data-sspa-history-chart]').screenshot({path:path.join(parsed.dir, parsed.name + '-warnings' + parsed.ext)});
 			}
+		}
+		if (process.env.SSPA_E2E_ERROR_RUN && process.env.SSPA_E2E_DIAGNOSTIC_RUN) {
+			await page.locator('.sspa-history-page-filter').fill('');
+			await page.locator('#sspa-history-before').selectOption(process.env.SSPA_E2E_DIAGNOSTIC_RUN);
+			await page.locator('#sspa-history-after').selectOption(process.env.SSPA_E2E_ERROR_RUN);
+			await page.locator('#sspa-history-compare').click();
+			await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
+			await page.locator('.sspa-history-chart-status').filter({hasText:'chart loaded'}).waitFor();
+			const snapshot = () => page.locator('.sspa-history-chart').evaluate(mount => {
+				const option = mount.sspaChart.getOption();
+				return {points: option.series.slice(0, 2).flatMap(s => s.data.map(p => ({
+					value:p.value, state:p.savedPoint.state, symbol:p.symbol, rotate:p.symbolRotate,
+					warning:(p.savedPoint.evidence.php_diagnostics?.events || []).some(e => e.severity !== 'error'),
+					evidence:p.savedPoint.evidence
+				}))), faults:option.series[2].data.length};
+			});
+			const warningToggle = page.locator('[data-sspa-marker="warnings"]');
+			const errorToggle = page.locator('[data-sspa-marker="errors"]');
+			assert.equal(await warningToggle.isChecked(), true);
+			assert.equal(await errorToggle.isChecked(), true);
+			const original = await snapshot();
+			assert.ok(original.points.some(p => p.warning && !p.state), 'Retained real PHP warning fixture is present');
+			assert.ok(original.points.some(p => p.state), 'Retained failed-request fixture is present');
+			assert.ok(original.faults > 0, 'Retained missing-timing fixture is present');
+			assert.ok(original.points.filter(p => p.state).every(p => p.symbol === 'triangle' && p.rotate === 0), 'Error markers are upright triangles');
+			assert.ok(original.points.filter(p => p.warning && !p.state).every(p => p.symbol === 'rect'), 'Warnings are squares');
+			await warningToggle.uncheck();
+			await page.waitForFunction(() => !document.querySelector('.sspa-history-chart').sspaChart.getOption().series.slice(0,2).some(s => s.data.some(p => p.symbol === 'rect')));
+			const noWarnings = await snapshot();
+			assert.ok(noWarnings.points.filter(p => p.state).every(p => p.symbol === 'triangle'), 'Hiding warnings leaves errors highlighted');
+			assert.equal(noWarnings.faults, original.faults);
+			await errorToggle.uncheck();
+			await page.waitForFunction(() => document.querySelector('.sspa-history-chart').sspaChart.getOption().series[2].data.length === 0);
+			const neither = await snapshot();
+			assert.ok(neither.points.every(p => p.symbol === 'circle'), 'Both controls off leaves ordinary measurement circles');
+			assert.deepEqual(neither.points.map(({symbol,rotate,...p}) => p), original.points.map(({symbol,rotate,...p}) => p), 'Toggling preserves every timing, status and diagnostic detail');
+			await warningToggle.check();
+			await page.waitForFunction(() => document.querySelector('.sspa-history-chart').sspaChart.getOption().series.slice(0,2).some(s => s.data.some(p => p.symbol === 'rect')));
+			const warningsOnly = await snapshot();
+			assert.ok(warningsOnly.points.filter(p => p.state && !p.warning).every(p => p.symbol === 'circle'), 'Enabling warnings does not re-enable errors');
+			assert.equal(warningsOnly.faults, 0);
+			// A new comparison replaces the entire card; preferences must survive that replacement.
+			await page.locator('#sspa-history-compare').click();
+			await page.waitForFunction(() => !document.querySelector('#sspa-history-compare').disabled);
+			await page.locator('.sspa-history-chart-status').filter({hasText:'chart loaded'}).waitFor();
+			assert.equal(await warningToggle.isChecked(), true);
+			assert.equal(await errorToggle.isChecked(), false);
+			assert.equal((await snapshot()).faults, 0);
+			await errorToggle.check();
+			await page.waitForFunction(() => document.querySelector('.sspa-history-chart').sspaChart.getOption().series[2].data.length > 0);
+			assert.deepEqual(await snapshot(), original, 'Restoring both controls restores the original plotted evidence');
+			if (screenshot) await page.locator('[data-sspa-history-chart]').screenshot({path:path.join(path.dirname(screenshot), 'marker-controls.png')});
+			console.log('PASS: distinct warning/error shapes, independent controls, retained measurements and comparison-refresh preferences');
 		}
 		assert.deepEqual(browserErrors, []);
 		console.log('PASS: History workflow opens saved reports and synchronises exact comparisons, plotted values, filters and diagnostics with 320px/480px viewport fit');

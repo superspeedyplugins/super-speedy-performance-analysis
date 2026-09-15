@@ -50,7 +50,13 @@ class SSPA_History_Chart {
 
             <div class="sspa-history-chart-status" aria-live="polite"></div>
             <p class="description"><?php esc_html_e('Select a measurement or failure marker to inspect its retained evidence. The data table provides the same controls by keyboard.', 'super-speedy-performance-analysis'); ?></p>
-            <p class="description sspa-history-marker-key"><?php esc_html_e('Marker key: amber-outlined triangles show observed PHP warnings or notices; solid red inverted triangles show observed PHP errors. Solid red upright triangles mark failed requests. These markers describe retained observations, not complete PHP error coverage.', 'super-speedy-performance-analysis'); ?></p>
+            <fieldset class="sspa-history-marker-key">
+                <legend><?php esc_html_e('Chart markers', 'super-speedy-performance-analysis'); ?></legend>
+                <span><span aria-hidden="true">●</span> <?php esc_html_e('Measurements', 'super-speedy-performance-analysis'); ?></span>
+                <label><input type="checkbox" data-sspa-marker="warnings" checked> <span class="sspa-history-warning-symbol" aria-hidden="true">■</span> <?php esc_html_e('Warnings / notices', 'super-speedy-performance-analysis'); ?></label>
+                <label><input type="checkbox" data-sspa-marker="errors" checked> <span class="sspa-history-error-symbol" aria-hidden="true">▲</span> <?php esc_html_e('Errors / failed requests', 'super-speedy-performance-analysis'); ?></label>
+            </fieldset>
+            <p class="description"><?php esc_html_e('Switch off a category to hide its highlighting; timed measurements remain as circles and saved details stay available. Errors without a timing disappear from the chart when errors are off. Diagnostic coverage may be incomplete.', 'super-speedy-performance-analysis'); ?></p>
             <div class="sspa-history-chart" role="img" aria-label="<?php esc_attr_e('Previous and current measured setup performance by page', 'super-speedy-performance-analysis'); ?>"></div>
             <section class="sspa-history-point-details" aria-live="polite" hidden></section>
             <script type="application/json" class="sspa-history-chart-document"><?php

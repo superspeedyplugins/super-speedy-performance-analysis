@@ -2,6 +2,7 @@
 	'use strict';
 
 	var strings = sspa_history_chart;
+	var markerVisibility = {warnings: true, errors: true};
 	var sprintf = wp.i18n.sprintf;
 	function escapeText(text) { return $('<span>').text(text).html(); }
 
@@ -56,18 +57,19 @@
 
 	function point(pageLabel, point, offset) {
 		var diagnostics = point.evidence && point.evidence.php_diagnostics;
-		var hasDiagnostics = diagnostics && diagnostics.events && diagnostics.events.length;
-		var hasError = !!point.state || (hasDiagnostics && diagnostics.events.some(function (event) { return event.severity === 'error'; }));
+		var events = diagnostics && diagnostics.events || [];
+		var hasWarning = markerVisibility.warnings && events.some(function (event) { return event.severity !== 'error'; });
+		var hasError = markerVisibility.errors && (!!point.state || events.some(function (event) { return event.severity === 'error'; }));
 		return {
 			value: [pageLabel, point.value],
 			runId: point.run_id,
 			sample: point.sample,
 			responseCode: point.response_code,
 			savedPoint: point,
-			symbol: hasDiagnostics || hasError ? 'triangle' : 'circle',
-			symbolRotate: hasError ? 180 : 0,
-			symbolSize: hasDiagnostics || hasError ? 14 : 9,
-			itemStyle: hasError ? {color: '#d63638', borderColor: '#d63638', borderWidth: 3} : (hasDiagnostics ? {borderColor: '#996800', borderWidth: 3} : {}),
+			symbol: hasError ? 'triangle' : (hasWarning ? 'rect' : 'circle'),
+			symbolRotate: 0,
+			symbolSize: hasWarning || hasError ? 14 : 9,
+			itemStyle: hasError ? {color: '#d63638', borderColor: '#d63638', borderWidth: 3} : (hasWarning ? {borderColor: '#996800', borderWidth: 3} : {}),
 			symbolOffset: [offset + (((point.run_id + (point.sample || 0)) % 5) - 2) * 2, 0]
 		};
 	}
@@ -113,6 +115,7 @@
 			var markerY = values.length ? Math.max.apply(null, values) * 1.08 : 1;
 			['previous', 'current'].forEach(function (side) {
 				page[side].faults.forEach(function (fault, index) {
+					if (!markerVisibility.errors) return;
 					failures.push({value: [label, markerY], period: side === 'previous' ? 'previous' : 'recent', summary: faultSummary([fault]), savedPoint: fault, symbolOffset: [(side === 'previous' ? -12 : 12) + index * 3, 0]});
 				});
 			});
@@ -129,7 +132,7 @@
 				description: 'Comparison of every retained ' + documentData.metric.label.toLowerCase() + ' measurement for the previous and current measured setups.'
 			},
 			color: ['#6b7280', '#2271b1', '#d63638'],
-			legend: {top: 0},
+			legend: {top: 0, data: ['Previous measurements', 'Recent measurements']},
 			grid: {left: 96, right: 28, top: 54, bottom: 180},
 			tooltip: {
 				trigger: 'item',
@@ -211,6 +214,9 @@
 			var chart = mount.sspaChart || echarts.init(mount, null, {renderer: 'canvas'});
 			mount.sspaChart = chart;
 			card.sspaDocument = documentData;
+			$(card).find('[data-sspa-marker]').each(function () {
+				this.checked = markerVisibility[this.getAttribute('data-sspa-marker')];
+			});
 			card.querySelector('.sspa-history-evidence-source').textContent = documentData.metric.description;
 			var filter = (card.querySelector('.sspa-history-page-filter').value || '').trim().toLowerCase();
 			$(card).find('.sspa-history-data-table tbody tr').each(function () {
@@ -307,6 +313,13 @@
 		if (slug === 'history') {
 			boot(panel);
 		}
+	});
+
+	$(document).on('change', '[data-sspa-marker]', function () {
+		markerVisibility[this.getAttribute('data-sspa-marker')] = this.checked;
+		$('[data-sspa-history-chart]').each(function () {
+			if (this.sspaDocument) render(this, this.sspaDocument);
+		});
 	});
 
 	$(document).on('input', '.sspa-history-page-filter', function () {

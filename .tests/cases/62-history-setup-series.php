@@ -164,6 +164,7 @@ foreach (SSPA_History_Series::metrics() as $metric_key => $metric_definition) {
 $incompatible_id = sspa_62_drive_run();
 sspa_62_t(!is_wp_error($incompatible_id), 'the newer compatibility-candidate measurement completes');
 if (!is_wp_error($incompatible_id)) {
+    update_option('sspa_test_history_error_run', $incompatible_id, false);
     global $wpdb;
     $incompatible_row = SSPA_Run_Controller::run_row($incompatible_id);
     $profile = $wpdb->get_row($wpdb->prepare(

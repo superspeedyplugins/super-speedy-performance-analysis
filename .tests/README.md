@@ -44,7 +44,10 @@ SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts
 .tests/browser/run-history-chart.sh  # real wp-admin History chart journey in Chromium
 ```
 
-The History browser journey also verifies that changing metrics preserves the page filter
+The History browser journey verifies separate warning-square and error-triangle controls,
+unchanged timing/evidence when highlighting is disabled, and preferences across comparison
+refreshes, using retained warning and failed-request fixtures.
+It also verifies that changing metrics preserves the page filter
 in both the plotted categories and accessible comparison table.
 It verifies vertical compact name labels and category dividers; the chart uses unique
 scenario keys so simplified labels cannot combine separate measurements. Case 62 checks that

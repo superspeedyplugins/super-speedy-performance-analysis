@@ -9,6 +9,7 @@ SSPA_E2E_DIAGNOSTIC_RUN="$(cli eval '$runs = SSPA_History_Series::recent_runs();
 export SSPA_E2E_DIAGNOSTIC_RUN
 SSPA_SCENARIO="$SSPA_SCENARIO" "$PLUGIN_DIR/.tests/run-tests.sh" 62-history-setup-series || exit 1
 
+export SSPA_E2E_ERROR_RUN="$(cli option get sspa_test_history_error_run)"
 export SSPA_E2E_URL="$SSPA_SITE_URL"
 export SSPA_E2E_USER="$ADMIN_USER"
 export SSPA_E2E_PASSWORD="$ADMIN_PASS"

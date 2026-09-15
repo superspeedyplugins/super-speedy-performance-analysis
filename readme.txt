@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.41 (15th September 2026) =
+* History charts distinguish warning squares from error triangles, with separate controls for their highlighting.
 * History comparisons highlight response-time changes, new faults, changed output and plugin changes.
 * Customer-session measurements cover My Account, Orders, the shop and a product page using a restricted test account.
 * Order write profiles create their own zero-price product with separate stock.
