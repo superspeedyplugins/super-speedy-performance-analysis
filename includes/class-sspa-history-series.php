@@ -270,7 +270,7 @@ class SSPA_History_Series {
                     'profile_id' => $profile_id,
                     'sample' => null,
                     'response_code' => !empty($profile['response_code']) ? (int) $profile['response_code'] : null,
-                    'state' => !empty($profile['blocked_by']) ? 'blocked' : 'missing',
+                    'state' => 'missing',
                 );
                 return;
             }
@@ -286,7 +286,7 @@ class SSPA_History_Series {
                         'sample' => (int) $index + 1,
                         'value' => round((float) $sample['wall_ms'], 2),
                         'response_code' => $code,
-                        'state' => !empty($profile['blocked_by']) ? 'blocked'
+                        'state' => !empty($sample['blocked_by']) ? 'blocked'
                             : (!empty($sample['error']) ? 'transport_error'
                                 : ($code < 200 || $code >= 400 ? 'http_error' : null)),
                     );
@@ -297,7 +297,7 @@ class SSPA_History_Series {
                         'evidence' => self::sample_evidence($sample),
                         'sample' => (int) $index + 1,
                         'response_code' => $code ?: null,
-                        'state' => !empty($profile['blocked_by']) ? 'blocked'
+                        'state' => !empty($sample['blocked_by']) ? 'blocked'
                             : (!empty($sample['error']) ? 'transport_error'
                                 : ($code < 200 || $code >= 400 ? 'http_error' : 'missing')),
                     );
@@ -317,7 +317,7 @@ class SSPA_History_Series {
                 'sample' => null,
                 'value' => round((float) $profile[$column], 2),
                 'response_code' => $code,
-                'state' => !empty($profile['blocked_by']) ? 'blocked' : ($code < 200 || $code >= 400 ? 'http_error' : null),
+                'state' => $code < 200 || $code >= 400 ? 'http_error' : null,
             );
         } else {
             $period['faults'][] = array(
@@ -326,7 +326,7 @@ class SSPA_History_Series {
                 'evidence' => array('source' => 'per_run_median'),
                 'sample' => null,
                 'response_code' => $code ?: null,
-                'state' => !empty($profile['blocked_by']) ? 'blocked' : ($code < 200 || $code >= 400 ? 'http_error' : 'missing'),
+                'state' => $code < 200 || $code >= 400 ? 'http_error' : 'missing',
             );
         }
     }
@@ -337,7 +337,7 @@ class SSPA_History_Series {
             'source' => 'retained_request_sample',
             'php_diagnostics' => self::php_diagnostics(isset($sample['php_diagnostics']) ? $sample['php_diagnostics'] : null),
         );
-        foreach (array('error', 'error_message') as $key) {
+        foreach (array('error', 'error_message', 'blocked_by', 'blocked_reason', 'blocked_confidence') as $key) {
             if (isset($sample[$key]) && is_scalar($sample[$key])) {
                 $evidence[$key] = substr(sanitize_text_field((string) $sample[$key]), 0, 1000);
             }

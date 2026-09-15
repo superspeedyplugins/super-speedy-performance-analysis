@@ -117,20 +117,18 @@ class SSPA_Admin_Page {
             'sample_heading' => __('Analysis #%1$d, request sample %2$d', 'super-speedy-performance-analysis'),
             /* translators: %d: analysis ID */
             'summary_heading' => __('Analysis #%d, page summary', 'super-speedy-performance-analysis'),
-            /* translators: 1: source of evidence, 2: measurement state */
-            'evidence_state' => __('Evidence: %1$s. %2$s.', 'super-speedy-performance-analysis'),
-            'sources' => array(
-                'retained_request_sample' => __('retained request sample', 'super-speedy-performance-analysis'),
-                'per_run_median' => __('median across this analysis\'s requests', 'super-speedy-performance-analysis'),
-            ),
-            'retained_measurement' => __('retained measurement', 'super-speedy-performance-analysis'),
-            'measured' => __('measured', 'super-speedy-performance-analysis'),
+            'request_success' => __('Request completed successfully.', 'super-speedy-performance-analysis'),
+            'request_redirect' => __('Request returned a redirect.', 'super-speedy-performance-analysis'),
+            'request_unavailable' => __('Request result was not recorded.', 'super-speedy-performance-analysis'),
             'states' => array(
-                'blocked' => __('blocked', 'super-speedy-performance-analysis'),
-                'transport_error' => __('transport error', 'super-speedy-performance-analysis'),
-                'http_error' => __('HTTP error', 'super-speedy-performance-analysis'),
-                'missing' => __('missing measurement', 'super-speedy-performance-analysis'),
+                'blocked' => __('Request was unsuccessful.', 'super-speedy-performance-analysis'),
+                'transport_error' => __('Profiling could not be completed.', 'super-speedy-performance-analysis'),
+                'http_error' => __('Request returned an unsuccessful HTTP response.', 'super-speedy-performance-analysis'),
+                'missing' => __('No timing was recorded for this request.', 'super-speedy-performance-analysis'),
             ),
+            /* translators: %s: the recorded response status or challenge signal */
+            'block_reason' => __('Reason: %s', 'super-speedy-performance-analysis'),
+            'block_reason_missing' => __('The reason was not saved by the version that recorded this request.', 'super-speedy-performance-analysis'),
             'severities' => array(
                 'error' => __('Error', 'super-speedy-performance-analysis'),
                 'warning' => __('Warning', 'super-speedy-performance-analysis'),

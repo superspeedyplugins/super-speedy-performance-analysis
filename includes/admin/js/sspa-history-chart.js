@@ -76,7 +76,7 @@
 
 	function faultSummary(faults) {
 		var labels = {
-			blocked: 'blocked',
+			blocked: 'unsuccessful request',
 			transport_error: 'transport error',
 			http_error: 'HTTP error',
 			missing: 'missing measurement'
@@ -157,7 +157,7 @@
 					var value = Array.isArray(data.value) ? data.value[1] : data.value;
 					var lines = [heading, unitValue(value, unit)];
 					if (data.savedPoint && data.savedPoint.state) {
-						lines.push(escapeText(data.savedPoint.state.replace(/_/g, ' ') + (data.responseCode ? ' (HTTP ' + data.responseCode + ')' : '')));
+						lines.push(escapeText((strings.states[data.savedPoint.state] || strings.request_unavailable) + (data.responseCode ? ' (HTTP ' + data.responseCode + ')' : '')));
 					}
 					if (data.runId) {
 						lines.push('Analysis #' + data.runId + (data.sample ? ', sample ' + data.sample : ''));
@@ -251,7 +251,9 @@
 		var target = $(card).find('.sspa-history-point-details').empty().prop('hidden', false);
 		$('<h4>').text(item.sample ? sprintf(strings.sample_heading, item.run_id, item.sample) : sprintf(strings.summary_heading, item.run_id)).appendTo(target);
 		var evidence = item.evidence || {};
-		$('<p>').text(sprintf(strings.evidence_state, strings.sources[evidence.source] || strings.retained_measurement, strings.states[item.state] || strings.measured)).appendTo(target);
+		var outcome = strings.states[item.state] || (item.response_code >= 200 && item.response_code < 300 ? strings.request_success : (item.response_code >= 300 && item.response_code < 400 ? strings.request_redirect : strings.request_unavailable));
+		$('<p>').text(outcome).appendTo(target);
+		if (item.state === 'blocked') $('<p>').text(evidence.blocked_reason ? sprintf(strings.block_reason, evidence.blocked_reason) : strings.block_reason_missing).appendTo(target);
 		if (item.response_code !== null && typeof item.response_code !== 'undefined') $('<p>').text(sprintf(strings.http_status, item.response_code)).appendTo(target);
 		if (evidence.error_message || evidence.error) $('<p>').text(evidence.error_message || evidence.error).appendTo(target);
 		if (evidence.fatal) $('<p>').text(sprintf(strings.fatal, evidence.fatal.component || strings.unknown_component)).appendTo(target);

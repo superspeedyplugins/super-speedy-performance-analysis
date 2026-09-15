@@ -86,6 +86,11 @@ class SSPA_Profile_Store {
                 // against its baseline's without keeping bodies.
                 'body_hash' => isset($s['body_hash']) ? $s['body_hash'] : null,
             );
+            foreach (array('blocked_by', 'blocked_confidence', 'blocked_reason') as $field) {
+                if (array_key_exists($field, $s)) {
+                    $summary[$field] = null === $s[$field] ? null : substr(sanitize_text_field((string) $s[$field]), 0, 255);
+                }
+            }
             // A plugin reacted to the excluded set during this sample. Kept in the summary
             // (not only the median blob) so the sweep can spot a reacted cell without
             // unpacking blobs - the cell must be reported, never trusted as a delta.

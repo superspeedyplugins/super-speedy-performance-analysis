@@ -275,6 +275,8 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			const chartBox = await page.locator('.sspa-history-chart').boundingBox();
 			await page.mouse.click(chartBox.x + diagnosticPoint.x, chartBox.y + diagnosticPoint.y);
 			await page.locator('.sspa-history-point-details').filter({hasText:'SSPA local diagnostic two'}).waitFor();
+			assert.match(await page.locator('.sspa-history-point-details').innerText(), /Request completed successfully\./, 'A measured HTTP 200 with PHP warnings has a plain success outcome');
+			assert.doesNotMatch(await page.locator('.sspa-history-point-details').innerText(), /Evidence:|retained request sample/, 'Internal evidence labels are absent from request details');
 			await page.locator('.sspa-history-data-details > summary').click();
 			const diagnosticRow = page.locator('.sspa-history-data-table tbody tr[data-page-label*="diagnostic-pair"]');
 			await diagnosticRow.locator('details > summary').click();

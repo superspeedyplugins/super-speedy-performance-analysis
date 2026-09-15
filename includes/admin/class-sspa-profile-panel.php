@@ -343,9 +343,18 @@ class SSPA_Profile_Panel {
      */
     private static function notes_html($row, $capture) {
         $html = '';
-        if (!empty($row['blocked_by'])) {
-            /* translators: %s: the plugin or service that blocked the request */
-            $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">' . esc_html(sprintf(__('Blocked by %s', 'super-speedy-performance-analysis'), $row['blocked_by'])) . '</p>';
+        $samples = json_decode((string) ($row['samples'] ?? ''), true);
+        $has_request_block_data = false;
+        foreach ((array) $samples as $index => $sample) {
+            if (!is_array($sample)) { continue; }
+            $has_request_block_data = $has_request_block_data || array_key_exists('blocked_by', $sample);
+            if (empty($sample['blocked_by'])) { continue; }
+            $reason = !empty($sample['blocked_reason']) ? $sample['blocked_reason'] : __('reason not recorded', 'super-speedy-performance-analysis');
+            /* translators: 1: request number, 2: recorded failure reason */
+            $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">' . esc_html(sprintf(__('Request %1$d was unsuccessful: %2$s.', 'super-speedy-performance-analysis'), $index + 1, $reason)) . '</p>';
+        }
+        if (!$has_request_block_data && !empty($row['blocked_by'])) {
+            $html .= '<p class="description sspa-adhoc-span">' . esc_html__('An earlier analysis reported a block but did not record which request or why. Re-run this page to verify; its saved successful measurements remain available.', 'super-speedy-performance-analysis') . '</p>';
         }
         foreach (self::transport_errors($row) as $error) {
             /* translators: %s: the HTTP transport's own error message */

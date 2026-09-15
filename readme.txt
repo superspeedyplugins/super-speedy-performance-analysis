@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.41.0
+Stable tag: 0.41.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -37,6 +37,8 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.41 (15th September 2026) =
+* Successful profiled requests are no longer marked blocked by challenge-related page text or another request's status.
+* Request details explain unsuccessful responses with their recorded reason instead of internal evidence labels.
 * History charts distinguish warning squares from error triangles, with separate controls for their highlighting.
 * History comparisons highlight response-time changes, new faults, changed output and plugin changes.
 * Customer-session measurements cover My Account, Orders, the shop and a product page using a restricted test account.

@@ -144,6 +144,7 @@ class SSPA_Crawler {
             'cached' => false,
             'blocked_by' => null,
             'blocked_confidence' => null,
+            'blocked_reason' => null,
             'error' => null,
             'error_message' => null,
             'capture' => null,
@@ -160,7 +161,10 @@ class SSPA_Crawler {
         $headers = $norm['headers'];
         $sample['code'] = (int) $norm['code'];
 
-        $block = SSPA_Security_Detect::classify_detail(
+        // A successful response carrying this request's signed profiler token reached WordPress.
+        $profiled_success = $sample['code'] >= 200 && $sample['code'] < 300
+            && isset($headers['x-sspa-profiled']) && $headers['x-sspa-profiled'] === $token_id;
+        $block = $profiled_success ? null : SSPA_Security_Detect::classify_detail(
             $sample['code'],
             $headers,
             substr((string) $norm['body'], 0, 20000),
@@ -168,6 +172,7 @@ class SSPA_Crawler {
         );
         $sample['blocked_by'] = $block ? SSPA_Security_Detect::display_label($block) : null;
         $sample['blocked_confidence'] = $block ? $block['confidence'] : null;
+        $sample['blocked_reason'] = $block ? $block['reason'] : null;
         if ($sample['blocked_by']) {
             return $sample;
         }

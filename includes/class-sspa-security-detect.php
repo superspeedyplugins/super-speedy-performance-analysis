@@ -43,16 +43,22 @@ class SSPA_Security_Detect {
      */
     public static function classify_detail($code, $headers, $body, $had_auth_cookie) {
         $blocked = in_array($code, array(401, 403, 406, 418, 429, 503), true);
+        $reason = $blocked ? 'HTTP ' . (int) $code : null;
 
         // Login bounce despite valid cookies = an auth/security layer rejected our session.
         if (!$blocked && in_array($code, array(301, 302), true) && $had_auth_cookie) {
             $location = isset($headers['location']) ? (is_array($headers['location']) ? end($headers['location']) : $headers['location']) : '';
             if (strpos($location, 'wp-login.php') !== false) {
                 $blocked = true;
+                $reason = 'Redirected to login despite authentication cookies';
             }
         }
-        if (!$blocked && is_string($body) && (stripos($body, 'cf-challenge') !== false || stripos($body, 'checking your browser') !== false)) {
+        // Text mentioning a challenge is ordinary page content, not proof of a block.
+        $mitigated = isset($headers['cf-mitigated']) ? $headers['cf-mitigated'] : '';
+        $mitigated = is_array($mitigated) ? end($mitigated) : $mitigated;
+        if (!$blocked && 'challenge' === strtolower(trim((string) $mitigated))) {
             $blocked = true;
+            $reason = 'Security challenge response (CF-Mitigated: challenge)';
         }
         if (!$blocked) {
             return null;
@@ -60,24 +66,24 @@ class SSPA_Security_Detect {
 
         // Edge layers first (headers are the strongest signal).
         $server = isset($headers['server']) ? strtolower((string) (is_array($headers['server']) ? end($headers['server']) : $headers['server'])) : '';
-        if (isset($headers['cf-ray']) || strpos($server, 'cloudflare') !== false) {
-            return array('label' => 'Cloudflare', 'confidence' => 'identified');
+        if ('challenge' === strtolower(trim((string) $mitigated)) || isset($headers['cf-ray']) || strpos($server, 'cloudflare') !== false) {
+            return array('label' => 'Cloudflare', 'confidence' => 'identified', 'reason' => $reason);
         }
         if (isset($headers['x-sucuri-id']) || isset($headers['x-sucuri-block'])) {
-            return array('label' => 'Sucuri WAF', 'confidence' => 'identified');
+            return array('label' => 'Sucuri WAF', 'confidence' => 'identified', 'reason' => $reason);
         }
         if (is_string($body) && stripos($body, 'wordfence') !== false) {
-            return array('label' => 'Wordfence', 'confidence' => 'identified');
+            return array('label' => 'Wordfence', 'confidence' => 'identified', 'reason' => $reason);
         }
 
         // Fall back to the active security plugin.
         $active = (array) get_option('active_plugins', array());
         foreach (self::$security_plugins as $file => $label) {
             if (in_array($file, $active, true)) {
-                return array('label' => $label, 'confidence' => 'probable');
+                return array('label' => $label, 'confidence' => 'probable', 'reason' => $reason);
             }
         }
-        return array('label' => 'unknown security layer', 'confidence' => 'unknown');
+        return array('label' => 'unknown security layer', 'confidence' => 'unknown', 'reason' => $reason);
     }
 
     public static function whitelist_advice($layer) {

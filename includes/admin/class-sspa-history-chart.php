@@ -143,7 +143,7 @@ class SSPA_History_Chart {
                                                     $point['sample']
                                                 ) : __('page summary', 'super-speedy-performance-analysis')
                                             )); ?>
-                                        </button><?php if (!empty($point['state'])) : ?> <span><?php echo esc_html(str_replace('_', ' ', $point['state'])); ?></span><?php endif; ?></li>
+                                        </button><?php if (!empty($point['state'])) : ?> <span><?php echo esc_html('blocked' === $point['state'] ? __('unsuccessful request', 'super-speedy-performance-analysis') : str_replace('_', ' ', $point['state'])); ?></span><?php endif; ?></li>
                                         <?php endforeach;
                                     endforeach; ?>
                                     </ul>
@@ -276,7 +276,7 @@ class SSPA_History_Chart {
         }
         $counts = array_count_values(wp_list_pluck($faults, 'state'));
         $labels = array(
-            'blocked' => __('blocked', 'super-speedy-performance-analysis'),
+            'blocked' => __('unsuccessful request', 'super-speedy-performance-analysis'),
             'transport_error' => __('transport error', 'super-speedy-performance-analysis'),
             'http_error' => __('HTTP error', 'super-speedy-performance-analysis'),
             'missing' => __('missing measurement', 'super-speedy-performance-analysis'),
