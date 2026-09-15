@@ -15,6 +15,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/setup-site.sh --reset   # reset this dedicated site at entry, then retain it
 .tests/run-tests.sh            # all PHP cases and registered browser journeys
 .tests/run-tests.sh e2e        # run only cases whose filename contains "e2e"
+.tests/run-tests.sh history-domain-unit # comparison rules without WordPress, storage or rendering
 .tests/run-tests.sh history-graceful-unit # production comparison logic with storage adapters, no database
 .tests/run-tests.sh 78-history-graceful # real WordPress retained-record comparison regressions
 .tests/run-tests.sh 79-admin-bar # admin-bar "This site" nodes deep-link to Tools by fragment; no MySQL digests node exists
@@ -621,3 +622,15 @@ axis and legend text rectangles at 1280px and 320px, retaining both screenshots.
 included in the default feature-browser run. An unmatched browser filter exits nonzero.
 The current narrow-label overlap is tracked in issue38; the separate mobile report action
 clipping remains tracked in issue35.
+
+### Optional profiler environment matrix
+
+`.tests/capability-matrix/README.md` documents the explicitly approved isolated extension and
+performance_schema environments for capability-card detection and rendered guidance. This runs
+separately from the native suite because it requires distinct system capabilities.
+
+### Performance Analysis release measurements
+
+After the full suite finishes on `tests-release-20260915`, run the Observatory's prepare and run
+commands with `performance-analysis-release`. Its retained admin and public request measurements
+complement the full-suite assertion log; they do not replace the suite's pass/fail results.

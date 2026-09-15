@@ -1,0 +1,62 @@
+plugin: super-speedy-performance-analysis
+
+defaults:
+  repetitions: 3
+  warmups: 1
+  timeout_ms: 30000
+
+sites:
+  - id: performance-analysis.release
+    plugin_slug: super-speedy-performance-analysis
+    url: http://tests-release-20260915.super-speedy-performance-analysis.localhost:8081
+    scenario: tests-release-20260915
+    activate_plugin: true
+
+features:
+  - super-speedy-performance-analysis/overview
+  - super-speedy-performance-analysis/history
+  - super-speedy-performance-analysis/tools
+  - super-speedy-performance-analysis/traffic
+  - super-speedy-performance-analysis/public-request
+
+targets:
+  - id: pa-overview
+    site: performance-analysis.release
+    feature: super-speedy-performance-analysis/overview
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=sspa#overview
+    role: administrator
+    readiness_selector: '.tab-contents[data-tab="overview"]'
+  - id: pa-history
+    site: performance-analysis.release
+    feature: super-speedy-performance-analysis/history
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=sspa#history
+    role: administrator
+    readiness_selector: '.tab-contents[data-tab="history"]'
+  - id: pa-tools
+    site: performance-analysis.release
+    feature: super-speedy-performance-analysis/tools
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=sspa#tools
+    role: administrator
+    readiness_selector: '.tab-contents[data-tab="tools"]'
+  - id: pa-traffic
+    site: performance-analysis.release
+    feature: super-speedy-performance-analysis/traffic
+    area: backend
+    page_type: plugin_settings
+    path: /wp-admin/admin.php?page=sspa#traffic
+    role: administrator
+    readiness_selector: '.tab-contents[data-tab="traffic"]'
+  - id: pa-home
+    site: performance-analysis.release
+    feature: super-speedy-performance-analysis/public-request
+    area: frontend
+    page_type: home
+    path: /
+    role: guest
+    readiness_selector: body

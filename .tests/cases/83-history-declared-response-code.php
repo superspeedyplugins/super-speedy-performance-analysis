@@ -31,6 +31,14 @@ function sspa_83_page($comparison, $page_key) {
 }
 
 wp_set_current_user(1);
+// This case can run first on a new site, before any general browser journey.
+$fixture_dir = WP_PLUGIN_DIR . '/sspa-browser-fixture';
+if (!wp_mkdir_p($fixture_dir) || !copy(__DIR__ . '/../fixtures/browser-runtime.php', $fixture_dir . '/sspa-browser-fixture.php')) {
+    throw new RuntimeException('Could not install the declared-response fixture');
+}
+$activation = activate_plugin('sspa-browser-fixture/sspa-browser-fixture.php');
+if (is_wp_error($activation)) { throw new RuntimeException($activation->get_error_message()); }
+
 // Clear the previous run's state on the way in: no forced error, no approved Home expectation.
 update_option('sspa_fleet_http_error', '0', true);
 update_option('sspa_fleet_enabled', true);

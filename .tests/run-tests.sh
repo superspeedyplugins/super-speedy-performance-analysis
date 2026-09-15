@@ -6,6 +6,10 @@
 # it is there and runs the cases against it.
 set -uo pipefail
 # Pure production-logic regressions also run when a database is unavailable.
+if [ "${1:-}" = "history-domain-unit" ]; then
+    php -d xdebug.mode=off "$(dirname "${BASH_SOURCE[0]}")/history-domain-unit.php"
+    exit $?
+fi
 if [ "${1:-}" = "history-graceful-unit" ]; then
     php -d xdebug.mode=off "$(dirname "${BASH_SOURCE[0]}")/history-graceful-unit.php"
     exit $?
@@ -33,6 +37,9 @@ if [ "${PRODUCTS:-0}" -lt 5 ]; then
 fi
 
 FILTER="${1:-}"
+if [ -z "$FILTER" ] || [[ "history-domain-unit" == *"$FILTER"* ]]; then
+    php -d xdebug.mode=off "$PLUGIN_DIR/.tests/history-domain-unit.php" || exit 1
+fi
 START_AT="${SSPA_START_AT:-}"
 FAILED=0
 RAN=0

@@ -35,6 +35,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.40 (14th September 2026) =
+* History comparisons share one set of rules across the report, CLI and Abilities.
 * The page report panel gives focus back to whatever opened it when it closes, and rows on the Pages tab open from the keyboard with Enter or Space.
 * A traffic collection stopped early now keeps a fixed observed duration, so its projected daily figures and any comparison built on them no longer drift until the planned end time passes.
 * When an analysis temporarily swaps out another plugin's db.php drop-in, the serving PHP's opcache is invalidated on the swap and on the restore, so the first profiled requests no longer run the displaced file.
