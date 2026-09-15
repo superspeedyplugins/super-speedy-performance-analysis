@@ -85,7 +85,7 @@ $plant('sspa-slow-integration', <<<'PHP'
  */
 add_action('init', function () {
     if (isset($_GET['sspa_test_slow'])) {
-        usleep(isset($_GET['long']) ? 1400000 : 150000);
+        usleep(isset($_GET['long']) ? 3000000 : 150000);
         header('Content-Type: text/plain');
         echo 'slow-endpoint-ok';
         exit;
@@ -95,7 +95,7 @@ add_action('init', function () {
 // - two plain slow calls: the blocking-http finding must aggregate them into ONE finding
 // - a fetch of the ORDER's own permalink (/?p=<order id>) - the HPOS purge signature
 // - a fetch of /amp/ with no AMP plugin installed - the phantom-AMP purge signature
-// - a call that times out (1.4s endpoint, 1s timeout) - the failing self-fetch signature
+// - a call that times out (3s endpoint, 2s timeout), safely above the 1s finding threshold
 // Plus one on cancellation. The current lifecycle never cancels or permanently deletes its
 // order, so this remains a guard against old cleanup behaviour returning unnoticed.
 add_action('woocommerce_payment_complete', function ($order_id) {
@@ -103,7 +103,7 @@ add_action('woocommerce_payment_complete', function ($order_id) {
     wp_remote_get(home_url('/?sspa_test_slow=1&n=2&order=' . (int) $order_id), array('timeout' => 10));
     wp_remote_get(home_url('/?p=' . (int) $order_id), array('timeout' => 10));
     wp_remote_get(home_url('/amp/'), array('timeout' => 10));
-    wp_remote_get(home_url('/?sspa_test_slow=1&long=1'), array('timeout' => 1));
+    wp_remote_get(home_url('/?sspa_test_slow=1&long=1'), array('timeout' => 2));
 }, 10, 1);
 add_action('woocommerce_order_status_cancelled', function ($order_id) {
     wp_remote_get(home_url('/?sspa_test_slow=1&cancel=1&order=' . (int) $order_id), array('timeout' => 10));
