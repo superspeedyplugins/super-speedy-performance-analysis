@@ -14,6 +14,19 @@ const {
   expect,
 } = require("./fleet-context.cjs");
 (async () => {
+  // This transport test starts with PA's shim; the preceding QM agreement case retains QM.
+  // Establish the declared fixture at entry, preserving any displaced vendor file.
+  wp("eval", `
+    $active = SSPA_Run_Controller::active_run_id();
+    if ($active) SSPA_Run_Controller::cancel($active);
+    deactivate_plugins('query-monitor/query-monitor.php', true);
+    if (SSPA_Helper_Files::dropin_is_stale_qm()) {
+      $result = SSPA_Helper_Files::replace_stale_qm_dropin();
+      if (is_wp_error($result)) WP_CLI::error($result->get_error_message());
+    }
+    SSPA_Helper_Files::ensure_installed();
+    if ('ours' !== SSPA_Helper_Files::dropin_status()) WP_CLI::error('Loopback fixture requires PA db.php');
+  `);
   const { browser, page } = await session();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

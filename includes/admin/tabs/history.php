@@ -107,7 +107,7 @@ if (!$sspa_runs) : ?>
                 <th><?php esc_html_e('Started', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Status', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Pages', 'super-speedy-performance-analysis'); ?></th>
-                <th><?php esc_html_e('Median generation (ms)', 'super-speedy-performance-analysis'); ?></th>
+                <th><?php esc_html_e('Mean generation (ms)', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Findings', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Score', 'super-speedy-performance-analysis'); ?></th>
                 <th><?php esc_html_e('Components measured', 'super-speedy-performance-analysis'); ?></th>
@@ -119,7 +119,7 @@ if (!$sspa_runs) : ?>
         <?php foreach ($sspa_runs as $run) :
             $notes = json_decode((string) $run['notes'], true);
             $pages = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id = %d', SSPA_Schema::table('profiles'), $run['id']));
-            $median_gen = $wpdb->get_var($wpdb->prepare(
+            $mean_gen = $wpdb->get_var($wpdb->prepare(
                 "SELECT AVG(page_gen_ms) FROM %i WHERE run_id = %d AND page_gen_ms IS NOT NULL AND page_key != 'baseline'",
                 SSPA_Schema::table('profiles'),
                 $run['id']
@@ -137,7 +137,7 @@ if (!$sspa_runs) : ?>
                 <td><?php echo esc_html($run['started']); ?></td>
                 <td><?php echo esc_html($run['status']); ?></td>
                 <td><?php echo (int) $pages; ?></td>
-                <td><?php echo $median_gen !== null ? esc_html(number_format((float) $median_gen, 1)) : '-'; ?></td>
+                <td><?php echo $mean_gen !== null ? esc_html(number_format((float) $mean_gen, 1)) : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['findings']) ? (int) $notes['findings'] : '-'; ?></td>
                 <td><?php echo is_array($notes) && isset($notes['score']) ? (int) $notes['score'] . '/100' : '-'; ?></td>
                 <td>

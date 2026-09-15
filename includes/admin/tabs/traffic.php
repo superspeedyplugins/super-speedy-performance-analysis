@@ -100,7 +100,7 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
             </select>
         </p>
         <p><label><input type="checkbox" id="sspa-traffic-confirm"> <?php esc_html_e('I understand that this writes small anonymous event rows for observed traffic and WooCommerce funnel events until the stated hard limits or stop time.', 'super-speedy-performance-analysis'); ?></label></p>
-        <p><button type="button" class="button button-primary" id="sspa-traffic-start" <?php disabled(!$sspa_traffic_has_woo || is_multisite()); ?>><?php esc_html_e('Start collection', 'super-speedy-performance-analysis'); ?></button></p>
+        <p><button type="button" class="button button-primary" id="sspa-traffic-start" <?php disabled(is_multisite()); ?>><?php esc_html_e('Start collection', 'super-speedy-performance-analysis'); ?></button></p>
     <?php else : ?>
         <p class="sspa-traffic-actions">
             <?php if ('running' === $sspa_traffic_collection['status']) : ?>

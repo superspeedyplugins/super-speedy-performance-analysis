@@ -56,6 +56,47 @@ function sspa_88_profile($run_id, $page_key) {
 wp_set_current_user(1);
 global $wpdb;
 
+// Establish this case's real vendor prerequisite on the guarded dedicated site.
+$qm_dir = WP_PLUGIN_DIR . '/query-monitor';
+if (!is_file($qm_dir . '/query-monitor.php')) {
+    $sources = glob(dirname(rtrim(ABSPATH, '/')) . '/*/wp-content/plugins/query-monitor/query-monitor.php');
+    $source = null;
+    foreach ($sources as $candidate) {
+        $directory = realpath(dirname($candidate));
+        if ($directory && is_file($directory . '/wp-content/db.php')) {
+            $source = $directory;
+            break;
+        }
+    }
+    if (!$source || !symlink($source, $qm_dir)) {
+        throw new RuntimeException('Install the real Query Monitor plugin on this dedicated site before case 88; no usable local vendor source was found');
+    }
+}
+$qm_db_source = realpath($qm_dir . '/wp-content/db.php');
+if (!$qm_db_source || !is_file($qm_db_source)) {
+    throw new RuntimeException('The installed Query Monitor prerequisite has no real database drop-in');
+}
+$active = SSPA_Run_Controller::active_run_id();
+if ($active) { SSPA_Run_Controller::cancel($active); }
+// Preserve our previous generated drop-in as retained evidence, then let QM install its own.
+if ('ours' === SSPA_Helper_Files::dropin_status()) {
+    if (!rename(SSPA_Helper_Files::dropin_path(), WP_CONTENT_DIR . '/db.php.sspa-case88-' . wp_generate_uuid4())) {
+        throw new RuntimeException('Could not retain the preceding PA drop-in');
+    }
+}
+$result = activate_plugin('query-monitor/query-monitor.php');
+if (is_wp_error($result)) { throw new RuntimeException($result->get_error_message()); }
+// Already-active QM may have lost its drop-in to a preceding owned-helper test.
+if ('absent' === SSPA_Helper_Files::dropin_status()) {
+    if (!symlink($qm_db_source, SSPA_Helper_Files::dropin_path())) {
+        throw new RuntimeException('Could not install the real Query Monitor drop-in');
+    }
+}
+// CLI cannot clear the serving workers' realpath cache after replacing the drop-in.
+// Match the existing swap boundary before sending either anonymous probe.
+$entry_settle = (int) getenv('SSPA_88_SETTLE') ?: (int) ini_get('realpath_cache_ttl') + 5;
+sleep($entry_settle);
+
 // Preconditions: Query Monitor active and owning db.php; fixtures installed and current.
 sspa_88_t(SSPA_Helper_Files::qm_plugin_active(), 'the real Query Monitor plugin is active');
 sspa_88_t('qm' === SSPA_Helper_Files::dropin_status(), 'Query Monitor owns the db.php drop-in before anything runs (' . SSPA_Helper_Files::dropin_status() . ')');

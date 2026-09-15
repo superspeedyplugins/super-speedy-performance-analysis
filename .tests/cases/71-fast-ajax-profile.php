@@ -11,6 +11,7 @@ file_put_contents($owner . '/fixture.php', <<<'FIXTURE'
 Version: 1.0 */
 function zz_ajax_fixture() { global $wpdb; $wpdb->get_var('SELECT 1'); wp_send_json_success(array('observed' => true)); }
 add_action('wp_ajax_nopriv_zz_ajax_workflow_fixture', 'zz_ajax_fixture');
+add_action('wp_ajax_nopriv_zz_ajax_unrelated_fixture', function () { wp_send_json_success(array('unrelated' => true)); });
 add_action('zz_ajax_unused_hook', function () { usleep(900000); });
 FIXTURE
 );
@@ -24,13 +25,17 @@ FIXTURE
 file_put_contents(WP_PLUGIN_DIR . '/aa-ajax-flat.php', "<?php\n/* Plugin Name: Flat AJAX fixture\nVersion: 1.0 */\n");
 activate_plugin('aa-ajax-flat.php');
 activate_plugin('zz-ajax-owner/fixture.php'); activate_plugin('zz-ajax-slow/fixture.php');
-$before = SSPA_Ajax_Profile::start(array('scenario' => 'Fixture action', 'label' => 'Before fixture', 'detail' => true));
+$before = SSPA_Ajax_Profile::start(array('scenario' => 'Fixture action', 'label' => 'Before fixture', 'detail' => true, 'endpoints' => array('admin_ajax:zz_ajax_workflow_fixture')));
 sspa_ajax_check(!is_wp_error($before), 'explicit window starts without altering plugin activation');
 if (is_wp_error($before)) { echo 'FAIL: ' . $before->get_error_message() . "\n"; return; }
-for ($i=0;$i<3;$i++) { $response = wp_remote_post(admin_url('admin-ajax.php'), array('body'=>array('action'=>'zz_ajax_workflow_fixture'), 'timeout'=>30)); sspa_ajax_check(!is_wp_error($response) && wp_remote_retrieve_response_code($response)===200, 'real fixture request returns successfully'); }
+// Use all five permitted detailed samples per action to reduce median timing noise.
+// A real unrelated AJAX request must not consume this named workflow's capture slots.
+$unrelated = wp_remote_post(admin_url('admin-ajax.php'), array('body'=>array('action'=>'zz_ajax_unrelated_fixture'), 'timeout'=>30));
+sspa_ajax_check(!is_wp_error($unrelated) && wp_remote_retrieve_response_code($unrelated) === 200, 'unrelated AJAX request succeeds outside selected workflow');
+for ($i=0;$i<5;$i++) { $response = wp_remote_post(admin_url('admin-ajax.php'), array('body'=>array('action'=>'zz_ajax_workflow_fixture'), 'timeout'=>30)); sspa_ajax_check(!is_wp_error($response) && wp_remote_retrieve_response_code($response)===200, 'real fixture request returns successfully'); }
 SSPA_Ajax_Profile::stop($before['uuid']);
 $rows = SSPA_Ajax_Profile::rows($before);
-sspa_ajax_check(count($rows)===3, 'three actual registered requests retain immutable profile captures');
+sspa_ajax_check(count($rows)===5, 'five actual registered requests retain immutable profile captures');
 $capture = $rows ? json_decode($rows[0]['measurement_json'],true) : array();
 sspa_ajax_check(($capture['boundary'] ?? '') === 'mu_observer_to_shutdown' && ($capture['browser_elapsed_ms'] ?? null) === null, 'server timing never claims browser elapsed time');
 $plugins = array_column($capture['activity']['plugins'] ?? array(),null,'plugin');
@@ -42,16 +47,17 @@ sspa_ajax_check(in_array('zz_ajax_unused_hook',$registered,true) && !in_array('z
 sspa_ajax_check(($plugins['zz-ajax-owner/fixture.php']['io']['sql_count'] ?? 0)>0, 'fixture SQL attempt is attributed to the executing plugin');
 sspa_ajax_check(($plugins['aa-ajax-flat.php']['io']['sql_count'] ?? 0) === 0, 'single-file plugin cannot own another plugin callback or I/O');
 $report=SSPA_Report::endpoint_evidence($before['collection_id']);
-sspa_ajax_check($report['schema']==='sspa/endpoint-evidence@2' && $report['capture']['detailed_samples']===3, 'SPro receives successor activity contract with exact sampled count');
+sspa_ajax_check($report['schema']==='sspa/endpoint-evidence@2' && $report['capture']['detailed_samples']===5, 'SPro receives successor activity contract with exact sampled count');
 // Change only the known delay fixture. This baseline test does not pretend to test SPro rule control.
 deactivate_plugins('zz-ajax-slow/fixture.php');
-$after=SSPA_Ajax_Profile::start(array('scenario'=>'Fixture action','label'=>'After fixture','detail'=>true));
+$after=SSPA_Ajax_Profile::start(array('scenario'=>'Fixture action','label'=>'After fixture','detail'=>true,'endpoints'=>array('admin_ajax:zz_ajax_workflow_fixture')));
 if(is_wp_error($after)){echo 'FAIL: '.$after->get_error_message()."\n";return;}
-for($i=0;$i<3;$i++){wp_remote_post(admin_url('admin-ajax.php'),array('body'=>array('action'=>'zz_ajax_workflow_fixture'),'timeout'=>30));}
+for($i=0;$i<5;$i++){wp_remote_post(admin_url('admin-ajax.php'),array('body'=>array('action'=>'zz_ajax_workflow_fixture'),'timeout'=>30));}
 SSPA_Ajax_Profile::stop($after['uuid']);
 $comparison=SSPA_Ajax_Profile::compare($before['uuid'],$after['uuid']);
 $page=$comparison['pages'][0] ?? array();
-sspa_ajax_check(($page['previous']['samples'] ?? 0)===3 && ($page['current']['samples'] ?? 0)===3, 'before/after chart carries real samples on both sides');
+echo 'MEASURED: ' . wp_json_encode(array('before' => $page['previous']['median'] ?? null, 'after' => $page['current']['median'] ?? null, 'delta' => $page['delta'] ?? null)) . "\n";
+sspa_ajax_check(($page['previous']['samples'] ?? 0)===5 && ($page['current']['samples'] ?? 0)===5, 'before/after chart carries real samples on both sides');
 sspa_ajax_check(($page['delta']['absolute'] ?? 0)<-80, 'removing the known 120ms fixture produces a measured reduction');
 sspa_ajax_check(count($page['previous']['setups'] ?? array())===1 && count($page['current']['setups'] ?? array())===1 && array_keys($page['previous']['setups'])!==array_keys($page['current']['setups']), 'effective loaded versions make different captured setup identities');
 $again=SSPA_Ajax_Profile::compare($before['uuid'],$after['uuid']);

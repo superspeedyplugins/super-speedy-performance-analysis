@@ -28,6 +28,20 @@ class SSPA_Traffic_Helper {
     }
 
     public static function install($config) {
+        if (SSPA_Helper_Files::file_mods_blocked()) {
+            return new WP_Error('sspa_file_mods_disallowed', __('This site sets DISALLOW_FILE_MODS, which forbids plugins from writing files, so the traffic observer cannot be installed.', 'super-speedy-performance-analysis'));
+        }
+        return SSPA_Traffic_Authority::synchronized(true, static function() use ($config) {
+            $generation = get_option(SSPA_Traffic_Authority::option($config['collection_id']), '');
+            if (!SSPA_Traffic_Authority::permits($generation)) {
+                return new WP_Error('sspa_traffic_revoked', __('This traffic collection has been revoked. Start a new collection.', 'super-speedy-performance-analysis'));
+            }
+            $config['generation'] = $generation;
+            return self::install_authorized($config);
+        });
+    }
+
+    private static function install_authorized($config) {
         if (!self::lock()) {
             return new WP_Error('sspa_traffic_helper_busy', __('The traffic observer is being changed by another request. Try again.', 'super-speedy-performance-analysis'));
         }
@@ -63,6 +77,7 @@ class SSPA_Traffic_Helper {
             return new WP_Error('sspa_traffic_template', __('The traffic observer template is missing.', 'super-speedy-performance-analysis'));
         }
         $safe = array(
+            'generation' => $config['generation'],
             'blog_id' => (int) get_current_blog_id(),
             'collection_id' => (int) $config['collection_id'],
             'collect_until' => (int) $config['collect_until'],
@@ -109,6 +124,12 @@ class SSPA_Traffic_Helper {
     }
 
     public static function remove($force = false) {
+        return SSPA_Traffic_Authority::synchronized(true, static function() use ($force) {
+            return self::remove_authorized($force);
+        });
+    }
+
+    private static function remove_authorized($force) {
         if ($force) {
             self::unlock();
             return self::remove_unlocked();

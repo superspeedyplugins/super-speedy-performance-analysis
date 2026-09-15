@@ -8,6 +8,11 @@ class SSPA_Install {
 
     public static function activate() {
         SSPA_Schema::create_tables();
+        // Sites that never used Traffic need no authority file or writable MU directory.
+        if (is_file(SSPA_Traffic_Authority::path()) || SSPA_Traffic_Helper::is_ours()) {
+            SSPA_Traffic_Collection::deactivate();
+            SSPA_Traffic_Authority::activate();
+        }
         SSPA_Token::secret();
         SSPA_Helper_Files::ensure_installed();
         if (!wp_next_scheduled('sspa_cleanup_event')) {

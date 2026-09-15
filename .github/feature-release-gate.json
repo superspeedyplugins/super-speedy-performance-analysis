@@ -89,7 +89,7 @@
           "browser"
         ],
         "required_output": [
-          "PASS: three actual registered requests retain immutable profile captures",
+          "PASS: five actual registered requests retain immutable profile captures",
           "PASS: expired collection writes no AJAX observation during the later outcomes window",
           "PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors",
           "5 case file(s) run, 0 failed"
@@ -103,6 +103,46 @@
         ],
         "required_output": [
           "PASS: invalid captured timings surface an export error",
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "write-stock",
+        "command": "bash .tests/run-tests.sh 90-write-probe-stock",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "markdown-privacy",
+        "command": "bash .tests/run-tests.sh 91-markdown-sql-privacy",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "deactivation",
+        "command": "bash .tests/run-tests.sh 92-traffic-deactivation",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "review-correctness",
+        "command": "bash .tests/run-tests.sh 93-review-correctness",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
           "1 case file(s) run, 0 failed"
         ]
       }

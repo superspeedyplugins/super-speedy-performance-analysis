@@ -44,6 +44,9 @@ class SSPA_Traffic_Collection {
         if (is_multisite()) {
             return new WP_Error('sspa_traffic_multisite', __('The experimental collector is not available on multisite yet because inactive subsites must remain completely untouched.', 'super-speedy-performance-analysis'));
         }
+        if (SSPA_Helper_Files::file_mods_blocked()) {
+            return new WP_Error('sspa_file_mods_disallowed', __('DISALLOW_FILE_MODS prevents installing the traffic observer.', 'super-speedy-performance-analysis'));
+        }
         $durations = self::durations();
         if (!isset($durations[$duration])) {
             return new WP_Error('sspa_traffic_duration', __('Choose 15m, 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));
@@ -53,7 +56,9 @@ class SSPA_Traffic_Collection {
             return new WP_Error('sspa_traffic_start_busy', __('Another request is starting a traffic collection. Try again.', 'super-speedy-performance-analysis'));
         }
         try {
-            return self::start_locked($duration, $trigger, $durations);
+            return SSPA_Traffic_Authority::synchronized(true, static function() use ($duration, $trigger, $durations) {
+                return self::start_locked($duration, $trigger, $durations);
+            });
         } finally {
             SSPA_Atomic_Claim::release(self::START_LOCK, $lock_owner);
         }
@@ -61,6 +66,7 @@ class SSPA_Traffic_Collection {
 
     private static function start_locked($duration, $trigger, $durations) {
         global $wpdb;
+        $generation = SSPA_Traffic_Authority::generation();
         $active = self::active();
         if ($active) {
             $actual_duration = self::timestamp($active['collect_until']) - self::timestamp($active['started_at']);
@@ -103,6 +109,10 @@ class SSPA_Traffic_Collection {
             return new WP_Error('sspa_traffic_collection_insert', __('Could not create the traffic collection row.', 'super-speedy-performance-analysis'));
         }
         $collection_id = (int) $wpdb->insert_id;
+        if (!add_option(SSPA_Traffic_Authority::option($collection_id), $generation, '', false)) {
+            self::rollback_start($collection_id, self::key_option($collection_id));
+            throw new RuntimeException('Cannot persist the traffic collection generation.');
+        }
         $key_option = self::key_option($collection_id);
 
         try {
@@ -190,6 +200,7 @@ class SSPA_Traffic_Collection {
         global $wpdb;
         SSPA_Traffic_Helper::remove(true);
         delete_option($key_option);
+        delete_option(SSPA_Traffic_Authority::option($collection_id));
         $wpdb->delete(SSPA_Schema::table('traffic_events'), array('collection_id' => (int) $collection_id));
 		$wpdb->delete(SSPA_Schema::table('traffic_endpoint_observations'), array('collection_id' => (int) $collection_id));
         $wpdb->delete(SSPA_Schema::table('traffic_collections'), array('id' => (int) $collection_id));
@@ -282,6 +293,12 @@ class SSPA_Traffic_Collection {
     }
 
     public static function stop($collection_id = 0, $emergency = false) {
+        return SSPA_Traffic_Authority::synchronized(true, static function() use ($collection_id, $emergency) {
+            return self::stop_authorized($collection_id, $emergency);
+        });
+    }
+
+    private static function stop_authorized($collection_id, $emergency) {
         global $wpdb;
         $row = $collection_id ? self::raw_get($collection_id) : self::raw_active();
         if (!$row) {
@@ -352,33 +369,68 @@ class SSPA_Traffic_Collection {
         return self::status($collection_id);
     }
 
-    public static function deactivate() {
-        $row = self::raw_active();
-        if (!$row) {
-            SSPA_Traffic_Helper::remove(true);
-            return true;
-        }
-        $id = (int) $row['id'];
-        $lock_key = self::collection_lock_key($id);
-        $lock_owner = SSPA_Atomic_Claim::acquire($lock_key, 5 * MINUTE_IN_SECONDS);
-        if (!$lock_owner) {
-            return false;
-        }
-        try {
-            $row = self::raw_get($id);
-            if ($row && in_array((int) $row['status_code'], array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
-                SSPA_Traffic_Helper::remove(true);
-                self::conditional_transition($id, (int) $row['status_code'], array(
-                    'status_code' => SSPA_Traffic_Codes::COLLECTION_STOPPED,
-                    'stop_reason_code' => SSPA_Traffic_Codes::STOP_DEACTIVATED,
-                    'finished_at' => gmdate('Y-m-d H:i:s'),
-                ));
-                self::clear_ticks($id);
+    /** Upgrade an already-generated observer explicitly, retaining its measurements. */
+    public static function retire_legacy_observer($collection_id) {
+        return SSPA_Traffic_Authority::synchronized(true, static function() use ($collection_id) {
+            $row = self::raw_get($collection_id);
+            if (!$row || get_option(SSPA_Traffic_Authority::option($collection_id), '')) {
+                return;
             }
-            return true;
-        } finally {
-            SSPA_Atomic_Claim::release($lock_key, $lock_owner);
+            if (in_array((int) $row['status_code'], array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
+                if (!self::conditional_transition($collection_id, (int) $row['status_code'], array(
+                    'status_code' => SSPA_Traffic_Codes::COLLECTION_INCOMPLETE,
+                    'stop_reason_code' => SSPA_Traffic_Codes::STOP_PLUGIN_UPDATE,
+                    'finished_at' => gmdate('Y-m-d H:i:s'),
+                ))) {
+                    throw new RuntimeException('Cannot retire the legacy traffic collection.');
+                }
+                // A different collection may have replaced this observer already.
+                $active = self::raw_active();
+                if (!$active) {
+                    SSPA_Traffic_Helper::remove(true);
+                }
+                self::clear_ticks($collection_id);
+            }
+        });
+    }
+
+    public static function deactivate() {
+        // No operation can have acquired traffic authority when the file never existed
+        // and this directory cannot create it. Do not make ordinary plugin deactivation
+        // depend on an unused feature's filesystem permissions. A writable directory
+        // must still take authority: the first collection could be starting concurrently.
+        if (!file_exists(SSPA_Traffic_Authority::path()) && !file_exists(SSPA_Traffic_Helper::path())
+            && is_dir(WPMU_PLUGIN_DIR) && !is_writable(WPMU_PLUGIN_DIR)) {
+            return self::finish_deactivation(false);
         }
+        return SSPA_Traffic_Authority::synchronized(true, static function() {
+            // Revocation does not acquire or steal another lifecycle owner's lease.
+            // The exclusive authority also drains already-admitted observer writes.
+            SSPA_Traffic_Authority::revoke();
+            return self::finish_deactivation(true);
+        });
+    }
+
+    private static function finish_deactivation($remove_helper) {
+        $row = self::raw_active();
+        if ($remove_helper && !SSPA_Traffic_Helper::remove(true)) {
+            throw new RuntimeException('The revoked traffic observer could not be removed.');
+        }
+        if ($row) {
+            $id = (int) $row['id'];
+            if (!self::conditional_transition($id, (int) $row['status_code'], array(
+                'status_code' => SSPA_Traffic_Codes::COLLECTION_STOPPED,
+                'stop_reason_code' => SSPA_Traffic_Codes::STOP_DEACTIVATED,
+                'finished_at' => gmdate('Y-m-d H:i:s'),
+            ))) {
+                $current = self::raw_get($id);
+                if ($current && in_array((int) $current['status_code'], array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
+                    throw new RuntimeException('The revoked traffic collection could not be stopped.');
+                }
+            }
+            self::clear_ticks($id);
+        }
+        return true;
     }
 
     public static function delete($collection_id) {
@@ -396,6 +448,7 @@ class SSPA_Traffic_Collection {
             $deleted[$name] = (int) $wpdb->delete(SSPA_Schema::table($name), array('collection_id' => $id));
         }
         delete_option(self::key_option($id));
+        delete_option(SSPA_Traffic_Authority::option($id));
         $deleted['traffic_collections'] = (int) $wpdb->delete(SSPA_Schema::table('traffic_collections'), array('id' => $id));
         return array('deleted' => true, 'collection_id' => $id, 'rows' => $deleted);
     }
@@ -405,6 +458,12 @@ class SSPA_Traffic_Collection {
     }
 
     private static function reconcile($row) {
+        return SSPA_Traffic_Authority::synchronized(true, static function() use ($row) {
+            return self::reconcile_authorized($row);
+        });
+    }
+
+    private static function reconcile_authorized($row) {
         global $wpdb;
         $collection_id = is_array($row) ? (int) ($row['id'] ?? 0) : (int) $row;
         if (!$collection_id) {

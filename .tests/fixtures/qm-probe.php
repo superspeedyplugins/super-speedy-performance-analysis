@@ -7,8 +7,10 @@
 // Only on this plugin's isolated test sites: the default scenario `tests` and any `tests-*`.
 if (!defined('ABSPATH') || !preg_match('/^tests(-|$)/', basename(rtrim(ABSPATH, '/')))) return;
 
-// QM dispatches (and processes its collectors) on shutdown at priority 9; read afterwards.
-add_action('shutdown', static function () {
+// PA finalizes in a PHP shutdown callback, after WordPress's shutdown action.
+// Read QM at that same boundary: its priority-9 snapshot omits later WooCommerce
+// shutdown queries and is not comparable to PA's complete request count.
+register_shutdown_function(static function () {
     if (empty($_GET['sspa_qm_probe']) || !class_exists('QM_Collectors')) {
         return;
     }
@@ -18,10 +20,10 @@ add_action('shutdown', static function () {
     }
     global $wpdb;
     $collector = QM_Collectors::get('db_queries');
-    // QM only processes its collectors when one of its dispatchers runs, which needs a
-    // logged-in viewer. For an anonymous probe request, ask the real collector to process
-    // exactly as QM's own dispatcher would.
-    if ($collector && !isset($collector->get_data()->total_qs)) {
+    // Reprocess QM's real collector at this boundary, including for anonymous viewers.
+    // process() resets its totals before reading the actual database object; it does not
+    // enable SAVEQUERIES or fabricate an anonymous per-query log.
+    if ($collector) {
         $collector->process();
     }
     $data = $collector ? $collector->get_data() : null;
@@ -41,5 +43,6 @@ add_action('shutdown', static function () {
         'savequeries' => defined('SAVEQUERIES') && SAVEQUERIES,
         'dropin' => file_exists(WP_CONTENT_DIR . '/db.php') && is_link(WP_CONTENT_DIR . '/db.php') ? 'qm-symlink' : (file_exists(WP_CONTENT_DIR . '/db.php') ? 'file' : 'absent'),
         'qm_version' => defined('QM_VERSION') ? QM_VERSION : null,
+        'realpath_cache_ttl' => (int) ini_get('realpath_cache_ttl'),
     ), false);
-}, 20);
+});

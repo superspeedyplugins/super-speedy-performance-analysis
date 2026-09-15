@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.40.4
+Stable tag: 0.40.7
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -37,6 +37,12 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.40 (14th September 2026) =
+* Deactivating the plugin stops Traffic recording while concurrent requests finish safely.
+* Traffic collections started before this update retain their data and finish as incomplete; start a new collection to use the revised recorder.
+* Reactivation after complete data removal recreates Traffic tables before using retained state.
+* Traffic collection can start on WordPress sites without WooCommerce.
+* History labels average generation time as the mean.
+* Archive-query capture reports when additional queries exceed its limit.
 * Markdown query fingerprints remove both single-quoted and double-quoted data values.
 * Write profiles use their own temporary product and stock for order-processing measurements.
 * History comparisons share one set of rules across the report, CLI and Abilities.

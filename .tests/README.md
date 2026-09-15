@@ -30,6 +30,8 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 88-query-monitor # real Query Monitor agreement on its dedicated site: tolerances, hold-and-restore of QM's db.php
 .tests/browser/run-regressions.sh loopback-fallback # real loopback failure falls back to browser transport with complete evidence
 .tests/browser/run-regressions.sh quick-comparison # detected plugin update -> notice -> one spot run -> History names the change
+.tests/run-tests.sh 92-traffic-deactivation # dedicated lifecycle/concurrency regression, retains its own site
+.tests/run-tests.sh 93-review-correctness # dedicated non-WooCommerce browser start, History mean and archive cap
 .tests/run-tests.sh 91-markdown-sql-privacy # real duplicate-query finding exports its shape without data literals
 .tests/run-tests.sh 90-write-probe-stock # real write run preserves catalogue stock and measures only its own temporary product
 .tests/run-tests.sh 89-traffic-window # two real traffic windows with a controlled slowdown: normalised deltas, unavailable states, CLI and Abilities agree

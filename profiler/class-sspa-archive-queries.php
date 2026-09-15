@@ -54,10 +54,11 @@ if (!class_exists('SSPA_Archive_Queries')) {
          * that survives between the two filters.
          */
         public function note_clauses($clauses, $query) {
-            if (count($this->records) >= self::MAX_QUERIES) {
+            if (!$this->qualifies($query)) {
                 return $clauses;
             }
-            if (!$this->qualifies($query)) {
+            if (count($this->records) >= self::MAX_QUERIES) {
+                $this->truncated = true;
                 return $clauses;
             }
             $this->clauses[spl_object_hash($query)] = array(
