@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.40.9
+Stable tag: 0.41.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -35,6 +35,13 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 3. Go to Super Speedy -> Performance Analysis and run your first analysis.
 
 == Changelog ==
+
+= 0.41 (15th September 2026) =
+* History comparisons highlight response-time changes, new faults, changed output and plugin changes.
+* Customer-session measurements cover My Account, Orders, the shop and a product page using a restricted test account.
+* Order write profiles create their own zero-price product with separate stock.
+* Markdown query fingerprints remove quoted data values.
+* Traffic recording stops safely during deactivation and can start without WooCommerce.
 
 = 0.40 (14th September 2026) =
 * Expanded regression coverage for checkout timeout detection.
