@@ -680,9 +680,8 @@ class SSPA_Markdown_Export {
     }
 
     private static function sql_fingerprint($sql) {
-        $sql = preg_replace("/'(?:''|[^'])*'/", '?', (string) $sql);
-        $sql = preg_replace('/\b\d+(?:\.\d+)?\b/', '?', $sql);
-        return preg_replace('/\s+/', ' ', trim($sql));
+        require_once SSPA_PLUGIN_DIR . 'profiler/fingerprint.php';
+        return sspa_sql_fingerprint((string) $sql);
     }
 
     private static function safe_detail($value) {

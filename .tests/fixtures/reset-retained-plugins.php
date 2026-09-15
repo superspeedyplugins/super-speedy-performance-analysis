@@ -9,6 +9,8 @@ foreach ((array)get_option('active_plugins', array()) as $file) {
         echo 'ENTRY RESET: deactivated retained suite fixture ' . $file . "\n";
     }
 }
+// Retain the SQL fixture, but disarm it before unrelated measurements.
+update_option('zz_pa_export_probe_armed', 0, true);
 wp_cache_flush();
 
 // Reset only this suite's retained foreign drop-in, preserving it through the real rename API.

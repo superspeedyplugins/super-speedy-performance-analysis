@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.40 (14th September 2026) =
+* Markdown query fingerprints remove both single-quoted and double-quoted data values.
 * Write profiles use their own temporary product and stock for order-processing measurements.
 * History comparisons share one set of rules across the report, CLI and Abilities.
 * The page report panel gives focus back to whatever opened it when it closes, and rows on the Pages tab open from the keyboard with Enter or Space.
