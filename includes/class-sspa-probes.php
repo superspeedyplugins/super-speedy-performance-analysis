@@ -199,22 +199,42 @@ class SSPA_Probes {
         if (!function_exists('wc_create_order')) {
             return 0;
         }
-        $product = get_posts(array('numberposts' => 1, 'post_type' => 'product', 'post_status' => 'publish'));
         $order = wc_create_order();
         if (is_wp_error($order)) {
             return 0;
         }
-        if ($product) {
-            $wc_product = wc_get_product($product[0]->ID);
-            if ($wc_product) {
-                $order->add_product($wc_product, 1);
-            }
-        }
-        $order->set_address(array('first_name' => 'SSPA', 'last_name' => 'Temp', 'email' => 'sspa-temp@blackhole.invalid'), 'billing');
-        $order->calculate_totals();
         $order->update_meta_data('_sspa_temp', '1');
-        $order->set_status('pending');
         $order->save();
+        $product = new WC_Product_Simple();
+        try {
+            $product->set_name(__('SSPA write-profile test product', 'super-speedy-performance-analysis'));
+            $product->set_status('publish');
+            $product->set_catalog_visibility('hidden');
+            $product->set_regular_price('0');
+            $product->set_price('0');
+            $product->set_virtual(false);
+            $product->set_tax_status('none');
+            $product->set_manage_stock(true);
+            $product->set_stock_quantity(1);
+            $product->set_stock_status('instock');
+            $product->update_meta_data('_sspa_temp', 'write_product');
+            $product->update_meta_data('_sspa_temp_order_id', $order->get_id());
+            $product->save();
+            $order->update_meta_data('_sspa_temp_product_id', $product->get_id());
+            $order->save();
+            $order->add_product($product, 1);
+            $order->set_address(array('first_name' => 'SSPA', 'last_name' => 'Temp', 'email' => 'sspa-temp@blackhole.invalid'), 'billing');
+            $order->calculate_totals();
+            $order->set_status('pending');
+            $order->save();
+        } catch (Throwable $error) {
+            // A failed setup must not leave the objects it created behind or hide the error.
+            if ($product->get_id()) {
+                $product->delete(true);
+            }
+            $order->delete(true);
+            throw $error;
+        }
         return (int) $order->get_id();
     }
 
@@ -225,7 +245,15 @@ class SSPA_Probes {
         if ($is_order && function_exists('wc_get_order')) {
             $order = wc_get_order($id);
             if ($order && $order->get_meta('_sspa_temp')) {
+                $product_id = (int) $order->get_meta('_sspa_temp_product_id');
+                $product = $product_id ? wc_get_product($product_id) : null;
+                $owns_product = $product
+                    && 'write_product' === $product->get_meta('_sspa_temp')
+                    && (int) $product->get_meta('_sspa_temp_order_id') === (int) $order->get_id();
                 $order->delete(true);
+                if ($owns_product) {
+                    $product->delete(true);
+                }
             }
             return;
         }

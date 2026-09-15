@@ -23,7 +23,7 @@ defined('ABSPATH') || exit;
             <span class="description sspa-markdown-status" aria-live="polite"></span>
         </p>
     <?php else : ?>
-        <p><?php esc_html_e('Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run is read-only and non-destructive: it sends normal page requests to your own site (roughly four per page profiled).', 'super-speedy-performance-analysis'); ?></p>
+        <p><?php esc_html_e('Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run sends page requests to your own site (roughly four per page profiled) and stores the measurements. Customer-session tests use the restricted account described below.', 'super-speedy-performance-analysis'); ?></p>
     <?php endif; ?>
 
     <?php if ($sspa_foreign_dropin) : ?>
@@ -47,10 +47,11 @@ defined('ABSPATH') || exit;
         </div>
     <?php endif; ?>
 
+    <p class="description"><?php esc_html_e('Customer-session measurements create a restricted test customer account so real customer carts and sessions are not used. The account cannot be logged into and stays available for inspection until the next run replaces it. Administrator measurements use your existing account.', 'super-speedy-performance-analysis'); ?></p>
     <p>
         <label style="margin-right:1em">
             <input type="checkbox" id="sspa-include-writes" value="1">
-            <?php esc_html_e('Include write profiles (saves a TEMPORARY copy of a post/product and steps a TEMPORARY order through processing - created and deleted automatically, no real content touched, no emails sent)', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Include write profiles (creates temporary post/product copies and an order containing its own zero-price test product with separate stock; these objects are deleted after measurement, and no email is sent)', 'super-speedy-performance-analysis'); ?>
         </label>
     </p>
     <p>

@@ -306,7 +306,7 @@ class SSPA_Abilities {
                 'properties' => array(
                     'type' => array('type' => 'string', 'enum' => array('baseline', 'spot', 'cache_impact')),
                     'pages' => array('type' => 'array', 'items' => array('type' => 'string'), 'description' => __('Page keys to limit the run to (e.g. home, shop).', 'super-speedy-performance-analysis')),
-                    'include_writes' => array('type' => 'boolean', 'description' => __('Also profile save/order cascades against temporary objects.', 'super-speedy-performance-analysis')),
+                    'include_writes' => array('type' => 'boolean', 'description' => __('Also profile saves using temporary copies and order processing using a temporary zero-price product with its own stock. These objects are deleted after measurement.', 'super-speedy-performance-analysis')),
                 ),
                 'additionalProperties' => false,
                 'default' => array(),

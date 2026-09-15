@@ -19,10 +19,12 @@ Super Speedy Performance Analysis diagnoses your site's performance the way an e
 * Attributes SQL time, returned row counts, RAM and query counts to individual plugins and your theme.
 * Presents plain-English insights: the slowest queries and who ran them, queries fetching hundreds of rows (the usual RAM culprits), plugins running queries in loops, blocking HTTP calls and more.
 * Plugin Impact Analysis isolates the real culprits by virtually disabling plugins for test requests only - your live visitors are never affected - and measures each suspect's true cost.
-* Checkout and order analysis uses a hidden, non-stock-managed SSPA product instead of real catalogue inventory, keeps TLS verification enabled and never forwards profiling credentials across origins.
+* Checkout analysis uses its own hidden SSPA product; write-order profiles create a separate zero-price product with its own managed stock, so neither orders real catalogue products.
 * The History tab compares saved points in time, leads with response-time changes, highlights new faults and changed output, and can offer a quick comparison after plugin updates.
 * History can also opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
 * Optionally share anonymised results with the community at superspeedy.org to help build an open database of plugin performance. You see the exact payload before anything is sent.
+
+Performance tests require test objects. Customer-session measurements create a restricted test customer account that cannot be logged into and is replaced on the next run. Administrator measurements use your existing account. Opt-in write profiles create temporary post/product copies and a temporary order with its own test product; these objects are deleted after measurement. The separate checkout flow retains its hidden test product and its refunded orders in Trash for inspection, without contacting a payment provider.
 
 This plugin is free. The build downloaded from https://www.superspeedyplugins.com/ includes automatic updates from superspeedyplugins.com; the WordPress.org build does not include this updater.
 
@@ -35,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.40 (14th September 2026) =
+* Write profiles use their own temporary product and stock for order-processing measurements.
 * History comparisons share one set of rules across the report, CLI and Abilities.
 * The page report panel gives focus back to whatever opened it when it closes, and rows on the Pages tab open from the keyboard with Enter or Space.
 * A traffic collection stopped early now keeps a fixed observed duration, so its projected daily figures and any comparison built on them no longer drift until the planned end time passes.

@@ -32,7 +32,7 @@ class SSPA_CLI {
      * otherwise add for every plugin that shows an impact.
      *
      * [--include-writes]
-     * : Also profile save/order cascades against temporary objects.
+     * : Profile saves on temporary copies and orders using a temporary zero-price product with its own stock.
      *
      * [--porcelain]
      * : Output only the run id.
