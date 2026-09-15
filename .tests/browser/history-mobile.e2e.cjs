@@ -4,7 +4,23 @@ const { session, admin, expect, output, fs } = require("./fleet-context.cjs");
   try {
     for (const width of [1280, 320]) {
       await page.setViewportSize({ width, height: 844 });
+      // Each width must initialise its own chart, rather than reuse the previous document.
+      await page.goto("about:blank");
+      const historyResponse = page.waitForResponse((response) => {
+        const data = new URLSearchParams(response.request().postData() || "");
+        return (
+          response.url().includes("admin-ajax.php") &&
+          data.get("action") === "sspa_render_tab" &&
+          data.get("tabs") === "history"
+        );
+      });
       await admin(page, "history");
+      const response = await historyResponse;
+      expect(response.ok(), "History HTTP " + response.status()).toBe(true);
+      const payload = await response.json();
+      expect(payload.success, "History response must succeed").toBe(true);
+      expect(payload.data.tabs.history, "History HTML must be present").toBeTruthy();
+      await page.waitForFunction(() => window.SSPAECharts, null, { timeout: 30000 });
       const chart = page.locator(".sspa-history-chart");
       await expect(chart.locator("canvas")).toBeVisible();
       await chart.scrollIntoViewIfNeeded();

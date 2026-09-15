@@ -31,6 +31,11 @@ function sspa_89_window($label, $requests) {
         $response = wp_remote_get(add_query_arg('sspa_window', $label . '-' . $i, $request['url']), array('timeout' => 30, 'sslverify' => false, 'user-agent' => $request['ua']));
         $codes[] = is_wp_error($response) ? 0 : (int) wp_remote_retrieve_response_code($response);
     }
+    // Hold both windows open for at least 30 seconds before stopping them.
+    $finish_at = strtotime($row['started_at'] . ' UTC') + 30;
+    $remaining = $finish_at - microtime(true);
+    if ($remaining <= 0) { throw new RuntimeException($label . ': requests exceeded the fixed 30-second observation budget'); }
+    usleep((int) ceil($remaining * 1000000));
     // A normal stop keeps the collection active for its outcome window (days), and only one
     // collection may be active, so two windows within one session - the way a person
     // actually compares before and after a change - end with the emergency stop.
@@ -86,6 +91,18 @@ try {
     sspa_89_t(null !== $b_avg && null !== $a_avg && 'normalised_comparison' === $origin['wall_ms_average']['quality'], 'both windows carry a measured per-request average (' . var_export($b_avg, true) . ' -> ' . var_export($a_avg, true) . ')');
     $rise = (float) $origin['wall_ms_average']['absolute'];
     sspa_89_t($rise >= $delay_ms * 0.6 && $rise <= $delay_ms * 2.5, 'the per-request average rose by about the controlled slowdown (+' . round($rise, 1) . 'ms for ' . $delay_ms . 'ms)');
+    $b_duration = $comparison['before']['origin_page_generation']['observed_duration_seconds'];
+    $a_duration = $comparison['after']['origin_page_generation']['observed_duration_seconds'];
+    sspa_89_t($b_duration >= 30 && $a_duration >= 30, 'both real windows include the full 30-second observation period (' . $b_duration . ' -> ' . $a_duration . ')');
+    foreach (array('before' => $before['id'], 'after' => $after['id']) as $label => $id) {
+        $row = SSPA_Traffic_Collection::get($id);
+        $duration = strtotime($row['finished_at'] . ' UTC') - strtotime($row['started_at'] . ' UTC');
+        $metrics = $comparison[$label]['origin_page_generation'];
+        sspa_89_t($duration === $metrics['observed_duration_seconds'], $label . ': reported duration matches the real retained start and stop');
+        sspa_89_t((int) round(count($requests) * DAY_IN_SECONDS / $duration) === $metrics['projected_daily_requests'], $label . ': daily requests use the actual observation duration');
+        sspa_89_t((int) round($metrics['estimated_wall_ms_sum'] * DAY_IN_SECONDS / $duration) === $metrics['projected_daily_wall_ms'], $label . ': daily processing uses the measured total and actual observation duration');
+    }
+    sspa_89_t(count($requests) === (int) $comparison['before']['origin_page_generation']['estimated_requests'] && count($requests) === (int) $comparison['after']['origin_page_generation']['estimated_requests'], 'both windows contain exactly the requested origin observations');
     $requests_change = $origin['projected_daily_requests'];
     sspa_89_t('normalised_comparison' === $requests_change['quality'] && $requests_change['before'] > 0 && abs((float) $requests_change['percent']) <= 60, 'projected daily requests are duration-normalised and comparable for the same visit (' . $requests_change['before'] . ' -> ' . $requests_change['after'] . ', ' . var_export($requests_change['percent'], true) . '%)');
     sspa_89_t((float) $origin['projected_daily_wall_ms']['absolute'] > 0, 'projected daily processing rose with the slowdown');
