@@ -867,6 +867,16 @@
 	font-size: 12px;
 }
 
+#sspa-adhoc-pop .sspa-adhoc-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 /* Native row actions retain keyboard activation and a visible focus indicator. */
 #sspa-adhoc-pop .sspa-adhoc-row-button {
     border: 0;

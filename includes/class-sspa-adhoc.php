@@ -105,6 +105,7 @@ class SSPA_Adhoc {
                 'close' => __('Close', 'super-speedy-performance-analysis'),
                 'copied' => __('Copied', 'super-speedy-performance-analysis'),
                 'loading' => __('Loading…', 'super-speedy-performance-analysis'),
+                'profile_ready' => __('Profile ready.', 'super-speedy-performance-analysis'),
                 'exporting' => __('Preparing export…', 'super-speedy-performance-analysis'),
                 'export_failed' => __('The page diagnostic could not be exported.', 'super-speedy-performance-analysis'),
                 'markdown_failed' => __('The Markdown report could not be exported.', 'super-speedy-performance-analysis'),

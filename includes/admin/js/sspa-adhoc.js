@@ -34,6 +34,7 @@
 			'<span class="sspa-adhoc-version">v' + esc(sspa_adhoc.version) + '</span></span>' +
 			logo +
 			'<button type="button" class="sspa-adhoc-close" aria-label="' + esc(sspa_adhoc.i18n.close) + '">&times;</button></div>' +
+			'<div class="sspa-adhoc-status" role="status" aria-live="polite" aria-atomic="true"></div>' +
 			'<div class="sspa-adhoc-body"></div>' +
 			// The screenshot line: anyone sharing this panel shares where it came from.
 			'<div class="sspa-adhoc-foot">Powered by <strong>Super Speedy Performance Analysis</strong> &middot; free from <a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener">superspeedyplugins.com</a></div>' +
@@ -44,7 +45,16 @@
 	}
 
 	function body(html) {
-		pop().find('.sspa-adhoc-body').html(html);
+		var panel = pop();
+		var content = panel.find('.sspa-adhoc-body').html(html);
+		var running = content.find('.sspa-adhoc-running').first().clone();
+		running.find('.sspa-adhoc-elapsed').remove();
+		var message = content.find('.sspa-adhoc-error').first().text().trim()
+			|| running.text().trim()
+			|| (content.find('.sspa-profile-target').length ? sspa_adhoc.i18n.profile_ready : '')
+			|| content.children('.sspa-adhoc-note').first().text().trim();
+		var status = panel.find('.sspa-adhoc-status');
+		if (status.text() !== message) { status.text(message); }
 	}
 
 	// Whatever opened the panel gets focus back when it closes, so a keyboard user is not

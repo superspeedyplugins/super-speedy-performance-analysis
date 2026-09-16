@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Profile loading, progress and results expose concise status updates to assistive technology.
 * Small profile notes use darker text for readable contrast.
 * Profile phase details and query-copy controls are accessible from the keyboard.
 * Sharing retries recognise an existing archive receipt without uploading the same analysis again.
