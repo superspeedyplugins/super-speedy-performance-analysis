@@ -652,3 +652,5 @@ complement the full-suite assertion log; they do not replace the suite's pass/fa
 ## Translation template
 
 Run `.build/update-translations.sh` after changing translatable strings or the release version. It regenerates `languages/super-speedy-performance-analysis.pot` with WP-CLI, including PHP and JavaScript and excluding bundled/shared libraries. An optional destination argument supports comparing a fresh extraction with the retained template; the generation timestamp can differ. This ships a source template, not a translated language pack.
+
+Cache action scope regression: `bash .tests/run-tests.sh 97-cache-action` uses the dedicated persistent-cache site to check menu availability and preservation of owned and foreign entries when an obsolete selective-action URL is used.

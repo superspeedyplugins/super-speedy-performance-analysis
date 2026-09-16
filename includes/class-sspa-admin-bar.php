@@ -148,13 +148,15 @@ class SSPA_Admin_Bar {
             'meta' => array('tabindex' => -1),
         ));
 
-        $bar->add_node(array(
-            'id' => 'sspa-clear-ours',
-            'parent' => 'sspa-clear',
-            'title' => __('Super Speedy caches', 'super-speedy-performance-analysis'),
-            'href' => self::action_url('clear_ours'),
-            'meta' => array('title' => __('Our own transients only. Small and safe: nothing else on the site is touched.', 'super-speedy-performance-analysis')),
-        ));
+        if (!wp_using_ext_object_cache()) {
+            $bar->add_node(array(
+                'id' => 'sspa-clear-ours',
+                'parent' => 'sspa-clear',
+                'title' => __('Super Speedy caches', 'super-speedy-performance-analysis'),
+                'href' => self::action_url('clear_ours'),
+                'meta' => array('title' => __('Our own transients only. Small and safe: nothing else on the site is touched.', 'super-speedy-performance-analysis')),
+            ));
+        }
 
         $bar->add_node(array(
             'id' => 'sspa-clear-transients',
@@ -398,30 +400,16 @@ class SSPA_Admin_Bar {
             : sprintf(__('Purged %1$s for %2$s.', 'super-speedy-performance-analysis'), $cache['name'], $url);
     }
 
-    /**
-     * Transient clearing, honest about where transients actually live.
-     *
-     * With a persistent object cache in play, WordPress keeps transients THERE and not in
-     * the options table, so a DELETE finds nothing and reporting "cleared 0" would be a lie
-     * about work that the object cache flush then did anyway. Each path therefore says what
-     * it really did. Found the hard way on a Redis-backed test site, 22 August 2026.
-     */
+    /** Clear owned database transients; persistent backends require the explicit global action. */
     private static function clear_our_caches() {
+        if (wp_using_ext_object_cache()) {
+            return __('Super Speedy caches cannot be cleared separately on this site. Use Object cache to flush the persistent cache. Nothing was cleared.', 'super-speedy-performance-analysis');
+        }
         global $wpdb;
         $rows = (int) $wpdb->query(
             "DELETE FROM {$wpdb->options}
              WHERE option_name REGEXP '^_(site_)?transient(_timeout)?_(superspeedy_changes_|superspeedy_l_|ssp_|sspa_)'"
         );
-        if (wp_using_ext_object_cache()) {
-            wp_cache_flush();
-            return $rows
-                ? sprintf(
-                    /* translators: %d: number of stale database rows also removed. */
-                    __('This site keeps transients in its object cache, so that was flushed. %d stale database row(s) were removed as well.', 'super-speedy-performance-analysis'),
-                    $rows
-                )
-                : __('This site keeps transients in its object cache, so that was flushed.', 'super-speedy-performance-analysis');
-        }
         wp_cache_flush();
         return sprintf(
             /* translators: %d: number of database rows removed. */

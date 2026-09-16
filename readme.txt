@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Persistent-cache sites use the explicit Object cache action instead of the Super Speedy caches shortcut.
 * Added a translation template for the plugin’s PHP and JavaScript messages.
 * Consumed profiling tokens stay unusable after their captured results are read or discarded.
 * Admin messages, AJAX controls and comparison summaries support WordPress translations.
