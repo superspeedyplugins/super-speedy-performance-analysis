@@ -11,10 +11,12 @@ if (!defined('ABSPATH') || !preg_match('/^tests(-|$)/', basename(rtrim(ABSPATH, 
 // Read QM at that same boundary: its priority-9 snapshot omits later WooCommerce
 // shutdown queries and is not comparable to PA's complete request count.
 register_shutdown_function(static function () {
-    if (empty($_GET['sspa_qm_probe']) || !class_exists('QM_Collectors')) {
+    $paired = !empty($_SERVER['HTTP_X_SSPA_QM_PROBE']) && !empty($_SERVER['HTTP_X_SSPA_TOKEN']);
+    if ((!$paired && empty($_GET['sspa_qm_probe'])) || !class_exists('QM_Collectors')) {
         return;
     }
-    $id = preg_replace('/[^a-z0-9]/', '', strtolower((string) $_GET['sspa_qm_probe']));
+    $key = $paired ? explode('.', (string) $_SERVER['HTTP_X_SSPA_TOKEN'])[0] : $_GET['sspa_qm_probe'];
+    $id = preg_replace('/[^a-z0-9]/', '', strtolower((string) $key));
     if ('' === $id) {
         return;
     }

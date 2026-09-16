@@ -1,7 +1,7 @@
 <?php
 // Admin-bar "This site" nodes must deep-link to the Tools tab by URL fragment. Tab selection
-// is driven by location.hash alone (sspa-admin.js), so a ?tab=tools query parameter is
-// ignored and the visitor lands on Overview. The digests node must also describe the
+// gives explicit fragments precedence over the shared legacy query parameter.
+// The digests node must also describe the
 // performance_schema state the server is actually in, using the same words as the Tools card
 // it points at, rather than a fixed sentence that is only true when the schema is on but
 // unreadable.

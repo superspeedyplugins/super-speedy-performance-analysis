@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.42.11\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.43.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-16T15:39:44+00:00\n"
+"POT-Creation-Date: 2026-09-16T16:39:57+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -1043,7 +1043,7 @@ msgid "Measured impact"
 msgstr ""
 
 #: includes/admin/class-sspa-plugins-table.php:134
-#: includes/class-sspa-admin-bar.php:171
+#: includes/class-sspa-admin-bar.php:173
 msgid "Object cache"
 msgstr ""
 
@@ -3352,138 +3352,132 @@ msgstr ""
 msgid "Clear before measuring"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:154
+#: includes/class-sspa-admin-bar.php:155
 msgid "Super Speedy caches"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:156
+#: includes/class-sspa-admin-bar.php:157
 msgid "Our own transients only. Small and safe: nothing else on the site is touched."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:162
+#: includes/class-sspa-admin-bar.php:164
 msgid "All transients"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:164
+#: includes/class-sspa-admin-bar.php:166
 msgid "Every plugin's cached data. The site will be slower until they refill, which is the point when you are measuring."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:173
+#: includes/class-sspa-admin-bar.php:175
 msgid "Flushes the persistent object cache. On a shared backend this affects every site using it."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:183
+#: includes/class-sspa-admin-bar.php:185
 #, php-format
 msgid "Page cache: this URL (%s)"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:190
+#: includes/class-sspa-admin-bar.php:192
 #, php-format
 msgid "Page cache: everything (%s)"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:192
+#: includes/class-sspa-admin-bar.php:194
 msgid "Expensive on a busy site: every cached page has to be rebuilt."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:200
+#: includes/class-sspa-admin-bar.php:202
 msgid "OPcache"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:202
+#: includes/class-sspa-admin-bar.php:204
 msgid "Matters after deploying code, which is exactly when you re-measure."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:209
+#: includes/class-sspa-admin-bar.php:211
 msgid "This page's stored result"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:211
+#: includes/class-sspa-admin-bar.php:213
 msgid "So \"Analyse this page\" measures again instead of reopening the stored panel."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:226
+#: includes/class-sspa-admin-bar.php:228
 msgid "Cache bypass cookie: SET"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:227
+#: includes/class-sspa-admin-bar.php:229
 msgid "Set the cache-bypass cookie for me"
 msgstr ""
 
 #. translators: %s: the cookie name.
-#: includes/class-sspa-admin-bar.php:231
+#: includes/class-sspa-admin-bar.php:233
 #, php-format
 msgid "Sets %s for this browser only. Your page cache must be configured to skip requests carrying it - most already skip logged-in users anyway."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:245
+#: includes/class-sspa-admin-bar.php:247
 msgid "This site"
 msgstr ""
 
 #. translators: 1: score out of 100, 2: human readable age.
-#: includes/class-sspa-admin-bar.php:256
+#: includes/class-sspa-admin-bar.php:258
 #, php-format
 msgid "Last measured: %1$s/100, %2$s ago"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:268
+#: includes/class-sspa-admin-bar.php:270
 msgid "Object cache: persistent"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:269
+#: includes/class-sspa-admin-bar.php:271
 msgid "Object cache: none"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:284
+#: includes/class-sspa-admin-bar.php:286
 msgid "Excimer: installed"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:285
+#: includes/class-sspa-admin-bar.php:287
 msgid "Excimer not installed - no function-level detail"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:288
+#: includes/class-sspa-admin-bar.php:290
 msgid "Profiles carry a by-function breakdown."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:289
+#: includes/class-sspa-admin-bar.php:291
 msgid "Install the free excimer extension to see which PHP functions the time went into. The Tools tab generates the commands for this server."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:308
+#: includes/class-sspa-admin-bar.php:310
 msgid "Download this analysis as Markdown"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:310
+#: includes/class-sspa-admin-bar.php:312
 msgid "Privacy-safe: no SQL literals, no query values, no identifiers. For a developer, a host or an LLM."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:351
+#: includes/class-sspa-admin-bar.php:353
 msgid "No page cache was detected, so nothing was purged."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:397
+#: includes/class-sspa-admin-bar.php:399
 #, php-format
 msgid "Purged the whole %s page cache."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:398
+#: includes/class-sspa-admin-bar.php:400
 #, php-format
 msgid "Purged %1$s for %2$s."
 msgstr ""
 
-#. translators: %d: number of stale database rows also removed.
-#: includes/class-sspa-admin-bar.php:420
-#, php-format
-msgid "This site keeps transients in its object cache, so that was flushed. %d stale database row(s) were removed as well."
-msgstr ""
-
-#: includes/class-sspa-admin-bar.php:423
-msgid "This site keeps transients in its object cache, so that was flushed."
+#: includes/class-sspa-admin-bar.php:406
+msgid "Super Speedy caches cannot be cleared separately on this site. Use Object cache to flush the persistent cache. Nothing was cleared."
 msgstr ""
 
 #. translators: %d: number of database rows removed.
-#: includes/class-sspa-admin-bar.php:428
+#: includes/class-sspa-admin-bar.php:416
 #, php-format
 msgid "Cleared %d Super Speedy cache row."
 msgid_plural "Cleared %d Super Speedy cache rows."
@@ -3491,61 +3485,61 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of stale database rows also removed.
-#: includes/class-sspa-admin-bar.php:442
+#: includes/class-sspa-admin-bar.php:430
 #, php-format
 msgid "This site keeps transients in its object cache, so the whole object cache was flushed. %d stale database row(s) were removed as well. Plugins will refill as pages are hit."
 msgstr ""
 
 #. translators: %d: number of database rows removed.
-#: includes/class-sspa-admin-bar.php:449
+#: includes/class-sspa-admin-bar.php:437
 #, php-format
 msgid "Cleared %d transient row. Plugins will refill them as pages are hit."
 msgid_plural "Cleared %d transient rows. Plugins will refill them as pages are hit."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-sspa-admin-bar.php:459
+#: includes/class-sspa-admin-bar.php:447
 msgid "You do not have permission to do that."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:476
+#: includes/class-sspa-admin-bar.php:464
 msgid "Flushed the object cache."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:486
+#: includes/class-sspa-admin-bar.php:474
 msgid "Reset OPcache."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:487
+#: includes/class-sspa-admin-bar.php:475
 msgid "OPcache refused the reset. Some hosts disable it for web requests."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:494
+#: includes/class-sspa-admin-bar.php:482
 msgid "Page cache bypassed for this browser for 24 hours."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:498
+#: includes/class-sspa-admin-bar.php:486
 msgid "Page cache bypass turned off."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:504
+#: includes/class-sspa-admin-bar.php:492
 msgid "Unknown action."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:515
-#: includes/class-sspa-admin-bar.php:525
+#: includes/class-sspa-admin-bar.php:503
+#: includes/class-sspa-admin-bar.php:513
 msgid "Nothing stored for this page."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:524
+#: includes/class-sspa-admin-bar.php:512
 msgid "Forgot the stored result for this page. The next analysis will measure it again."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:531
+#: includes/class-sspa-admin-bar.php:519
 msgid "No analysis to export."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:540
+#: includes/class-sspa-admin-bar.php:528
 msgid "That analysis could not be exported."
 msgstr ""
 

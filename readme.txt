@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.42.0
+Stable tag: 0.43.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -36,7 +36,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Changelog ==
 
-= 0.42 (16th September 2026) =
+= 0.43 (16th September 2026) =
 * Persistent-cache sites use the explicit Object cache action instead of the Super Speedy caches shortcut.
 * Added a translation template for the plugin’s PHP and JavaScript messages.
 * Consumed profiling tokens stay unusable after their captured results are read or discarded.
@@ -49,6 +49,8 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 * Small profile notes use darker text for readable contrast.
 * Profile phase details and query-copy controls are accessible from the keyboard.
 * Sharing retries recognise an existing archive receipt without uploading the same analysis again.
+
+= 0.42 (16th September 2026) =
 * Successful profiled requests are no longer marked blocked by challenge-related page text or another request's status.
 * Request details explain unsuccessful responses with their recorded reason instead of internal evidence labels.
 * History charts distinguish warning squares from error triangles, with separate controls for their highlighting.

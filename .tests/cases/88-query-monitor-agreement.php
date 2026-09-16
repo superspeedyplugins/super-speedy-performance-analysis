@@ -38,11 +38,23 @@ function sspa_88_run($page_keys, $extra = array(), $settle_seconds = 0) {
         // opcache.revalidate_freq a chance so the profiled request runs the swapped file.
         sleep($settle_seconds);
     }
+    // Ask the fixture to record QM on these exact signed requests, keyed by token.
+    $pair_probe = static function ($args) {
+        if (!empty($args['headers'][SSPA_Token::HEADER])) {
+            $args['headers']['X-SSPA-QM-Probe'] = '1';
+        }
+        return $args;
+    };
+    add_filter('http_request_args', $pair_probe);
     $deadline = time() + 240;
-    do {
-        SSPA_Run_Controller::process_batch($id);
-        $status = SSPA_Run_Controller::status($id);
-    } while ($status && in_array($status['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+    try {
+        do {
+            SSPA_Run_Controller::process_batch($id);
+            $status = SSPA_Run_Controller::status($id);
+        } while ($status && in_array($status['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+    } finally {
+        remove_filter('http_request_args', $pair_probe);
+    }
     if (!$status || 'done' !== $status['status']) { throw new RuntimeException('Query Monitor agreement run did not complete'); }
     return array('id' => (int) $id, 'during' => $during);
 }
@@ -50,7 +62,10 @@ function sspa_88_profile($run_id, $page_key) {
     global $wpdb;
     $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM %i WHERE run_id = %d AND page_key = %s', SSPA_Schema::table('profiles'), $run_id, $page_key), ARRAY_A);
     $capture = $row ? SSPA_Profile_Panel::capture($row) : null;
-    return array('row' => $row, 'mode' => is_array($capture) ? ($capture['overview']['capture_mode'] ?? null) : null);
+    $probe_key = 'sspa_qm_probe_' . ($capture['token'] ?? '');
+    wp_cache_delete($probe_key, 'options');
+    wp_cache_delete('notoptions', 'options');
+    return array('qm' => get_option($probe_key), 'capture' => $capture, 'row' => $row, 'mode' => is_array($capture) ? ($capture['overview']['capture_mode'] ?? null) : null);
 }
 
 wp_set_current_user(1);
@@ -135,6 +150,10 @@ try {
     // capture with no log must carry no SQL time.
     $home_capture = SSPA_Profile_Panel::capture($home['row']);
     sspa_88_t(in_array($home['mode'], array('none', 'degraded', 'qm'), true) && ('none' !== $home['mode'] || null === ($home_capture['sql']['total_ms'] ?? null)), 'the plugin reports honestly what QM\'s class let it see: capture mode ' . var_export($home['mode'], true) . ', logged SQL time ' . var_export($home_capture['sql']['total_ms'] ?? null, true));
+    echo 'SEPARATE REQUEST: Home QM ' . $aq['total_qs'] . ', PA ' . $home['row']['sql_count'] . "\n";
+    $aq = $home['qm'];
+    sspa_88_t(is_array($aq), 'QM evidence is paired with the retained Home capture token');
+    if (!is_array($aq)) { throw new RuntimeException('Missing same-request Home QM evidence'); }
     $delta_anon = (int) $home['row']['sql_count'] - (int) $aq['total_qs'];
     sspa_88_t(abs($delta_anon) <= 6, 'anonymous query counts agree within the plugin\'s instrumentation allowance of 6 (plugin ' . $home['row']['sql_count'] . ', QM ' . $aq['total_qs'] . ', delta ' . $delta_anon . ')');
 
@@ -147,9 +166,12 @@ try {
     $dash_run = sspa_88_run(array('admin-dashboard'));
     $dash = sspa_88_profile($dash_run['id'], 'admin-dashboard');
     sspa_88_t('qm' === $dash['mode'], 'the plugin captured the dashboard from QM\'s own query log: capture mode "qm" (' . var_export($dash['mode'], true) . ')');
-    // The two collectors stop counting at different points of the request (QM totals through
-    // its own shutdown work; the plugin closes its capture when the page is served), so the
-    // counts are compared as a ratio with the delta reported, not as an exact match.
+    // The fixture reads QM after PA persists its capture. Keep the existing tolerance
+    // for that instrumentation, but compare the same signed request, not another page hit.
+    echo 'SEPARATE REQUEST: dashboard QM ' . $bq['total_qs'] . ', PA ' . $dash['row']['sql_count'] . "\n";
+    $bq = $dash['qm'];
+    sspa_88_t(is_array($bq), 'QM evidence is paired with the retained dashboard capture token');
+    if (!is_array($bq)) { throw new RuntimeException('Missing same-request dashboard QM evidence'); }
     $delta_dash = (int) $dash['row']['sql_count'] - (int) $bq['total_qs'];
     $count_ratio = (int) $bq['total_qs'] > 0 ? (int) $dash['row']['sql_count'] / (int) $bq['total_qs'] : null;
     sspa_88_t(null !== $count_ratio && $count_ratio >= 0.75 && $count_ratio <= 1.25, 'dashboard query counts agree within 25% (plugin ' . $dash['row']['sql_count'] . ', QM ' . $bq['total_qs'] . ', delta ' . $delta_dash . ', ratio ' . (null === $count_ratio ? '?' : round($count_ratio, 2)) . ')');

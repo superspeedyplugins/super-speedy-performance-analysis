@@ -231,11 +231,16 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			assert.ok((await page.locator('.sspa-history-chart').boundingBox()).width > 100);
 			const overflow = await page.evaluate(() => ({width:innerWidth, document:document.documentElement.scrollWidth,
 				elements:Array.from(document.querySelectorAll('#sspa_main *')).filter(node => node.getBoundingClientRect().right > innerWidth + 1 && !node.closest('.sspa-table-scroll')).slice(0, 12).map(node => ({tag:node.tagName, cls:node.className, width:node.getBoundingClientRect().width}))}));
-			if (screenshot) await page.screenshot({path:screenshot, fullPage:true});
+			// Retained History can exceed Chromium's full-page bitmap limit. Capture the
+			// viewport under test; the independent assertion still checks document overflow.
+			if (screenshot) {
+				await page.locator('.sspa-history-chart').scrollIntoViewIfNeeded();
+				await page.screenshot({path:screenshot.replace(/\.png$/, '-' + width + '.png'), fullPage:false});
+			}
 			assert.ok(overflow.document <= width + 1, 'History must not overflow the viewport: ' + JSON.stringify(overflow));
 		}
 		if (screenshot) {
-			await page.screenshot({ path: screenshot, fullPage: true });
+			await page.screenshot({ path: screenshot, fullPage: false });
 		}
 		if (process.env.SSPA_E2E_DIAGNOSTIC_RUN) {
 			await page.setViewportSize({width:1400, height:900});
