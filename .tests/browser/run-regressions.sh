@@ -12,7 +12,7 @@ matched=0
 if [ -z "${1:-}" ]; then
     bash "$PLUGIN_DIR/.tests/browser/run-history-chart.sh" > "$SSPA_FLEET_OUTPUT/history-chart.log" 2>&1 || failed=$((failed + 1))
 fi
-for check in browser-transport loopback-fallback quick-comparison admin-journey measurement measurement-error report-panels report-mobile history-mobile admin-mobile tab-retry checkout-flow traffic-workflow sharing; do
+for check in browser-transport loopback-fallback quick-comparison admin-journey measurement measurement-error report-panels report-mobile history-mobile admin-mobile tab-retry shared-link checkout-flow traffic-workflow sharing; do
     if [ -n "${1:-}" ] && [[ "$check" != *"$1"* ]]; then continue; fi
     matched=$((matched + 1))
     if [ "$check" = traffic-workflow ]; then cli plugin activate scalability-pro --quiet || exit 1; fi

@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Plugin Impact links from the Super Speedy dashboard open the Plugins tab correctly.
 * Failed tab loads show the request error and a Retry button.
 * Wide analysis tables scroll within their panels on phones.
 * Workflow grids, AJAX controls and long action labels fit narrow phone screens.

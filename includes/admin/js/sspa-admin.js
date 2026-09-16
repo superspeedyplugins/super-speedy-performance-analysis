@@ -86,7 +86,7 @@ jQuery(document).on('click', '#sspa_main .nav-tab-wrapper .nav-tab', function (e
 });
 
 function sspa_select_url_tab() {
-	sspa_click_tab(window.location.hash.substring(1) || 'overview');
+	sspa_click_tab(window.location.hash.substring(1) || new URLSearchParams(window.location.search).get('tab') || 'overview');
 }
 
 function sspa_click_tab(slug) {
