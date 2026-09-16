@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Small profile notes use darker text for readable contrast.
 * Profile phase details and query-copy controls are accessible from the keyboard.
 * Sharing retries recognise an existing archive receipt without uploading the same analysis again.
 * Successful profiled requests are no longer marked blocked by challenge-related page text or another request's status.

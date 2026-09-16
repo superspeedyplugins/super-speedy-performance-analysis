@@ -56,6 +56,27 @@ const {
     await expect(
       panel.locator(`.sspa-adhoc-sub[data-parent="${key}"]`).first(),
     ).toBeHidden();
+    const noteContrast = await panel.evaluate((root) => {
+      const rgb = (value) => (value.match(/[\d.]+/g) || []).map(Number);
+      const luminance = (colour) => colour.slice(0, 3).reduce((sum, value, i) => {
+        const v = value / 255;
+        return sum + (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][i];
+      }, 0);
+      return [...root.querySelectorAll('.sspa-adhoc-table small, .sspa-adhoc-note')]
+        .filter((node) => node.getClientRects().length && node.textContent.trim())
+        .map((node) => {
+          let background = [255, 255, 255];
+          for (let parent = node; parent; parent = parent.parentElement) {
+            const candidate = rgb(getComputedStyle(parent).backgroundColor);
+            if (candidate.length === 3 || candidate[3] === 1) { background = candidate; break; }
+          }
+          const foreground = luminance(rgb(getComputedStyle(node).color));
+          const back = luminance(background);
+          return { text: node.textContent.slice(0, 60), ratio: (Math.max(foreground, back) + 0.05) / (Math.min(foreground, back) + 0.05) };
+        });
+    });
+    expect(noteContrast.length).toBeGreaterThan(0);
+    for (const note of noteContrast) expect(note.ratio, JSON.stringify(note)).toBeGreaterThanOrEqual(4.5);
     const query = panel.locator(".sspa-adhoc-qrow").first();
     await query.scrollIntoViewIfNeeded();
     const sql = await query.getAttribute("data-sql");
