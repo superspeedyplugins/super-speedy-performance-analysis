@@ -119,7 +119,7 @@ const FIXTURE = "sspa-history-update-fixture/sspa-history-update-fixture.php";
     await expect(setup).toContainText("sspa-history-update-fixture");
     await expect(setup).toContainText("1.2.0");
     await expect(setup).toContainText("1.3.0");
-    await page.screenshot({ path: output + "/quick-comparison-history.png", fullPage: true });
+    await comparison.screenshot({ path: output + "/quick-comparison-history.png" });
 
     const pluginsAfter = json(`echo wp_json_encode(get_option('active_plugins'));`);
     const helpersAfter = json(
@@ -132,7 +132,7 @@ const FIXTURE = "sspa-history-update-fixture/sspa-history-update-fixture.php";
       "PASS detected update offers a quick comparison, one bounded spot run completes and History names the changed component",
     );
   } finally {
-    await page.screenshot({ path: output + "/quick-comparison-final.png", fullPage: true });
+    await page.screenshot({ path: output + "/quick-comparison-final.png" });
     await browser.close();
   }
 })().catch((e) => {
