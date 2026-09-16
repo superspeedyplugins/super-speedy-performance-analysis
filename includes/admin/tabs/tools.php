@@ -21,7 +21,7 @@ $sspa_status_label = array(
     <?php esc_html_e('It does not edit php.ini, run pecl, or restart anything. It shows you the exact commands for this server, and you or your host run them.', 'super-speedy-performance-analysis'); ?>
 </p>
 
-<table class="widefat sspa-tools">
+<div class="sspa-table-scroll"><table class="widefat sspa-tools">
     <thead>
         <tr>
             <th><?php esc_html_e('Capability', 'super-speedy-performance-analysis'); ?></th>
@@ -82,7 +82,7 @@ $sspa_status_label = array(
         <?php endif; ?>
     <?php endforeach; ?>
     </tbody>
-</table>
+</table></div>
 
 <p>
     <button type="button" class="button" id="sspa-tools-recheck">
@@ -123,11 +123,11 @@ $sspa_status_label = array(
 <?php endif; ?>
 
 <h3><?php esc_html_e('This server', 'super-speedy-performance-analysis'); ?></h3>
-<table class="widefat striped sspa-env">
+<div class="sspa-table-scroll"><table class="widefat striped sspa-env">
     <tbody>
         <tr><td><?php esc_html_e('Operating system', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html($sspa_env['distro'] . ' (' . $sspa_env['uname'] . ')'); ?></td></tr>
         <tr><td><?php esc_html_e('PHP', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html($sspa_env['php'] . ' - ' . $sspa_env['sapi'] . ($sspa_env['zts'] ? ' (thread safe)' : '')); ?></td></tr>
         <tr><td><?php esc_html_e('PHP ini scan directory', 'super-speedy-performance-analysis'); ?></td><td><code><?php echo esc_html($sspa_env['ini_dir'] !== '' ? $sspa_env['ini_dir'] : __('not reported', 'super-speedy-performance-analysis')); ?></code></td></tr>
         <tr><td><?php esc_html_e('Database', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html($sspa_env['mysql']); ?></td></tr>
     </tbody>
-</table>
+</table></div>

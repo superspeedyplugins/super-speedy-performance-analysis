@@ -49,7 +49,7 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
         <?php if (empty($sspa_endpoint_evidence['endpoints'])) : ?>
             <p><?php esc_html_e('No registered AJAX, WooCommerce AJAX or REST endpoint has been observed in this collection.', 'super-speedy-performance-analysis'); ?></p>
         <?php else : ?>
-            <table class="widefat striped sspa-endpoint-evidence-table">
+            <div class="sspa-table-scroll"><table class="widefat striped sspa-endpoint-evidence-table">
                 <thead><tr>
                     <th><?php esc_html_e('Endpoint', 'super-speedy-performance-analysis'); ?></th>
                     <th><?php esc_html_e('Requests', 'super-speedy-performance-analysis'); ?></th>
@@ -82,7 +82,7 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
-            </table>
+            </table></div>
         <?php endif; ?>
     <?php endif; ?>
 

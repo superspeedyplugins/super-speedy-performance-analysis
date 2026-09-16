@@ -62,7 +62,7 @@ if (!$sspa_last_run_id) : ?>
     <p class="description">
         <?php esc_html_e('The newest measurement of each page, whether it came from a full analysis or from analysing that page on its own. Click any row for the full profile: request phases, per-plugin attribution, the slowest queries, outbound calls and what has been measured by disabling plugins here.', 'super-speedy-performance-analysis'); ?>
     </p>
-    <table class="widefat striped sspa-pages-table">
+    <div class="sspa-table-scroll"><table class="widefat striped sspa-pages-table">
         <thead>
             <tr>
                 <th><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?></th>
@@ -111,5 +111,5 @@ if (!$sspa_last_run_id) : ?>
             </tr>
         <?php endforeach; ?>
         </tbody>
-    </table>
+    </table></div>
 <?php endif; ?>

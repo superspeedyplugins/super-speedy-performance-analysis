@@ -38,7 +38,7 @@ if (!$sspa_last_run_id) : ?>
     <p class="description">
         <?php esc_html_e('Careful with the SQL/query columns: they credit work to whichever component runs it. A plugin that REPLACES a slow feature (search, filtering) will show the queries it runs even when it is far faster than what it replaced - the measured impact is the true verdict on whether it costs or saves you time.', 'super-speedy-performance-analysis'); ?>
     </p>
-    <div id="sspa-attrib-wrap">
+    <div id="sspa-attrib-wrap" class="sspa-table-scroll">
         <?php echo SSPA_Plugins_Table::render($sspa_last_run_id, $sspa_attrib_mode); // phpcs:ignore WordPress.Security.EscapeOutput ?>
     </div>
 <?php endif; ?>

@@ -207,7 +207,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
 <div class="sspa-placeholder">
     <h2><?php esc_html_e('Submission history', 'super-speedy-performance-analysis'); ?></h2>
     <?php if ($sspa_history) : ?>
-        <table class="widefat striped sspa-outbox-table">
+        <div class="sspa-table-scroll"><table class="widefat striped sspa-outbox-table">
             <thead>
                 <tr>
                     <th><?php esc_html_e('Run', 'super-speedy-performance-analysis'); ?></th>
@@ -247,7 +247,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
                 </tr>
             <?php endforeach; ?>
             </tbody>
-        </table>
+        </table></div>
     <?php else : ?>
         <p><?php esc_html_e('No payloads have been queued yet.', 'super-speedy-performance-analysis'); ?></p>
     <?php endif; ?>

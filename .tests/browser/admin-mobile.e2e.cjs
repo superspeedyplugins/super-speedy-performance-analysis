@@ -14,7 +14,7 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
           await page.locator(`#sspa_main .nav-tab[data-tab="${tab}"]`).click();
           const content = page.locator(`#sspa_main .tab-contents[data-tab="${tab}"]`);
           await expect(content).toBeVisible();
-          await expect(content.locator('.sspa-tab-loading')).toHaveCount(0);
+          await expect(content).toHaveAttribute('data-sspa-tab-loaded', '1');
           const sizes = await content.evaluate(root => ({
             viewport: innerWidth,
             document: document.documentElement.scrollWidth,
@@ -26,6 +26,17 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
       }
     }
     fs.writeFileSync(output + '/admin-widths.json', JSON.stringify(results,null,2));
+    // Check actual internal scrolling, not just a clipped document.
+    await page.setViewportSize({width:320, height:900});
+    await page.evaluate(() => {document.documentElement.dir = 'ltr';});
+    await page.locator('#sspa_main .nav-tab[data-tab="tools"]').click();
+    const scrolling = await page.locator('.sspa-tools').evaluate(table => {
+      const wrapper = table.parentElement;
+      wrapper.scrollLeft = wrapper.scrollWidth;
+      return {overflow:getComputedStyle(wrapper).overflowX, moved:wrapper.scrollLeft > 0};
+    });
+    expect(scrolling).toEqual({overflow:'auto', moved:true});
+    await page.screenshot({path:output + '/tools-320.png'});
     const failures = results.filter(r => r.document > r.viewport + 1);
     expect(failures, JSON.stringify(failures)).toEqual([]);
     console.log('PASS all nine tabs fit 320/390/1280px in LTR and RTL without document overflow');
