@@ -15,7 +15,7 @@ $report = SSPA_Report::endpoint_evidence();
 <?php if (class_exists('SPRO_Fast_Ajax_Advice')) : foreach (SPRO_Fast_Ajax_Advice::groups() as $group => $label) : ?>
 <option value="<?php echo esc_attr($group); ?>"><?php echo esc_html($label); ?></option>
 <?php endforeach; endif; ?></select></label>
-<label>Endpoints <select name="endpoints[]" multiple size="5" style="min-width:300px;min-height:120px;max-width:100%" aria-label="Endpoints to profile">
+<label>Endpoints <select name="endpoints[]" multiple size="5" aria-label="Endpoints to profile">
 <?php if (!is_wp_error($report)) : foreach ($report['endpoints'] as $endpoint) :
 $id = $endpoint['identity']; $selector = $id['transport'] . ':' . ($id['action'] ?: $id['route_pattern']);
 $classification = class_exists('SPRO_Fast_Ajax_Advice') ? SPRO_Fast_Ajax_Advice::endpoint(array('transport' => $id['transport'], 'endpoint' => $id['action'] ?: $id['route_pattern'], 'method' => $id['method'], 'context' => $id['auth_context'])) : array('group' => 'unknown'); ?>
