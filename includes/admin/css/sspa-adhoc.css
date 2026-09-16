@@ -866,3 +866,18 @@
 	font-family: var(--sspa-font-mono);
 	font-size: 12px;
 }
+
+/* Native row actions retain keyboard activation and a visible focus indicator. */
+#sspa-adhoc-pop .sspa-adhoc-row-button {
+    border: 0;
+    padding: 2px 4px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+#sspa-adhoc-pop .sspa-adhoc-row-button:focus-visible {
+    outline: 2px solid var(--sspa-primary);
+    outline-offset: 2px;
+}

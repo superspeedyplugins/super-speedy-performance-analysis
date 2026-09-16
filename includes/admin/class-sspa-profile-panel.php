@@ -527,8 +527,8 @@ class SSPA_Profile_Panel {
             $phase_fns = !empty($profile['phases'][$key]['functions']);
             if (!$detail) {
                 if ($phase_fns) {
-                    $html .= '<tr class="sspa-adhoc-phase" data-phase="' . esc_attr($key) . '"><td><span class="sspa-adhoc-caret">&#9656;</span>'
-                        . esc_html($label) . '</td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
+                    $html .= '<tr class="sspa-adhoc-phase" data-phase="' . esc_attr($key) . '"><td><button type="button" class="sspa-adhoc-row-button" aria-expanded="false"><span class="sspa-adhoc-caret" aria-hidden="true">&#9656;</span>'
+                        . esc_html($label) . '</button></td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
                     $html .= self::phase_function_rows($profile, $key, true);
                 } else {
                     $html .= '<tr><td class="sspa-adhoc-phase-plain">' . esc_html($label) . '</td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
@@ -536,8 +536,8 @@ class SSPA_Profile_Panel {
                 continue;
             }
             arsort($detail);
-            $html .= '<tr class="sspa-adhoc-phase" data-phase="' . esc_attr($key) . '"><td><span class="sspa-adhoc-caret">&#9656;</span>'
-                . esc_html($label) . '</td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
+            $html .= '<tr class="sspa-adhoc-phase" data-phase="' . esc_attr($key) . '"><td><button type="button" class="sspa-adhoc-row-button" aria-expanded="false"><span class="sspa-adhoc-caret" aria-hidden="true">&#9656;</span>'
+                . esc_html($label) . '</button></td><td>' . esc_html(number_format((float) $ms, 1)) . 'ms</td></tr>';
             $shown = 0;
             foreach (array_slice($detail, 0, 12, true) as $component => $cms) {
                 $html .= '<tr class="sspa-adhoc-sub" data-parent="' . esc_attr($key) . '" style="display:none"><td><code>'
@@ -556,7 +556,8 @@ class SSPA_Profile_Panel {
                     : ($has_global_fns ? __('See the By function table - the sampling profiler names this time', 'super-speedy-performance-analysis') : '');
                 $html .= '<tr class="' . esc_attr($classes) . '" data-parent="' . esc_attr($key) . '" data-fns="' . esc_attr($key) . '"'
                     . ($title ? ' title="' . esc_attr($title) . '"' : '') . ' style="display:none"><td><small>'
-                    . esc_html($gap_label) . (($phase_fns || $has_global_fns) ? ' &darr;' : '')
+                    . (($phase_fns || $has_global_fns) ? '<button type="button" class="sspa-adhoc-row-button"' . ($phase_fns ? ' aria-expanded="false"' : '') . '>' : '')
+                    . esc_html($gap_label) . (($phase_fns || $has_global_fns) ? ' &darr;</button>' : '')
                     . '</small></td><td><small>' . esc_html(number_format($gap, 1)) . 'ms</small></td></tr>';
                 $html .= self::phase_function_rows($profile, $key);
             }
@@ -825,7 +826,7 @@ class SSPA_Profile_Panel {
             $note = SSPA_Explain::summarise(SSPA_Explain::explain($sql));
             $html .= '<tr class="sspa-adhoc-qrow" data-sql="' . esc_attr($sql) . '" title="'
                 . esc_attr__('Click to copy the full query', 'super-speedy-performance-analysis') . '"><td class="sspa-adhoc-sql"><code>'
-                . esc_html($shown) . '</code><br><small>' . esc_html(implode(' · ', $meta)) . '</small>'
+                . esc_html($shown) . '</code> <button type="button" class="sspa-adhoc-row-button">' . esc_html__('Copy query', 'super-speedy-performance-analysis') . '</button><br><small>' . esc_html(implode(' · ', $meta)) . '</small>'
                 . ($note ? '<br><small class="sspa-adhoc-explain">' . esc_html__('EXPLAIN:', 'super-speedy-performance-analysis') . ' '
                     . esc_html($note) . '</small>' : '')
                 . '</td><td>' . esc_html(number_format((float) $query['ms'], 1)) . 'ms</td></tr>';

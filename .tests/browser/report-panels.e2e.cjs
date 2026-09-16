@@ -40,18 +40,28 @@ const {
     const phase = panel.locator(".sspa-adhoc-phase").first();
     await expect(phase).toBeVisible();
     const key = await phase.getAttribute("data-phase");
-    await phase.click();
+    const disclosure = phase.getByRole("button");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    await disclosure.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(disclosure).toBeFocused();
+    await disclosure.press("Enter");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
     await expect(
       panel.locator(`.sspa-adhoc-sub[data-parent="${key}"]`).first(),
     ).toBeVisible();
-    await phase.click();
+    await disclosure.press("Space");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
     await expect(
       panel.locator(`.sspa-adhoc-sub[data-parent="${key}"]`).first(),
     ).toBeHidden();
     const query = panel.locator(".sspa-adhoc-qrow").first();
     await query.scrollIntoViewIfNeeded();
     const sql = await query.getAttribute("data-sql");
-    await query.click();
+    const copyQuery = query.getByRole("button", { name: "Copy query" });
+    await copyQuery.focus();
+    await copyQuery.press("Enter");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sql);
     // EXPLAIN is calculated when opening the real panel; no separate EXPLAIN button exists.
     const explained = panel.locator(".sspa-adhoc-explain").first();

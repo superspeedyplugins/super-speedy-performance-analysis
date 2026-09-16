@@ -457,6 +457,8 @@
 			table.find('.sspa-adhoc-fnsub[data-fnparent="' + key + '"]').hide();
 		}
 		row.toggleClass('is-open', opening);
+		row.find('button[aria-expanded]').attr('aria-expanded', String(opening));
+		if (!opening) { subs.find('button[aria-expanded]').attr('aria-expanded', 'false'); }
 	});
 
 	// An untimed-remainder row with phase-scoped profiler data expands in place to the
@@ -466,7 +468,9 @@
 		var row = $(this);
 		var key = row.attr('data-fns');
 		var subs = row.closest('table').find('.sspa-adhoc-fnsub[data-fnparent="' + key + '"]');
-		subs.toggle(subs.first().is(':hidden'));
+		var opening = subs.first().is(':hidden');
+		subs.toggle(opening);
+		row.find('button[aria-expanded]').attr('aria-expanded', String(opening));
 	});
 
 	// Attribution mode: both tables are already in the page, so this is a swap, not a fetch.
