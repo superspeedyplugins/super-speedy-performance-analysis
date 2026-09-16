@@ -648,3 +648,7 @@ separately from the native suite because it requires distinct system capabilitie
 After the full suite finishes on `tests-release-20260915`, run the Observatory's prepare and run
 commands with `performance-analysis-release`. Its retained admin and public request measurements
 complement the full-suite assertion log; they do not replace the suite's pass/fail results.
+
+## Translation template
+
+Run `.build/update-translations.sh` after changing translatable strings or the release version. It regenerates `languages/super-speedy-performance-analysis.pot` with WP-CLI, including PHP and JavaScript and excluding bundled/shared libraries. An optional destination argument supports comparing a fresh extraction with the retained template; the generation timestamp can differ. This ships a source template, not a translated language pack.
