@@ -37,7 +37,7 @@ try {
     foreach (array('empty' => array(), 'zero' => array(array('wall_ms' => 0, 'code' => 200, 'error' => null, 'cached' => false)), 'failed' => array(array('wall_ms' => 0, 'code' => 0, 'error' => 'http_request_failed', 'error_message' => 'Retained transport explanation', 'cached' => false))) as $key => $samples) {
         $profile_ids[$key] = SSPA_Profile_Store::save($after, array('page_key' => 'pair-' . $key, 'url' => home_url('/'), 'variant' => 'anon', 'blocked_by' => null, 'samples' => $samples));
     }
-    $profile_ids['blocked'] = SSPA_Profile_Store::save($after, array('page_key' => 'pair-blocked', 'url' => home_url('/'), 'variant' => 'anon', 'blocked_by' => 'http_403', 'samples' => array(array('wall_ms' => 100, 'code' => 403, 'error' => null, 'cached' => false))));
+    $profile_ids['blocked'] = SSPA_Profile_Store::save($after, array('page_key' => 'pair-blocked', 'url' => home_url('/'), 'variant' => 'anon', 'blocked_by' => 'http_403', 'samples' => array(array('wall_ms' => 100, 'code' => 403, 'error' => null, 'cached' => false, 'blocked_by' => 'http_403', 'blocked_reason' => 'HTTP 403'))));
     $document = SSPA_History_Series::build($after, 'request_wall_ms', $before, 'pair');
     sspa_64_check(!is_wp_error($document) && array($before) === $document['previous']['run_ids'] && array($after) === $document['current']['run_ids'], 'same-setup selection charts exactly the two selected runs');
     sspa_64_check(!is_wp_error($document) && 'pair' === ($document['selection_mode'] ?? '') && $before === ($document['before_run_id'] ?? null) && $after === ($document['after_run_id'] ?? null), 'the document declares its selection mode and exact IDs');
@@ -52,6 +52,7 @@ try {
     sspa_64_check('transport_error' === ($fault['state'] ?? '') && $profile_ids['failed'] === ($fault['profile_id'] ?? null) && 'Retained transport explanation' === ($fault['evidence']['error_message'] ?? ''), 'a failed sample retains its own transport explanation and profile ID');
     $blocked = sspa_64_page($document, 'pair-blocked');
     sspa_64_check($blocked && 100.0 === (float) $blocked['current']['median'] && 'blocked' === $blocked['current']['points'][0]['state'] && $profile_ids['blocked'] === $blocked['current']['points'][0]['profile_id'], 'a blocked sample retains its measured timing and error state');
+    sspa_64_check('HTTP 403' === ($blocked['current']['points'][0]['evidence']['blocked_reason'] ?? null), 'the blocked sample retains its own HTTP reason');
     sspa_64_check(!isset($home['current']['points'][0]['evidence']['php_warnings']), 'request points do not invent PHP warnings from the median capture');
     $reverse = SSPA_History_Series::build($before, 'request_wall_ms', $after, 'pair');
     sspa_64_check(!is_wp_error($reverse) && array($after) === $reverse['previous']['run_ids'] && array($before) === $reverse['current']['run_ids'], 'explicit sides remain exact even when the selected Before was recorded later');

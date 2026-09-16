@@ -35,7 +35,6 @@ const { session, admin, expect, output, fs } = require("./fleet-context.cjs");
                 "Previous measurements",
                 "Recent measurements",
                 "Request wall time (ms)",
-                "Errors",
               ].includes(e.style.text),
           )
           .map((e) => {
@@ -57,7 +56,11 @@ const { session, admin, expect, output, fs } = require("./fleet-context.cjs");
       await chart.screenshot({
         path: output + "/history-labels-" + width + ".png",
       });
-      expect(boxes).toHaveLength(4);
+      expect(boxes.map((box) => box.text).sort()).toEqual([
+        "Previous measurements",
+        "Recent measurements",
+        "Request wall time (ms)",
+      ].sort());
       for (let i = 0; i < boxes.length; i++)
         for (let j = i + 1; j < boxes.length; j++) {
           const a = boxes[i],

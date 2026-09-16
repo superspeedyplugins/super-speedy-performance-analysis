@@ -28,7 +28,7 @@ const {
       timeout: 60000,
     });
     await expect(panel.locator(".sspa-adhoc-error")).toContainText(
-      "Blocked by unknown security layer",
+      "Request 1 was unsuccessful: HTTP 503.",
     );
     const rows = json(
       `global $wpdb;echo wp_json_encode($wpdb->get_results("SELECT samples FROM ".SSPA_Schema::table('profiles')." WHERE run_id=${runId}",ARRAY_A));`,
