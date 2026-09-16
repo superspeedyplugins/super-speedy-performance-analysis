@@ -31,6 +31,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/browser/run-regressions.sh loopback-fallback # real loopback failure falls back to browser transport with complete evidence
 .tests/browser/run-regressions.sh quick-comparison # detected plugin update -> notice -> one spot run -> History names the change
 .tests/run-tests.sh 92-traffic-deactivation # dedicated lifecycle/concurrency regression, retains its own site
+.tests/run-tests.sh 96-token-consumption # signed requests stay one-use after capture read/discard
 .tests/run-tests.sh 95-community-receipt # lost completion reply, valid existing receipt retry and identity/hash rejection
 .tests/run-tests.sh 94-request-block-evidence # signed HTTP success/denial, challenge text, per-request reasons, legacy flags and profile wording
 .tests/run-tests.sh 93-review-correctness # dedicated non-WooCommerce browser start, History mean and archive cap

@@ -497,7 +497,7 @@ class SSPA_Crawler {
         global $wpdb;
         $table = SSPA_Schema::table('captures');
         $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE token_id = %s", $token_id));
-        delete_option('sspa_used_' . $token_id);
+        // Keep the single-use claim until hourly cleanup, beyond the token's lifetime.
     }
 
     private function lower_headers($response) {
@@ -542,7 +542,7 @@ class SSPA_Crawler {
             return null;
         }
         $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE token_id = %s", $token_id));
-        delete_option('sspa_used_' . $token_id);
+        // Keep the single-use claim until hourly cleanup, beyond the token's lifetime.
         $json = @gzuncompress($blob);
         if ($json === false) {
             return null;
