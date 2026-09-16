@@ -102,7 +102,7 @@ class SSPA_Community_Client {
         }
         $storage_status = isset($remote['storage_status']) ? $remote['storage_status'] : '';
         if ('complete' === $storage_status) {
-            return self::verify_receipt($row, $remote, $reserve['status']);
+            return self::verify_receipt($row, $remote, $reserve['status'], 'complete');
         }
         $reservation_uuid = isset($remote['reservation_uuid']) ? $remote['reservation_uuid'] : '';
         if (!wp_is_uuid($reservation_uuid, 4)) {
@@ -260,12 +260,12 @@ class SSPA_Community_Client {
         return true;
     }
 
-    private static function verify_receipt($row, $remote, $http_status) {
+    private static function verify_receipt($row, $remote, $http_status, $expected_storage_status = 'archived') {
         $receipt_uuid = isset($remote['receipt_uuid']) ? $remote['receipt_uuid'] : '';
         $remote_hash = isset($remote['payload_sha256']) ? $remote['payload_sha256'] : '';
         if (($remote['submission_uuid'] ?? '') !== $row['submission_uuid']
             || !wp_is_uuid($receipt_uuid, 4)
-            || 'archived' !== ($remote['storage_status'] ?? '')
+            || $expected_storage_status !== ($remote['storage_status'] ?? '')
             || !is_string($remote_hash)
             || !hash_equals($row['payload_sha256'], $remote_hash)) {
             return self::error('sspa_receipt_mismatch', __('The collector receipt did not match the queued payload.', 'super-speedy-performance-analysis'), true, $http_status);

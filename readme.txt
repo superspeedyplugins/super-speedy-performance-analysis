@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Sharing retries recognise an existing archive receipt without uploading the same analysis again.
 * Successful profiled requests are no longer marked blocked by challenge-related page text or another request's status.
 * Request details explain unsuccessful responses with their recorded reason instead of internal evidence labels.
 * History charts distinguish warning squares from error triangles, with separate controls for their highlighting.
