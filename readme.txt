@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Failed tab loads show the request error and a Retry button.
 * Wide analysis tables scroll within their panels on phones.
 * Workflow grids, AJAX controls and long action labels fit narrow phone screens.
 * Profile loading, progress and results expose concise status updates to assistive technology.

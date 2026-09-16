@@ -190,8 +190,18 @@ function sspa_refresh_tabs(tabs, done) {
 		if (done) { done(null); }
 		return;
 	}
+	function showError(detail) {
+		tabs.forEach(function (slug) {
+			var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]');
+			panel.removeAttr('data-sspa-tab-loading').find('.sspa-tab-loading, .sspa-tab-error').remove();
+			var notice = jQuery('<div class="notice notice-error sspa-tab-error" role="alert">');
+			jQuery('<p>').text(sspa_admin.tab_failed.replace('%s', detail)).appendTo(notice);
+			jQuery('<button type="button" class="button sspa-tab-retry">').text(sspa_admin.tab_retry).appendTo(notice);
+			panel.prepend(notice);
+		});
+	}
 	jQuery.post(ajaxurl, { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') }, function (resp) {
-		if (resp.success && resp.data.tabs) {
+		if (resp && resp.success && resp.data && resp.data.tabs) {
 			Object.keys(resp.data.tabs).forEach(function (slug) {
 				var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]');
 				// Preserve the selected preview, including a request still filling it.
@@ -209,15 +219,22 @@ function sspa_refresh_tabs(tabs, done) {
 				jQuery(document).trigger('sspa:tab-rendered', [slug, panel.get(0)]);
 			});
 			jQuery('#sspa-runner').attr('data-active-run', resp.data.active_run || 0);
+		} else {
+			showError(resp && typeof resp.data === 'string' ? resp.data : sspa_admin.tab_invalid_response);
 		}
 		if (done) { done(resp); }
-	}).fail(function () {
-		tabs.forEach(function (slug) {
-			jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]').removeAttr('data-sspa-tab-loading');
-		});
+	}).fail(function (xhr, status, error) {
+		showError(xhr.responseJSON && typeof xhr.responseJSON.data === 'string' ? xhr.responseJSON.data :
+			(xhr.status ? 'HTTP ' + xhr.status + ': ' + (error || status) : sspa_admin.tab_network_error));
 		if (done) { done(null); }
 	});
 }
+
+jQuery(document).on('click', '#sspa_main .sspa-tab-retry', function () {
+	var button = jQuery(this).prop('disabled', true);
+	var panel = button.closest('.tab-contents').attr('data-sspa-tab-loading', '1');
+	sspa_refresh_tabs([panel.attr('data-tab')]);
+});
 
 // In-page links between tabs. These used to be hrefs to ?tab=<slug>, which reloaded the page
 // AND landed on Overview anyway, because tab selection is driven by the hash.

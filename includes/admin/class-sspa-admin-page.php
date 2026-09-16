@@ -176,6 +176,11 @@ class SSPA_Admin_Page {
         wp_localize_script('sspa-admin', 'sspa_admin', array(
             'nonce' => wp_create_nonce('sspa_admin'),
             'download_prefix' => sspa_download_prefix(),
+            /* translators: %s: server or network error detail. */
+            'tab_failed' => __('Could not load this tab: %s', 'super-speedy-performance-analysis'),
+            'tab_retry' => __('Retry', 'super-speedy-performance-analysis'),
+            'tab_network_error' => __('Network request failed.', 'super-speedy-performance-analysis'),
+            'tab_invalid_response' => __('Unexpected server response.', 'super-speedy-performance-analysis'),
             'history_chart_asset' => SSPA_PLUGIN_URL . 'includes/admin/vendor/echarts-history.min.js',
             'quick_comparison_page_keys' => SSPA_History_Series::quick_comparison_page_keys(),
         ));
