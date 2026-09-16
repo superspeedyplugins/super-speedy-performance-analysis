@@ -52,28 +52,28 @@ jQuery(document).on('click', '#sspa-tools-recheck', function () {
 			jQuery('#sspa_main div.tab-contents[data-tab="tools"]').html(resp.data.html);
 		} else {
 			btn.prop('disabled', false);
-			alert(resp.data || 'Re-check failed.');
+			alert(resp.data || wp.i18n.__("Re-check failed.", "super-speedy-performance-analysis"));
 		}
 	}).fail(function () {
 		btn.prop('disabled', false);
-		alert('Re-check failed.');
+		alert(wp.i18n.__("Re-check failed.", "super-speedy-performance-analysis"));
 	});
 });
 
 // Replace an orphaned Query Monitor db.php (QM deactivated, drop-in left behind).
 jQuery(document).on('click', '#sspa-replace-stale-dropin', function () {
-	var btn = jQuery(this).prop('disabled', true).text('Replacing…');
+	var btn = jQuery(this).prop('disabled', true).text(wp.i18n.__("Replacing…", "super-speedy-performance-analysis"));
 	jQuery.post(ajaxurl, { action: 'sspa_replace_stale_dropin', nonce: sspa_admin.nonce }, function (resp) {
 		if (resp.success) {
 			// The health line lives on Overview, the install steps on Tools.
-			sspa_refresh_tabs(['overview', 'tools'], function () { btn.prop('disabled', false).text('Replace'); });
+			sspa_refresh_tabs(['overview', 'tools'], function () { btn.prop('disabled', false).text(wp.i18n.__("Replace", "super-speedy-performance-analysis")); });
 		} else {
 			btn.prop('disabled', false);
-			alert(resp.data || 'Could not replace the drop-in.');
+			alert(resp.data || wp.i18n.__("Could not replace the drop-in.", "super-speedy-performance-analysis"));
 		}
 	}).fail(function () {
 		btn.prop('disabled', false);
-		alert('Could not replace the drop-in.');
+		alert(wp.i18n.__("Could not replace the drop-in.", "super-speedy-performance-analysis"));
 	});
 });
 
@@ -121,7 +121,7 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 
 	jQuery.post(ajaxurl, { action: 'sspa_attribution', nonce: sspa_admin.nonce, mode: mode }, function (resp) {
 		if (!resp.success) {
-			alert(resp.data || 'Could not switch attribution mode.');
+			alert(resp.data || wp.i18n.__("Could not switch attribution mode.", "super-speedy-performance-analysis"));
 			return;
 		}
 		jQuery('#sspa-attrib-wrap').html(resp.data.html);
@@ -139,7 +139,7 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 			window.history.replaceState(null, '', url.toString());
 		}
 	}).fail(function () {
-		alert('Could not switch attribution mode.');
+		alert(wp.i18n.__("Could not switch attribution mode.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		buttons.prop('disabled', false);
 		jQuery('#sspa-attrib-wrap').css('opacity', '');
@@ -254,7 +254,7 @@ jQuery(document).on('change', '#sspa-remove-data-on-uninstall', function () {
 		enabled: checkbox.is(':checked') ? 1 : 0
 	}).fail(function () {
 		checkbox.prop('checked', !checkbox.is(':checked'));
-		alert('Could not save the uninstall setting.');
+		alert(wp.i18n.__("Could not save the uninstall setting.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		checkbox.prop('disabled', false);
 		spinner.removeClass('is-active');
@@ -270,7 +270,7 @@ jQuery(document).on('change', '#sspa-plugin-update-detection', function () {
 		plugin_update_detection: checkbox.is(':checked') ? 1 : 0
 	}).fail(function () {
 		checkbox.prop('checked', !checkbox.is(':checked'));
-		alert('Could not save the update comparison setting.');
+		alert(wp.i18n.__("Could not save the update comparison setting.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		checkbox.prop('disabled', false);
 		spinner.removeClass('is-active');
@@ -301,7 +301,7 @@ jQuery(document).on('click', '#sspa-history-compare', function () {
 		metric: chartHost.find('.sspa-history-metric').val() || 'request_wall_ms'
 	}, sspa_history_pair());
 	chartHost.prop('hidden', true);
-	jQuery('#sspa-history-comparison').text('Loading the selected comparison…');
+	jQuery('#sspa-history-comparison').text(wp.i18n.__("Loading the selected comparison…", "super-speedy-performance-analysis"));
 	panel.find('.sspa-history-compare-controls select').prop('disabled', true);
 	jQuery.post(ajaxurl, data, function (resp) {
 		if (resp.success) {
@@ -316,10 +316,10 @@ jQuery(document).on('click', '#sspa-history-compare', function () {
 			if (resp.data.before_run_id) jQuery('#sspa-history-before').val(resp.data.before_run_id);
 			jQuery(document).trigger('sspa:tab-rendered', ['history', panel.get(0)]);
 		} else {
-			jQuery('#sspa-history-comparison').text(resp.data || 'The points in time could not be compared.');
+			jQuery('#sspa-history-comparison').text(resp.data || wp.i18n.__("The points in time could not be compared.", "super-speedy-performance-analysis"));
 		}
 	}).fail(function () {
-		jQuery('#sspa-history-comparison').text('The points in time could not be compared. Please try Compare again.');
+		jQuery('#sspa-history-comparison').text(wp.i18n.__("The points in time could not be compared. Please try Compare again.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		btn.prop('disabled', false);
 		panel.find('.sspa-history-compare-controls select').prop('disabled', false);
@@ -340,11 +340,11 @@ jQuery(document).on('click', '.sspa-history-assert', function () {
 			jQuery('#sspa-history-comparison').html(resp.data.html);
 		} else {
 			btn.prop('disabled', false);
-			alert(resp.data || 'The expectation could not be changed.');
+			alert(resp.data || wp.i18n.__("The expectation could not be changed.", "super-speedy-performance-analysis"));
 		}
 	}).fail(function () {
 		btn.prop('disabled', false);
-		alert('The expectation could not be changed.');
+		alert(wp.i18n.__("The expectation could not be changed.", "super-speedy-performance-analysis"));
 	});
 });
 
@@ -355,7 +355,7 @@ jQuery(document).on('click', '.sspa-history-preview-export', function () {
 	var data = jQuery.extend({ action: 'sspa_history_export', nonce: sspa_admin.nonce }, sspa_history_pair(section));
 	jQuery.post(ajaxurl, data, function (resp) {
 		if (!resp.success) {
-			alert(resp.data || 'The evidence preview could not be prepared.');
+			alert(resp.data || wp.i18n.__("The evidence preview could not be prepared.", "super-speedy-performance-analysis"));
 			return;
 		}
 		var json = JSON.stringify(resp.data.payload, null, 2);
@@ -363,7 +363,7 @@ jQuery(document).on('click', '.sspa-history-preview-export', function () {
 		section.find('.sspa-history-export-preview').prop('hidden', false).text(json);
 		section.find('.sspa-history-download-export').prop('disabled', false);
 	}).fail(function () {
-		alert('The evidence preview could not be prepared.');
+		alert(wp.i18n.__("The evidence preview could not be prepared.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		btn.prop('disabled', false);
 		spinner.removeClass('is-active');
@@ -413,14 +413,14 @@ function sspa_esc(str) {
 // builds a versioned document; the browser saves it without sending it anywhere else.
 jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 	var btn = jQuery(this).prop('disabled', true);
-	var status = btn.siblings('.sspa-cache-safety-download-status').text(' Preparing report…');
+	var status = btn.siblings('.sspa-cache-safety-download-status').text(wp.i18n.__(" Preparing report…", "super-speedy-performance-analysis"));
 	jQuery.post(ajaxurl, {
 		action: 'sspa_cache_recon_export',
 		nonce: sspa_admin.nonce,
 		run_id: btn.data('run-id')
 	}, function (resp) {
 		if (!resp.success) {
-			status.text(' ' + (resp.data || 'The report could not be prepared.'));
+			status.text(' ' + (resp.data || wp.i18n.__("The report could not be prepared.", "super-speedy-performance-analysis")));
 			return;
 		}
 		var json = JSON.stringify(resp.data.payload, null, 2);
@@ -432,9 +432,9 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 		link.click();
 		document.body.removeChild(link);
 		URL.revokeObjectURL(link.href);
-		status.text(' Downloaded.');
+		status.text(wp.i18n.__(" Downloaded.", "super-speedy-performance-analysis"));
 	}).fail(function () {
-		status.text(' The report could not be prepared.');
+		status.text(wp.i18n.__(" The report could not be prepared.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		btn.prop('disabled', false);
 	});
@@ -462,10 +462,10 @@ jQuery(document).on('click', '#sspa-traffic-start', function () {
 	var btn = jQuery(this);
 	var message = jQuery('.sspa-traffic-message');
 	if (!jQuery('#sspa-traffic-confirm').prop('checked')) {
-		alert('Confirm that you have read the privacy and resource limits before starting.');
+		alert(wp.i18n.__("Confirm that you have read the privacy and resource limits before starting.", "super-speedy-performance-analysis"));
 		return;
 	}
-	btn.prop('disabled', true).text('Running database pre-flight…');
+	btn.prop('disabled', true).text(wp.i18n.__("Running database pre-flight…", "super-speedy-performance-analysis"));
 	jQuery.post(ajaxurl, {
 		action: 'sspa_traffic_start',
 		nonce: sspa_admin.nonce,
@@ -473,22 +473,22 @@ jQuery(document).on('click', '#sspa-traffic-start', function () {
 		confirmed: 1
 	}, function (resp) {
 		if (!resp.success) {
-			btn.prop('disabled', false).text('Start collection');
-			alert(resp.data || 'Collection could not be started.');
+			btn.prop('disabled', false).text(wp.i18n.__("Start collection", "super-speedy-performance-analysis"));
+			alert(resp.data || wp.i18n.__("Collection could not be started.", "super-speedy-performance-analysis"));
 			return;
 		}
-		message.text('Collection started.');
+		message.text(wp.i18n.__("Collection started.", "super-speedy-performance-analysis"));
 		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
 	}).fail(function () {
-		btn.prop('disabled', false).text('Start collection');
-		alert('Collection could not be started.');
+		btn.prop('disabled', false).text(wp.i18n.__("Start collection", "super-speedy-performance-analysis"));
+		alert(wp.i18n.__("Collection could not be started.", "super-speedy-performance-analysis"));
 	});
 });
 
 jQuery(document).on('click', '#sspa-traffic-stop, #sspa-traffic-emergency-stop', function () {
 	var btn = jQuery(this);
 	var emergency = btn.is('#sspa-traffic-emergency-stop');
-	if (emergency && !window.confirm('Remove the observer immediately? No more request or order-outcome events will be recorded.')) {
+	if (emergency && !window.confirm(wp.i18n.__("Remove the observer immediately? No more request or order-outcome events will be recorded.", "super-speedy-performance-analysis"))) {
 		return;
 	}
 	btn.prop('disabled', true);
@@ -500,26 +500,26 @@ jQuery(document).on('click', '#sspa-traffic-stop, #sspa-traffic-emergency-stop',
 	}, function (resp) {
 		if (!resp.success) {
 			btn.prop('disabled', false);
-			alert(resp.data || 'Collection could not be stopped.');
+			alert(resp.data || wp.i18n.__("Collection could not be stopped.", "super-speedy-performance-analysis"));
 			return;
 		}
 		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
 	}).fail(function () {
 		btn.prop('disabled', false);
-		alert('Collection could not be stopped.');
+		alert(wp.i18n.__("Collection could not be stopped.", "super-speedy-performance-analysis"));
 	});
 });
 
 jQuery(document).on('click', '#sspa-traffic-observations', function () {
 	var btn = jQuery(this).prop('disabled', true);
-	var message = jQuery('.sspa-traffic-message').text(' Preparing observations…');
+	var message = jQuery('.sspa-traffic-message').text(wp.i18n.__(" Preparing observations…", "super-speedy-performance-analysis"));
 	jQuery.post(ajaxurl, {
 		action: 'sspa_traffic_observations',
 		nonce: sspa_admin.nonce,
 		collection_id: jQuery('.sspa-traffic-panel').data('collection-id') || 0
 	}, function (resp) {
 		if (!resp.success) {
-			message.text(' ' + (resp.data || 'Observations could not be prepared.'));
+			message.text(' ' + (resp.data || wp.i18n.__("Observations could not be prepared.", "super-speedy-performance-analysis")));
 			return;
 		}
 		var json = JSON.stringify(resp.data.payload, null, 2);
@@ -531,16 +531,16 @@ jQuery(document).on('click', '#sspa-traffic-observations', function () {
 		link.click();
 		document.body.removeChild(link);
 		URL.revokeObjectURL(link.href);
-		message.text(' Downloaded.');
+		message.text(wp.i18n.__(" Downloaded.", "super-speedy-performance-analysis"));
 	}).fail(function () {
-		message.text(' Observations could not be prepared.');
+		message.text(wp.i18n.__(" Observations could not be prepared.", "super-speedy-performance-analysis"));
 	}).always(function () {
 		btn.prop('disabled', false);
 	});
 });
 
 jQuery(document).on('click', '#sspa-traffic-delete', function () {
-	if (!window.confirm('Permanently delete this collection, all raw event rows and its temporary join key?')) {
+	if (!window.confirm(wp.i18n.__("Permanently delete this collection, all raw event rows and its temporary join key?", "super-speedy-performance-analysis"))) {
 		return;
 	}
 	var btn = jQuery(this).prop('disabled', true);
@@ -551,13 +551,13 @@ jQuery(document).on('click', '#sspa-traffic-delete', function () {
 	}, function (resp) {
 		if (!resp.success) {
 			btn.prop('disabled', false);
-			alert(resp.data || 'Collection data could not be deleted.');
+			alert(resp.data || wp.i18n.__("Collection data could not be deleted.", "super-speedy-performance-analysis"));
 			return;
 		}
 		sspa_refresh_tabs(['traffic'], sspa_schedule_traffic_poll);
 	}).fail(function () {
 		btn.prop('disabled', false);
-		alert('Collection data could not be deleted.');
+		alert(wp.i18n.__("Collection data could not be deleted.", "super-speedy-performance-analysis"));
 	});
 });
 
@@ -573,16 +573,16 @@ jQuery(document).on('click', '.sspa-impact-details', function (e) {
 		return;
 	}
 	var cols = row.children('td').length;
-	var detail = jQuery('<tr class="sspa-impact-detail-row"><td colspan="' + cols + '">Loading&hellip;</td></tr>');
+	var detail = jQuery('<tr class="sspa-impact-detail-row"><td colspan="' + cols + '">' + sspa_esc(wp.i18n.__("Loading…", "super-speedy-performance-analysis")) + '</td></tr>');
 	row.after(detail);
 	jQuery.post(ajaxurl, { action: 'sspa_plugin_detail', nonce: sspa_admin.nonce, plugin: link.data('plugin') }, function (resp) {
 		if (!resp.success) {
-			detail.children('td').text(resp.data || 'No detail available.');
+			detail.children('td').text(resp.data || wp.i18n.__("No detail available.", "super-speedy-performance-analysis"));
 			return;
 		}
 		var rows = resp.data.rows;
 		var modeOrder = ['normal', 'disabled', 'prime', 'warm'];
-		var modeLabels = { normal: 'Standard (cache warm)', disabled: 'No object cache', prime: 'First sample (ambient cache)', warm: 'Warm cache' };
+		var modeLabels = { normal: wp.i18n.__("Standard (cache warm)", "super-speedy-performance-analysis"), disabled: wp.i18n.__("No object cache", "super-speedy-performance-analysis"), prime: wp.i18n.__("First sample (ambient cache)", "super-speedy-performance-analysis"), warm: wp.i18n.__("Warm cache", "super-speedy-performance-analysis") };
 		var modes = modeOrder.filter(function (m) {
 			return rows.some(function (r) { return r.object_cache_mode === m; });
 		});
@@ -591,12 +591,11 @@ jQuery(document).on('click', '.sspa-impact-details', function (e) {
 			(byPage[r.page_key] = byPage[r.page_key] || {})[r.object_cache_mode] = r;
 		});
 		var version = resp.data.measured_version;
-		var html = '<div class="sspa-detail"><h4>Measured impact of <code>' + sspa_esc(link.data('plugin')) + '</code>'
-			+ (version ? ' version <code>' + sspa_esc(version) + '</code>' : '')
-			+ ' per page</h4>';
-		html += '<table class="widefat"><thead><tr><th>Page</th>';
+		var heading = version ? wp.i18n.sprintf(/* translators: 1: plugin identifier, 2: plugin version. */ wp.i18n.__("Measured impact of %1$s version %2$s per page", "super-speedy-performance-analysis"), link.data('plugin'), version) : wp.i18n.sprintf(/* translators: Plugin identifier. */ wp.i18n.__("Measured impact of %s per page", "super-speedy-performance-analysis"), link.data('plugin'));
+		var html = '<div class="sspa-detail"><h4>' + sspa_esc(heading) + '</h4>';
+		html += '<table class="widefat"><thead><tr><th>' + sspa_esc(wp.i18n.__("Page", "super-speedy-performance-analysis")) + '</th>';
 		modes.forEach(function (m) {
-			html += '<th>' + modeLabels[m] + '</th>';
+			html += '<th>' + sspa_esc(modeLabels[m]) + '</th>';
 		});
 		html += '</tr></thead><tbody>';
 		Object.keys(byPage).forEach(function (page) {
@@ -608,34 +607,34 @@ jQuery(document).on('click', '.sspa-impact-details', function (e) {
 			html += '</tr>';
 		});
 		html += '</tbody></table>';
-		html += '<p class="description">"adds" = the plugin costs that much page-generation time; "saves" = the page is SLOWER without it (the plugin is speeding it up); "within noise" = no measurable difference on that page.</p></div>';
+		html += '<p class="description">' + sspa_esc(wp.i18n.__("\"adds\" = the plugin costs that much page-generation time; \"saves\" = the page is SLOWER without it (the plugin is speeding it up); \"within noise\" = no measurable difference on that page.", "super-speedy-performance-analysis")) + '</p></div>';
 		detail.children('td').html(html);
 	});
 });
 
 function sspa_impact_cell(r) {
 	if (r.confidence !== 'measured') {
-		return '<span class="sspa-impact-noise">within &plusmn;' + Math.round(r.noise_floor_ms) + 'ms noise</span>';
+		return '<span class="sspa-impact-noise">' + sspa_esc(wp.i18n.sprintf(/* translators: Noise threshold in milliseconds. */ wp.i18n.__("within ±%sms noise", "super-speedy-performance-analysis"), Math.round(r.noise_floor_ms))) + '</span>';
 	}
 	var d = parseFloat(r.delta_ttfb_ms);
 	var cls = d < 0 ? 'sspa-impact-saves' : 'sspa-impact-adds';
-	var label = (d < 0 ? 'saves ' : 'adds ') + Math.abs(Math.round(d)) + 'ms';
+	var label = wp.i18n.sprintf(d < 0 ? /* translators: Time saved in milliseconds. */ wp.i18n.__("saves %sms", "super-speedy-performance-analysis") : /* translators: Time added in milliseconds. */ wp.i18n.__("adds %sms", "super-speedy-performance-analysis"), Math.abs(Math.round(d)));
 	var sql = Math.round(parseFloat(r.delta_sql_ms));
 	var q = parseInt(r.delta_queries, 10);
-	var sub = 'SQL ' + (sql >= 0 ? '+' : '−') + Math.abs(sql) + 'ms · ' + (q >= 0 ? '+' : '−') + Math.abs(q) + ' queries';
-	return '<strong class="' + cls + '">' + label + '</strong><br><small>' + sub + '</small>';
+	var sub = wp.i18n.sprintf(/* translators: 1: signed SQL-time difference in milliseconds, 2: signed query-count difference. */ wp.i18n.__("SQL %1$sms · %2$s queries", "super-speedy-performance-analysis"), (sql >= 0 ? '+' : '−') + Math.abs(sql), (q >= 0 ? '+' : '−') + Math.abs(q));
+	return '<strong class="' + cls + '">' + sspa_esc(label) + '</strong><br><small>' + sspa_esc(sub) + '</small>';
 }
 
 // ---- Prune stored blobs ----
 
 jQuery(document).on('click', '#sspa-prune-blobs', function () {
 	var keep = jQuery(this).data('keep');
-	if (!confirm('Delete detailed per-query data for all but the last ' + keep + ' runs?\n\nSummary metrics, findings and history are always kept. If sharing is enabled, every affected run is first saved to the durable local submission queue.')) {
+	if (!confirm(wp.i18n.sprintf(/* translators: Number of recent runs to retain. */ wp.i18n.__("Delete detailed per-query data for all but the last %s runs?\n\nSummary metrics, findings and history are always kept. If sharing is enabled, every affected run is first saved to the durable local submission queue.", "super-speedy-performance-analysis"), keep))) {
 		return;
 	}
 	jQuery.post(ajaxurl, { action: 'sspa_prune_blobs', nonce: sspa_admin.nonce }, function (resp) {
 		if (resp.success) {
-			alert('Done. Detailed data now uses ' + resp.data.human + '.');
+			alert(wp.i18n.sprintf(/* translators: Formatted storage size. */ wp.i18n.__("Done. Detailed data now uses %s.", "super-speedy-performance-analysis"), resp.data.human));
 			sspa_refresh_tabs(['overview', 'tools', 'history', 'share']);
 		}
 	});
@@ -647,7 +646,7 @@ jQuery(document).on('change', '#sspa-share-optin', function () {
 	var optin = jQuery(this).is(':checked') ? 1 : 0;
 	jQuery.post(ajaxurl, { action: 'sspa_share_optin', nonce: sspa_admin.nonce, optin: optin }, function (resp) {
 		if (!resp.success) {
-			alert(resp.data || 'Could not update sharing consent.');
+			alert(resp.data || wp.i18n.__("Could not update sharing consent.", "super-speedy-performance-analysis"));
 			sspa_refresh_tabs(['share']);
 			return;
 		}
@@ -667,13 +666,13 @@ jQuery(document).on('change', '.sspa-publisher-toggle', function () {
 		enabled: enabled
 	}, function (resp) {
 		if (!resp.success) {
-			alert(resp.data || 'Could not update this plugin.');
+			alert(resp.data || wp.i18n.__("Could not update this plugin.", "super-speedy-performance-analysis"));
 			// Put the box back where it was rather than leaving the screen claiming something
 			// the site does not believe.
 			box.prop('checked', !enabled);
 		}
 	}).fail(function () {
-		alert('Could not update this plugin.');
+		alert(wp.i18n.__("Could not update this plugin.", "super-speedy-performance-analysis"));
 		box.prop('checked', !enabled);
 	});
 });
@@ -688,11 +687,11 @@ jQuery(document).on('click', '.sspa-preview-outbox', function () {
 		summary.hide();
 		return;
 	}
-	pre.data('outbox-id', outboxId).text('Building the exact payload…').show();
+	pre.data('outbox-id', outboxId).text(wp.i18n.__("Building the exact payload…", "super-speedy-performance-analysis")).show();
 	summary.hide();
 	jQuery.post(ajaxurl, { action: 'sspa_payload_preview', nonce: sspa_admin.nonce, outbox_id: outboxId }, function (resp) {
 		if (!resp.success) {
-			pre.text(resp.data || 'Could not build the payload.');
+			pre.text(resp.data || wp.i18n.__("Could not build the payload.", "super-speedy-performance-analysis"));
 			return;
 		}
 		pre.text(resp.data.payload);
@@ -718,28 +717,20 @@ jQuery(document).on('click', '.sspa-preview-outbox', function () {
 function sspa_payload_summary_html(data) {
 	var s = data.summary || {};
 	var kb = Math.max(1, Math.round((data.bytes || 0) / 1024));
-	var html = '<p><strong>This is everything that would be sent';
-	if (s.run_type) { html += ' for this ' + sspa_esc(s.run_type) + ' analysis'; }
-	html += ' (' + kb + ' KB).</strong></p>';
+	var heading = s.run_type ? wp.i18n.sprintf(/* translators: 1: analysis type, 2: payload size in kilobytes. */ wp.i18n.__("This is everything that would be sent for this %1$s analysis (%2$s KB).", "super-speedy-performance-analysis"), s.run_type, kb) : wp.i18n.sprintf(/* translators: Payload size in kilobytes. */ wp.i18n.__("This is everything that would be sent (%s KB).", "super-speedy-performance-analysis"), kb);
+	var html = '<p><strong>' + sspa_esc(heading) + '</strong></p>';
 	if (s.includes && s.includes.length) {
-		html += '<p>It contains: ';
-		html += s.includes.map(function (i) { return sspa_esc(i); }).join(', ');
-		if (s.components) { html += ', and the names and versions of ' + s.components + ' active components'; }
-		html += '.</p>';
+		var contents = s.includes.join(', ');
+		if (s.components) { contents = wp.i18n.sprintf(/* translators: 1: list of included fields, 2: number of active components. */ wp.i18n.__("%1$s, and the names and versions of %2$s active components", "super-speedy-performance-analysis"), contents, s.components); }
+		html += '<p>' + sspa_esc(wp.i18n.sprintf(/* translators: List of included fields. */ wp.i18n.__("It contains: %s.", "super-speedy-performance-analysis"), contents)) + '</p>';
 	}
-	// Named, not counted. "Which plugins are publishing their settings" is the one question the
-	// narrower exclusion below raises, and it should not need the JSON to answer.
 	if (s.state_components && s.state_components.length) {
-		html += '<p>These plugins have opted in to publishing their own performance settings: ';
-		html += s.state_components.map(function (i) { return '<code>' + sspa_esc(i) + '</code>'; }).join(', ');
-		html += '.</p>';
+		html += '<p>' + sspa_esc(wp.i18n.sprintf(/* translators: List of plugin names. */ wp.i18n.__("These plugins have opted in to publishing their own performance settings: %s.", "super-speedy-performance-analysis"), s.state_components.join(', '))) + '</p>';
 	}
 	if (s.excludes && s.excludes.length) {
-		html += '<p>It does <strong>not</strong> contain ';
-		html += s.excludes.map(function (i) { return sspa_esc(i); }).join('; ');
-		html += '.</p>';
+		html += '<p>' + sspa_esc(wp.i18n.sprintf(/* translators: List of excluded fields. */ wp.i18n.__("It does not contain %s.", "super-speedy-performance-analysis"), s.excludes.join('; '))) + '</p>';
 	}
-	html += '<p><a href="#" class="button button-small sspa-download-payload">Download this file</a></p>';
+	html += '<p><a href="#" class="button button-small sspa-download-payload">' + sspa_esc(wp.i18n.__("Download this file", "super-speedy-performance-analysis")) + '</a></p>';
 	return html;
 }
 
@@ -749,25 +740,25 @@ jQuery(document).on('click', '.sspa-share-run', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	var cell = btn.closest('.sspa-share-run-cell');
 	cell.find('.sspa-share-run-result').remove();
-	btn.after(' <span class="sspa-share-run-result description">Preparing the anonymised payload…</span>');
+	btn.after(' <span class="sspa-share-run-result description">' + sspa_esc(wp.i18n.__("Preparing the anonymised payload…", "super-speedy-performance-analysis")) + '</span>');
 	jQuery.post(ajaxurl, {
 		action: 'sspa_share_run',
 		nonce: sspa_admin.nonce,
 		run_id: btn.data('run-id')
 	}, function (resp) {
 		if (!resp.success) {
-			cell.find('.sspa-share-run-result').text(resp.data || 'Could not share this analysis.');
+			cell.find('.sspa-share-run-result').text(resp.data || wp.i18n.__("Could not share this analysis.", "super-speedy-performance-analysis"));
 			btn.prop('disabled', false);
 			return;
 		}
 		btn.remove();
 		cell.find('.sspa-share-run-result').html(
-			'Queued to share (this run only) - ' + resp.data.compressed_bytes + ' bytes. ' +
-			'<button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="' + resp.data.outbox_id + '">Preview data</button>'
+			sspa_esc(wp.i18n.sprintf(/* translators: Compressed payload size in bytes. */ wp.i18n.__("Queued to share (this run only) - %s bytes.", "super-speedy-performance-analysis"), resp.data.compressed_bytes)) + ' ' +
+			'<button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="' + resp.data.outbox_id + '">' + sspa_esc(wp.i18n.__("Preview data", "super-speedy-performance-analysis")) + '</button>'
 		);
 		sspa_drive_submissions();
 	}).fail(function () {
-		cell.find('.sspa-share-run-result').text('Could not share this analysis.');
+		cell.find('.sspa-share-run-result').text(wp.i18n.__("Could not share this analysis.", "super-speedy-performance-analysis"));
 		btn.prop('disabled', false);
 	});
 });
@@ -775,11 +766,11 @@ jQuery(document).on('click', '.sspa-share-run', function () {
 jQuery(document).on('click', '#sspa-submit-now', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {
-		alert(resp.success ? 'Queued locally. Delivery runs in the background and retries automatically.' : (resp.data || 'Could not queue the submission.'));
+		alert(resp.success ? wp.i18n.__("Queued locally. Delivery runs in the background and retries automatically.", "super-speedy-performance-analysis") : (resp.data || wp.i18n.__("Could not queue the submission.", "super-speedy-performance-analysis")));
 		sspa_refresh_tabs(['share', 'history'], function () { btn.prop('disabled', false); });
 		sspa_drive_submissions();
 	}).fail(function () {
-		alert('Could not queue the submission.');
+		alert(wp.i18n.__("Could not queue the submission.", "super-speedy-performance-analysis"));
 		btn.prop('disabled', false);
 	});
 });
@@ -792,29 +783,29 @@ jQuery(document).on('click', '#sspa-backfill', function () {
 	var totalFailed = 0;
 
 	function nextBatch(first) {
-		status.text('Building a bounded batch of historical payloads…');
+		status.text(wp.i18n.__("Building a bounded batch of historical payloads…", "super-speedy-performance-analysis"));
 		jQuery.post(ajaxurl, {
 			action: 'sspa_community_backfill',
 			nonce: sspa_admin.nonce,
 			restart: first ? restart : 0
 		}, function (resp) {
 			if (!resp.success) {
-				status.text(resp.data || 'Historical queueing failed.');
+				status.text(resp.data || wp.i18n.__("Historical queueing failed.", "super-speedy-performance-analysis"));
 				btn.prop('disabled', false);
 				return;
 			}
 			totalQueued += parseInt(resp.data.queued, 10) || 0;
 			totalFailed += (resp.data.failed || []).length;
-			status.text('Queued ' + totalQueued + '; ' + resp.data.inventory.remaining + ' historical run(s) remain.');
+			status.text(wp.i18n.sprintf(/* translators: 1: number queued, 2: number of historical runs remaining. */ wp.i18n.__("Queued %1$s; %2$s historical run(s) remain.", "super-speedy-performance-analysis"), totalQueued, resp.data.inventory.remaining));
 			if (!resp.data.complete) {
 				window.setTimeout(function () { nextBatch(false); }, 250);
 				return;
 			}
-			alert('Historical queueing finished: ' + totalQueued + ' queued, ' + totalFailed + ' requiring review.');
+			alert(wp.i18n.sprintf(/* translators: 1: number queued, 2: number needing review. */ wp.i18n.__("Historical queueing finished: %1$s queued, %2$s requiring review.", "super-speedy-performance-analysis"), totalQueued, totalFailed));
 			sspa_refresh_tabs(['share', 'history']);
 			sspa_drive_submissions();
 		}).fail(function () {
-			status.text('Historical queueing request failed. Progress has been saved; press the button to resume.');
+			status.text(wp.i18n.__("Historical queueing request failed. Progress has been saved; press the button to resume.", "super-speedy-performance-analysis"));
 			btn.prop('disabled', false);
 		});
 	}
@@ -825,7 +816,7 @@ jQuery(document).on('click', '#sspa-backfill', function () {
 jQuery(document).on('click', '.sspa-outbox-action', function () {
 	var btn = jQuery(this);
 	var operation = btn.data('operation');
-	if (operation === 'pause' && !confirm('Pause this submission? Its exact local payload will be retained and can be resumed later.')) {
+	if (operation === 'pause' && !confirm(wp.i18n.__("Pause this submission? Its exact local payload will be retained and can be resumed later.", "super-speedy-performance-analysis"))) {
 		return;
 	}
 	btn.prop('disabled', true);
@@ -836,14 +827,14 @@ jQuery(document).on('click', '.sspa-outbox-action', function () {
 		operation: operation
 	}, function (resp) {
 		if (!resp.success) {
-			alert(resp.data || 'Could not update the submission.');
+			alert(resp.data || wp.i18n.__("Could not update the submission.", "super-speedy-performance-analysis"));
 			btn.prop('disabled', false);
 			return;
 		}
 		sspa_refresh_tabs(['share', 'history']);
 		sspa_drive_submissions();
 	}).fail(function () {
-		alert('Could not update the submission.');
+		alert(wp.i18n.__("Could not update the submission.", "super-speedy-performance-analysis"));
 		btn.prop('disabled', false);
 	});
 });
@@ -871,7 +862,7 @@ jQuery(document).on('click', '#sspa-run-cache', function () {
 
 jQuery(document).on('click', '.sspa-measure-plugin', function () {
 	var plugin = jQuery(this).data('plugin');
-	if (!confirm('Measure "' + plugin + '" on every profiled page with the plugin disabled for the test requests only? Visitors are unaffected.')) {
+	if (!confirm(wp.i18n.sprintf(/* translators: Plugin identifier. */ wp.i18n.__("Measure \"%s\" on every profiled page with the plugin disabled for the test requests only? Visitors are unaffected.", "super-speedy-performance-analysis"), plugin))) {
 		return;
 	}
 	sspa_start_typed_run({ type: 'deep', 'suspects[]': plugin }, jQuery(this));
@@ -887,20 +878,20 @@ function sspa_start_typed_run(extra, btn) {
 	}, extra);
 	jQuery.post(ajaxurl, payload, function (resp) {
 		if (!resp.success) {
-			alert(resp.data || 'Could not start the analysis.');
+			alert(resp.data || wp.i18n.__("Could not start the analysis.", "super-speedy-performance-analysis"));
 			btn.prop('disabled', false);
 			return;
 		}
 		// No tab switch, no reload: the floating monitor shows progress wherever you are.
 		sspa_drive_run(resp.data.run_id);
 	}).fail(function () {
-		alert('Could not start the analysis (request failed).');
+		alert(wp.i18n.__("Could not start the analysis (request failed).", "super-speedy-performance-analysis"));
 		btn.prop('disabled', false);
 	});
 }
 
 jQuery(document).on('click', '#sspa-cancel-run, #sspa-runner-cancel', function () {
-	if (!confirm('Cancel the running analysis?')) {
+	if (!confirm(wp.i18n.__("Cancel the running analysis?", "super-speedy-performance-analysis"))) {
 		return;
 	}
 	jQuery.post(ajaxurl, { action: 'sspa_cancel_run', nonce: sspa_admin.nonce }, function () {
@@ -954,12 +945,12 @@ function sspa_fmt_duration(seconds) {
 	var h = Math.floor(seconds / 3600);
 	var m = Math.floor((seconds % 3600) / 60);
 	if (h > 0) {
-		return h + 'h ' + m + 'm';
+		return wp.i18n.sprintf(/* translators: 1: hours, 2: minutes. */ wp.i18n.__("%1$sh %2$sm", "super-speedy-performance-analysis"), h, m);
 	}
 	if (m > 0) {
-		return m + 'm';
+		return wp.i18n.sprintf(/* translators: Minutes. */ wp.i18n.__("%sm", "super-speedy-performance-analysis"), m);
 	}
-	return seconds + 's';
+	return wp.i18n.sprintf(/* translators: Seconds. */ wp.i18n.__("%ss", "super-speedy-performance-analysis"), seconds);
 }
 
 // Highest job index already accepted into the feed, so a poll only queues what is new.
@@ -1034,28 +1025,28 @@ function sspa_runner_update(s) {
 	runner.find('.sspa-progress-fill').css('width', pct + '%');
 	// The phase belongs next to the number, not only in the title: a total that jumps from 72
 	// to 216 mid-run reads as a bug unless the screen says why.
-	var counts = s.done + ' / ' + s.total + ' measurements (' + pct + '%)';
+	var counts = wp.i18n.sprintf(/* translators: 1: completed count, 2: total count, 3: progress percentage. */ wp.i18n.__("%1$s / %2$s measurements (%3$s%%)", "super-speedy-performance-analysis"), s.done, s.total, pct);
 	if (s.run_type === 'deep' && s.phase) {
-		counts = (s.phase === 1 ? 'Phase 1/2, screening' : 'Phase 2/2, confirming') + ' \u00b7 ' + counts;
+		counts = (s.phase === 1 ? wp.i18n.__("Phase 1/2, screening", "super-speedy-performance-analysis") : wp.i18n.__("Phase 2/2, confirming", "super-speedy-performance-analysis")) + ' \u00b7 ' + counts;
 	}
 	runner.find('.sspa-runner-counts').text(counts);
-	runner.find('.sspa-runner-current').text(s.current ? 'Now testing: ' + s.current : (s.status === 'analysing' ? 'Analysing results…' : ''));
+	runner.find('.sspa-runner-current').text(s.current ? wp.i18n.sprintf(/* translators: Current measurement label. */ wp.i18n.__("Now testing: %s", "super-speedy-performance-analysis"), s.current) : (s.status === 'analysing' ? wp.i18n.__("Analysing results…", "super-speedy-performance-analysis") : ''));
 	sspa_runner_feed(s);
 	var eta = sspa_fmt_duration(s.eta_seconds);
 	var elapsed = sspa_fmt_duration(s.elapsed_seconds);
 	var bits = [];
 	if (elapsed) {
-		bits.push('Elapsed ' + elapsed);
+		bits.push(wp.i18n.sprintf(/* translators: Formatted elapsed duration. */ wp.i18n.__("Elapsed %s", "super-speedy-performance-analysis"), elapsed));
 	}
 	if (eta) {
 		// Phase 1 is the fast screen; phase 2 length depends on what it finds.
-		bits.push('~' + eta + (s.run_type === 'deep' && s.phase === 1 ? ' left in screening' : ' left'));
+		bits.push(wp.i18n.sprintf(s.run_type === 'deep' && s.phase === 1 ? /* translators: Formatted remaining duration. */ wp.i18n.__("~%s left in screening", "super-speedy-performance-analysis") : /* translators: Formatted remaining duration. */ wp.i18n.__("~%s left", "super-speedy-performance-analysis"), eta));
 	}
 	runner.find('.sspa-runner-eta').text(bits.join(' · '));
-	runner.find('.sspa-runner-mini-summary').text(pct + '%' + (eta ? ' · ~' + eta + ' left' : ''));
-	var title = { deep: 'Plugin impact analysis running', cache_impact: 'Cache impact analysis running' }[s.run_type] || 'Analysis running';
+	runner.find('.sspa-runner-mini-summary').text(pct + '%' + (eta ? ' · ' + wp.i18n.sprintf(/* translators: Formatted remaining duration. */ wp.i18n.__("~%s left", "super-speedy-performance-analysis"), eta) : ''));
+	var title = { deep: wp.i18n.__("Plugin impact analysis running", "super-speedy-performance-analysis"), cache_impact: wp.i18n.__("Cache impact analysis running", "super-speedy-performance-analysis") }[s.run_type] || wp.i18n.__("Analysis running", "super-speedy-performance-analysis");
 	if (s.run_type === 'deep' && s.phase) {
-		title += s.phase === 1 ? ' - phase 1/2: screening all plugins' : ' - phase 2/2: confirming impacted plugins';
+		title += s.phase === 1 ? wp.i18n.__(" - phase 1/2: screening all plugins", "super-speedy-performance-analysis") : wp.i18n.__(" - phase 2/2: confirming impacted plugins", "super-speedy-performance-analysis");
 	}
 	runner.find('.sspa-runner-title').text(title);
 }
@@ -1077,7 +1068,7 @@ function sspa_runner_dismiss() {
 
 function sspa_runner_finish(status) {
 	var runner = jQuery('#sspa-runner').removeClass('sspa-runner-min');
-	var label = status === 'done' ? 'Analysis complete ✓ loading results…' : 'Analysis ' + status + ' - loading results…';
+	var label = status === 'done' ? wp.i18n.__("Analysis complete ✓ loading results…", "super-speedy-performance-analysis") : wp.i18n.sprintf(/* translators: Analysis status returned by the server. */ wp.i18n.__("Analysis %s - loading results…", "super-speedy-performance-analysis"), status);
 	runner.find('.sspa-runner-title').text(label);
 	runner.find('.sspa-runner-mini-summary').text('');
 	runner.find('.sspa-progress-fill').css('width', '100%');
@@ -1190,7 +1181,7 @@ function sspa_drive_run(runId) {
 			}
 			// Transient network/server hiccups must not kill an hours-long run.
 			failures++;
-			jQuery('#sspa-runner .sspa-runner-current').text(failures > 1 ? 'Connection hiccup, retrying… (' + failures + ')' : '');
+			jQuery('#sspa-runner .sspa-runner-current').text(failures > 1 ? wp.i18n.sprintf(/* translators: Consecutive connection-failure count. */ wp.i18n.__("Connection hiccup, retrying… (%s)", "super-speedy-performance-analysis"), failures) : '');
 			batchTimer = setTimeout(step, Math.min(30000, 3000 * failures));
 		});
 	}

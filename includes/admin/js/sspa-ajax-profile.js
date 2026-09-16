@@ -3,11 +3,11 @@
 var saved = null, chart = null;
 function request(data) {
     return $.post(ajaxurl, Object.assign({action:'sspa_ajax_profile', nonce:sspa_admin.nonce}, data)).then(function (response) {
-        if (!response.success) throw new Error(typeof response.data === 'string' ? response.data : 'Request failed.');
+        if (!response.success) throw new Error(typeof response.data === 'string' ? response.data : wp.i18n.__("Request failed.", "super-speedy-performance-analysis"));
         return response.data;
     });
 }
-function fail(error) { $('.sspa-ajax-status').text(error.message || 'Request failed.'); }
+function fail(error) { $('.sspa-ajax-status').text(error.message || wp.i18n.__("Request failed.", "super-speedy-performance-analysis")); }
 $(document).on('change', '.sspa-ajax-endpoint-group', function () { var group=this.value; $('.sspa-ajax-start [name="endpoints[]"] option').each(function () { this.selected=!!group && this.dataset.group===group; }); });
 $(document).on('submit', '.sspa-ajax-start', function (event) {
     event.preventDefault(); var form=$(this), data={operation:'start'};
@@ -15,15 +15,15 @@ $(document).on('submit', '.sspa-ajax-start', function (event) {
     request(data).then(function () { location.reload(); }, fail);
 });
 $(document).on('click', '.sspa-ajax-stop', function () { request({operation:'stop', uuid:$(this).data('uuid')}).then(function () { location.reload(); }, fail); });
-function formatTime(value) { if(value===null)return 'Not measured'; return value>=1000 ? (value/1000).toFixed(2)+' s' : Number(value).toFixed(0)+' ms'; }
+function formatTime(value) { if(value===null)return wp.i18n.__("Not measured", "super-speedy-performance-analysis"); return value>=1000 ? (value/1000).toFixed(2)+' s' : Number(value).toFixed(0)+' ms'; }
 function headlines(doc) {
     var wrap=$('<div class="sspa-ajax-headline-list">');
     doc.pages.forEach(function(page){
         var card=$('<section class="sspa-ajax-headline">').appendTo(wrap);
         $('<h3>').text(page.label).appendTo(card);
         $('<div class="sspa-ajax-big-times">').text(formatTime(page.previous.median)+' → '+formatTime(page.current.median)).appendTo(card);
-        if(page.delta.percent!==null)$('<strong class="sspa-ajax-reduction">').text(Math.abs(page.delta.percent).toFixed(1)+(page.delta.absolute>0 ? '% slower · ' : '% reduction · ')+formatTime(Math.abs(page.delta.absolute))+(page.delta.absolute>0 ? ' added' : ' saved')).appendTo(card);
-        $('<p>').text('Server request median · '+page.previous.samples+' before / '+page.current.samples+' after samples · '+page.previous.errors+' / '+page.current.errors+' errors').appendTo(card);
+        if(page.delta.percent!==null)$('<strong class="sspa-ajax-reduction">').text(wp.i18n.sprintf(page.delta.absolute>0 ? /* translators: 1: percentage increase, 2: formatted added request time. */ wp.i18n.__("%1$s%% slower · %2$s added", "super-speedy-performance-analysis") : /* translators: 1: percentage reduction, 2: formatted saved request time. */ wp.i18n.__("%1$s%% reduction · %2$s saved", "super-speedy-performance-analysis"), Math.abs(page.delta.percent).toFixed(1), formatTime(Math.abs(page.delta.absolute)))).appendTo(card);
+        $('<p>').text(wp.i18n.sprintf(/* translators: 1: before sample count, 2: after sample count, 3: before error count, 4: after error count. */ wp.i18n.__("Server request median · %1$s before / %2$s after samples · %3$s / %4$s errors", "super-speedy-performance-analysis"), page.previous.samples, page.current.samples, page.previous.errors, page.current.errors)).appendTo(card);
         if(page.delta.absolute===null)$('<p>').text(page.warning).appendTo(card);
     });
     return wrap;
@@ -46,8 +46,8 @@ function summary(documentData) {
     documentData.pages.forEach(function (page) {
         $('<h3>').text(page.label).appendTo(result);
         var before=page.previous, after=page.current;
-        $('<p>').text('Median: '+before.median+' → '+after.median+' ms. p95: '+before.p95+' → '+after.p95+' ms. Successful samples: '+before.samples+' → '+after.samples+'. Errors: '+before.errors+' → '+after.errors+'.').appendTo(result);
-        if(page.delta.absolute !== null) $('<p>').text(Math.abs(page.delta.absolute)+' ms '+(page.delta.absolute>0 ? 'added' : 'saved')+' per request'+(page.delta.percent !== null ? ' ('+Math.abs(page.delta.percent)+'% '+(page.delta.absolute>0 ? 'slower' : 'reduction')+')' : '')+'.').appendTo(result);
+        $('<p>').text(wp.i18n.sprintf(/* translators: 1-2: before/after median milliseconds, 3-4: before/after p95 milliseconds, 5-6: before/after success counts, 7-8: before/after error counts. */ wp.i18n.__("Median: %1$s → %2$s ms. p95: %3$s → %4$s ms. Successful samples: %5$s → %6$s. Errors: %7$s → %8$s.", "super-speedy-performance-analysis"), before.median, after.median, before.p95, after.p95, before.samples, after.samples, before.errors, after.errors)).appendTo(result);
+        if(page.delta.absolute !== null) $('<p>').text(wp.i18n.sprintf(page.delta.absolute>0 ? /* translators: Added milliseconds per request. */ wp.i18n.__("%s ms added per request", "super-speedy-performance-analysis") : /* translators: Saved milliseconds per request. */ wp.i18n.__("%s ms saved per request", "super-speedy-performance-analysis"), Math.abs(page.delta.absolute))+(page.delta.percent !== null ? ' ('+wp.i18n.sprintf(page.delta.absolute>0 ? /* translators: Percentage increase. */ wp.i18n.__("%s%% slower", "super-speedy-performance-analysis") : /* translators: Percentage reduction. */ wp.i18n.__("%s%% reduction", "super-speedy-performance-analysis"), Math.abs(page.delta.percent))+')' : '')+'.').appendTo(result);
         $('<p>').text(page.warning).appendTo(result);
     });
     return result;
@@ -60,7 +60,7 @@ $(document).on('submit', '.sspa-ajax-compare', function(event) {
             saved=result;
             $('.sspa-ajax-results').prop('hidden',false);
             $('.sspa-ajax-summary').empty().append(summary(result));
-            $('.sspa-ajax-status').text(result.pages.length ? 'Saved request measurements loaded.' : 'No comparable retained requests.');
+            $('.sspa-ajax-status').text(result.pages.length ? wp.i18n.__("Saved request measurements loaded.", "super-speedy-performance-analysis") : wp.i18n.__("No comparable retained requests.", "super-speedy-performance-analysis"));
             paint();
         });
     }).catch(fail);
@@ -69,10 +69,10 @@ $(document).on('input', '.sspa-ajax-filter', paint);
 $(window).on('resize',function(){if(chart)chart.resize();});
 $(document).on('click','.sspa-ajax-export',function(){
     if(!saved || !chart)return;
-    var exported=visibleDocument(); var out=$('<main>'); $('<h1>').text('AJAX before/after: server request time').appendTo(out);
-    $('<img>').attr('src',chart.getDataURL({type:'png',pixelRatio:2,backgroundColor:'#fff'})).attr('alt','Measured AJAX request chart').appendTo(out);
+    var exported=visibleDocument(); var out=$('<main>'); var title=$('<title>').text(wp.i18n.__("AJAX measurements", "super-speedy-performance-analysis"))[0].outerHTML; $('<h1>').text(wp.i18n.__("AJAX before/after: server request time", "super-speedy-performance-analysis")).appendTo(out);
+    $('<img>').attr('src',chart.getDataURL({type:'png',pixelRatio:2,backgroundColor:'#fff'})).attr('alt',wp.i18n.__("Measured AJAX request chart", "super-speedy-performance-analysis")).appendTo(out);
     out.append(headlines(exported)); out.append(summary(exported)); $('<pre>').text(JSON.stringify(exported,null,2)).appendTo(out);
-    var blob=new Blob(['<!doctype html><meta charset="utf-8"><title>AJAX measurements</title><style>body{font:16px system-ui;max-width:1200px;margin:32px auto;padding:0 20px}img{max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere}.sspa-ajax-big-times{font-size:40px;font-weight:700}.sspa-ajax-headline{padding:20px;border:1px solid #ccc}.sspa-ajax-reduction{color:#135e96;font-size:20px}</style>'+out[0].outerHTML],{type:'text/html'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+    var blob=new Blob(['<!doctype html><meta charset="utf-8">'+title+'<style>body{font:16px system-ui;max-width:1200px;margin:32px auto;padding:0 20px}img{max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere}.sspa-ajax-big-times{font-size:40px;font-weight:700}.sspa-ajax-headline{padding:20px;border:1px solid #ccc}.sspa-ajax-reduction{color:#135e96;font-size:20px}</style>'+out[0].outerHTML],{type:'text/html'}),url=URL.createObjectURL(blob),link=document.createElement('a');
     link.href=url;link.download='ajax-before-after.html';link.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
 });
 })(jQuery);

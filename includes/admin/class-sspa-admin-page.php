@@ -109,8 +109,8 @@ class SSPA_Admin_Page {
     public static function enqueue_assets() {
         wp_enqueue_script('sspa-chart-library', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-chart-library.js', array('sspa-admin'), sspa_asset_version('includes/admin/js/sspa-chart-library.js'), true);
         wp_enqueue_script('sspa-measurement-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-measurement-chart.js', array('jquery', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-measurement-chart.js'), true);
-        wp_enqueue_script('sspa-ajax-profile', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-ajax-profile.js', array('jquery', 'sspa-measurement-chart', 'sspa-chart-library'), sspa_asset_version('includes/admin/js/sspa-ajax-profile.js'), true);
-        wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery', 'sspa-transport'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
+        wp_enqueue_script('sspa-ajax-profile', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-ajax-profile.js', array('jquery', 'sspa-measurement-chart', 'sspa-chart-library', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-ajax-profile.js'), true);
+        wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
         wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-chart-library', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
         wp_localize_script('sspa-history-chart', 'sspa_history_chart', array(
             /* translators: 1: analysis ID, 2: request sample number */
@@ -173,6 +173,8 @@ class SSPA_Admin_Page {
             'retry' => __('Try again', 'super-speedy-performance-analysis'),
             'profile_unavailable' => __('The profile panel is unavailable. Reload this page to open the retained diagnostics.', 'super-speedy-performance-analysis'),
         ));
+        wp_set_script_translations('sspa-admin', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
+        wp_set_script_translations('sspa-ajax-profile', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
         wp_localize_script('sspa-admin', 'sspa_admin', array(
             'nonce' => wp_create_nonce('sspa_admin'),
             'download_prefix' => sspa_download_prefix(),

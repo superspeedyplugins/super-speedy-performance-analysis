@@ -37,6 +37,7 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 == Changelog ==
 
 = 0.42 (16th September 2026) =
+* Admin messages, AJAX controls and comparison summaries support WordPress translations.
 * Plugin Impact links from the Super Speedy dashboard open the Plugins tab correctly.
 * Failed tab loads show the request error and a Retry button.
 * Wide analysis tables scroll within their panels on phones.

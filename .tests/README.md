@@ -38,6 +38,10 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 90-write-probe-stock # real write run preserves catalogue stock and measures only its own temporary product
 .tests/run-tests.sh 89-traffic-window # two real traffic windows with a controlled slowdown: normalised deltas, unavailable states, CLI and Abilities agree
 .tests/observatory: npm test # 19 node tests, including sites-root discovery from parallel-dev and the preparation prerequisite checks
+.tests/browser/run-regressions.sh translations # cookie-scoped PHP/JS translation catalogue, real AJAX controls and History loading/error states
+.tests/browser/run-regressions.sh admin-mobile # all nine tabs at phone/desktop widths and both document directions
+.tests/browser/run-regressions.sh tab-retry # network/server tab errors and explicit recovery
+.tests/browser/run-regressions.sh shared-link # real shared Plugin Impact link, reload and bookmark
 .tests/browser/run-regressions.sh admin-journey # admin-bar Analyse this page and cache control, attribution switching, Re-run, Escape and focus restoration
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
