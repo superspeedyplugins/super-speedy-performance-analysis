@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.41.2
+ * Version: 0.42.0
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -13,7 +13,7 @@
  * Tested up to: 7.1
  * Requires PHP: 7.4
  * WC requires at least: 8.2
- * WC tested up to: 11.0.1
+ * WC tested up to: 10.5.3
  */
 
 defined('ABSPATH') || exit;
