@@ -116,30 +116,30 @@ if (!$sspa_runs) : ?>
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($sspa_runs as $run) :
-            $notes = json_decode((string) $run['notes'], true);
-            $pages = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id = %d', SSPA_Schema::table('profiles'), $run['id']));
-            $mean_gen = $wpdb->get_var($wpdb->prepare(
+        <?php foreach ($sspa_runs as $sspa_run) :
+            $sspa_notes = json_decode((string) $sspa_run['notes'], true);
+            $sspa_pages = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE run_id = %d', SSPA_Schema::table('profiles'), $sspa_run['id']));
+            $sspa_mean_gen = $wpdb->get_var($wpdb->prepare(
                 "SELECT AVG(page_gen_ms) FROM %i WHERE run_id = %d AND page_gen_ms IS NOT NULL AND page_key != 'baseline'",
                 SSPA_Schema::table('profiles'),
-                $run['id']
+                $sspa_run['id']
             ));
-            $sspa_label = isset($sspa_type_labels[$run['run_type']]) ? $sspa_type_labels[$run['run_type']] : $run['run_type'];
+            $sspa_label = isset($sspa_type_labels[$sspa_run['run_type']]) ? $sspa_type_labels[$sspa_run['run_type']] : $sspa_run['run_type'];
             // Versions as they were when this run measured, decoded from the run row already
             // in memory. Runs recorded before 0.12 kept no versions, so they stay unknown.
-            $sspa_run_versions = SSPA_Run_Controller::decode_component_versions($run['plugin_set']);
-            $sspa_outbox = SSPA_Community_Outbox::for_run_uuid($run['run_uuid']);
-            $sspa_shareable = 'done' === $run['status'] || ('failed' === $run['status'] && 'checkout' === $run['run_type']);
+            $sspa_run_versions = SSPA_Run_Controller::decode_component_versions($sspa_run['plugin_set']);
+            $sspa_outbox = SSPA_Community_Outbox::for_run_uuid($sspa_run['run_uuid']);
+            $sspa_shareable = 'done' === $sspa_run['status'] || ('failed' === $sspa_run['status'] && 'checkout' === $sspa_run['run_type']);
             ?>
             <tr>
-                <td><a class="sspa-history-run-link" data-run-id="<?php echo (int) $run['id']; ?>" href="<?php echo esc_url(SSPA_History_Run_View::url((int) $run['id'])); ?>">#<?php echo (int) $run['id']; ?></a></td>
-                <td><?php echo esc_html($run['run_type']); ?></td>
-                <td><?php echo esc_html($run['started']); ?></td>
-                <td><?php echo esc_html($run['status']); ?></td>
-                <td><?php echo (int) $pages; ?></td>
-                <td><?php echo $mean_gen !== null ? esc_html(number_format((float) $mean_gen, 1)) : '-'; ?></td>
-                <td><?php echo is_array($notes) && isset($notes['findings']) ? (int) $notes['findings'] : '-'; ?></td>
-                <td><?php echo is_array($notes) && isset($notes['score']) ? (int) $notes['score'] . '/100' : '-'; ?></td>
+                <td><a class="sspa-history-run-link" data-run-id="<?php echo (int) $sspa_run['id']; ?>" href="<?php echo esc_url(SSPA_History_Run_View::url((int) $sspa_run['id'])); ?>">#<?php echo (int) $sspa_run['id']; ?></a></td>
+                <td><?php echo esc_html($sspa_run['run_type']); ?></td>
+                <td><?php echo esc_html($sspa_run['started']); ?></td>
+                <td><?php echo esc_html($sspa_run['status']); ?></td>
+                <td><?php echo (int) $sspa_pages; ?></td>
+                <td><?php echo $sspa_mean_gen !== null ? esc_html(number_format((float) $sspa_mean_gen, 1)) : '-'; ?></td>
+                <td><?php echo is_array($sspa_notes) && isset($sspa_notes['findings']) ? (int) $sspa_notes['findings'] : '-'; ?></td>
+                <td><?php echo is_array($sspa_notes) && isset($sspa_notes['score']) ? (int) $sspa_notes['score'] . '/100' : '-'; ?></td>
                 <td>
                     <?php if ($sspa_run_versions) : ?>
                         <details class="sspa-run-components">
@@ -159,15 +159,15 @@ if (!$sspa_runs) : ?>
                 </td>
                 <td>
                     <?php if ($sspa_shareable) :
-                        $sspa_markdown_kind = 'checkout' === $run['run_type'] ? 'checkout' : 'run'; ?>
-                        <button type="button" class="button button-small sspa-markdown-download" data-kind="<?php echo esc_attr($sspa_markdown_kind); ?>" data-id="<?php echo (int) $run['id']; ?>"><?php esc_html_e('Download Markdown', 'super-speedy-performance-analysis'); ?></button>
-                        <button type="button" class="button button-small sspa-markdown-copy" data-kind="<?php echo esc_attr($sspa_markdown_kind); ?>" data-id="<?php echo (int) $run['id']; ?>"><?php esc_html_e('Copy Markdown', 'super-speedy-performance-analysis'); ?></button>
+                        $sspa_markdown_kind = 'checkout' === $sspa_run['run_type'] ? 'checkout' : 'run'; ?>
+                        <button type="button" class="button button-small sspa-markdown-download" data-kind="<?php echo esc_attr($sspa_markdown_kind); ?>" data-id="<?php echo (int) $sspa_run['id']; ?>"><?php esc_html_e('Download Markdown', 'super-speedy-performance-analysis'); ?></button>
+                        <button type="button" class="button button-small sspa-markdown-copy" data-kind="<?php echo esc_attr($sspa_markdown_kind); ?>" data-id="<?php echo (int) $sspa_run['id']; ?>"><?php esc_html_e('Copy Markdown', 'super-speedy-performance-analysis'); ?></button>
                         <span class="description sspa-markdown-status" aria-live="polite"></span>
                     <?php else : ?>
                         <span class="description">-</span>
                     <?php endif; ?>
                 </td>
-                <td class="sspa-share-run-cell" data-run-id="<?php echo (int) $run['id']; ?>">
+                <td class="sspa-share-run-cell" data-run-id="<?php echo (int) $sspa_run['id']; ?>">
                     <?php if ($sspa_outbox) : ?>
                         <span class="sspa-share-state">
                             <?php echo esc_html(isset($sspa_share_states[$sspa_outbox['state']]) ? $sspa_share_states[$sspa_outbox['state']] : $sspa_outbox['state']); ?>
@@ -177,7 +177,7 @@ if (!$sspa_runs) : ?>
                         </span>
                         <button type="button" class="button button-small sspa-preview-outbox" data-outbox-id="<?php echo (int) $sspa_outbox['id']; ?>"><?php esc_html_e('Preview data', 'super-speedy-performance-analysis'); ?></button>
                     <?php elseif ($sspa_shareable) : ?>
-                        <button type="button" class="button button-small sspa-share-run" data-run-id="<?php echo (int) $run['id']; ?>">
+                        <button type="button" class="button button-small sspa-share-run" data-run-id="<?php echo (int) $sspa_run['id']; ?>">
                             <?php /* translators: %s: analysis type, e.g. "full scan" */ printf(esc_html__('Share this %s', 'super-speedy-performance-analysis'), esc_html($sspa_label)); ?>
                         </button>
                     <?php else : ?>

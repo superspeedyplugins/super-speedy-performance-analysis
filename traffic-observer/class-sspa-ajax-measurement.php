@@ -16,7 +16,9 @@ class SSPA_Ajax_Measurement {
             if (function_exists('spro_fast_ajax_measurement_context')) { $this->context = spro_fast_ajax_measurement_context(); }
         }, PHP_INT_MAX);
         if (!empty($config['detail'])) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- observes the existing request only; endpoint identity is strictly regex-validated and allowlisted below, never dispatched by this observer.
             $action = isset($_REQUEST['action']) && is_string($_REQUEST['action']) ? $_REQUEST['action'] : '';
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- observes the existing request only; endpoint identity is strictly regex-validated and allowlisted below, never dispatched by this observer.
             $wc = isset($_GET['wc-ajax']) && is_string($_GET['wc-ajax']) ? $_GET['wc-ajax'] : '';
             $candidate = $wc ?: ((defined('DOING_AJAX') && DOING_AJAX) ? $action : '');
             $selector = ($wc ? 'wc_ajax:' : 'admin_ajax:') . $candidate;

@@ -3,6 +3,7 @@
 #   .build/build-full.sh <dest_dir> [--smoke]
 set -uo pipefail
 _h="$(cd "$(dirname "$0")" && pwd)"
+php "$_h/validate-feature-release-gate.php" || exit 1
 source "$_h/build.sh"
 SRC="$(cd "$_h/.." && pwd)"
 DEST="${1:?usage: build-full.sh <dest_dir> [--smoke]}"

@@ -26,6 +26,7 @@ $sspa_pins = array(
         'hashes' => array(
             '1.0.0' => '586612818e2b8d891f19774c5cfd7908c999d9b6b46deacc8d1beb912a023fd1',
             '1.0.1' => '7361c5c13a4a8dfd7c90ad5188321b8334cac0f5876a02403e2afc1eefedc7f1',
+            '1.0.2' => '18afca7c76f7559799b9d8dc346bbd5f8fc5a7fbbfeac6efb1eeeab8eccc4ccd',
         ),
     ),
     'dropins/db.php' => array(
@@ -34,6 +35,7 @@ $sspa_pins = array(
         'hashes' => array(
             '1.0.0' => '0455bfa1efa6af7b59c72a5a7a7f80406116bbf1ed37b3f4a55f9a87b6260637',
             '1.0.1' => '484d8f49aeb8e7c06e99b34204f72a01549f89773a2bd77a8db858f85424abd5',
+            '1.0.2' => '744639af3c47afdfbe4a6f2689985d6d8a94b57e9e337cbbaf11a6b26a4e6779',
         ),
     ),
 );

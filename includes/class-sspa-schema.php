@@ -420,14 +420,17 @@ class SSPA_Schema {
     private static function ensure_run_uuids() {
         global $wpdb;
         $runs = self::table('runs');
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- SSPA_Schema::table combines the trusted WordPress prefix with the literal table suffix; no request input enters this identifier.
         $rows = $wpdb->get_results("SELECT id, run_uuid FROM $runs", ARRAY_A);
         foreach ((array) $rows as $row) {
             if (!wp_is_uuid($row['run_uuid'], 4)) {
                 $wpdb->update($runs, array('run_uuid' => wp_generate_uuid4()), array('id' => (int) $row['id']));
             }
         }
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- SSPA_Schema::table combines the trusted WordPress prefix with the literal table suffix; no request input enters this identifier.
         $unique = $wpdb->get_var("SHOW INDEX FROM $runs WHERE Key_name = 'run_uuid_unique'");
         if (!$unique) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- SSPA_Schema::table combines the trusted WordPress prefix with the literal table suffix; no request input enters this identifier.
             $wpdb->query("ALTER TABLE $runs ADD UNIQUE KEY run_uuid_unique (run_uuid)");
         }
     }
@@ -458,6 +461,7 @@ class SSPA_Schema {
         global $wpdb;
         foreach (array('run_jobs', 'run_queues', 'traffic_reports', 'traffic_actor_work', 'traffic_rollups', 'traffic_endpoint_observations', 'traffic_events', 'traffic_collections', 'submission_events', 'submission_outbox', 'runs', 'profiles', 'component_stats', 'findings', 'plugin_impacts', 'site_metrics', 'captures') as $name) {
             $table = self::table($name);
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- SSPA_Schema::table combines the trusted WordPress prefix with the literal table suffix; no request input enters this identifier.
             $wpdb->query("DROP TABLE IF EXISTS $table");
         }
         delete_option('sspa_db_version');

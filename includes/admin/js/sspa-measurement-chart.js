@@ -1,12 +1,11 @@
 /* Pure chart option adapter extracted from History completion 70f0276. Shared page-shaped points; AJAX identity is supplied by its own adapter. */
 (function ($) {
 'use strict';
-var strings = {aggregate: 'Aggregate', tooltip_count: '%s retained diagnostics', tooltip_unavailable: 'Diagnostics unavailable', select_point: 'Select to inspect capture-time setup and activity.'};
 var sprintf = wp.i18n.sprintf;
 function escapeText(text) { return $('<span>').text(text).html(); }
 	function unitValue(value, unit) {
 		if (value === null || typeof value === 'undefined') {
-			return 'Not measured';
+			return wp.i18n.__("Not measured", "super-speedy-performance-analysis");
 		}
 		if (unit === 'bytes') {
 			var suffixes = ['B', 'KB', 'MB', 'GB'];
@@ -40,10 +39,10 @@ function escapeText(text) { return $('<span>').text(text).html(); }
 
 	function faultSummary(faults) {
 		var labels = {
-			blocked: 'blocked',
-			transport_error: 'transport error',
-			http_error: 'HTTP error',
-			missing: 'missing measurement'
+			blocked: wp.i18n.__("blocked", "super-speedy-performance-analysis"),
+			transport_error: wp.i18n.__("transport error", "super-speedy-performance-analysis"),
+			http_error: wp.i18n.__("HTTP error", "super-speedy-performance-analysis"),
+			missing: wp.i18n.__("missing measurement", "super-speedy-performance-analysis")
 		};
 		var counts = {};
 		faults.forEach(function (fault) {
@@ -84,10 +83,10 @@ function escapeText(text) { return $('<span>').text(text).html(); }
 			var values = page.previous.points.concat(page.current.points).map(function (item) { return Number(item.value); });
 			var markerY = values.length ? Math.max.apply(null, values) * 1.08 : 1;
 			if (page.previous.fault_count) {
-				failures.push({value: [label, markerY], period: 'Previous setup', summary: faultSummary(page.previous.faults), symbolOffset: [-12, 0]});
+				failures.push({value: [label, markerY], period: wp.i18n.__("Previous setup", "super-speedy-performance-analysis"), summary: faultSummary(page.previous.faults), symbolOffset: [-12, 0]});
 			}
 			if (page.current.fault_count) {
-				failures.push({value: [label, markerY], period: 'Current setup', summary: faultSummary(page.current.faults), symbolOffset: [12, 0]});
+				failures.push({value: [label, markerY], period: wp.i18n.__("Current setup", "super-speedy-performance-analysis"), summary: faultSummary(page.current.faults), symbolOffset: [12, 0]});
 			}
 		});
 
@@ -98,7 +97,7 @@ function escapeText(text) { return $('<span>').text(text).html(); }
 			aria: {
 				enabled: true,
 				decal: {show: true},
-				description: 'Comparison of every retained ' + documentData.metric.label.toLowerCase() + ' measurement for the previous and current measured setups.'
+				description: sprintf(/* translators: %s: measurement metric name. */ wp.i18n.__("Comparison of every retained %s measurement for the previous and current measured setups.", "super-speedy-performance-analysis"), documentData.metric.label.toLowerCase())
 			},
 			color: ['#6b7280', '#2271b1', '#9ca3af', '#135e96', '#d63638'],
 			legend: {top: 0},
@@ -108,22 +107,22 @@ function escapeText(text) { return $('<span>').text(text).html(); }
 				formatter: function (params) {
 					var data = params.data || {};
 					if (data.period) {
-						return '<strong>' + data.period + '</strong><br>' + data.summary;
+						return '<strong>' + escapeText(data.period) + '</strong><br>' + escapeText(data.summary);
 					}
 					var value = Array.isArray(data.value) ? data.value[1] : data.value;
-					var lines = ['<strong>' + params.seriesName + '</strong>', unitValue(value, unit)];
+					var lines = ['<strong>' + escapeText(params.seriesName) + '</strong>', escapeText(unitValue(value, unit))];
 					if (data.runId) {
-						lines.push('Analysis #' + data.runId + (data.sample ? ', sample ' + data.sample : ''));
+						lines.push(escapeText(data.sample ? sprintf(/* translators: 1: analysis ID, 2: sample number. */ wp.i18n.__("Analysis #%1$d, sample %2$d", "super-speedy-performance-analysis"), data.runId, data.sample) : sprintf(/* translators: %d: analysis ID. */ wp.i18n.__("Analysis #%d", "super-speedy-performance-analysis"), data.runId)));
 					}
 					if (data.delta && data.delta.absolute !== null) {
 						var change = (data.delta.absolute < 0 ? '−' : '+') + unitValue(Math.abs(data.delta.absolute), unit);
 						if (data.delta.percent !== null) {
 							change += ' (' + (data.delta.percent < 0 ? '−' : '+') + Math.abs(data.delta.percent).toFixed(1) + '%)';
 						}
-						lines.push(documentData.metric.change_label + ': ' + change);
+						lines.push(escapeText(documentData.metric.change_label + ': ' + change));
 					}
 					if (data.outputState === 'changed') {
-						lines.push('Output changed — review');
+						lines.push(escapeText(wp.i18n.__("Output changed — review", "super-speedy-performance-analysis")));
 					}
 					return lines.join('<br>');
 				}
@@ -144,11 +143,11 @@ function escapeText(text) { return $('<span>').text(text).html(); }
 				{type: 'slider', xAxisIndex: 0, bottom: 14, height: 24, filterMode: 'filter'}
 			] : [{type: 'inside', xAxisIndex: 0, filterMode: 'filter'}],
 			series: [
-				{name: 'Previous measurements', type: 'scatter', symbolSize: 9, data: previousPoints},
-				{name: 'Current measurements', type: 'scatter', symbolSize: 9, data: currentPoints},
-				{name: 'Previous median', type: 'line', symbol: 'diamond', symbolSize: 13, lineStyle: {type: 'dashed', width: 2}, connectNulls: false, data: previousMedians},
-				{name: 'Current median', type: 'line', symbol: 'diamond', symbolSize: 13, lineStyle: {width: 3}, connectNulls: false, data: currentMedians},
-				{name: 'Failed requests', type: 'scatter', symbol: 'triangle', symbolSize: 15, itemStyle: {color: '#d63638'}, data: failures}
+				{name: wp.i18n.__("Previous measurements", "super-speedy-performance-analysis"), type: 'scatter', symbolSize: 9, data: previousPoints},
+				{name: wp.i18n.__("Current measurements", "super-speedy-performance-analysis"), type: 'scatter', symbolSize: 9, data: currentPoints},
+				{name: wp.i18n.__("Previous median", "super-speedy-performance-analysis"), type: 'line', symbol: 'diamond', symbolSize: 13, lineStyle: {type: 'dashed', width: 2}, connectNulls: false, data: previousMedians},
+				{name: wp.i18n.__("Current median", "super-speedy-performance-analysis"), type: 'line', symbol: 'diamond', symbolSize: 13, lineStyle: {width: 3}, connectNulls: false, data: currentMedians},
+				{name: wp.i18n.__("Failed requests", "super-speedy-performance-analysis"), type: 'scatter', symbol: 'triangle', symbolSize: 15, itemStyle: {color: '#d63638'}, data: failures}
 			]
 		};
 	}

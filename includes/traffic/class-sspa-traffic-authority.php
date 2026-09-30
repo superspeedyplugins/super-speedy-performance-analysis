@@ -21,11 +21,13 @@ class SSPA_Traffic_Authority {
         if ($exclusive && !is_dir(WPMU_PLUGIN_DIR) && !wp_mkdir_p(WPMU_PLUGIN_DIR)) {
             throw new RuntimeException('Cannot create the traffic authority directory.');
         }
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- The local authority requires a stable PHP stream for flock; WP_Filesystem cannot provide stream locks.
         $handle = fopen(self::path(), $exclusive ? 'c+' : 'r');
         if (!$handle) {
             throw new RuntimeException('Cannot open the traffic authority file.');
         }
         if (!flock($handle, $exclusive ? LOCK_EX : LOCK_SH)) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close the local authority flock stream; WP_Filesystem cannot manage its PHP resource.
             fclose($handle);
             throw new RuntimeException('Cannot lock the traffic authority file.');
         }
@@ -37,6 +39,7 @@ class SSPA_Traffic_Authority {
             self::$handle = null;
             self::$exclusive = false;
             flock($handle, LOCK_UN);
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close the local authority flock stream after unlocking; WP_Filesystem cannot manage its PHP resource.
             fclose($handle);
         }
     }
@@ -57,6 +60,7 @@ class SSPA_Traffic_Authority {
     private static function write($state) {
         $json = wp_json_encode($state);
         rewind(self::$handle);
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Write through the same locked inode; WP_Filesystem cannot preserve this flock-protected stream.
         if (!ftruncate(self::$handle, 0) || fwrite(self::$handle, $json) !== strlen($json) || !fflush(self::$handle)) {
             throw new RuntimeException('Cannot persist traffic authority.');
         }

@@ -46,6 +46,7 @@ class SSPA_History {
         $after_run = SSPA_Run_Controller::run_row($after_id);
         foreach (array($before_run, $after_run) as $run) {
             if (!$run) {
+                /* translators: 1: the earlier analysis ID, 2: the later analysis ID. */
                 return new WP_Error('sspa_history_missing', sprintf(__('No saved analysis exists for one of the selected IDs (%1$d, %2$d).', 'super-speedy-performance-analysis'), $before_id, $after_id));
             }
         }

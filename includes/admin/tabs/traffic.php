@@ -60,25 +60,25 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
                 </tr></thead>
                 <tbody>
                 <?php foreach ($sspa_endpoint_evidence['endpoints'] as $sspa_endpoint) :
-                    $identity = isset($sspa_endpoint['identity']) ? $sspa_endpoint['identity'] : array();
-                    $observations = isset($sspa_endpoint['observations']) ? $sspa_endpoint['observations'] : array();
-                    $wall = isset($observations['whole_request_wall_ms']) ? $observations['whole_request_wall_ms'] : array();
-                    $queries = isset($observations['query_count']) ? $observations['query_count'] : array();
-                    $observer = isset($observations['observer_overhead_us']) ? $observations['observer_overhead_us'] : array();
-                    $statuses = isset($observations['status_counts']) ? $observations['status_counts'] : array();
-                    $endpoint_name = !empty($identity['route_pattern']) ? $identity['route_pattern'] : (isset($identity['action']) ? $identity['action'] : '');
-                    $status_parts = array();
-                    foreach (array('2xx', '3xx', '4xx', '5xx', 'other') as $status_class) {
-                        if (!empty($statuses[$status_class])) { $status_parts[] = $status_class . ': ' . (int) $statuses[$status_class]; }
+                    $sspa_identity = isset($sspa_endpoint['identity']) ? $sspa_endpoint['identity'] : array();
+                    $sspa_observations = isset($sspa_endpoint['observations']) ? $sspa_endpoint['observations'] : array();
+                    $sspa_wall = isset($sspa_observations['whole_request_wall_ms']) ? $sspa_observations['whole_request_wall_ms'] : array();
+                    $sspa_queries = isset($sspa_observations['query_count']) ? $sspa_observations['query_count'] : array();
+                    $sspa_observer = isset($sspa_observations['observer_overhead_us']) ? $sspa_observations['observer_overhead_us'] : array();
+                    $sspa_statuses = isset($sspa_observations['status_counts']) ? $sspa_observations['status_counts'] : array();
+                    $sspa_endpoint_name = !empty($sspa_identity['route_pattern']) ? $sspa_identity['route_pattern'] : (isset($sspa_identity['action']) ? $sspa_identity['action'] : '');
+                    $sspa_status_parts = array();
+                    foreach (array('2xx', '3xx', '4xx', '5xx', 'other') as $sspa_status_class) {
+                        if (!empty($sspa_statuses[$sspa_status_class])) { $sspa_status_parts[] = $sspa_status_class . ': ' . (int) $sspa_statuses[$sspa_status_class]; }
                     }
                     ?>
                     <tr>
-                        <td><code><?php echo esc_html($endpoint_name); ?></code><br><span class="description"><?php echo esc_html(implode(' · ', array_filter(array(isset($identity['transport']) ? str_replace('_', '-', $identity['transport']) : '', isset($identity['method']) ? $identity['method'] : '', isset($identity['auth_context']) ? str_replace('_', ' ', $identity['auth_context']) : '')))); ?></span></td>
-                        <td><?php echo esc_html(number_format_i18n(isset($observations['count']) ? (int) $observations['count'] : 0)); ?></td>
-                        <td><?php /* translators: 1: median milliseconds, 2: p95 milliseconds, 3: total milliseconds */ printf(esc_html__('median %1$s ms; p95 %2$s ms; total %3$s ms', 'super-speedy-performance-analysis'), esc_html(isset($wall['median']) ? $wall['median'] : '—'), esc_html(isset($wall['p95']) ? $wall['p95'] : '—'), esc_html(isset($wall['sum']) ? $wall['sum'] : '—')); ?></td>
-                        <td><?php /* translators: 1: median query count, 2: p95 query count */ printf(esc_html__('median %1$s; p95 %2$s', 'super-speedy-performance-analysis'), esc_html(isset($queries['median']) ? $queries['median'] : '—'), esc_html(isset($queries['p95']) ? $queries['p95'] : '—')); ?></td>
-                        <td><?php echo esc_html($status_parts ? implode('; ', $status_parts) : '—'); ?></td>
-                        <td><?php echo 'unknown' === (isset($sspa_endpoint['quality']['activity']) ? $sspa_endpoint['quality']['activity'] : '') ? esc_html__('Unknown — detailed activity was not sampled.', 'super-speedy-performance-analysis') : esc_html__('Measured', 'super-speedy-performance-analysis'); ?><br><span class="description"><?php /* translators: %s: observer overhead p95 in microseconds */ printf(esc_html__('Observer overhead p95: %s µs', 'super-speedy-performance-analysis'), esc_html(isset($observer['p95']) ? $observer['p95'] : '—')); ?></span></td>
+                        <td><code><?php echo esc_html($sspa_endpoint_name); ?></code><br><span class="description"><?php echo esc_html(implode(' · ', array_filter(array(isset($sspa_identity['transport']) ? str_replace('_', '-', $sspa_identity['transport']) : '', isset($sspa_identity['method']) ? $sspa_identity['method'] : '', isset($sspa_identity['auth_context']) ? str_replace('_', ' ', $sspa_identity['auth_context']) : '')))); ?></span></td>
+                        <td><?php echo esc_html(number_format_i18n(isset($sspa_observations['count']) ? (int) $sspa_observations['count'] : 0)); ?></td>
+                        <td><?php /* translators: 1: median milliseconds, 2: p95 milliseconds, 3: total milliseconds */ printf(esc_html__('median %1$s ms; p95 %2$s ms; total %3$s ms', 'super-speedy-performance-analysis'), esc_html(isset($sspa_wall['median']) ? $sspa_wall['median'] : '—'), esc_html(isset($sspa_wall['p95']) ? $sspa_wall['p95'] : '—'), esc_html(isset($sspa_wall['sum']) ? $sspa_wall['sum'] : '—')); ?></td>
+                        <td><?php /* translators: 1: median query count, 2: p95 query count */ printf(esc_html__('median %1$s; p95 %2$s', 'super-speedy-performance-analysis'), esc_html(isset($sspa_queries['median']) ? $sspa_queries['median'] : '—'), esc_html(isset($sspa_queries['p95']) ? $sspa_queries['p95'] : '—')); ?></td>
+                        <td><?php echo esc_html($sspa_status_parts ? implode('; ', $sspa_status_parts) : '—'); ?></td>
+                        <td><?php echo 'unknown' === (isset($sspa_endpoint['quality']['activity']) ? $sspa_endpoint['quality']['activity'] : '') ? esc_html__('Unknown — detailed activity was not sampled.', 'super-speedy-performance-analysis') : esc_html__('Measured', 'super-speedy-performance-analysis'); ?><br><span class="description"><?php /* translators: %s: observer overhead p95 in microseconds */ printf(esc_html__('Observer overhead p95: %s µs', 'super-speedy-performance-analysis'), esc_html(isset($sspa_observer['p95']) ? $sspa_observer['p95'] : '—')); ?></span></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

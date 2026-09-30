@@ -49,9 +49,40 @@ add_action('woocommerce_order_fully_refunded', function ($order_id) {
 add_action('woocommerce_trash_order', function ($order_id) {
     update_option('sspa_om_trashed_fired', (int) $order_id, false);
 }, 10, 1);
+// Inert third-party integration plus the real WooCommerce webhook transport boundary.
+add_action('woocommerce_order_status_changed', function ($id, $from, $to) {
+    $events = get_option('sspa_om_integrations', array());
+    $events[] = array('id' => $id, 'from' => $from, 'to' => $to);
+    update_option('sspa_om_integrations', $events, false);
+}, 10, 3);
+add_filter('woocommerce_webhook_deliver_async', function ($async, $webhook) {
+    return $webhook instanceof WC_Webhook && $webhook->get_id() === (int) get_option('sspa_om_webhook_id') ? false : $async;
+}, 10, 2);
+add_filter('pre_http_request', function ($pre, $args, $url) {
+    if ($url !== home_url('/?sspa_om_webhook=1')) return $pre;
+    $events = get_option('sspa_om_webhooks', array());
+    $events[] = array('body' => $args['body'], 'step' => $GLOBALS['sspa_flags']['ck'] ?? null);
+    update_option('sspa_om_webhooks', $events, false);
+    return array('response' => array('code' => 200, 'message' => 'OK'), 'headers' => array(), 'body' => '', 'cookies' => array());
+}, 1, 3);
+
 PHP
 );
 activate_plugin('sspa-om-fixture/sspa-om-fixture.php');
+$prior_webhook = (int) get_option('sspa_om_webhook_id');
+if ($prior_webhook) { (new WC_Webhook($prior_webhook))->delete(true); }
+$webhook = new WC_Webhook();
+$webhook->set_name('SSPA retained local lifecycle regression');
+$webhook->set_user_id(1);
+$webhook->set_status('active');
+$webhook->set_topic('action.woocommerce_order_status_changed');
+$webhook->set_delivery_url(home_url('/?sspa_om_webhook=1'));
+$webhook->set_secret('synthetic-local-regression');
+$webhook->save();
+update_option('sspa_om_webhook_id', $webhook->get_id(), false);
+update_option('sspa_om_integrations', array(), false);
+update_option('sspa_om_webhooks', array(), false);
+
 delete_option('sspa_om_completed_fired');
 delete_option('sspa_om_before_complete');
 delete_option('sspa_om_refunded_fired');
@@ -61,7 +92,7 @@ sleep(3); // opcache
 
 // Suppress emails: this case is about the transition and the steps, and case 19 already
 // pins mail-mode fidelity with its mail-recorder fixture.
-$sspa_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1, 'mail_mode' => 'suppress'));
+$sspa_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1, 'mail_mode' => 'suppress', 'allow_integrations' => true, 'allow_webhooks' => true));
 if (is_wp_error($sspa_run)) {
     echo 'FAIL: checkout start: ' . $sspa_run->get_error_message() . "\n";
     return;
@@ -288,3 +319,66 @@ if ('ok' === $sspa_outcome) {
 
 // Retain the fixture, hook observations and recoverable order for inspection.
 sspa_om_t(is_plugin_active('sspa-om-fixture/sspa-om-fixture.php') && is_file($sspa_om_dir . '/sspa-om-fixture.php'), 'measurement fixture and hook evidence remain available');
+
+// The same actual lifecycle with both explicit opt-outs. The first run proves the
+// adversarial callbacks and native webhook really operate when allowed.
+wp_cache_delete('sspa_om_integrations', 'options');
+wp_cache_delete('sspa_om_webhooks', 'options');
+$integration_events = get_option('sspa_om_integrations', array());
+$webhook_events = get_option('sspa_om_webhooks', array());
+sspa_om_t(in_array('completed', array_column($integration_events, 'to'), true)
+    && in_array('refunded', array_column($integration_events, 'to'), true),
+    'enabled integrations observe completion and refund');
+sspa_om_t(in_array('complete', array_column($webhook_events, 'step'), true)
+    && in_array('refund', array_column($webhook_events, 'step'), true),
+    'enabled native WooCommerce webhooks reach the intercepted transport on completion and refund');
+// Verify the two controls independently as well as together: suppressing callbacks
+// must not suppress an allowed native webhook, and vice versa.
+foreach (array(array(false, false), array(false, true), array(true, false)) as $controls) {
+    list($allow_integrations, $allow_webhooks) = $controls;
+    $selection = 'integrations=' . (int) $allow_integrations . ', webhooks=' . (int) $allow_webhooks;
+    update_option('sspa_om_integrations', array(), false);
+    update_option('sspa_om_webhooks', array(), false);
+    foreach (array('sspa_om_completed_fired', 'sspa_om_refunded_fired', 'sspa_om_trashed_fired') as $key) {
+        update_option($key, 0, false);
+    }
+    $optout_run = SSPA_Run_Controller::start(array('type' => 'checkout', 'user_id' => 1,
+        'mail_mode' => 'suppress', 'allow_integrations' => $allow_integrations, 'allow_webhooks' => $allow_webhooks));
+    if (is_wp_error($optout_run)) {
+        sspa_om_t(false, $selection . ': run starts: ' . $optout_run->get_error_message());
+        continue;
+    }
+    $deadline = time() + 300;
+    do {
+        SSPA_Run_Controller::process_batch($optout_run);
+        $state = SSPA_Run_Controller::status($optout_run);
+    } while ($state && in_array($state['status'], array('crawling', 'analysing'), true) && time() < $deadline);
+    $row = SSPA_Run_Controller::run_row($optout_run);
+    $notes = json_decode($row['notes'], true);
+    wp_cache_delete('sspa_om_integrations', 'options');
+    wp_cache_delete('sspa_om_webhooks', 'options');
+    $integration_events = get_option('sspa_om_integrations', array());
+    $webhook_events = get_option('sspa_om_webhooks', array());
+    sspa_om_t($row['status'] === 'done' && $notes['outcome'] === 'ok'
+        && $notes['flow']['complete_to_status'] === 'completed'
+        && $notes['flow']['refund_to_status'] === 'refunded'
+        && $notes['flow']['trash_to_status'] === 'trash',
+        $selection . ': purchase completes, refunds and retains its order in Trash');
+    sspa_om_t($allow_integrations
+        ? in_array('completed', array_column($integration_events, 'to'), true)
+            && in_array('refunded', array_column($integration_events, 'to'), true)
+        : $integration_events === array(),
+        $selection . ': integration callbacks match their own control');
+    sspa_om_t($allow_webhooks
+        ? in_array('complete', array_column($webhook_events, 'step'), true)
+            && in_array('refund', array_column($webhook_events, 'step'), true)
+        : $webhook_events === array(),
+        $selection . ': native webhook transport matches its own control');
+    foreach (array('sspa_om_completed_fired', 'sspa_om_refunded_fired', 'sspa_om_trashed_fired') as $key) {
+        wp_cache_delete($key, 'options');
+        sspa_om_t($allow_integrations
+            ? (int) $notes['flow']['order_id'] === (int) get_option($key)
+            : 0 === (int) get_option($key),
+            $selection . ': management callback matches integration control: ' . $key);
+    }
+}

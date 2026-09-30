@@ -51,6 +51,7 @@ if (!class_exists('SSPA_Capture')) {
         public function arm() {
             // PHP does not expose the previous handler's error mask. Forwarding every
             // error to its callable would change its behaviour, so preserve it intact.
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- the profiler observes request faults without handling them; an existing handler is immediately restored.
             $previous = set_error_handler(array($this, 'observe_php_error'));
             if (null !== $previous) {
                 restore_error_handler();
@@ -118,6 +119,7 @@ if (!class_exists('SSPA_Capture')) {
          * promise uninterrupted coverage or count errors another handler consumed.
          */
         public function observe_php_error($type, $message, $file = '', $line = 0) {
+            // phpcs:ignore PluginCheck.CodeAnalysis.PHPErrorReporting.DirectErrorReportingCall, WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting -- zero-argument call reads the existing mask; it never changes reporting or outputs a path.
             if (error_reporting() & $type) {
                 $this->retain_php_error($type, $message, $file, $line);
             }
@@ -145,6 +147,7 @@ if (!class_exists('SSPA_Capture')) {
             }
             $last_error = error_get_last();
             $probe = static function () { return false; };
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- briefly inspect handler ownership before removing our observer; restore the current handler immediately.
             $current = set_error_handler($probe);
             restore_error_handler();
             $ours = array($this, 'observe_php_error') === $current;
@@ -204,6 +207,7 @@ if (!class_exists('SSPA_Capture')) {
                 }
             }
             $frames = array();
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- bounded argument-free trace attributes profiled HTTP/mail work to its caller; this is profiler data, not debug output.
             foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 16) as $f) {
                 if (isset($f['file'])) {
                     $frames[] = array($f['file'], isset($f['line']) ? $f['line'] : 0, (isset($f['class']) ? $f['class'] . '::' : '') . $f['function']);
@@ -319,6 +323,7 @@ if (!class_exists('SSPA_Capture')) {
 
         private function trigger_frames() {
             $frames = array();
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- bounded argument-free trace attributes profiled HTTP/mail work to its caller; this is profiler data, not debug output.
             foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 16) as $f) {
                 if (isset($f['file'])) {
                     $frames[] = array($f['file'], isset($f['line']) ? $f['line'] : 0, (isset($f['class']) ? $f['class'] . '::' : '') . $f['function']);
@@ -374,7 +379,7 @@ if (!class_exists('SSPA_Capture')) {
                 // CF-IPCountry is present - differs from what real visitors get.
                 // Recording the truth per request turns that from a guess into data.
                 'via_cloudflare' => !empty($_SERVER['HTTP_CF_RAY']),
-                'cf_country' => isset($_SERVER['HTTP_CF_IPCOUNTRY']) ? strtoupper((string) $_SERVER['HTTP_CF_IPCOUNTRY']) : null,
+                'cf_country' => isset($_SERVER['HTTP_CF_IPCOUNTRY']) ? strtoupper(sanitize_text_field(wp_unslash($_SERVER['HTTP_CF_IPCOUNTRY']))) : null,
                 'code' => function_exists('http_response_code') ? http_response_code() : null,
                 'included_files' => count(get_included_files()),
                 'is_admin' => function_exists('is_admin') ? is_admin() : null,
@@ -457,9 +462,12 @@ if (!class_exists('SSPA_Capture')) {
             $table = $wpdb->prefix . 'sspa_captures';
             // Suppress errors so a missing table (plugin deleted mid-run) can't break the page.
             $suppress = $wpdb->suppress_errors(true);
+            // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The identifier is the trusted WordPress prefix plus literal sspa_captures; token, payload and timestamp all use %s.
             $wpdb->query($wpdb->prepare(
+                // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The identifier is the trusted WordPress prefix plus literal sspa_captures; token, payload and timestamp all use %s.
                 "INSERT INTO $table (token_id, capture, created) VALUES (%s, %s, %s)
                  ON DUPLICATE KEY UPDATE capture = VALUES(capture), created = VALUES(created)",
+                // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
                 $this->token_id,
                 gzcompress($json, 6),
                 gmdate('Y-m-d H:i:s')

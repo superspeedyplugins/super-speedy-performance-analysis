@@ -69,6 +69,7 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
             $frames = array();
             // Ask for one more than we keep: if the extra frame exists, the stack was deeper
             // than MAX_FRAMES and we know we truncated rather than having to guess.
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Bounded argument-free frames attribute measured queries to plugins during signed profiling requests; nothing is logged.
             $raw = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::MAX_FRAMES + 3);
             foreach ($raw as $f) {
                 if (!isset($f['file'])) {

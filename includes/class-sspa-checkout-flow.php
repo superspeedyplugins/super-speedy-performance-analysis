@@ -45,7 +45,6 @@ class SSPA_Checkout_Flow {
     }
 
     private static function ajax_guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
@@ -58,6 +57,7 @@ class SSPA_Checkout_Flow {
      * store's plugins do.
      */
     public static function ajax_preflight() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         if (!class_exists('WooCommerce')) {
             wp_send_json_error(__('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
@@ -108,6 +108,7 @@ class SSPA_Checkout_Flow {
     }
 
     public static function ajax_start() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $args = array(
             'type' => 'checkout',
@@ -136,6 +137,7 @@ class SSPA_Checkout_Flow {
      */
     public static function ajax_result() {
         global $wpdb;
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
 
         $active = SSPA_Run_Controller::active_run_id();
@@ -192,9 +194,24 @@ class SSPA_Checkout_Flow {
     // ---------------- inside a profiled flow request ----------------
 
     /**
-     * Runs INSIDE a profiled flow request only. See doc A6.
+     * Runs inside a signed checkout or order-management request. See doc A6.
      */
     public static function maybe_arm_request() {
+        if (!in_array(self::flag('ck'), array('flow', 'complete', 'refund', 'trash'), true)) {
+            return;
+        }
+
+        // Opt-outs. Each one makes the number no longer a real-store number, which is why
+        // the run controller records any that were used in the run notes.
+        if ('0' === self::flag('wh')) {
+            add_filter('woocommerce_webhook_should_deliver', '__return_false', PHP_INT_MAX);
+        }
+        if ('0' === self::flag('ig')) {
+            // Third-party callbacks register on init/woocommerce_init, so the unhooking
+            // has to wait until they are all in place.
+            add_action('wp_loaded', array(__CLASS__, 'unhook_integrations'), PHP_INT_MAX);
+        }
+
         if ('flow' !== self::flag('ck')) {
             return;
         }
@@ -246,17 +263,6 @@ class SSPA_Checkout_Flow {
         if (!in_array(self::flag('pm'), self::PAYMENT_MODES, true)) {
             add_filter('woocommerce_order_needs_payment', '__return_false', PHP_INT_MAX);
             add_filter('woocommerce_cart_needs_payment', '__return_false', PHP_INT_MAX);
-        }
-
-        // Opt-outs. Each one makes the number no longer a real-store number, which is why
-        // the run controller records any that were used in the run notes.
-        if ('0' === self::flag('wh')) {
-            add_filter('woocommerce_webhook_should_deliver', '__return_false', PHP_INT_MAX);
-        }
-        if ('0' === self::flag('ig')) {
-            // Third-party callbacks register on init/woocommerce_init, so the unhooking
-            // has to wait until they are all in place.
-            add_action('wp_loaded', array(__CLASS__, 'unhook_integrations'), PHP_INT_MAX);
         }
     }
 
@@ -980,8 +986,10 @@ class SSPA_Checkout_Flow {
         // that is the usual case).
         $result['notes']['complete_from_status'] = $order->get_status();
 
+        $controls = array_intersect_key($flags, array('ig' => true, 'wh' => true));
+
         // --- 13. mark it completed (the transition cascade) ---
-        $complete_flags = array('v' => 'admin', 'ck' => 'complete', 'oid' => (string) $order_id);
+        $complete_flags = array('v' => 'admin', 'ck' => 'complete', 'oid' => (string) $order_id) + $controls;
         if (!empty($flags['mail'])) {
             $complete_flags['mail'] = $flags['mail']; // the completed-order email, timed or intercepted per mode
         }
@@ -1017,7 +1025,7 @@ class SSPA_Checkout_Flow {
 
         // --- 14. issue a full local refund ---
         $result['notes']['refund_from_status'] = $fresh ? $fresh->get_status() : null;
-        $refund_flags = array('v' => 'admin', 'ck' => 'refund', 'oid' => (string) $order_id);
+        $refund_flags = array('v' => 'admin', 'ck' => 'refund', 'oid' => (string) $order_id) + $controls;
         if (!empty($flags['mail'])) {
             $refund_flags['mail'] = $flags['mail'];
         }
@@ -1032,7 +1040,7 @@ class SSPA_Checkout_Flow {
 
         // --- 15. move it to WooCommerce Trash ---
         $result['notes']['trash_from_status'] = $fresh ? $fresh->get_status() : null;
-        $trash_flags = array('v' => 'admin', 'ck' => 'trash', 'oid' => (string) $order_id);
+        $trash_flags = array('v' => 'admin', 'ck' => 'trash', 'oid' => (string) $order_id) + $controls;
         if (!empty($flags['ps'])) {
             $trash_flags['ps'] = $flags['ps'];
         }
@@ -1152,6 +1160,7 @@ class SSPA_Checkout_Flow {
 
     /** Follow WooCommerce's public cookie-name filter instead of assuming its core default. */
     private static function session_cookie_name() {
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- reads WooCommerce's existing session-cookie naming API.
         return (string) apply_filters('woocommerce_cookie', 'wp_woocommerce_session_' . COOKIEHASH);
     }
 
@@ -1375,6 +1384,7 @@ class SSPA_Checkout_Flow {
         $table = $wpdb->prefix . 'woocommerce_sessions';
         $deleted = 0;
         foreach (array_unique(array_filter($keys)) as $key) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- The identifier is the trusted WordPress prefix plus literal woocommerce_sessions; the session key uses %s.
             $deleted += (int) $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE session_key = %s", $key));
         }
         $result['notes']['sessions_deleted'] = $deleted;

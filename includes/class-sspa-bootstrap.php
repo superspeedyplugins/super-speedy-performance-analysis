@@ -99,7 +99,7 @@ class SSPA_Bootstrap {
 
         if (!empty($GLOBALS['sspa_flags'])) {
             add_action('template_redirect', array('SSPA_Probes', 'maybe_handle'), 0);
-            if (isset($GLOBALS['sspa_flags']['ck']) && 'flow' === $GLOBALS['sspa_flags']['ck']) {
+            if (isset($GLOBALS['sspa_flags']['ck'])) {
                 add_action('plugins_loaded', array('SSPA_Checkout_Flow', 'maybe_arm_request'), 1);
             }
         }

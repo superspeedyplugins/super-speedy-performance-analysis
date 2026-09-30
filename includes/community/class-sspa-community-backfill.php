@@ -14,7 +14,9 @@ class SSPA_Community_Backfill {
         $runs = SSPA_Schema::table('runs');
         $profiles = SSPA_Schema::table('profiles');
         $outbox = SSPA_Schema::table('submission_outbox');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $rows = $wpdb->get_results(
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT r.id, r.run_type, r.status, r.started,
                     o.id AS outbox_id,
                     COUNT(p.id) AS profile_count,
@@ -26,6 +28,7 @@ class SSPA_Community_Backfill {
              WHERE r.status = 'done' OR (r.run_type = 'checkout' AND r.status = 'failed')
              GROUP BY r.id, r.run_type, r.status, r.started, o.id
              ORDER BY r.id ASC",
+            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             ARRAY_A
         );
         $inventory = array(
@@ -83,13 +86,16 @@ class SSPA_Community_Backfill {
         $cursor = (int) get_option(self::CURSOR_OPTION, 0);
         $runs = SSPA_Schema::table('runs');
         $outbox = SSPA_Schema::table('submission_outbox');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $ids = $wpdb->get_col($wpdb->prepare(
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT r.id
              FROM $runs r
              LEFT JOIN $outbox o ON o.run_uuid = r.run_uuid
              WHERE (r.status = 'done' OR (r.run_type = 'checkout' AND r.status = 'failed'))
                AND o.id IS NULL AND r.id > %d
              ORDER BY r.id ASC LIMIT %d",
+            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $cursor,
             self::BATCH_LIMIT
         ));
@@ -113,13 +119,16 @@ class SSPA_Community_Backfill {
         if ($queued) {
             SSPA_Community_Outbox::nudge();
         }
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $more = (bool) $wpdb->get_var($wpdb->prepare(
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT 1
              FROM $runs r
              LEFT JOIN $outbox o ON o.run_uuid = r.run_uuid
              WHERE (r.status = 'done' OR (r.run_type = 'checkout' AND r.status = 'failed'))
                AND o.id IS NULL AND r.id > %d
              LIMIT 1",
+            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $cursor
         ));
         return array(

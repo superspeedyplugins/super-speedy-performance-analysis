@@ -53,7 +53,6 @@ class SSPA_Browser_Transport {
     }
 
     private static function guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
@@ -146,6 +145,7 @@ class SSPA_Browser_Transport {
      * capture is discarded so an orphaned first fetch cannot linger as evidence.
      */
     public static function ajax_next() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         $loaded = self::load($run_id);
@@ -252,6 +252,7 @@ class SSPA_Browser_Transport {
      * processed twice, so job N's outcome can never stamp itself onto job N+1.
      */
     public static function ajax_record() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         $loaded = self::load($run_id);
@@ -302,9 +303,11 @@ class SSPA_Browser_Transport {
         $redirected = !empty($_POST['redirected']);
         $final_url = isset($_POST['final_url']) ? esc_url_raw(wp_unslash($_POST['final_url'])) : '';
         $duration = isset($_POST['duration_ms']) ? (float) $_POST['duration_ms'] : 0;
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce/capability checked above; bounded raw HTML is classified and hashed by evaluate_sample, never rendered as HTML.
         $body = isset($_POST['body_snippet']) ? substr((string) wp_unslash($_POST['body_snippet']), 0, 20000) : '';
         $headers = array();
         if (isset($_POST['headers'])) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- decode the JSON structure first; every header key and value is sanitized in the loop below.
             $decoded = json_decode((string) wp_unslash($_POST['headers']), true);
             if (is_array($decoded)) {
                 foreach ($decoded as $k => $v) {

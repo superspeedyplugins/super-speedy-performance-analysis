@@ -56,14 +56,15 @@ class SSPA_Plugins_Table {
             $args[] = $page_key;
         }
         $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Each optional condition is a literal with one %s and appends one argument; the argument array starts with the two %i table identifiers.
         return $wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $where is built from the literal placeholder strings above, never from input.
             "SELECT pi.* FROM %i pi
                 JOIN (SELECT MAX(id) mid FROM %i$where
                       GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
                 ORDER BY pi.page_key, pi.id",
             $args
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
     }
 
     public static function render($run_id, $mode) {

@@ -117,7 +117,7 @@ class SSPA_History_Chart {
                             <th scope="row">
                                 <?php echo esc_html($page['label']); ?><br>
                                 <span class="description"><?php echo esc_html($page['method'] . ' · ' . $page['variant'] . ' · ' . $page['object_cache_mode']); ?></span>
-                                <?php if (!empty($page['configuration'])) : ?><br><span class="description"><?php echo esc_html(sprintf(__('Test configuration: %s', 'super-speedy-performance-analysis'), $page['configuration'])); ?></span><?php endif; ?>
+                                <?php if (!empty($page['configuration'])) : ?><br><span class="description"><?php /* translators: %s: the saved test configuration label. */ echo esc_html(sprintf(__('Test configuration: %s', 'super-speedy-performance-analysis'), $page['configuration'])); ?></span><?php endif; ?>
                             </th>
                             <td><?php echo esc_html(self::value_list($previous_values, $unit)); ?></td>
                             <td><?php echo esc_html(self::value($page['previous']['median'], $unit)); ?></td>

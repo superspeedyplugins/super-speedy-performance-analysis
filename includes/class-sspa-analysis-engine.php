@@ -1078,6 +1078,7 @@ class SSPA_Analysis_Engine {
             : array('yes');
         $placeholders = implode(',', array_fill(0, count($autoload_values), '%s'));
         $rows = $wpdb->get_results($wpdb->prepare(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- The interpolated list is generated solely from %s placeholders; each autoload value is passed separately to prepare in the matching array.
             "SELECT option_name, LENGTH(option_value) AS bytes FROM $wpdb->options WHERE autoload IN ($placeholders)",
             $autoload_values
         ), ARRAY_A);

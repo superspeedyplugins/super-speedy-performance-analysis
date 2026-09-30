@@ -71,6 +71,7 @@ class SSPA_Probes {
             header('Content-Type: application/json');
             echo wp_json_encode(array( // phpcs:ignore WordPress.Security.EscapeOutput
                 'order_needs_payment' => $order_needs_payment,
+                // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Exercise WooCommerce's existing payment-policy hook in the signed no-payment self-check.
                 'cart_needs_payment' => (bool) apply_filters('woocommerce_cart_needs_payment', true, null),
                 'pm' => isset($flags['pm']) ? $flags['pm'] : null,
                 // Wiring facts the tests pin down: the payment boundary must be stamped at

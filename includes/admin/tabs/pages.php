@@ -5,6 +5,7 @@ global $wpdb;
 $sspa_runs_table = SSPA_Schema::table('runs');
 // Profiling runs only - deep-run profiles include plugin-set-modified re-measurements
 // of the same pages, which read as duplicate/garbled rows here.
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
 $sspa_last_run_id = (int) $wpdb->get_var("SELECT id FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1");
 
 // Checkout flow: a permanent entry point, because the pages below are all GETs of an
@@ -55,8 +56,8 @@ if (!$sspa_last_run_id) : ?>
         // Ordered by id ascending, so the last write per key is the newest measurement.
         $sspa_newest[$sspa_p['page_key']] = $sspa_p;
     }
-    uasort($sspa_newest, function ($a, $b) {
-        return (float) $b['page_gen_ms'] <=> (float) $a['page_gen_ms'];
+    uasort($sspa_newest, function ($sspa_a, $sspa_b) {
+        return (float) $sspa_b['page_gen_ms'] <=> (float) $sspa_a['page_gen_ms'];
     });
     ?>
     <p class="description">
@@ -79,32 +80,32 @@ if (!$sspa_last_run_id) : ?>
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($sspa_newest as $p) : ?>
-            <tr class="sspa-page-row" data-profile-id="<?php echo (int) $p['id']; ?>" tabindex="0" role="button" title="<?php esc_attr_e('Click for the full profile of this page', 'super-speedy-performance-analysis'); ?>">
-                <td><code><?php echo esc_html($p['page_key']); ?></code></td>
-                <td><?php echo esc_html(SSPA_Catalogue::variant_label($p['variant'])); ?></td>
+        <?php foreach ($sspa_newest as $sspa_p) : ?>
+            <tr class="sspa-page-row" data-profile-id="<?php echo (int) $sspa_p['id']; ?>" tabindex="0" role="button" title="<?php esc_attr_e('Click for the full profile of this page', 'super-speedy-performance-analysis'); ?>">
+                <td><code><?php echo esc_html($sspa_p['page_key']); ?></code></td>
+                <td><?php echo esc_html(SSPA_Catalogue::variant_label($sspa_p['variant'])); ?></td>
                 <td>
-                    <?php echo esc_html(get_date_from_gmt($p['created'], get_option('date_format') . ' ' . get_option('time_format'))); ?>
-                    <?php if ('adhoc' === $p['run_type']) : ?>
+                    <?php echo esc_html(get_date_from_gmt($sspa_p['created'], get_option('date_format') . ' ' . get_option('time_format'))); ?>
+                    <?php if ('adhoc' === $sspa_p['run_type']) : ?>
                         <br><span class="sspa-badge"><?php esc_html_e('one-page analysis', 'super-speedy-performance-analysis'); ?></span>
                     <?php endif; ?>
                 </td>
-                <td><?php echo $p['page_gen_ms'] !== null ? esc_html(number_format((float) $p['page_gen_ms'], 1)) : '-'; ?></td>
-                <td><?php echo $p['sql_ms'] !== null ? esc_html(number_format((float) $p['sql_ms'], 1)) : '-'; ?></td>
-                <td><?php echo $p['sql_count'] !== null ? (int) $p['sql_count'] : '-'; ?></td>
-                <td><?php echo $p['rows_returned_total'] !== null ? esc_html(number_format((int) $p['rows_returned_total'])) : '-'; ?></td>
-                <td><?php echo $p['http_ms'] !== null ? esc_html(number_format((float) $p['http_ms'], 1)) : '-'; ?></td>
-                <td><?php echo $p['php_ms'] !== null ? esc_html(number_format((float) $p['php_ms'], 1)) : '-'; ?></td>
-                <td><?php echo $p['peak_mem_bytes'] ? esc_html(size_format((int) $p['peak_mem_bytes'])) : '-'; ?></td>
+                <td><?php echo $sspa_p['page_gen_ms'] !== null ? esc_html(number_format((float) $sspa_p['page_gen_ms'], 1)) : '-'; ?></td>
+                <td><?php echo $sspa_p['sql_ms'] !== null ? esc_html(number_format((float) $sspa_p['sql_ms'], 1)) : '-'; ?></td>
+                <td><?php echo $sspa_p['sql_count'] !== null ? (int) $sspa_p['sql_count'] : '-'; ?></td>
+                <td><?php echo $sspa_p['rows_returned_total'] !== null ? esc_html(number_format((int) $sspa_p['rows_returned_total'])) : '-'; ?></td>
+                <td><?php echo $sspa_p['http_ms'] !== null ? esc_html(number_format((float) $sspa_p['http_ms'], 1)) : '-'; ?></td>
+                <td><?php echo $sspa_p['php_ms'] !== null ? esc_html(number_format((float) $sspa_p['php_ms'], 1)) : '-'; ?></td>
+                <td><?php echo $sspa_p['peak_mem_bytes'] ? esc_html(size_format((int) $sspa_p['peak_mem_bytes'])) : '-'; ?></td>
                 <td>
                     <?php
-                    if ($p['blocked_by']) {
+                    if ($sspa_p['blocked_by']) {
                         /* translators: %s: the layer that blocked profiling of this page */
-                        echo '<span class="sspa-blocked">' . esc_html(sprintf(__('blocked by %s', 'super-speedy-performance-analysis'), $p['blocked_by'])) . '</span>';
-                    } elseif ($p['page_gen_ms'] === null && 'baseline' !== $p['page_key']) {
+                        echo '<span class="sspa-blocked">' . esc_html(sprintf(__('blocked by %s', 'super-speedy-performance-analysis'), $sspa_p['blocked_by'])) . '</span>';
+                    } elseif ($sspa_p['page_gen_ms'] === null && 'baseline' !== $sspa_p['page_key']) {
                         echo '<span class="sspa-blocked">' . esc_html__('not measured - cache served it', 'super-speedy-performance-analysis') . '</span>';
                     } else {
-                        echo (int) $p['response_code'];
+                        echo (int) $sspa_p['response_code'];
                     }
                     ?>
                 </td>

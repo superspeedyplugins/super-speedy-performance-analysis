@@ -31,6 +31,8 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/browser/run-regressions.sh loopback-fallback # real loopback failure falls back to browser transport with complete evidence
 .tests/browser/run-regressions.sh quick-comparison # detected plugin update -> notice -> one spot run -> History names the change
 .tests/run-tests.sh 92-traffic-deactivation # dedicated lifecycle/concurrency regression, retains its own site
+.tests/run-tests.sh 99-community-preview # real captured SQL literals/comments, manual preview, object privacy and immutable archive replay; HTTP intercepted
+.tests/run-tests.sh 98-community-transport # HTTPS required and service HTTP arguments exclude site URL; all requests intercepted
 .tests/run-tests.sh 96-token-consumption # signed requests stay one-use after capture read/discard
 .tests/run-tests.sh 95-community-receipt # lost completion reply, valid existing receipt retry and identity/hash rejection
 .tests/run-tests.sh 94-request-block-evidence # signed HTTP success/denial, challenge text, per-request reasons, legacy flags and profile wording
@@ -385,7 +387,11 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   waterfall's `management` bucket holds all four with real time
   and expandable per-step component diagnostics, management findings never use customer-checkout wording,
   while the customer `total_ms` excludes them. It also proves the refund stays attached to the
-  recoverable trashed order. Gotcha:
+  recoverable trashed order. Four real runs cover every combination of the integration and
+  webhook controls. They prove enabled integration callbacks and native
+  WooCommerce webhooks still execute, while explicit opt-outs suppress callbacks and webhook
+  transport through purchase, completion, refund and Trash. The webhook HTTP boundary is
+  intercepted locally, and its fixture and observations remain for inspection. Gotcha:
   the transition runs in the loopback, so the flow must bust its order cache (`wp_cache_delete($id,
   'orders')` + `clean_post_cache`) before reading the resulting status or it reads back stale.
 
@@ -654,3 +660,19 @@ complement the full-suite assertion log; they do not replace the suite's pass/fa
 Run `.build/update-translations.sh` after changing translatable strings or the release version. It regenerates `languages/super-speedy-performance-analysis.pot` with WP-CLI, including PHP and JavaScript and excluding bundled/shared libraries. An optional destination argument supports comparing a fresh extraction with the retained template; the generation timestamp can differ. This ships a source template, not a translated language pack.
 
 Cache action scope regression: `bash .tests/run-tests.sh 97-cache-action` uses the dedicated persistent-cache site to check menu availability and preservation of owned and foreign entries when an obsolete selective-action URL is used.
+
+The existing `translations` browser journey also checks translated History/AJAX chart legends,
+accessible descriptions and HTML-safe tooltip strings. `report-mobile` opens the saved profile
+with Enter, verifies focus enters its named dialog, and verifies Escape restores the row.
+`admin-mobile` checks the real Overview score-label contrast before its 54 tab/width/direction
+combinations. These checks reuse the normal browser preparation and retained native site.
+
+Case 99 captures block, dash and hash comments plus hexadecimal, binary and exponent literals
+through normal Home analysis. It also measures real database errors from unterminated SQL
+strings/comments and verifies that their values are removed while the failed-query evidence
+is retained. It checks the local manual preview, complete quoted SQL tokens,
+object-shaped evidence and the empty JSON object receiver contract. Its legacy finding fixture
+contains only a synthetic comment query and measured count/time captured using the pre-fix
+archive. The current client rejects that finding, opaque old comments/literals and malformed
+JSON before any HTTP request; a valid stored archive reaches an intercepted upload unchanged.
+All transport calls are intercepted, and the fixture site and archive records remain for inspection.

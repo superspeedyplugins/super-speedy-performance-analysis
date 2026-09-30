@@ -12,6 +12,7 @@ if (!$sspa_last_run_id) : ?>
     // the stored numbers), so a plain query arg is enough to deep-link one - no nonce, no
     // option. Switching it in the page is an AJAX table swap, like every other control here.
     $sspa_attrib_mode = SSPA_Attribution::sanitise_mode(
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display selector; sanitise_mode allowlists it and no state is saved.
         isset($_GET['attrib']) ? sanitize_key(wp_unslash($_GET['attrib'])) : ''
     );
     ?>

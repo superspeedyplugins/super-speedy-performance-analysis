@@ -7,6 +7,7 @@ $sspa_active_run = SSPA_Run_Controller::active_run_id();
 $sspa_runs_table = SSPA_Schema::table('runs');
 // Score/insights only exist on profiling runs - a deep or cache run here would render
 // score 0 and an empty insight list.
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
 $sspa_last_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", ARRAY_A);
 // Offer the temporary swap for foreign drop-ins AND an active Query Monitor's (anon
 // requests capture nothing through QM's). A stale QM drop-in gets the permanent
@@ -35,20 +36,20 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             ?>
             <ol class="sspa-insights">
             <?php foreach ($sspa_top as $sspa_f) :
-                $r = SSPA_Insights::render($sspa_f); ?>
+                $sspa_r = SSPA_Insights::render($sspa_f); ?>
                 <li class="sspa-insight sspa-sev-<?php echo esc_attr($sspa_f['severity']); ?>">
-                    <strong><?php echo esc_html($r['headline']); ?></strong>
-                    <?php if ($r['detail']) : ?>
-                        <div class="sspa-insight-detail"><code><?php echo esc_html(mb_substr($r['detail'], 0, 400)); ?></code></div>
+                    <strong><?php echo esc_html($sspa_r['headline']); ?></strong>
+                    <?php if ($sspa_r['detail']) : ?>
+                        <div class="sspa-insight-detail"><code><?php echo esc_html(mb_substr($sspa_r['detail'], 0, 400)); ?></code></div>
                     <?php endif; ?>
-                    <?php if (!empty($r['sql'])) : ?>
+                    <?php if (!empty($sspa_r['sql'])) : ?>
                         <?php // Not truncated: a statement cut off part way through is worse than useless. ?>
-                        <pre class="sspa-insight-sql"><?php echo esc_html($r['sql']); ?></pre>
+                        <pre class="sspa-insight-sql"><?php echo esc_html($sspa_r['sql']); ?></pre>
                     <?php endif; ?>
-                    <?php if ($r['rec_body']) : ?>
-                        <p class="sspa-insight-rec"><?php echo esc_html($r['rec_body']); ?>
-                        <?php if ($r['rec_link']) : ?>
-                            <a href="<?php echo esc_url($r['rec_link']); ?>" target="_blank"><?php echo esc_html($r['rec_title']); ?> &rarr;</a>
+                    <?php if ($sspa_r['rec_body']) : ?>
+                        <p class="sspa-insight-rec"><?php echo esc_html($sspa_r['rec_body']); ?>
+                        <?php if ($sspa_r['rec_link']) : ?>
+                            <a href="<?php echo esc_url($sspa_r['rec_link']); ?>" target="_blank"><?php echo esc_html($sspa_r['rec_title']); ?> &rarr;</a>
                         <?php endif; ?>
                         </p>
                     <?php endif; ?>
@@ -142,7 +143,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                         <?php foreach ((array) $sspa_cache_evidence['pages'] as $sspa_cache_page) :
                             $sspa_page_signals = array_merge(
                                 (array) ($sspa_cache_page['set_cookie_names'] ?? array()),
-                                array_map(function ($name) { return 'infrastructure cookie: ' . $name; }, (array) ($sspa_cache_page['infrastructure_cookie_names'] ?? array())),
+                                array_map(function ($sspa_name) { return 'infrastructure cookie: ' . $sspa_name; }, (array) ($sspa_cache_page['infrastructure_cookie_names'] ?? array())),
                                 (array) ($sspa_cache_page['nonce_names'] ?? array()),
                                 (array) ($sspa_cache_page['legacy_cookie_reads'] ?? array()),
                                 (array) ($sspa_cache_page['private_surface_hints'] ?? array())
@@ -175,7 +176,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                             <li>
                                 <strong><?php echo esc_html($sspa_candidate['component']); ?></strong>
                                 <span class="sspa-badge"><?php echo esc_html(isset($sspa_candidate['review_priority']) ? $sspa_candidate['review_priority'] : ($sspa_candidate['risk'] ?? __('unknown', 'super-speedy-performance-analysis'))); ?></span>
-                                <span class="description"><?php echo esc_html(implode(', ', array_map(function ($signal) { return str_replace('_', ' ', $signal); }, (array) $sspa_candidate['signals']))); ?></span>
+                                <span class="description"><?php echo esc_html(implode(', ', array_map(function ($sspa_signal) { return str_replace('_', ' ', $sspa_signal); }, (array) $sspa_candidate['signals']))); ?></span>
                                 <?php if (!empty($sspa_candidate['observed_pages'])) : ?>
                                     <br><span class="description"><?php /* translators: %s: comma-separated page keys the component was observed on */ printf(esc_html__('Observed while rendering: %s', 'super-speedy-performance-analysis'), esc_html(implode(', ', (array) $sspa_candidate['observed_pages']))); ?></span>
                                 <?php endif; ?>
@@ -289,6 +290,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     <?php
     // Deep runs land back on this tab when they finish - surface their outcome here
     // instead of leaving the results buried in the Plugins tab.
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
     $sspa_deep_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type = 'deep' ORDER BY id DESC LIMIT 1", ARRAY_A);
     if ($sspa_deep_run) :
         $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
@@ -346,27 +348,27 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     <?php endif; ?>
 
     <?php if ($sspa_demo) :
-        $m = $sspa_demo['metrics']; ?>
+        $sspa_m = $sspa_demo['metrics']; ?>
     <div class="sspa-placeholder">
         <h2><?php esc_html_e('Site profile', 'super-speedy-performance-analysis'); ?></h2>
         <p>
             <?php
-            $bits = array();
+            $sspa_bits = array();
             /* translators: %s: the site sector, e.g. "retail" */
-            $bits[] = sprintf(__('Sector: %s', 'super-speedy-performance-analysis'), $sspa_demo['sector']);
-            foreach (array('post' => 'posts', 'page' => 'pages', 'product' => 'products') as $pt => $label) {
-                if (!empty($m['post_counts'][$pt])) {
-                    $bits[] = number_format($m['post_counts'][$pt]) . ' ' . $label;
+            $sspa_bits[] = sprintf(__('Sector: %s', 'super-speedy-performance-analysis'), $sspa_demo['sector']);
+            foreach (array('post' => 'posts', 'page' => 'pages', 'product' => 'products') as $sspa_pt => $sspa_label) {
+                if (!empty($sspa_m['post_counts'][$sspa_pt])) {
+                    $sspa_bits[] = number_format($sspa_m['post_counts'][$sspa_pt]) . ' ' . $sspa_label;
                 }
             }
-            $bits[] = number_format($m['users']) . ' users';
-            if (!empty($m['postmeta_rows'])) {
-                $bits[] = '~' . number_format($m['postmeta_rows']) . ' postmeta rows';
+            $sspa_bits[] = number_format($sspa_m['users']) . ' users';
+            if (!empty($sspa_m['postmeta_rows'])) {
+                $sspa_bits[] = '~' . number_format($sspa_m['postmeta_rows']) . ' postmeta rows';
             }
-            $bits[] = 'DB ' . size_format((int) $m['db_bytes']);
-            $bits[] = 'PHP ' . $m['php'];
-            $bits[] = $m['object_cache'] ? __('persistent object cache', 'super-speedy-performance-analysis') : __('no persistent object cache', 'super-speedy-performance-analysis');
-            echo esc_html(implode(' &middot; ', $bits));
+            $sspa_bits[] = 'DB ' . size_format((int) $sspa_m['db_bytes']);
+            $sspa_bits[] = 'PHP ' . $sspa_m['php'];
+            $sspa_bits[] = $sspa_m['object_cache'] ? __('persistent object cache', 'super-speedy-performance-analysis') : __('no persistent object cache', 'super-speedy-performance-analysis');
+            echo esc_html(implode(' &middot; ', $sspa_bits));
             ?>
         </p>
     </div>

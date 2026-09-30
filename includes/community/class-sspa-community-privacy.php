@@ -85,7 +85,19 @@ class SSPA_Community_Privacy {
         if (defined('DB_NAME') && DB_NAME) {
             $fingerprint = str_ireplace(DB_NAME, 'database', $fingerprint);
         }
-        return substr($fingerprint, 0, 1000);
+        if (strlen($fingerprint) > 1000) {
+            // Keep complete tokens: cutting a quoted identifier can turn its contents
+            // into apparent literals/comments when retained evidence is checked again.
+            preg_match_all('/`(?:``|[^`])*`|[^`\s]+|\s+/', $fingerprint, $tokens);
+            $fingerprint = '';
+            foreach ($tokens[0] as $token) {
+                if (strlen($fingerprint) + strlen($token) > 1000) {
+                    break;
+                }
+                $fingerprint .= $token;
+            }
+        }
+        return rtrim($fingerprint);
     }
 
     public static function finding_evidence($evidence) {
@@ -163,7 +175,7 @@ class SSPA_Community_Privacy {
         ));
 
         $scan = function ($value, $path = '$', $key_name = '') use (&$scan, $blocked_keys, $needles) {
-            if (is_array($value)) {
+            if (is_array($value) || $value instanceof stdClass) {
                 foreach ($value as $key => $child) {
                     $child_path = $path . '.' . $key;
                     if (is_string($key) && preg_match($blocked_keys, $key)) {
@@ -179,6 +191,10 @@ class SSPA_Community_Privacy {
             }
             if (!is_string($value) || '' === $value) {
                 return true;
+            }
+            if ('fingerprint' === $key_name && self::sql_fingerprint($value) !== $value) {
+                /* translators: %s: the payload path holding potential private data */
+                return new WP_Error('sspa_privacy_forbidden_value', sprintf(__('Potential private data at %s.', 'super-speedy-performance-analysis'), $path));
             }
             $normal = strtolower(str_replace('\\', '/', $value));
 

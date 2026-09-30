@@ -20,6 +20,9 @@ class SSPA_Checkout_Preflight {
         'woocommerce_store_api_checkout_order_processed',
         'woocommerce_new_order',
         'woocommerce_order_status_changed',
+        'woocommerce_order_status_completed',
+        'woocommerce_order_fully_refunded',
+        'woocommerce_trash_order',
         'woocommerce_payment_complete',
         'woocommerce_thankyou',
     );
@@ -62,6 +65,7 @@ class SSPA_Checkout_Preflight {
         $out['emails'] = self::emails();
         $out['emails_deferred'] = self::emails_deferred();
         $out['webhooks'] = self::webhooks();
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoke WooCommerce's existing delivery-policy hook to describe the checkout that will be measured.
         $out['webhooks_inline'] = !apply_filters('woocommerce_webhook_deliver_async', true, null, null);
         list($out['order_hooks'], $out['order_hooks_more']) = self::order_hook_components();
         // Another plugin manipulating the same filters our no-payment mode uses can change
@@ -219,6 +223,7 @@ class SSPA_Checkout_Preflight {
         if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
             $default = (bool) \Automattic\WooCommerce\Utilities\FeaturesUtil::feature_is_enabled('deferred_transactional_emails');
         }
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Read WooCommerce's existing transactional-email policy; this plugin does not define the hook.
         return (bool) apply_filters('woocommerce_defer_transactional_emails', $default);
     }
 

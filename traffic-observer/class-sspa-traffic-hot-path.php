@@ -204,7 +204,7 @@ class SSPA_Traffic_Hot_Path {
 	/** Resolve only registered AJAX action identities; arbitrary request values never persist. */
 	public static function resolve_ajax_endpoint() {
 		if (!self::collecting_requests()) { return; }
-		$method = strtoupper(isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '');
+		$method = strtoupper(isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '');
 		$context = is_user_logged_in() ? 'logged_in' : 'anonymous';
 		$path = self::request_path();
 		$admin_path = wp_parse_url(admin_url('admin-ajax.php'), PHP_URL_PATH);
@@ -226,11 +226,16 @@ class SSPA_Traffic_Hot_Path {
 	}
 
 	private static function request_scalar($key) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- observer reads an existing third-party request; it neither invokes its action nor changes its authorisation.
 		$has_get = array_key_exists($key, (array) $_GET);
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- observer reads an existing third-party request; it neither invokes its action nor changes its authorisation.
 		$has_post = array_key_exists($key, (array) $_POST);
 		if (!$has_get && !$has_post) { return ''; }
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- array_key_exists above proves each accessed key exists; reject non-scalar observed endpoint identities.
 		if (($has_get && !is_scalar($_GET[$key])) || ($has_post && !is_scalar($_POST[$key]))) { return ''; }
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- existence/type checked above; strict endpoint regex below rejects unsafe bytes without changing the observed action identity.
 		$get = $has_get ? (string) wp_unslash($_GET[$key]) : null;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- existence/type checked above; strict endpoint regex below rejects unsafe bytes without changing the observed action identity.
 		$post = $has_post ? (string) wp_unslash($_POST[$key]) : null;
 		if ($has_get && $has_post && !hash_equals($get, $post)) { return ''; }
 		$value = $has_post ? $post : $get;
@@ -517,6 +522,7 @@ class SSPA_Traffic_Hot_Path {
     /** Follow WooCommerce's public cookie-name filter when the session object is unavailable. */
     private static function session_cookie_name() {
         $default = 'wp_woocommerce_session_' . (defined('COOKIEHASH') ? COOKIEHASH : '');
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- reads WooCommerce's existing session-cookie naming API.
         return function_exists('apply_filters') ? (string) apply_filters('woocommerce_cookie', $default) : $default;
     }
 
@@ -575,7 +581,7 @@ class SSPA_Traffic_Hot_Path {
     }
 
     private static function surface() {
-        $method = strtoupper(isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET');
+        $method = strtoupper(isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : 'GET');
         $path = self::request_path();
         if (function_exists('wp_doing_cron') && wp_doing_cron()) {
             return SSPA_Traffic_Codes::SURFACE_WP_CRON;
@@ -592,6 +598,7 @@ class SSPA_Traffic_Hot_Path {
         if (is_admin()) {
             return SSPA_Traffic_Codes::SURFACE_WP_ADMIN;
         }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only classification of an observed WooCommerce request, not execution of the endpoint.
         if (isset($_GET['wc-api'])) {
             return SSPA_Traffic_Codes::SURFACE_WEBHOOK;
         }
@@ -645,13 +652,14 @@ class SSPA_Traffic_Hot_Path {
     }
 
     private static function request_path() {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only classifier needs the actual request path; no output or request dispatch uses these bytes.
         $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
         $path = wp_parse_url($uri, PHP_URL_PATH);
         return is_string($path) && $path !== '' ? $path : '/';
     }
 
     private static function automation_class() {
-        $ua = strtolower(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '');
+        $ua = strtolower(isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '');
         if ($ua === '') {
             return SSPA_Traffic_Codes::AUTOMATION_NOT_IDENTIFIED;
         }
@@ -687,7 +695,8 @@ class SSPA_Traffic_Hot_Path {
         $policy = $ssf_archive_gate_policy;
         $policy['enabled'] = true;
         $decision = ssf_archive_gate_decision(
-            isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET',
+            isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : 'GET',
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only classifier needs the actual request path; no output or request dispatch uses these bytes.
             isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/',
             $policy
         );
@@ -763,7 +772,7 @@ class SSPA_Traffic_Hot_Path {
         $sql = 'INSERT INTO `' . esc_sql(self::$config['table']) . '` ' . $columns . ' VALUES ' . implode(',', $groups);
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is built above from literal column names and generated %s/%d/NULL placeholders only; every value goes in through $values.
         $prepared = $wpdb->prepare($sql, $values);
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $prepared is the return of $wpdb->prepare() on the line above.
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $prepared is the prepare() result above: literal columns/placeholders, bound row values, and the traffic_events table generated by SSPA_Traffic_Helper::install().
         $inserted = $wpdb->query($prepared);
         if ($inserted === false) {
             self::retire('database_error');

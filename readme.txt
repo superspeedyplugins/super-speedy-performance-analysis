@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.43.0
+Stable tag: 0.43.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -15,7 +15,7 @@ Free performance analysis for WordPress and WooCommerce. Finds which plugins are
 
 Super Speedy Performance Analysis diagnoses your site's performance the way an expert would:
 
-* Profiles your key pages (home, shop, archives, search, checkout, wp-admin lists and editors) with a lean built-in profiler - no Query Monitor install required, and zero overhead on normal traffic.
+* Profiles your key pages (home, shop, archives, search, checkout, wp-admin lists and editors) with a built-in profiler enabled for requested measurements - no Query Monitor install required.
 * Attributes SQL time, returned row counts, RAM and query counts to individual plugins and your theme.
 * Presents plain-English insights: the slowest queries and who ran them, queries fetching hundreds of rows (the usual RAM culprits), plugins running queries in loops, blocking HTTP calls and more.
 * Plugin Impact Analysis isolates the real culprits by virtually disabling plugins for test requests only - your live visitors are never affected - and measures each suspect's true cost.
@@ -30,11 +30,51 @@ This plugin is free. The build downloaded from https://www.superspeedyplugins.co
 
 == Installation ==
 
-1. Upload the plugin to /wp-content/plugins/ or install the zip from https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest
+1. In Plugins -> Add New -> Upload Plugin, upload the ZIP for your chosen distribution channel.
 2. Activate it through the Plugins menu.
-3. Go to Super Speedy -> Performance Analysis and run your first analysis.
+3. Open Performance Analysis in the admin menu, or Super Speedy -> Performance Analysis when the shared Super Speedy menu is installed.
+
+== Frequently Asked Questions ==
+
+= Is WooCommerce required? =
+
+No. WordPress page and administrator profiling work without WooCommerce. Shop, cart, checkout and order measurements require WooCommerce.
+
+= Does Traffic recording send visitor data to the community service? =
+
+No. Traffic recording stores its observations in this site's own database. Community sharing submits profiling-run evidence through a separate opt-in workflow.
+
+= What happens when I delete the plugin? =
+
+Saved analysis data is retained by default. Before deleting the plugin, enable "Delete all SSPA data when the plugin is deleted" in History if you want its profiling tables, settings and managed test objects removed. Deleting local data does not delete evidence you previously submitted to the community service.
+
+== External services ==
+
+The optional community service at https://superspeedy.org/ collects profiling evidence to build public comparisons of plugin performance. Automatic sharing is disabled by default. An administrator can enable sharing or explicitly submit selected runs; the Share tab provides a payload preview. No purchased account is required. The plugin registers a random installation identifier and a generated authentication secret with https://collector.superspeedy.org/ when submitting evidence.
+
+Registration sends that identifier and secret, plus the plugin, WordPress and PHP versions. Submission sends the installation identifier, run/submission identifiers, archive checksums and sizes, and a compressed evidence archive containing measurements, plugin/theme identifiers and versions, page classifications and sanitised profiling details. The collector supplies an HTTPS upload URL for its archive storage, and the plugin confirms receipt with the collector. Queued submissions may retry after temporary failures.
+
+Payload anonymisation removes identifying site and customer details from the evidence archive. It does not make the network connection anonymous: receiving servers see the source IP address and request headers. The service operator's privacy policy is https://www.superspeedyplugins.com/privacy-policy/ .
+
+== Source code and third-party libraries ==
+
+The plugin's readable source and build tools are available at https://github.com/superspeedyplugins/super-speedy-performance-analysis .
+
+History charts use a locally bundled custom build of Apache ECharts 6.1.0 and its zrender dependency. Their Apache-2.0 licence files and the ECharts NOTICE are included in includes/admin/vendor/. No chart script is downloaded from a CDN.
+
+The readable chart entry point, pinned dependency lockfile and build script are at https://github.com/superspeedyplugins/super-speedy-performance-analysis/tree/main/.build/echarts . From that directory in a source checkout, run `npm ci` followed by `npm run build` to regenerate includes/admin/vendor/echarts-history.min.js and its licence files. Upstream readable source is at https://github.com/apache/echarts/tree/6.1.0 and https://github.com/ecomfe/zrender ; the exact zrender version is recorded in the lockfile.
 
 == Changelog ==
+
+= 0.43.1 (20th September 2026) =
+* WordPress.org builds run every Plugin Check check and reject errors and warnings outside the documented database exceptions.
+* Added external-service disclosures, removal instructions and links to the chart source and build tools.
+* WordPress.org packages omit developer documentation and link the complete changelog.
+* AJAX handlers verify nonces at their entry points and normalise request values before use.
+* Community uploads require HTTPS and omit the site URL from their User-Agent header.
+* Chart labels support translations, saved profiles receive keyboard focus, and score labels have clearer contrast.
+* Checkout integration and webhook opt-outs also apply during completion, refunds and Trash.
+* Shared SQL fingerprints remove comments and encoded numeric values; queued archives are rechecked before upload.
 
 = 0.43 (16th September 2026) =
 * Persistent-cache sites use the explicit Object cache action instead of the Super Speedy caches shortcut.

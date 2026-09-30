@@ -4,12 +4,19 @@ const { output, session, admin, expect } = require("./fleet-context.cjs");
   try {
     await page.setViewportSize({ width: 390, height: 844 });
     await admin(page, "pages");
-    await page
-      .locator(".sspa-page-row")
-      .filter({ hasText: "Home" })
-      .first()
-      .click();
+    const row = page.locator('.sspa-page-row').first();
+    await row.focus();
+    await row.press('Enter');
     const panel = page.locator("#sspa-adhoc-pop");
+    await expect(panel.locator('.sspa-adhoc-close')).toBeFocused();
+    await expect(panel).toHaveAttribute('role', 'dialog');
+    await expect(panel).toHaveAccessibleName(/Super Speedy Performance Analysis/);
+    await expect(panel.locator('.sspa-profile-target')).toBeVisible();
+    await page.keyboard.press('Tab');
+    expect(await panel.evaluate(node => node.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(row).toBeFocused();
+    await row.press('Enter');
     await expect(panel.locator(".sspa-markdown-copy")).toBeVisible();
     await page.screenshot({
       path: output + "/report-mobile-controls.png",

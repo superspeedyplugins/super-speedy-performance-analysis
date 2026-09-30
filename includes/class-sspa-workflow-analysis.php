@@ -231,13 +231,13 @@ class SSPA_Workflow_Analysis {
     }
 
     private static function guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
     }
 
     public static function ajax_targets() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $object_type = isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '';
         $targets = self::targets($object_type);
@@ -249,6 +249,7 @@ class SSPA_Workflow_Analysis {
     }
 
     public static function ajax_launch() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $launch = self::launch(
             isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '',

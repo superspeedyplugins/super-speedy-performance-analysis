@@ -120,6 +120,7 @@ class SSPA_Endpoint_Detail {
         $this->overhead += (microtime(true) - $start) * 1000000;
     }
     private function caller() {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- The explicitly enabled detail sampler uses at most 32 argument-free frames to attribute I/O to a plugin, not to log debug output.
         foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 32) as $frame) {
             if (empty($frame['file']) || strpos(wp_normalize_path($frame['file']), wp_normalize_path(__DIR__)) === 0) { continue; }
             $plugin = $this->owner($frame['file']); if ($plugin) { $this->ensure($plugin); } if ($plugin) { return $plugin; }

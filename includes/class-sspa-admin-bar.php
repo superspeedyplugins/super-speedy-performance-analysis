@@ -84,6 +84,7 @@ class SSPA_Admin_Bar {
             'meta' => array(
                 'title' => null === $score
                     ? __('Super Speedy Performance Analysis - nothing analysed yet', 'super-speedy-performance-analysis')
+                    /* translators: %d: score out of 100 */
                     : sprintf(__('Super Speedy Performance Analysis - last score %d/100', 'super-speedy-performance-analysis'), $score),
             ),
         ));
@@ -182,6 +183,7 @@ class SSPA_Admin_Bar {
                 $bar->add_node(array(
                     'id' => 'sspa-purge-url',
                     'parent' => 'sspa-clear',
+                    /* translators: %s: page cache plugin name */
                     'title' => sprintf(__('Page cache: this URL (%s)', 'super-speedy-performance-analysis'), $page_cache['name']),
                     'href' => self::action_url('purge_url'),
                 ));
@@ -189,6 +191,7 @@ class SSPA_Admin_Bar {
             $bar->add_node(array(
                 'id' => 'sspa-purge-all',
                 'parent' => 'sspa-clear',
+                /* translators: %s: page cache plugin name */
                 'title' => sprintf(__('Page cache: everything (%s)', 'super-speedy-performance-analysis'), $page_cache['name']),
                 'href' => self::action_url('purge_all'),
                 'meta' => array('title' => __('Expensive on a busy site: every cached page has to be rebuilt.', 'super-speedy-performance-analysis')),
@@ -362,8 +365,10 @@ class SSPA_Admin_Bar {
                 break;
             case 'litespeed':
                 if ($everything) {
+                    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing LiteSpeed Cache purge API; its hook name belongs to that plugin.
                     do_action('litespeed_purge_all');
                 } else {
+                    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing LiteSpeed Cache purge API; its hook name belongs to that plugin.
                     do_action('litespeed_purge_url', $url);
                 }
                 break;
@@ -382,21 +387,27 @@ class SSPA_Admin_Bar {
                 wp_cache_clear_cache();
                 break;
             case 'sgo':
+                // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing SiteGround Optimizer purge API; its hook name belongs to that plugin.
                 do_action('siteground_optimizer_flush_cache');
                 break;
             case 'nginx-helper':
                 if ($everything) {
+                    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing Nginx Helper purge API; its hook name belongs to that plugin.
                     do_action('rt_nginx_helper_purge_all');
                 } else {
+                    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing Nginx Helper purge API; its hook name belongs to that plugin.
                     do_action('rt_nginx_helper_purge_url', $url);
                 }
                 break;
             case 'cachify':
+                // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing Cachify purge API; its hook name belongs to that plugin.
                 do_action('cachify_flush_cache');
                 break;
         }
         return $everything
+            /* translators: %s: page cache plugin name */
             ? sprintf(__('Purged the whole %s page cache.', 'super-speedy-performance-analysis'), $cache['name'])
+            /* translators: 1: page cache plugin name, 2: URL purged */
             : sprintf(__('Purged %1$s for %2$s.', 'super-speedy-performance-analysis'), $cache['name'], $url);
     }
 
@@ -448,6 +459,7 @@ class SSPA_Admin_Bar {
         }
         check_admin_referer(self::ACTION . '_' . $do);
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL decoding is followed by esc_url_raw and wp_validate_redirect before any redirect.
         $return = isset($_GET['sspa_return']) ? esc_url_raw(urldecode(wp_unslash($_GET['sspa_return']))) : admin_url();
         $return = wp_validate_redirect($return, admin_url());
         $message = '';
@@ -486,7 +498,7 @@ class SSPA_Admin_Bar {
                 $message = __('Page cache bypass turned off.', 'super-speedy-performance-analysis');
                 break;
             case 'markdown':
-                self::send_markdown();
+                self::send_markdown(isset($_GET['run']) ? (int) $_GET['run'] : 0);
                 return; // sends a file and exits
             default:
                 $message = __('Unknown action.', 'super-speedy-performance-analysis');
@@ -504,7 +516,9 @@ class SSPA_Admin_Bar {
         }
         global $wpdb;
         $table = SSPA_Schema::table('runs');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $rows = $wpdb->query($wpdb->prepare(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
             "UPDATE {$table} SET status = 'superseded' WHERE run_type = 'adhoc' AND notes LIKE %s AND status = 'done'",
             '%' . $wpdb->esc_like($url) . '%'
         ));
@@ -513,8 +527,7 @@ class SSPA_Admin_Bar {
             : __('Nothing stored for this page.', 'super-speedy-performance-analysis');
     }
 
-    private static function send_markdown() {
-        $run = isset($_GET['run']) ? (int) $_GET['run'] : 0;
+    private static function send_markdown($run) {
         if (!$run || !class_exists('SSPA_Markdown_Export')) {
             wp_die(esc_html__('No analysis to export.', 'super-speedy-performance-analysis'));
         }

@@ -300,13 +300,13 @@ class SSPA_Admin_Save {
     }
 
     private static function guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
     }
 
     public static function ajax_prepare() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $prepared = self::prepare(
             isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '',
@@ -329,6 +329,7 @@ class SSPA_Admin_Save {
     }
 
     public static function ajax_finish() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $finished = self::finish(
             isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0,

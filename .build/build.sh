@@ -21,8 +21,7 @@
 set -uo pipefail
 
 _bh="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Both existing edition entrypoints source this manifest before staging.
-php "$_bh/validate-feature-release-gate.php" || exit 1
+# Release entrypoints validate evidence before sourcing this staging manifest.
 # shellcheck source=lib.sh
 source "$_bh/lib.sh"
 
@@ -51,6 +50,10 @@ ssx_hook_wporg() {
     # PCP "hidden files" error in its own right. (Dot-files are stripped by ssx_build_target
     # anyway; this is belt and braces in case that ever changes.)
     ssx_rm "$stage" ".gitmodules"
+    ssx_rm "$stage" "SKILL.md" "README.md"
+    php "$_bh/wporg-readme.php" "$stage/readme.txt" || ssx_die "wp.org readme preparation failed"
+    # WordPress installs files, not empty directory entries. Keep the archive tree identical.
+    find "$stage" -depth -type d -empty -delete || ssx_die "wp.org empty-directory cleanup failed"
 
     ssx_assert_no_updater "$stage"
     ssx_assert_menu_fallback "$stage"

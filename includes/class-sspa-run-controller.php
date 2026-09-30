@@ -836,6 +836,7 @@ class SSPA_Run_Controller {
                 return new WP_Error(
                     'sspa_checkout_preflight_failed',
                     !empty($sample['blocked_by'])
+                        /* translators: %s: the security layer that blocked the request */
                         ? sprintf(__('The checkout entry point was blocked by %s before any order was created.', 'super-speedy-performance-analysis'), $sample['blocked_by'])
                         : __('The checkout pre-flight failed before any order was created.', 'super-speedy-performance-analysis')
                 );
@@ -970,6 +971,7 @@ class SSPA_Run_Controller {
     public static function active_run_id() {
         global $wpdb;
         $table = SSPA_Schema::table('runs');
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         return (int) $wpdb->get_var("SELECT id FROM $table WHERE status IN ('queued','crawling','analysing') ORDER BY id DESC LIMIT 1");
     }
 
@@ -1019,6 +1021,7 @@ class SSPA_Run_Controller {
     public static function run_row($run_id) {
         global $wpdb;
         $table = SSPA_Schema::table('runs');
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $run_id), ARRAY_A);
     }
 
@@ -1132,6 +1135,7 @@ class SSPA_Run_Controller {
             }
             $detail = SSPA_Security_Detect::classify_detail($code, $headers, substr((string) wp_remote_retrieve_body($response), 0, 20000), false);
             $layer = $detail ? SSPA_Security_Detect::display_label($detail) : __('an unknown security layer', 'super-speedy-performance-analysis');
+            /* translators: %s: the security layer that refused the request */
             return array('healthy' => false, 'reason' => sprintf(__('the request was refused with HTTP 403 by %s', 'super-speedy-performance-analysis'), $layer));
         }
         if (429 === $code || 503 === $code) {
@@ -1922,10 +1926,13 @@ class SSPA_Run_Controller {
         // answered before PHP ran) have NULL metrics and silently distort the score if
         // they pass unmentioned. Count them into the run so the UI can be honest.
         $profiles = SSPA_Schema::table('profiles');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $unmeasured = (int) $wpdb->get_var($wpdb->prepare(
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
             "SELECT COUNT(*) FROM $profiles
              WHERE run_id = %d AND page_gen_ms IS NULL AND blocked_by IS NULL
                AND page_key <> 'baseline'",
+            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $run_id
         ));
 
@@ -2131,6 +2138,7 @@ class SSPA_Run_Controller {
     public static function cleanup() {
         global $wpdb;
         $captures = SSPA_Schema::table('captures');
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $wpdb->query($wpdb->prepare("DELETE FROM $captures WHERE created < %s", gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS)));
         $wpdb->query($wpdb->prepare(
             "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value < %d",
@@ -2145,7 +2153,9 @@ class SSPA_Run_Controller {
         // (the driver tab may have closed with no event pending); only a run that still
         // makes no progress after 3 hours is failed.
         $runs = SSPA_Schema::table('runs');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $candidates = $wpdb->get_results(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
             "SELECT id, status, started FROM $runs WHERE status IN ('queued','crawling','analysing','cancelling')",
             ARRAY_A
         );
@@ -2226,7 +2236,9 @@ class SSPA_Run_Controller {
             $meta_tables[$hpos_meta] = 'order_id';
         }
         foreach ($meta_tables as $table => $id_col) {
+            // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The loop uses only core postmeta/post_id and prefix + wc_orders_meta/order_id pairs; the meta key uses %s.
             $ids = array_merge($ids, (array) $wpdb->get_col($wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The loop uses only core postmeta/post_id and prefix + wc_orders_meta/order_id pairs; the meta key uses %s.
                 "SELECT $id_col FROM $table WHERE meta_key = %s LIMIT 50",
                 SSPA_Checkout_Flow::TEMP_META
             )));
@@ -2289,17 +2301,17 @@ class SSPA_Run_Controller {
     // ---------------- AJAX ----------------
 
     private static function ajax_guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
     }
 
     public static function ajax_start_run() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $type = 'baseline';
         if (isset($_POST['type']) && in_array($_POST['type'], array('deep', 'cache_impact'), true)) {
-            $type = $_POST['type'];
+            $type = sanitize_key(wp_unslash($_POST['type']));
         }
         $args = array(
             'type' => $type,
@@ -2308,7 +2320,7 @@ class SSPA_Run_Controller {
             'include_writes' => !empty($_POST['include_writes']),
         );
         if ('deep' === $type && !empty($_POST['suspects'])) {
-            $args['suspects'] = array_map('sanitize_key', (array) $_POST['suspects']);
+            $args['suspects'] = array_map('sanitize_key', (array) wp_unslash($_POST['suspects']));
         }
         if ('deep' === $type) {
             // Page-scoped impact, started from the profile panel: one URL, and an explicit
@@ -2322,7 +2334,7 @@ class SSPA_Run_Controller {
             }
         }
         if (isset($_POST['page_keys'])) {
-            $args['page_keys'] = array_map('sanitize_text_field', (array) $_POST['page_keys']);
+            $args['page_keys'] = array_map('sanitize_text_field', (array) wp_unslash($_POST['page_keys']));
             if ('baseline' === $args['type']) {
                 // A page-filtered run is a spot check, not a full baseline - recording it
                 // as baseline made it the "latest analysis" everywhere and hid the full run.
@@ -2358,6 +2370,7 @@ class SSPA_Run_Controller {
      * re-runs every detection fresh.
      */
     public static function ajax_tools_recheck() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         ob_start();
         include SSPA_PLUGIN_DIR . 'includes/admin/tabs/tools.php';
@@ -2373,8 +2386,9 @@ class SSPA_Run_Controller {
      * it needs, so re-including it is the whole implementation.
      */
     public static function ajax_render_tab() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
-        $requested = isset($_POST['tabs']) ? (string) wp_unslash($_POST['tabs']) : '';
+        $requested = isset($_POST['tabs']) ? sanitize_text_field(wp_unslash($_POST['tabs'])) : '';
         $html = array();
         foreach (array_filter(array_map('sanitize_key', explode(',', $requested))) as $tab) {
             // sanitize_key leaves only [a-z0-9_-], so no path can escape the tabs directory.
@@ -2392,6 +2406,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_replace_stale_dropin() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $result = SSPA_Helper_Files::replace_stale_qm_dropin();
         if (is_wp_error($result)) {
@@ -2401,6 +2416,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_process_batch() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         if ($run_id) {
@@ -2410,12 +2426,14 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_run_status() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         wp_send_json_success($run_id ? self::status($run_id) : null);
     }
 
     public static function ajax_cancel_run() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         if ($run_id) {
@@ -2425,6 +2443,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_uninstall_setting() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $enabled = !empty($_POST['enabled']);
         sspa_update_option('remove_data_on_uninstall', $enabled);
@@ -2439,6 +2458,7 @@ class SSPA_Run_Controller {
      * capture blobs, which is why this is a server round trip and not a client-side sort.
      */
     public static function ajax_attribution() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $mode = SSPA_Attribution::sanitise_mode(
             isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : ''
@@ -2460,6 +2480,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_plugin_detail() {
         global $wpdb;
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $plugin = isset($_POST['plugin']) ? sanitize_text_field(wp_unslash($_POST['plugin'])) : '';
         if ('' === $plugin) {
@@ -2487,6 +2508,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_share_optin() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $optin = !empty($_POST['optin']);
         update_option('sspa_share_optin', $optin ? 1 : 0, false);
@@ -2527,6 +2549,7 @@ class SSPA_Run_Controller {
      * the Share tab's per-run preview shows exactly what each one holds.
      */
     public static function ajax_publisher_toggle() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $slug = isset($_POST['slug']) ? sanitize_text_field(wp_unslash($_POST['slug'])) : '';
         $enabled = !empty($_POST['enabled']);
@@ -2539,6 +2562,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_payload_preview() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $outbox_id = isset($_POST['outbox_id']) ? (int) $_POST['outbox_id'] : 0;
         $json = SSPA_Submitter::preview($outbox_id);
@@ -2565,6 +2589,7 @@ class SSPA_Run_Controller {
      * begin_attempt(), and the receiver's own submission_uuid idempotency.
      */
     public static function ajax_submission_tick() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         SSPA_Community_Worker::run();
         $due = SSPA_Community_Outbox::due();
@@ -2576,6 +2601,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_submit_now() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $result = SSPA_Submitter::submit();
         if (is_wp_error($result)) {
@@ -2589,6 +2615,7 @@ class SSPA_Run_Controller {
      * with the site-wide setting off, and it never turns that setting on.
      */
     public static function ajax_share_run() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         $result = SSPA_Community_Outbox::share_run($run_id);
@@ -2603,6 +2630,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_community_backfill() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $result = SSPA_Community_Backfill::queue_batch(!empty($_POST['restart']));
         if (is_wp_error($result)) {
@@ -2612,6 +2640,7 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_outbox_action() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $id = isset($_POST['outbox_id']) ? (int) $_POST['outbox_id'] : 0;
         $operation = isset($_POST['operation']) ? sanitize_key(wp_unslash($_POST['operation'])) : '';
@@ -2633,10 +2662,12 @@ class SSPA_Run_Controller {
 
     public static function ajax_prune_blobs() {
         global $wpdb;
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
 
         $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
         $runs_table = SSPA_Schema::table('runs');
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $runs_table ORDER BY id DESC LIMIT %d", $keep));
         $keep_ids = array_map('intval', $keep_ids);
 
@@ -2644,10 +2675,13 @@ class SSPA_Run_Controller {
         // Delivery can then happen later even if the collector is offline during this request.
         if (SSPA_Submitter::opted_in()) {
             $where = $keep_ids ? 'AND id NOT IN (' . implode(',', $keep_ids) . ')' : '';
+            // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The table comes from SSPA_Schema::table; the optional exclusion contains only IDs already mapped through intval.
             $share_ids = $wpdb->get_col(
+                // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table comes from SSPA_Schema::table; the optional exclusion contains only IDs already mapped through intval.
                 "SELECT id FROM $runs_table
                  WHERE (status = 'done' OR (run_type = 'checkout' AND status = 'failed')) $where
                  ORDER BY id ASC"
+                // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             );
             foreach ($share_ids as $share_id) {
                 $queued = SSPA_Community_Outbox::queue_run((int) $share_id);
@@ -2666,8 +2700,10 @@ class SSPA_Run_Controller {
         $profiles = SSPA_Schema::table('profiles');
         if ($keep_ids) {
             $in = implode(',', $keep_ids);
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- The table comes from SSPA_Schema::table; every comma-joined keep ID has already passed through intval.
             $wpdb->query("UPDATE $profiles SET profile_blob = NULL WHERE run_id NOT IN ($in)");
         }
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $bytes = (int) $wpdb->get_var("SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM $profiles");
         wp_send_json_success(array('bytes' => $bytes, 'human' => size_format($bytes)));
     }

@@ -251,13 +251,13 @@ class SSPA_Adhoc {
     }
 
     private static function guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
     }
 
     public static function ajax_start() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
         $job = self::job_for($url);
@@ -280,6 +280,7 @@ class SSPA_Adhoc {
      * uses, so the two views cannot show different subsets of the same capture again.
      */
     public static function ajax_result() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
         $fresh = !empty($_POST['fresh']);

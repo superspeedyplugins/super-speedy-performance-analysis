@@ -4,13 +4,13 @@ defined('ABSPATH') || exit;
 /** Authenticated WordPress AJAX adapter; comparison decisions belong to the domain. */
 class SSPA_History_Ajax {
     private static function ajax_guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
     }
 
     public static function ajax_compare() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         // Resolve once so the chart and report cannot silently describe different runs.
         $mode = isset($_POST['selection_mode']) ? sanitize_key(wp_unslash($_POST['selection_mode'])) : 'pair';
@@ -40,6 +40,7 @@ class SSPA_History_Ajax {
     }
 
     public static function ajax_setting() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $enabled = !empty($_POST['plugin_update_detection']);
         sspa_update_option('plugin_update_detection', $enabled);
@@ -50,6 +51,7 @@ class SSPA_History_Ajax {
     }
 
     public static function ajax_assertion() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : '';
         $page = isset($_POST['page_identity']) ? sanitize_text_field(wp_unslash($_POST['page_identity'])) : '';
@@ -67,6 +69,7 @@ class SSPA_History_Ajax {
     }
 
     public static function ajax_export() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::ajax_guard();
         $comparison = SSPA_History::compare(
             isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,

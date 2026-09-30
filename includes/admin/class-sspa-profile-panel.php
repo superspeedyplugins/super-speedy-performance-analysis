@@ -34,7 +34,6 @@ class SSPA_Profile_Panel {
     }
 
     private static function guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);
         }
@@ -42,6 +41,7 @@ class SSPA_Profile_Panel {
 
     /** Read the retained target without loading the full diagnostic panel. */
     public static function ajax_target() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $row = self::profile_row(isset($_POST['profile_id']) ? absint($_POST['profile_id']) : 0);
         if (!$row) {
@@ -75,6 +75,7 @@ class SSPA_Profile_Panel {
      * after a page-scoped impact run finishes.
      */
     public static function ajax_panel() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
         $html = self::render($profile_id, array('cached' => true));
@@ -86,6 +87,7 @@ class SSPA_Profile_Panel {
 
     /** Download one page measurement as a self-contained diagnostic JSON document. */
     public static function ajax_export() {
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
         $payload = self::export_data($profile_id);
@@ -357,8 +359,8 @@ class SSPA_Profile_Panel {
             $html .= '<p class="description sspa-adhoc-span">' . esc_html__('An earlier analysis reported a block but did not record which request or why. Re-run this page to verify; its saved successful measurements remain available.', 'super-speedy-performance-analysis') . '</p>';
         }
         foreach (self::transport_errors($row) as $error) {
-            /* translators: %s: the HTTP transport's own error message */
             $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">'
+                /* translators: %s: the HTTP transport's own error message */
                 . esc_html(sprintf(__('Measurement transport error: %s', 'super-speedy-performance-analysis'), $error))
                 . '</p>';
         }
@@ -1007,6 +1009,7 @@ class SSPA_Profile_Panel {
      */
     public static function ajax_impact_plan() {
         global $wpdb;
+        check_ajax_referer('sspa_admin', 'nonce');
         self::guard();
 
         // Two scopes, one picker. With a profile id it plans "measure plugins on this page";

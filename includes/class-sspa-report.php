@@ -44,10 +44,13 @@ class SSPA_Report {
             return null;
         }
         $profiles = SSPA_Schema::table('profiles');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $slowest = $wpdb->get_row($wpdb->prepare(
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT id, page_key, url, page_gen_ms FROM {$profiles}
              WHERE run_id = %d AND page_gen_ms > 0
              ORDER BY page_gen_ms DESC LIMIT 1",
+            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $run_id
         ), ARRAY_A);
         if (!$slowest) {
@@ -57,11 +60,14 @@ class SSPA_Report {
         // Worst component ON THAT PAGE, by the time we can attribute to it. Deliberately
         // sql + http + include, not a guess at total PHP: those are measured.
         $components = SSPA_Schema::table('component_stats');
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $worst = $wpdb->get_row($wpdb->prepare(
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT component, (sql_ms + http_ms + include_ms) AS cost
              FROM {$components}
              WHERE profile_id = %d AND component_type != 'core'
              ORDER BY cost DESC LIMIT 1",
+            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             (int) $slowest['id']
         ), ARRAY_A);
 
@@ -371,8 +377,10 @@ class SSPA_Report {
         if ($profiles) {
             $ids = implode(',', array_map('intval', wp_list_pluck($profiles, 'id')));
             foreach ($wpdb->get_results($wpdb->prepare(
+                // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Every interpolated profile ID passes through intval; the table is prepared with %i.
                 "SELECT profile_id, component, query_count, sql_ms, http_ms, mail_ms, include_ms, hook_ms, assets_count
                  FROM %i WHERE profile_id IN ($ids)",
+                // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
                 SSPA_Schema::table('component_stats')
             ), ARRAY_A) as $s) {
                 $stats_by_profile[(int) $s['profile_id']][$s['component']] = $s;

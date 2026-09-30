@@ -29,8 +29,8 @@
 			? '<img class="sspa-adhoc-logo" src="' + esc(sspa_adhoc.logo_url) + '" alt="Super Speedy Plugins">'
 			: '<span class="sspa-adhoc-logo-text">Super Speedy Plugins</span>';
 		el = $(
-			'<div id="sspa-adhoc-pop" style="display:none">' +
-			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">Super Speedy Performance Analysis' +
+			'<div id="sspa-adhoc-pop" role="dialog" aria-labelledby="sspa-adhoc-title" style="display:none">' +
+			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title" id="sspa-adhoc-title">Super Speedy Performance Analysis' +
 			'<span class="sspa-adhoc-version">v' + esc(sspa_adhoc.version) + '</span></span>' +
 			logo +
 			'<button type="button" class="sspa-adhoc-close" aria-label="' + esc(sspa_adhoc.i18n.close) + '">&times;</button></div>' +
@@ -71,8 +71,8 @@
 		if (!el.is(':visible')) {
 			var active = document.activeElement;
 			opener = (active && active !== document.body && !el[0].contains(active)) ? active : lastPressed;
+			el.show().find('.sspa-adhoc-close').trigger('focus');
 		}
-		el.show();
 	}
 	function hide() {
 		pop().hide();

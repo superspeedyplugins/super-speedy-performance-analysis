@@ -39,14 +39,27 @@ class SSPA_Community_Client {
     }
 
     public static function submit($row) {
-        $registered = self::register();
-        if (is_wp_error($registered)) {
-            return $registered;
-        }
         if (empty($row['payload_gzip'])
             || strlen($row['payload_gzip']) !== (int) $row['compressed_bytes']
             || !hash_equals($row['payload_sha256'], hash('sha256', $row['payload_gzip']))) {
             return self::error('sspa_outbox_integrity_failed', __('The local outbox bytes failed their integrity check.', 'super-speedy-performance-analysis'), true);
+        }
+
+        $json = SSPA_Community_Outbox::preview($row);
+        if (is_wp_error($json)) {
+            return self::error($json->get_error_code(), $json->get_error_message(), true);
+        }
+        $payload = json_decode($json);
+        if (JSON_ERROR_NONE !== json_last_error() || !($payload instanceof stdClass)) {
+            return self::error('sspa_outbox_integrity_failed', __('The local outbox bytes failed their integrity check.', 'super-speedy-performance-analysis'), true);
+        }
+        $privacy = SSPA_Community_Privacy::validate($payload);
+        if (is_wp_error($privacy)) {
+            return self::error($privacy->get_error_code(), $privacy->get_error_message(), true);
+        }
+        $registered = self::register();
+        if (is_wp_error($registered)) {
+            return $registered;
         }
 
         // The queued bytes are meant to survive anything, so the manifest is built from the
@@ -234,6 +247,7 @@ class SSPA_Community_Client {
         $url = isset($remote['upload_url']) ? $remote['upload_url'] : '';
         $required = isset($remote['required_headers']) && is_array($remote['required_headers']) ? $remote['required_headers'] : array();
         if (!wp_http_validate_url($url)
+            || 'https' !== wp_parse_url($url, PHP_URL_SCHEME)
             || 1 !== count($required)
             || !isset($required['Content-Type'])
             || 'application/gzip' !== strtolower($required['Content-Type'])) {
@@ -246,6 +260,8 @@ class SSPA_Community_Client {
             'method' => 'PUT',
             'timeout' => 120,
             'redirection' => 0,
+            // WordPress's default User-Agent includes this site's URL.
+            'user-agent' => 'Super Speedy Performance Analysis/' . SSPA_VERSION,
             'headers' => array('Content-Type' => 'application/gzip'),
             'body' => $row['payload_gzip'],
         ));
@@ -278,6 +294,8 @@ class SSPA_Community_Client {
             'method' => $method,
             'timeout' => $timeout,
             'redirection' => 0,
+            // WordPress's default User-Agent includes this site's URL.
+            'user-agent' => 'Super Speedy Performance Analysis/' . SSPA_VERSION,
             'headers' => $headers,
         );
         if (null !== $body) {

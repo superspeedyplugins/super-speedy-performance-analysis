@@ -2,6 +2,14 @@
 /** Isolated browser translation fixture; active only with its test cookie. */
 if (empty($_COOKIE['sspa_translation_test'])) return;
 $sspa_test_translations = array(
+    'Previous measurements' => 'Mesures précédentes',
+    'Recent measurements' => 'Mesures récentes',
+    'Current measurements' => 'Mesures actuelles',
+    'Previous median' => 'Médiane précédente',
+    'Current median' => 'Médiane actuelle',
+    'Failed requests' => 'Requêtes échouées',
+    'Comparison of every retained %s measurement for the previous and current measured setups.' => 'Comparaison des mesures %s précédentes et actuelles.',
+    '%s chart loaded.' => 'Graphique %s chargé.',
     'Window name' => 'Nom de la fenêtre',
     'Compare' => 'Comparer',
     'Loading the selected comparison…' => 'Chargement de la comparaison…',

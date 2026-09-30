@@ -34,6 +34,7 @@ class SSPA_Security_Detect {
             return null;
         }
         return ('probable' === (isset($detail['confidence']) ? $detail['confidence'] : ''))
+            /* translators: %s: the security service or plugin suspected of blocking the request. */
             ? sprintf(__('%s (probable)', 'super-speedy-performance-analysis'), $detail['label'])
             : $detail['label'];
     }

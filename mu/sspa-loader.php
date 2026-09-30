@@ -11,8 +11,8 @@ if (!defined('ABSPATH')) {
     return;
 }
 $sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
-    ? $_SERVER['HTTP_X_SSPA_TOKEN']
-    : (!empty($_POST['_sspa_profile_token']) ? $_POST['_sspa_profile_token'] : '');
+    ? $_SERVER['HTTP_X_SSPA_TOKEN'] // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- raw HMAC token bytes are verified below before profiling; WordPress sanitizers are unavailable during early bootstrap.
+    : (!empty($_POST['_sspa_profile_token']) ? $_POST['_sspa_profile_token'] : ''); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- profiling uses the expiring path-bound HMAC token verified below, not a WordPress nonce; preserve signed bytes before WordPress bootstrap.
 if (!$sspa_token_value) {
     return;
 }
@@ -47,7 +47,7 @@ if (!function_exists('sspa_token_verify')) {
 
 $sspa_tok = sspa_token_verify(
     $sspa_token_value,
-    isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/',
+    isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
     '%%SSPA_SECRET%%'
 );
 if (!$sspa_tok) {
@@ -72,6 +72,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 // sandbox tests; it only short-circuits the fatal handler, nothing else. Real visitor
 // requests never reach this code, so their protection is unchanged.
 if (!defined('WP_SANDBOX_SCRAPING')) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- WordPress core sandbox switch prevents an intentional isolated measurement from entering recovery mode.
     define('WP_SANDBOX_SCRAPING', true);
 }
 
@@ -106,6 +107,7 @@ if (!defined('SSPA_PROFILED_REQUEST')) {
 }
 
 if (!defined('DONOTCACHEPAGE')) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- standard page-cache integration constant prevents caching an authenticated profiling request.
     define('DONOTCACHEPAGE', true);
 }
 
@@ -138,6 +140,7 @@ unset($sspa_variant);
 // Degraded fallback when the db.php shim is not in place: core SAVEQUERIES still gives
 // SQL + time + caller summary (no row counts). The shim defines this earlier when active.
 if (!defined('SAVEQUERIES')) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- WordPress core query capture switch, enabled only for an authenticated profiling request.
     define('SAVEQUERIES', true);
 }
 
@@ -207,6 +210,7 @@ if (!empty($sspa_tok['flags']['ps'])) {
                     // are skipped or attribution lands on this loader instead of the plugin
                     // that actually reacted.
                     $sspa_frames = array();
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- bounded argument-free stack identifies the profiled query caller for plugin attribution.
                     foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 24) as $sspa_f) {
                         if (isset($sspa_f['file']) && __FILE__ !== $sspa_f['file']) {
                             $sspa_frames[] = array(

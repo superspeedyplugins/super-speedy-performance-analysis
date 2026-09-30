@@ -80,4 +80,5 @@ try {
 	git( $base, 'clone', '-q', $base . '/origin.git', $base . '/core' ); git( $base . '/core', 'config', 'user.name', 'Synthetic test' ); git( $base . '/core', 'config', 'user.email', 'test@example.invalid' ); file_put_contents( $base . '/core/new-core.txt', 'new core' ); commit( $base . '/core', 'advance core' ); git( $base . '/core', 'push', '-q', 'origin', 'main' );
 	expect( false !== strpos( gate( $root, '', true ), 'merge-base' ), 'fresh fetch detects core advancing after recorded tests' );
 	echo 'Fixtures retained: ' . $base . "\n";
+	require __DIR__ . '/pcp.php';
 } catch ( Throwable $e ) { fwrite( STDERR, 'FAIL: ' . $e->getMessage() . "\nFixtures: " . $base . "\n" ); exit( 1 ); }

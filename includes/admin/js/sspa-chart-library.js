@@ -16,11 +16,11 @@
 				if (window.SSPAECharts) {
 					resolve(window.SSPAECharts);
 				} else {
-					reject(new Error('ECharts did not initialise.'));
+					reject(new Error(wp.i18n.__("ECharts did not initialise.", "super-speedy-performance-analysis")));
 				}
 			};
 			script.onerror = function () {
-				reject(new Error('The local chart library could not be loaded.'));
+				reject(new Error(wp.i18n.__("The local chart library could not be loaded.", "super-speedy-performance-analysis")));
 			};
 			document.head.appendChild(script);
 		});

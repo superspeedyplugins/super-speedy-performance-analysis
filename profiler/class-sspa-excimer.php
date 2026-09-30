@@ -92,6 +92,7 @@ if (!class_exists('SSPA_Excimer')) {
             if (isset($_GET['wc-ajax']) || isset($_GET['rest_route'])) { // phpcs:ignore WordPress.Security.NonceVerification
                 return true;
             }
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only request classification requires the actual URI; it is not rendered or executed.
             $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
             $prefix = function_exists('rest_get_url_prefix') ? rest_get_url_prefix() : 'wp-json';
             return false !== strpos($uri, '/' . $prefix . '/');

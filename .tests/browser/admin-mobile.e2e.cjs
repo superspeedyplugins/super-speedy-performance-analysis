@@ -4,6 +4,17 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
   const results = [];
   try {
     await admin(page, 'overview');
+    const contrast = await page.locator('.sspa-score').evaluate(card => {
+      const colour = value => value.match(/[\d.]+/g).map(Number).slice(0, 3);
+      const luminance = rgb => rgb.reduce((sum, value, index) => {
+        const channel = value / 255;
+        return sum + (channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][index];
+      }, 0);
+      const foreground = luminance(colour(getComputedStyle(card.querySelector('.sspa-score-label')).color));
+      const background = luminance(colour(getComputedStyle(card).backgroundColor));
+      return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+    });
+    expect(contrast, 'Overview site score label contrast').toBeGreaterThanOrEqual(4.5);
     const tabs = await page.locator('#sspa_main .nav-tab').evaluateAll(nodes => nodes.map(n => n.dataset.tab));
     expect(tabs).toHaveLength(9);
     for (const direction of ['ltr', 'rtl']) {

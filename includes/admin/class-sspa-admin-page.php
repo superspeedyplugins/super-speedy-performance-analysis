@@ -173,6 +173,9 @@ class SSPA_Admin_Page {
             'retry' => __('Try again', 'super-speedy-performance-analysis'),
             'profile_unavailable' => __('The profile panel is unavailable. Reload this page to open the retained diagnostics.', 'super-speedy-performance-analysis'),
         ));
+        wp_set_script_translations('sspa-chart-library', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
+        wp_set_script_translations('sspa-history-chart', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
+        wp_set_script_translations('sspa-measurement-chart', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
         wp_set_script_translations('sspa-admin', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
         wp_set_script_translations('sspa-ajax-profile', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
         wp_localize_script('sspa-admin', 'sspa_admin', array(

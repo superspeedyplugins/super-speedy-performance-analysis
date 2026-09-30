@@ -523,6 +523,7 @@ class SSPA_Tools {
         }
 
         return sprintf(
+            /* translators: 1: PHP extension name, 2: PHP version, 3: PHP interface, 4: operating system, 5: PHP configuration directory, 6: installation commands */
             __("Hello,\n\nI am diagnosing a performance problem on my WordPress site and would like the PHP extension \"%1\$s\" installed.\n\nIt is free and open source, it runs entirely on the server, and it sends no data anywhere. It is a diagnostic profiler.\n\nMy environment as far as I can see it:\n- PHP %2\$s (%3\$s)\n- %4\$s\n- PHP ini scan directory: %5\$s\n\nThe usual install is:\n%6\$s\n\nIf this is not something you can install on my plan, could you let me know? Thank you.", 'super-speedy-performance-analysis'),
             $key,
             $env['php'],

@@ -12,7 +12,7 @@
 		var status = card.querySelector('.sspa-history-chart-status');
 		if (!node) {
 			if (status) {
-				status.textContent = 'The chart data could not be read: its data document is missing.';
+				status.textContent = wp.i18n.__("The chart data could not be read: its data document is missing.", "super-speedy-performance-analysis");
 			}
 			return null;
 		}
@@ -20,7 +20,7 @@
 			return JSON.parse(node.textContent);
 		} catch (error) {
 			if (status) {
-				status.textContent = 'The chart data could not be read: ' + error.message;
+				status.textContent = sprintf(/* translators: %s: parsing error message. */ wp.i18n.__("The chart data could not be read: %s", "super-speedy-performance-analysis"), error.message);
 			}
 			return null;
 		}
@@ -28,7 +28,7 @@
 
 	function unitValue(value, unit) {
 		if (value === null || typeof value === 'undefined') {
-			return 'Not measured';
+			return wp.i18n.__("Not measured", "super-speedy-performance-analysis");
 		}
 		if (unit === 'bytes') {
 			var suffixes = ['B', 'KB', 'MB', 'GB'];
@@ -45,14 +45,14 @@
 
 	function axisLabel(page) {
 		return page.label.replace(/^Admin\s+/i, 'wp-admin ').replace(/^Wc\s+/i, '')
-			+ (page.configuration ? ' (test ' + page.configuration.slice(0, 8) + ')' : '');
+			+ (page.configuration ? ' ' + sprintf(/* translators: %s: abbreviated test configuration identifier. */ wp.i18n.__("(test %s)", "super-speedy-performance-analysis"), page.configuration.slice(0, 8)) : '');
 	}
 
 	function pageTooltip(page, period) {
 		return '<strong>' + escapeText(axisLabel(page) + (period ? ' (' + period + ')' : '')) + '</strong>'
 			+ (page.relative_url ? '<br>' + escapeText(page.relative_url) : '')
 			+ '<br>' + escapeText(page.method + ' · ' + page.variant + ' · ' + page.object_cache_mode)
-			+ (page.configuration ? '<br>Test configuration: ' + escapeText(page.configuration) : '');
+			+ (page.configuration ? '<br>' + escapeText(sprintf(/* translators: %s: test configuration identifier. */ wp.i18n.__("Test configuration: %s", "super-speedy-performance-analysis"), page.configuration)) : '');
 	}
 
 	function point(pageLabel, point, offset) {
@@ -76,10 +76,10 @@
 
 	function faultSummary(faults) {
 		var labels = {
-			blocked: 'unsuccessful request',
-			transport_error: 'transport error',
-			http_error: 'HTTP error',
-			missing: 'missing measurement'
+			blocked: wp.i18n.__("unsuccessful request", "super-speedy-performance-analysis"),
+			transport_error: wp.i18n.__("transport error", "super-speedy-performance-analysis"),
+			http_error: wp.i18n.__("HTTP error", "super-speedy-performance-analysis"),
+			missing: wp.i18n.__("missing measurement", "super-speedy-performance-analysis")
 		};
 		var counts = {};
 		faults.forEach(function (fault) {
@@ -129,10 +129,10 @@
 			aria: {
 				enabled: true,
 				decal: {show: true},
-				description: 'Comparison of every retained ' + documentData.metric.label.toLowerCase() + ' measurement for the previous and current measured setups.'
+				description: sprintf(/* translators: %s: measurement metric name. */ wp.i18n.__("Comparison of every retained %s measurement for the previous and current measured setups.", "super-speedy-performance-analysis"), documentData.metric.label.toLowerCase())
 			},
 			color: ['#6b7280', '#2271b1', '#d63638'],
-			legend: {top: 0, data: ['Previous measurements', 'Recent measurements']},
+			legend: {top: 0, data: [wp.i18n.__("Previous measurements", "super-speedy-performance-analysis"), wp.i18n.__("Recent measurements", "super-speedy-performance-analysis")]},
 			grid: {left: 96, right: 28, top: 54, bottom: 180},
 			tooltip: {
 				trigger: 'item',
@@ -149,18 +149,18 @@
 				formatter: function (params) {
 					var data = params.data || {};
 					var page = byKey[data.value[0]];
-					var heading = page ? pageTooltip(page, data.period)
+					var heading = page ? pageTooltip(page, data.period === 'previous' ? wp.i18n.__("previous", "super-speedy-performance-analysis") : wp.i18n.__("recent", "super-speedy-performance-analysis"))
 						: '<strong>' + escapeText(data.value[0] + ' (' + data.period + ')') + '</strong>';
 					if (data.summary) {
-						return heading + '<br>' + data.summary;
+						return heading + '<br>' + escapeText(data.summary);
 					}
 					var value = Array.isArray(data.value) ? data.value[1] : data.value;
-					var lines = [heading, unitValue(value, unit)];
+					var lines = [heading, escapeText(unitValue(value, unit))];
 					if (data.savedPoint && data.savedPoint.state) {
 						lines.push(escapeText((strings.states[data.savedPoint.state] || strings.request_unavailable) + (data.responseCode ? ' (HTTP ' + data.responseCode + ')' : '')));
 					}
 					if (data.runId) {
-						lines.push('Analysis #' + data.runId + (data.sample ? ', sample ' + data.sample : ''));
+						lines.push(escapeText(data.sample ? sprintf(/* translators: 1: analysis ID, 2: sample number. */ wp.i18n.__("Analysis #%1$d, sample %2$d", "super-speedy-performance-analysis"), data.runId, data.sample) : sprintf(/* translators: %d: analysis ID. */ wp.i18n.__("Analysis #%d", "super-speedy-performance-analysis"), data.runId)));
 					}
 					if (data.savedPoint) {
 						var php = data.savedPoint.evidence && data.savedPoint.evidence.php_diagnostics;
@@ -196,9 +196,9 @@
 				{type: 'slider', xAxisIndex: 0, bottom: 14, height: 24, filterMode: 'filter', startValue: 0, endValue: visibleEnd}
 			] : [{type: 'inside', xAxisIndex: 0, filterMode: 'filter'}],
 			series: [
-				{name: 'Previous measurements', type: 'scatter', symbolSize: 9, itemStyle: {color: '#6b7280'}, data: previousPoints},
-				{name: 'Recent measurements', type: 'scatter', symbolSize: 9, itemStyle: {color: '#2271b1'}, data: currentPoints},
-				{name: 'Errors', type: 'scatter', symbol: 'triangle', symbolSize: 15, itemStyle: {color: '#d63638'}, data: failures}
+				{name: wp.i18n.__("Previous measurements", "super-speedy-performance-analysis"), type: 'scatter', symbolSize: 9, itemStyle: {color: '#6b7280'}, data: previousPoints},
+				{name: wp.i18n.__("Recent measurements", "super-speedy-performance-analysis"), type: 'scatter', symbolSize: 9, itemStyle: {color: '#2271b1'}, data: currentPoints},
+				{name: wp.i18n.__("Errors", "super-speedy-performance-analysis"), type: 'scatter', symbol: 'triangle', symbolSize: 15, itemStyle: {color: '#d63638'}, data: failures}
 			]
 		};
 	}
@@ -209,7 +209,7 @@
 		if (!mount || !documentData || !documentData.pages.length) {
 			return;
 		}
-		status.textContent = 'Loading chart…';
+		status.textContent = wp.i18n.__("Loading chart…", "super-speedy-performance-analysis");
 		SSPAChartLibrary.load().then(function (echarts) {
 			var chart = mount.sspaChart || echarts.init(mount, null, {renderer: 'canvas'});
 			mount.sspaChart = chart;
@@ -227,7 +227,7 @@
 			chart.on('click', function (event) {
 				if (event.data && event.data.savedPoint) inspectPoint(card, event.data.savedPoint);
 			});
-			status.textContent = documentData.metric.label + ' chart loaded.';
+			status.textContent = sprintf(/* translators: %s: measurement metric name. */ wp.i18n.__("%s chart loaded.", "super-speedy-performance-analysis"), documentData.metric.label);
 			if (!mount.sspaResizeObserver && window.ResizeObserver) {
 				mount.sspaResizeObserver = new ResizeObserver(function () {
 					chart.resize();
@@ -337,7 +337,7 @@
 		var card = this.closest('[data-sspa-history-chart]');
 		var status = card.querySelector('.sspa-history-chart-status');
 		var documentData = card.sspaDocument || readDocument(card);
-		status.textContent = 'Loading ' + select.find(':selected').text().toLowerCase() + '…';
+		status.textContent = sprintf(/* translators: %s: measurement metric name. */ wp.i18n.__("Loading %s…", "super-speedy-performance-analysis"), select.find(':selected').text().toLowerCase());
 		$.post(ajaxurl, {
 			action: 'sspa_history_series',
 			nonce: sspa_admin.nonce,
@@ -348,14 +348,14 @@
 		}).done(function (response) {
 			if (!response.success) {
 				select.val(documentData.metric.key);
-				status.textContent = response.data || 'The metric could not be loaded.';
+				status.textContent = response.data || wp.i18n.__("The metric could not be loaded.", "super-speedy-performance-analysis");
 				return;
 			}
 			$(card).find('.sspa-history-chart-table').html(response.data.table);
 			render(card, response.data.document);
 		}).fail(function () {
 			select.val(documentData.metric.key);
-			status.textContent = 'The metric could not be loaded.';
+			status.textContent = wp.i18n.__("The metric could not be loaded.", "super-speedy-performance-analysis");
 		}).always(function () {
 			select.prop('disabled', false);
 		});

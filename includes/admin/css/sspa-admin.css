@@ -111,8 +111,8 @@
 	color: #fff;
 }
 
-#sspa_main .sspa-score.good { background: #00a32a; }
-#sspa_main .sspa-score.ok { background: #dba617; }
+#sspa_main .sspa-score.good { background: #006b1b; }
+#sspa_main .sspa-score.ok { background: #765800; }
 #sspa_main .sspa-score.bad { background: #b32d2e; }
 
 #sspa_main .sspa-score-number {
@@ -125,7 +125,6 @@
 #sspa_main .sspa-score-denom {
 	font-size: 18px;
 	font-weight: 400;
-	opacity: 0.75;
 }
 
 #sspa_main .sspa-insights {

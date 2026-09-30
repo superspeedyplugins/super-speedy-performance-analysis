@@ -5,8 +5,8 @@ SQL time, RAM and page speed, with evidence.
 
 **[Download the plugin zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip)**
 from the [Releases page](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases).
-Once installed it checks for its own updates, so new versions appear on your Plugins screen
-like any other update.
+The GitHub release includes the Super Speedy update checker. The WordPress.org edition
+uses WordPress.org updates and omits that checker.
 
 ## What it does
 
@@ -72,7 +72,8 @@ scheduled events, the hidden checkout product and the low-privilege test custome
 1. [Download the zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip)
    and upload it via Plugins -> Add New -> Upload, or unzip into `wp-content/plugins/`.
 2. Activate it through the Plugins menu.
-3. Go to Super Speedy -> Performance Analysis and run your first analysis.
+3. Open Performance Analysis in the admin menu, or Super Speedy -> Performance Analysis
+   when the shared Super Speedy menu is installed.
 
 Or install the public release zip directly over SSH with WP-CLI:
 
@@ -93,9 +94,11 @@ sources are in [`.kb/`](.kb/) in this repo.
 
 ## Community sharing
 
-Sharing anonymised results is strictly opt-in, and the Share tab shows the exact payload
-before anything is sent. Never shared: your domain, URLs, raw SQL, emails or customer data -
-your site is a random ID. The public community database this feeds is still being built.
+Sharing profiling evidence is opt-in, and the Share tab provides a payload preview. The
+evidence archive removes identifying site and customer details and uses a random installation
+identifier. Network requests still expose their source IP address and request headers to the
+receiving service. Traffic recording stays local. See [External services in readme.txt](readme.txt)
+for the service hosts, registration data, archive upload flow and privacy-policy link.
 
 ## Licence
 
