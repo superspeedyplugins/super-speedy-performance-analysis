@@ -1,0 +1,59 @@
+name: AJAX feature release gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  eligibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a maintainer-owned branch for the private runtime environment
+        env:
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+        run: test "$HEAD_REPOSITORY" = "$BASE_REPOSITORY"
+
+  feature-release-gate:
+    needs: eligibility
+    runs-on: [self-hosted, linux, ssp-native-wordpress]
+    concurrency:
+      group: pa-ajax-release-runtime
+      cancel-in-progress: false
+    steps:
+      - name: Check out exact feature head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Check out approved private plans
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SSPA_GATE_METADATA_REPOSITORY }}
+          ref: main
+          ssh-key: ${{ secrets.SSPA_GATE_METADATA_DEPLOY_KEY }}
+          path: .gate-metadata
+          fetch-depth: 0
+
+      - name: Execute traffic, inactive/active collector, AJAX browser and retention checks
+        run: php .build/validate-feature-release-gate.php --record-tests
+
+      - name: Enforce executed evidence, current core and SQL approval
+        env:
+          SSPA_GATE_METADATA_ROOT: ${{ github.workspace }}/.gate-metadata
+          SSPA_GATE_METADATA_REPOSITORY: ${{ vars.SSPA_GATE_METADATA_REPOSITORY }}
+        run: php .build/validate-feature-release-gate.php
+
+      - name: Retain execution logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pa-ajax-release-evidence-${{ github.event.pull_request.head.sha }}
+          path: .data/release-gate/
+          if-no-files-found: error

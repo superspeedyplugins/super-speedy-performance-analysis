@@ -21,6 +21,8 @@
 set -uo pipefail
 
 _bh="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Both existing edition entrypoints source this manifest before staging.
+php "$_bh/validate-feature-release-gate.php" || exit 1
 # shellcheck source=lib.sh
 source "$_bh/lib.sh"
 

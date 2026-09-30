@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "core_branch": "main",
+  "plan": {
+    "repository_environment": "SSPA_GATE_METADATA_REPOSITORY",
+    "ref": "main",
+    "path": "super-speedy-performance-analysis/.docs/2026-09-08-endpoint-activity-and-submission-retention.md"
+  },
+  "release": {
+    "core_bugs": [],
+    "sql_reviews": [
+      "super-speedy-performance-analysis/.docs/2026-09-04-fast-ajax-endpoint-sql-review.md"
+    ],
+    "dependencies": [
+      {
+        "id": "endpoint-controller",
+        "environment": "SSPA_GATE_SPRO_ROOT"
+      },
+      {
+        "id": "parallel-dev",
+        "environment": "SSPA_GATE_PARALLEL_DEV_ROOT",
+        "paths": [
+          "bin/lib.sh"
+        ]
+      }
+    ],
+    "runtime_sites": [
+      "SSPA_GATE_SITE_PATH"
+    ],
+    "tests": [
+      {
+        "id": "gate-contract",
+        "command": "php .tests/release-gate/run.php",
+        "covers": [
+          "gate_contract"
+        ],
+        "required_output": [
+          "PASS: default validator rejects missing executed evidence"
+        ]
+      },
+      {
+        "id": "traffic-contract",
+        "command": "bash .tests/run-tests.sh 40-traffic",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "collector-inactive",
+        "command": "bash .tests/run-tests.sh 41-traffic",
+        "covers": [
+          "collector_inactive"
+        ],
+        "required_output": [
+          "PASS: inactive collector performs no event write",
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "collector-active",
+        "command": "bash .tests/run-tests.sh 42-traffic",
+        "covers": [
+          "collector_active"
+        ],
+        "required_output": [
+          "PASS: one ordinary request appends one request event",
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "traffic-commerce",
+        "command": "bash .tests/run-tests.sh 43-traffic",
+        "covers": [
+          "traffic_commerce"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "ajax",
+        "command": "bash .tests/run-tests.sh fast-ajax",
+        "covers": [
+          "ajax",
+          "before_after",
+          "browser"
+        ],
+        "required_output": [
+          "PASS: three actual registered requests retain immutable profile captures",
+          "PASS: expired collection writes no AJAX observation during the later outcomes window",
+          "PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors",
+          "5 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "boot",
+        "command": "bash .tests/run-tests.sh 70-community-boot",
+        "covers": [
+          "retention"
+        ],
+        "required_output": [
+          "PASS: invalid captured timings surface an export error",
+          "1 case file(s) run, 0 failed"
+        ]
+      }
+    ]
+  }
+}
