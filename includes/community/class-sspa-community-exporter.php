@@ -913,6 +913,10 @@ class SSPA_Community_Exporter {
             if (is_wp_error(SSPA_Community_Privacy::validate($data))) {
                 continue;
             }
+            // Maps must encode as objects; list-valued settings must stay arrays.
+            foreach (SSPA_Community_State::MAPS as $map) {
+                $data[$map] = (object) $data[$map];
+            }
             self::add_evidence($evidence, 'sspa/component-state', $measurement_version, $data);
         }
     }

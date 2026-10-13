@@ -66,6 +66,9 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Changelog ==
 
+= 0.43.2 (13th October 2026) =
+* Fixed `invalid_component_state_evidence` when a shared component has empty settings or state maps.
+
 = 0.43.1 (20th September 2026) =
 * WordPress.org builds run every Plugin Check check and reject errors and warnings outside the documented database exceptions.
 * Added external-service disclosures, removal instructions and links to the chart source and build tools.

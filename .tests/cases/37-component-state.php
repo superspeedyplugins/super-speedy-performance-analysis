@@ -51,7 +51,7 @@ function sspa_state_record($payload, $slug) {
     }
     foreach ((array) $payload['evidence'] as $item) {
         if ('sspa/component-state' === $item['type'] && $slug === $item['data']['component']['slug']) {
-            return $item['data'];
+            return json_decode(SSPA_Community_Schema::encode($item['data']), true);
         }
     }
     return null;
