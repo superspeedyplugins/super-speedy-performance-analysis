@@ -70,7 +70,7 @@ class SSPA_HTTP_API_Report {
             $call['worst_ms'] = null === $call['worst_ms'] ? null : round((float) $call['worst_ms'], 1);
             $call['query_keys'] = array_values(array_keys($call['query_keys']));
             sort($call['query_keys'], SORT_STRING);
-            $call['page_keys'] = array_values(array_keys($call['page_keys']));
+            $call['page_keys'] = array_map('strval', array_keys($call['page_keys']));
             sort($call['page_keys'], SORT_STRING);
             $call['response_class'] = count($call['response_classes']) === 1
                 ? (string) key($call['response_classes'])

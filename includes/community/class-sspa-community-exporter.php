@@ -150,7 +150,9 @@ class SSPA_Community_Exporter {
             self::add_admin_save($evidence, $run, $profiles[0], $page_refs[(int) $profiles[0]['id']], $measurement_version);
         }
         self::add_toggle_context($evidence, $run, $measurement_version, $submission_uuid, $versions);
-        self::add_component_state($evidence, $run, $measurement_version, $submission_uuid, $versions);
+        if ($consent_version >= 2) {
+            self::add_component_state($evidence, $run, $measurement_version, $submission_uuid, $versions);
+        }
 
         usort($evidence, array(__CLASS__, 'sort_evidence'));
         $manifest = self::manifest($evidence);
@@ -441,7 +443,7 @@ class SSPA_Community_Exporter {
                 'component' => $component,
                 'component_version' => isset($versions[$version_key]) ? $versions[$version_key] : null,
                 'caller' => SSPA_Community_Privacy::function_name($call['caller'], $component['type']),
-                'page_classes' => array_values(array_keys($page_classes)),
+                'page_classes' => array_map('strval', array_keys($page_classes)),
                 'purpose' => (string) $call['purpose'],
                 'purpose_confidence' => (string) $call['purpose_confidence'],
                 'block_safety' => (string) $call['block_safety'],

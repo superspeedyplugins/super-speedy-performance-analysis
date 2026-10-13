@@ -42,7 +42,7 @@ function sspa_state_run_with($callbacks) {
         $status = SSPA_Run_Controller::status($run_id);
     } while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
 
-    return SSPA_Community_Exporter::build($run_id);
+    return SSPA_Community_Exporter::build($run_id, null, null, 'manual');
 }
 
 function sspa_state_record($payload, $slug) {
@@ -191,7 +191,7 @@ do {
 
 // The setting changes AFTER the run was measured but BEFORE the payload is exported.
 $GLOBALS['sspa_state_value'] = 'after-value';
-$payload = SSPA_Community_Exporter::build($run_id);
+$payload = SSPA_Community_Exporter::build($run_id, null, null, 'manual');
 remove_filter('sspa_component_state', $sspa_moving, 10);
 
 $timing = sspa_state_record($payload, 'sspa-timing-fixture');
@@ -236,7 +236,7 @@ do {
     $status = SSPA_Run_Controller::status($run_id);
 } while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
 
-$payload = SSPA_Community_Exporter::build($run_id);
+$payload = SSPA_Community_Exporter::build($run_id, null, null, 'manual');
 sspa_t(!is_wp_error($payload) && isset($payload['run']['change_cycle']), 'a cycle run carries its pairing on the run object');
 sspa_t(!is_wp_error($payload) && $cycle_uuid === $payload['run']['change_cycle']['cycle_uuid'], 'the cycle identifier survives');
 sspa_t(!is_wp_error($payload) && 'before' === $payload['run']['change_cycle']['phase'], 'the phase survives');
@@ -259,7 +259,7 @@ do {
     $status = SSPA_Run_Controller::status($run_id);
 } while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
 
-$payload = SSPA_Community_Exporter::build($run_id);
+$payload = SSPA_Community_Exporter::build($run_id, null, null, 'manual');
 sspa_t(!is_wp_error($payload) && null === $payload['run']['change_cycle'], 'an unrecognised phase is refused rather than published');
 
 // ---------------------------------------------------------------------------
@@ -366,7 +366,7 @@ $stored = (string) $wpdb->get_var($wpdb->prepare(
 ));
 sspa_t(false === strpos($stored, 'sspa-state-fixture'), 'a switched-off publisher is never even stored on the run');
 
-$payload = SSPA_Community_Exporter::build($run_id);
+$payload = SSPA_Community_Exporter::build($run_id, null, null, 'manual');
 sspa_t(null === sspa_state_record($payload, 'sspa-state-fixture'), 'and never reaches the payload');
 sspa_t(!is_wp_error($payload), 'the payload still builds with a publisher switched off');
 
@@ -381,7 +381,7 @@ do {
     $status = SSPA_Run_Controller::status($run_id);
 } while ($status && in_array($status['status'], array('queued', 'crawling', 'analysing'), true) && time() < $deadline);
 
-$payload = SSPA_Community_Exporter::build($run_id);
+$payload = SSPA_Community_Exporter::build($run_id, null, null, 'manual');
 sspa_t(is_array(sspa_state_record($payload, 'sspa-state-fixture')), 'and the publisher is captured again on the next run');
 
 // The consent text is not payload data and must not travel.

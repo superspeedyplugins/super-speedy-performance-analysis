@@ -80,6 +80,10 @@ $wpdb->insert(SSPA_Schema::table('runs'), array(
         array('type' => 'plugin', 'slug' => 'wordpress-update-client', 'version' => '1.0.0'),
         array('type' => 'theme', 'slug' => 'storefront', 'version' => '4.6.0'),
     ))),
+    'share_context' => wp_json_encode(array('component_state' => SSPA_Community_State::sanitise_stored_records(array(array(
+        'component' => array('type' => 'plugin', 'slug' => 'usage-reporter'),
+        'options' => array('enabled' => true),
+    ))))),
     'plugin_set_hash' => md5('http-contract'),
     'started' => $now,
     'finished' => $now,
@@ -146,6 +150,13 @@ $profile_ids[] = sspa_http_profile($run_id, 'admin-edit-order', 'admin', sspa_ht
     ),
 )));
 
+// Numeric-looking page identifiers must remain strings through both array-key sets.
+$profile_ids[] = sspa_http_profile($run_id, '404', 'anon', sspa_http_capture(3, false, array(array(
+    'scheme' => 'https', 'url' => 'notfound.vendor.example/check', 'method' => 'GET',
+    'ms' => 1, 'code' => 200, 'blocking' => true, 'sslverify' => true,
+    'component' => 'usage-reporter', 'ctype' => 'plugin', 'caller' => 'Usage_Reporter::check',
+))));
+
 sspa_http_t(method_exists('SSPA_Report', 'http_calls'), 'stable SSPA_Report::http_calls surface exists');
 if (!method_exists('SSPA_Report', 'http_calls')) {
     sspa_retained_save('45-http', array('runs'=>array($run_id)));
@@ -155,6 +166,9 @@ if (!method_exists('SSPA_Report', 'http_calls')) {
 $result = SSPA_Report::http_calls($run_id);
 sspa_http_t(is_array($result) && 1 === $result['schema'] && $run_id === $result['run_id'], 'local HTTP inventory is versioned and run-bound');
 sspa_http_t(!empty($result['complete']) && empty($result['incomplete_reasons']), 'complete coverage is explicit');
+
+$notfound = sspa_http_find($result['calls'], 'notfound.vendor.example');
+sspa_http_t($notfound && array('404') === $notfound['page_keys'], '404 page key remains a string in the local HTTP inventory');
 
 $fs = sspa_http_find($result['calls'], 'api.freemius.com', '/v1/installs/{id}/updates/latest.json');
 sspa_http_t($fs && 3 === $fs['calls'] && abs(1620.3 - $fs['total_ms']) < 0.01 && 543.1 === $fs['worst_ms'], 'three Freemius checks aggregate by normalised endpoint, method and component');
@@ -198,13 +212,26 @@ if (is_array($payload)) {
 }
 sspa_http_t(is_array($payload) && !is_wp_error($payload) && count($shared) === count($result['calls']), 'opt-in community payload carries every external HTTP aggregate');
 $shared_json = wp_json_encode($shared);
+$wire = json_decode(SSPA_Community_Schema::encode($shared), true);
+$notfound_shared = sspa_http_find(array_column($wire, 'data'), 'notfound.vendor.example');
+sspa_http_t($notfound_shared && array('404') === $notfound_shared['page_classes'], '404 page class remains a JSON string in community evidence');
+
 sspa_http_t(false === strpos($shared_json, 'private.example') && false === strpos($shared_json, home_url('/')), 'shared HTTP evidence passes the site-identity privacy boundary');
 
 $old_consent = get_option('sspa_share_consent_version', null);
+$snapshot_before = $wpdb->get_var($wpdb->prepare('SELECT share_context FROM %i WHERE id = %d', SSPA_Schema::table('runs'), $run_id));
+update_option('sspa_share_consent_version', 1, false);
+$consent_one = SSPA_Community_Exporter::build($run_id, wp_generate_uuid4(), SSPA_Community_Schema::canonical_time(), 'automatic');
+sspa_http_t(is_array($consent_one) && 1 === $consent_one['client']['consent_version'] && !in_array('sspa/component-state', wp_list_pluck($consent_one['evidence'], 'type'), true), 'automatic consent version 1 excludes component-state evidence');
+$manual = SSPA_Community_Exporter::build($run_id, wp_generate_uuid4(), SSPA_Community_Schema::canonical_time(), 'manual');
+sspa_http_t(is_array($manual) && SSPA_Community_Schema::CONSENT_VERSION === $manual['client']['consent_version'] && in_array('sspa/component-state', wp_list_pluck($manual['evidence'], 'type'), true), 'explicit manual sharing includes state under the current consent contract');
+sspa_http_t(1 === (int) get_option('sspa_share_consent_version'), 'manual export does not change automatic sharing consent');
 update_option('sspa_share_consent_version', 2, false);
 $legacy_consent_payload = SSPA_Community_Exporter::build($run_id, wp_generate_uuid4(), SSPA_Community_Schema::canonical_time(), 'automatic');
 $legacy_consent_types = is_array($legacy_consent_payload) ? wp_list_pluck($legacy_consent_payload['evidence'], 'type') : array();
 sspa_http_t(is_array($legacy_consent_payload) && 2 === $legacy_consent_payload['client']['consent_version'] && !in_array('sspa/http-call', $legacy_consent_types, true), 'existing version 2 consent never silently widens to HTTP endpoint sharing');
+sspa_http_t(is_array($legacy_consent_payload) && in_array('sspa/component-state', $legacy_consent_types, true), 'automatic consent version 2 includes component-state evidence');
+sspa_http_t($snapshot_before === $wpdb->get_var($wpdb->prepare('SELECT share_context FROM %i WHERE id = %d', SSPA_Schema::table('runs'), $run_id)), 'consent-scoped exports leave the captured state unchanged');
 if (null === $old_consent) {
     delete_option('sspa_share_consent_version');
 } else {

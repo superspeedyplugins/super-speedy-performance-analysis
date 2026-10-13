@@ -66,6 +66,10 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Changelog ==
 
+= 0.43.3 (13th October 2026) =
+* Fixed `invalid_http_call_evidence` when an outbound HTTP call is recorded on the 404 page.
+* Component settings are included in automatic sharing only when the recorded consent covers them.
+
 = 0.43.2 (13th October 2026) =
 * Fixed `invalid_component_state_evidence` when a shared component has empty settings or state maps.
 
