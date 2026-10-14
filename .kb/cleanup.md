@@ -29,6 +29,9 @@ classifier, so Dave publishes them.
 
 The Quick Start Guide (1695043) already exists on the parent term and was left unchanged.
 
+**14 October 2026, Dave: hold both drafts for edits.** They stay drafts; do not publish or delete
+the sources until he has edited them.
+
 ## Order of operations for Dave
 
 1. Delete article 1695041 and term 4655 (below) **before** publishing 1695504. The
