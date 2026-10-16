@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.43.14
+Stable tag: 0.43.15
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -70,6 +70,9 @@ History charts use a locally bundled custom build of Apache ECharts 6.1.0 and it
 The readable chart entry point, pinned dependency lockfile and build script are at https://github.com/superspeedyplugins/super-speedy-performance-analysis/tree/main/.build/echarts . From that directory in a source checkout, run `npm ci` followed by `npm run build` to regenerate includes/admin/vendor/echarts-history.min.js and its licence files. Upstream readable source is at https://github.com/apache/echarts/tree/6.1.0 and https://github.com/ecomfe/zrender ; the exact zrender version is recorded in the lockfile.
 
 == Changelog ==
+
+= 0.43.15 =
+* Traffic event batches name their table through a prepared identifier placeholder.
 
 = 0.43.14 =
 * Analysis emails go to the site administrator and report measured send/queue time.
