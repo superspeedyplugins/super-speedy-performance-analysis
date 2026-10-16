@@ -738,4 +738,4 @@ Case 102 plants only states that versions before 0.43.4 could create, and exerci
 `bash .tests/browser/run-regressions.sh checkout-translations` loads a French catalogue into WordPress i18n, opens the actual checkout disclosure and checks translated controls, plural messages and footer without creating an order.
 The translations journey keeps its original five-second canvas assertion; it uses the same entry preparation as the other browser journeys.
 
-Case 97 also builds and installs the actual wp.org diagnostic on its dedicated database-backed cache-scope site, invokes the real administrator action and checks that foreign transient families survive. Case 111 includes a dedicated native multisite ownership regression.
+Case 97 verifies the removed Super Speedy caches node and action URL are absent with both cache backend modes, while the remaining conditional controls stay available. Case 111 includes a dedicated native multisite ownership regression.

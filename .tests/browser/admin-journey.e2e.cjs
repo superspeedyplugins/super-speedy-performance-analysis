@@ -23,6 +23,9 @@ const {
 
     // 1. Admin bar, first submenu action, from a real front-end page: Analyse this page.
     await page.goto(site + "/?sspa_admin_journey=1");
+    await expect(page.locator("#wp-admin-bar-sspa-clear-ours")).toHaveCount(0);
+    await expect(page.locator('#wpadminbar a[href*="do=clear_ours"]')).toHaveCount(0);
+    console.log("PASS removed Super Speedy caches node and action URL are absent in the browser");
     const analyse = page.locator("#wp-admin-bar-sspa-adhoc > a");
     await expect(analyse).toBeAttached();
     await page.$eval("#wp-admin-bar-sspa-adhoc > a", (a) => a.click());

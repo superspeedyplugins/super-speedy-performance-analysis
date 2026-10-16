@@ -2,7 +2,7 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.43.17\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.43.18\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--feature-wporg-readiness\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3448,14 +3448,6 @@ msgstr ""
 msgid "Clear before measuring"
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:156
-msgid "Super Speedy caches"
-msgstr ""
-
-#: includes/class-sspa-admin-bar.php:158
-msgid "Our own transients only. Small and safe: nothing else on the site is touched."
-msgstr ""
-
 #: includes/class-sspa-admin-bar.php:165
 msgid "All transients"
 msgstr ""
@@ -3571,18 +3563,6 @@ msgstr ""
 #, php-format
 msgid "Purged %1$s for %2$s."
 msgstr ""
-
-#: includes/class-sspa-admin-bar.php:417
-msgid "Super Speedy caches cannot be cleared separately on this site. Use Object cache to flush the persistent cache. Nothing was cleared."
-msgstr ""
-
-#. translators: %d: number of database rows removed.
-#: includes/class-sspa-admin-bar.php:427
-#, php-format
-msgid "Cleared %d Super Speedy cache row."
-msgid_plural "Cleared %d Super Speedy cache rows."
-msgstr[0] ""
-msgstr[1] ""
 
 #. translators: %d: number of stale database rows also removed.
 #: includes/class-sspa-admin-bar.php:441

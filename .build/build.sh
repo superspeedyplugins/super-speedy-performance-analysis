@@ -52,7 +52,6 @@ ssx_hook_wporg() {
     ssx_rm "$stage" ".gitmodules"
     ssx_rm "$stage" "SKILL.md" "README.md"
     php "$_bh/wporg-readme.php" "$stage/readme.txt" || ssx_die "wp.org readme preparation failed"
-    php "$_bh/wporg-cache-scope.php" "$stage/includes/class-sspa-admin-bar.php" || ssx_die "wp.org cache scope preparation failed"
     # WordPress installs files, not empty directory entries. Keep the archive tree identical.
     find "$stage" -depth -type d -empty -delete || ssx_die "wp.org empty-directory cleanup failed"
 
