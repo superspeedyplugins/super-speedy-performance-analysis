@@ -11,20 +11,34 @@ foreach ((array)get_option('active_plugins', array()) as $file) {
 }
 // Retain the SQL fixture, but disarm it before unrelated measurements.
 update_option('zz_pa_export_probe_armed', 0, true);
+// Case 99's malformed-SQL privacy probe must not run on unrelated anonymous pages.
+update_option('zz_sspa_export_review', 0, true);
 // Retained case89 MU fixture reads this at template_redirect. Store the neutral value
 // autoloaded so unrelated anonymous requests neither sleep nor issue a fixture SQL query.
 update_option('sspa_traffic_delay_ms', 0, true);
 wp_set_option_autoload('sspa_traffic_delay_ms', true);
 wp_cache_flush();
 
-// Cases declare vendor activation themselves (case88 activates genuine QM). Return to
-// ordinary PA capture at entry and retain the displaced QM file through the real API.
+// Cases declare vendor activation themselves (case 88 activates genuine QM).
+// Fixture preparation is allowed to archive a test drop-in on this guarded site;
+// production code must never displace it. No removed swap API is used here.
 if (SSPA_Helper_Files::qm_plugin_active()) {
     deactivate_plugins('query-monitor/query-monitor.php', true);
     echo "ENTRY RESET: deactivated retained Query Monitor fixture\n";
 }
-if (SSPA_Helper_Files::dropin_is_stale_qm()) {
-    $repaired = SSPA_Helper_Files::replace_stale_qm_dropin();
-    if (is_wp_error($repaired)) throw new RuntimeException($repaired->get_error_message());
-    echo "ENTRY RESET: archived retained QM drop-in and installed PA drop-in\n";
+if (in_array(SSPA_Helper_Files::dropin_status(), array('qm', 'foreign'), true)) {
+    $was_symlink = is_link(SSPA_Helper_Files::dropin_path());
+    $retained = SSPA_PLUGIN_DIR . '.data/test-entry-dropins/' . basename(rtrim(ABSPATH, '/'));
+    wp_mkdir_p($retained);
+    if (!rename(SSPA_Helper_Files::dropin_path(), $retained . '/db.php')) {
+        throw new RuntimeException('Cannot archive preceding test drop-in');
+    }
+    // Discard the old symlink resolution before creating a file at the same path.
+    clearstatcache(true, SSPA_Helper_Files::dropin_path());
+    SSPA_Helper_Files::ensure_installed();
+    echo "ENTRY RESET: archived test drop-in and installed PA drop-in\n";
+    // Clearing CLI's realpath does not clear the serving SAPI. Match case 88's
+    // documented vendor-link boundary before the next case sends HTTP requests.
+    $settle_seconds = $was_symlink ? max(3, (int) ini_get('realpath_cache_ttl') + 5) : 3;
+    sleep($settle_seconds);
 }

@@ -2,8 +2,8 @@
 
 _Generated 2026-09-08. Audited feature tree31ecf46. 40 real-system scenarios: 37 PHP cases and 3 browser scenarios across the areas below. Convention: `.tests/run-tests.sh` discovers every PHP case under `.tests/cases/`, runs it through `wp eval-file` on a persistent isolated WordPress site, then runs three registered browser scripts; assertions inspect real requests, state or output. Pure/helper and directly fabricated evidence tests are excluded from this E2E count._
 
-The runner currently discovers64 PHP files plus3 browser scenarios. That is an inventory count,
-not67 proven end-to-end workflows or a coverage percentage. Failure means a nonzero PHP exit,
+The runner now discovers 103 PHP case files plus five registered browser groups. That is an
+inventory count, not 108 proven end-to-end workflows or a coverage percentage. Failure means a nonzero PHP exit,
 a FAIL line, no PASS line, a browser failure or zero matching cases.
 
 ## Verified execution versus available coverage
@@ -21,7 +21,7 @@ a FAIL line, no PASS line, a browser failure or zero matching cases.
 ### Installation, environment and runtime safety
 
 - **01-health.php** - verifies the live schema, secret, helper installation, placeholder replacement and recovery from a stranded profiling drop-in.
-- **06-qm-coexist.php** - proves a foreign Query Monitor-shaped `db.php` is preserved while profiling degrades safely and temporary hold/swap mechanics restore it.
+- **06-qm-coexist.php** - proves a foreign Query Monitor-shaped `db.php` is preserved while profiling degrades safely and obsolete swap requests leave it unchanged.
 - **44-file-mods-disallowed.php** - proves `DISALLOW_FILE_MODS` blocks helper writes, reports the reason and still permits byte-for-byte restoration/removal of owned files.
 - **52-release-hardening.php** - checks the reusable hidden checkout product, bounded signed profiling requests, atomic run ownership, lazy bootstrap and opt-in uninstall state on the live site.
 
@@ -123,7 +123,6 @@ a FAIL line, no PASS line, a browser failure or zero matching cases.
 - **Detailed tracing must preserve callback behaviour** - case71 proves ordinary init execution and registration separation, but does not exercise recursive actions, same-priority additions, removal during dispatch, changed accepted arguments, references or request-exiting callbacks as a behaviour-equivalence matrix. _Test:_ run a fixture with each behaviour with tracing off/on → compare response and retained state exactly → verify honest partial counts/timings; leave fixtures. This is the highest-value missing AJAX regression.
 - **Boot evidence through durable receiver storage** - case70 starts from a constructed stored capture, and receiver processing acceptance cannot prove archived bytes and persisted data survive the full pipeline. _Test:_ perform a real baseline including includes/hooks/render/assets → explicitly share through an isolated receiver → retrieve the immutable compressed archive and persisted records → compare approved fields and verify prohibited fields absent.
 - **AJAX profiling authorisation and control lifecycle** - the browser case compares windows prepared by PHP; it does not drive Start/Stop or refusal of unauthorised/cross-site requests. _Test:_ administrator starts, exercises and stops a real window through the UI → verify saved records → repeat mutation requests as anonymous/subscriber and with missing/invalid nonce → verify rejection and unchanged collector state.
-- **Crash recovery across a killed profiling process** - helper recovery is covered, but not a process killed while a foreign database drop-in is held. _Test:_ begin a real profile → kill its worker after swapping the owned helper → make an ordinary request → assert original drop-in restored and the incomplete run reported.
 
 ### Medium risk
 
@@ -214,7 +213,7 @@ _Generated 2026-09-03. 47 end-to-end tests across eight areas. Convention: the m
 
 - **01-health.php** - creates the real schema, secret, MU-loader and database drop-in, then checks placeholder replacement and stale-file recovery.
 - **05-run-e2e.php** - crawls the real WordPress and WooCommerce catalogue and admin pages, then checks captures, profiles, component statistics, row counts and cleanup.
-- **06-qm-coexist.php** - proves a real run degrades safely around a Query Monitor-shaped foreign database drop-in and restores it after a controlled swap.
+- **06-qm-coexist.php** - proves a real run degrades safely around a Query Monitor-shaped foreign database drop-in and preserves it even when an obsolete caller requests a swap.
 - **15-tools.php** - reads the real server capabilities, generates host-specific installation and database grant instructions, and proves the Tools path executes none of them.
 - **16-digests.php** - profiles a real query and records performance-schema digest evidence when the server permits it, or reports the real unavailable state.
 - **18-excimer.php** - profiles a real request and checks Excimer samples, timings, component attribution and phase buckets when the extension is available.
@@ -331,3 +330,7 @@ _Generated 2026-09-03. 47 end-to-end tests across eight areas. Convention: the m
 - The build smoke covers opted-in uninstall cleanup separately. It is not counted because this report follows the `.tests` end-to-end convention.
 - The Observatory's model, manifest and recorder tests are excluded. Its Chromium viewer journey and the separate wp-admin History chart journey cross real HTTP and browser boundaries.
 - Cases 21, 22, 35, 39 and 40 remain valuable integration or contract coverage even though they fall outside this report's strict scope.
+
+## W0 drop-in verification, 16 October 2026
+
+Case 60 now kills a real controller process carrying an explicitly simulated pre-0.43.4 hold and proves janitor recovery, with no new production swap operation. Case 101 drives the authenticated UI AJAX start action using a connection-supplying foreign drop-in: degraded completion, HTTP 200 front end/admin, no displacement controls, and an owner-naming Cache Impact error with both foreign files unchanged. Case 102 covers inherited-hold cancellation, unsupported legacy cache queues, idle recovery, conflicting foreign files and symlinks, lost vendor targets and actual uninstall. The final 0.43.4 working-tree run passed case 101's 13 and case 102's 14 assertions.

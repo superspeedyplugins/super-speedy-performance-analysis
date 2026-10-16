@@ -65,9 +65,6 @@ $deep = SSPA_Run_Controller::start(array(
     'url' => $target,
     'suspects' => array('woocommerce'),
     'cache_modes' => false,
-    // Earlier coverage deliberately retains a foreign/QM drop-in. Exercise the supported
-    // temporary swap so this test reaches target preflight rather than its prerequisite.
-    'swap_dropin' => true,
     'user_id' => 1,
 ));
 sspa_mhg_t(is_wp_error($deep) && 'sspa_target_preflight_blocked' === $deep->get_error_code(), 'Plugin Impact Analysis refuses to queue a blocked target');

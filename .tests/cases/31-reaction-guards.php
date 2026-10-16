@@ -161,7 +161,6 @@ sspa_rg_t($sspa_s && 'done' === $sspa_s['status'], 'source run done: ' . ($sspa_
 
 $sspa_sweep = SSPA_Run_Controller::start(array(
     'type' => 'deep',
-    'swap_dropin' => true, // The retained crash fixture may own db.php.
     'suspects' => array('sspa-guard-dep'),
     'page_keys' => array('home'),
     'cache_modes' => false,
@@ -272,7 +271,6 @@ if (is_wp_error($sspa_sweep)) {
     $sspa_before = (int) get_option('sspa_guard_orphaned');
     $sspa_again = SSPA_Run_Controller::start(array(
         'type' => 'deep',
-        'swap_dropin' => true,
         'suspects' => array('sspa-guard-dep'),
         'page_keys' => array('home'),
         'cache_modes' => false,

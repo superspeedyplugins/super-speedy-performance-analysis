@@ -10,10 +10,10 @@ global $wpdb;
 
 // Simulate QM's drop-in without needing wp.org network access: a db.php that identifies
 // as Query Monitor and defines SAVEQUERIES (we only test coexistence + degraded capture
-// mechanics here; the rows-from-QM path needs real QM and is covered manually).
+// mechanics here; the rows-from-QM path needs real QM and is covered by case 88).
 $fake_qm = "<?php\n/**\n * Plugin Name: Query Monitor Database Class (Drop-in)\n * SSPA retained QM fixture\n */\nif (!defined('SAVEQUERIES')) { define('SAVEQUERIES', true); }\n";
 file_put_contents(WP_CONTENT_DIR . '/db.php', $fake_qm);
-sleep(3); // let apache's opcache revalidate the swapped drop-in (revalidate_freq=2)
+sleep(3); // let php-fpm's opcache revalidate the test fixture (revalidate_freq=2)
 
 sspa_t(SSPA_Helper_Files::dropin_status() === 'qm', 'QM drop-in detected as qm');
 
@@ -44,13 +44,13 @@ if (is_wp_error($run_id)) {
     sspa_t(is_array($capture) && in_array($capture['overview']['capture_mode'], array('degraded', 'qm'), true), 'capture mode degraded/qm: ' . ($capture ? $capture['overview']['capture_mode'] : '?'));
 }
 
-// Hold/swap mechanics: displace the foreign drop-in, verify ours goes in, restore.
-sspa_t(SSPA_Helper_Files::hold_foreign_dropin() === true, 'foreign drop-in held');
-sspa_t(SSPA_Helper_Files::dropin_status() === 'ours', 'our shim installed during hold');
-sspa_t(file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold'), 'hold file exists');
-sspa_t(SSPA_Helper_Files::restore_held_dropin() === true, 'held drop-in restored');
-sspa_t(strpos(file_get_contents(WP_CONTENT_DIR . '/db.php'), 'Query Monitor') !== false, 'original drop-in back in place');
-sspa_t(!file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold'), 'hold file gone');
-
-// The foreign fixture restored by the real lifecycle remains inspectable.
-sspa_t(SSPA_Helper_Files::dropin_status() === 'qm', 'restored foreign drop-in retained');
+// An old caller's swap request no longer authorises displacement.
+$legacy = SSPA_Run_Controller::start(array('type' => 'spot', 'page_keys' => array('home'), 'swap_dropin' => true, 'user_id' => 1));
+sspa_t(!is_wp_error($legacy), 'legacy swap request still permits degraded analysis');
+sspa_t(file_get_contents(WP_CONTENT_DIR . '/db.php') === $fake_qm, 'legacy swap request leaves the foreign drop-in byte-for-byte unchanged');
+sspa_t(!file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold'), 'no foreign database hold is created');
+if (!is_wp_error($legacy)) { SSPA_Run_Controller::cancel($legacy); }
+SSPA_Helper_Files::remove_all();
+sspa_t(file_get_contents(WP_CONTENT_DIR . '/db.php') === $fake_qm, 'removal leaves the foreign drop-in unchanged');
+SSPA_Helper_Files::ensure_installed();
+sspa_t(SSPA_Helper_Files::dropin_status() === 'qm', 'foreign drop-in retained');

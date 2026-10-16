@@ -4,7 +4,7 @@ defined('ABSPATH') || exit;
 /**
  * Run state machine: queued -> crawling -> done | failed | cancelled. Jobs are processed
  * in time-boxed batches, driven by the admin page's JS (sequential AJAX calls) with a
- * WP-Cron event as backup for headless progress. Crash safety: a held foreign db.php is
+ * WP-Cron event as backup for headless progress. Legacy holds from older versions are
  * restored on finish, on failure, and by the stale-hold check on plugins_loaded.
  */
 class SSPA_Run_Controller {
@@ -27,7 +27,6 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_render_tab', array(__CLASS__, 'ajax_render_tab'));
         add_action('wp_ajax_sspa_submission_tick', array(__CLASS__, 'ajax_submission_tick'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
-        add_action('wp_ajax_sspa_replace_stale_dropin', array(__CLASS__, 'ajax_replace_stale_dropin'));
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
         add_action('wp_ajax_sspa_publisher_toggle', array(__CLASS__, 'ajax_publisher_toggle'));
@@ -44,7 +43,7 @@ class SSPA_Run_Controller {
     // ---------------- run lifecycle ----------------
 
     /**
-     * @param array $args {type, page_keys, swap_dropin, user_id}
+     * @param array $args {type, page_keys, user_id}
      * @return int|WP_Error run id
      */
     public static function start($args = array()) {
@@ -66,10 +65,6 @@ class SSPA_Run_Controller {
                 : new WP_Error('sspa_no_mu', __('The mu-plugin loader could not be installed (wp-content/mu-plugins is not writable).', 'super-speedy-performance-analysis'));
         }
 
-        if (!empty($args['swap_dropin']) && in_array($health['dropin'], array('foreign', 'qm'), true)) {
-            SSPA_Helper_Files::hold_foreign_dropin();
-        }
-
         $user_id = !empty($args['user_id']) ? (int) $args['user_id'] : get_current_user_id();
         if (!$user_id) {
             $admins = get_users(array('role' => 'administrator', 'number' => 1, 'fields' => 'ID'));
@@ -84,22 +79,20 @@ class SSPA_Run_Controller {
         // Decided once, here - an in-flight run never switches transport.
         $transport = ('admin_save' === $type) ? 'interactive' : self::decide_transport($type);
         if (is_wp_error($transport)) {
-            SSPA_Helper_Files::restore_held_dropin();
+            SSPA_Helper_Files::restore_legacy_db_hold();
             return $transport;
         }
 
         if ('deep' === $type) {
             $jobs = self::build_sweep_jobs($args, $sweep);
             if (is_wp_error($jobs)) {
-                // The foreign drop-in may already be displaced (swap happens above); an
-                // aborted start must not leave the site running our shim indefinitely.
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return $jobs;
             }
         } elseif ('cache_impact' === $type) {
             $jobs = self::build_cache_impact_jobs($args, $oc_mode);
             if (is_wp_error($jobs)) {
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return $jobs;
             }
         } elseif ('checkout' === $type) {
@@ -107,12 +100,12 @@ class SSPA_Run_Controller {
             // jobs rather than one so the existing status polling, cancel button, lock and
             // stale-run janitor all keep working unchanged.
             if (!class_exists('WooCommerce')) {
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return new WP_Error('sspa_no_store', __('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
             }
             $checkout_preflight = SSPA_Checkout_Flow::preflight_request();
             if (is_wp_error($checkout_preflight)) {
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return $checkout_preflight;
             }
             $jobs = array(
@@ -125,7 +118,7 @@ class SSPA_Run_Controller {
             // analysis" queries so a one-page check never replaces a full run.
             $job = SSPA_Adhoc::job_for(!empty($args['url']) ? $args['url'] : '');
             if (is_wp_error($job)) {
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return $job;
             }
             $jobs = array($job);
@@ -136,7 +129,7 @@ class SSPA_Run_Controller {
                 !empty($args['admin_save_context']) ? (array) $args['admin_save_context'] : array()
             );
             if (is_wp_error($job)) {
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return $job;
             }
             $jobs = array($job);
@@ -146,7 +139,7 @@ class SSPA_Run_Controller {
             SSPA_Auth::fresh_test_customer();
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
             if (!$jobs) {
-                SSPA_Helper_Files::restore_held_dropin();
+                SSPA_Helper_Files::restore_legacy_db_hold();
                 return new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
             }
             if (!empty($args['include_writes'])) {
@@ -229,12 +222,12 @@ class SSPA_Run_Controller {
         $claim_key = 'sspa_active_run_' . get_current_blog_id();
         $claim_owner = SSPA_Atomic_Claim::acquire($claim_key, 6 * HOUR_IN_SECONDS);
         if (!$claim_owner) {
-            SSPA_Helper_Files::restore_held_dropin();
+            SSPA_Helper_Files::restore_legacy_db_hold();
             return new WP_Error('sspa_run_active', __('An analysis is already starting or running.', 'super-speedy-performance-analysis'));
         }
         if (self::active_run_id()) {
             SSPA_Atomic_Claim::release($claim_key, $claim_owner);
-            SSPA_Helper_Files::restore_held_dropin();
+            SSPA_Helper_Files::restore_legacy_db_hold();
             return new WP_Error('sspa_run_active', __('An analysis is already running.', 'super-speedy-performance-analysis'));
         }
 
@@ -257,7 +250,7 @@ class SSPA_Run_Controller {
         $run_id = (int) $wpdb->insert_id;
         if (!$run_id) {
             SSPA_Atomic_Claim::release($claim_key, $claim_owner);
-            SSPA_Helper_Files::restore_held_dropin();
+            SSPA_Helper_Files::restore_legacy_db_hold();
             return new WP_Error('sspa_run_insert', __('The analysis run could not be created.', 'super-speedy-performance-analysis'));
         }
 
@@ -341,7 +334,7 @@ class SSPA_Run_Controller {
         $dropin = SSPA_Helper_Files::dropin_status();
         if ('ours' !== $dropin) {
             $why = in_array($dropin, array('foreign', 'qm'), true)
-                ? __('Another plugin currently owns wp-content/db.php: start the analysis from the Overview tab with "Temporarily swap db.php for this run" ticked, and the original is restored the moment the run finishes.', 'super-speedy-performance-analysis')
+                ? __('Another plugin currently owns wp-content/db.php. Plugin Impact Analysis needs SSPA\'s own drop-in to guard excluded-plugin requests; the existing drop-in is never replaced.', 'super-speedy-performance-analysis')
                 : __('It could not be installed - wp-content is not writable.', 'super-speedy-performance-analysis');
             return new WP_Error('sspa_dropin_required', sprintf(
                 /* translators: %s: what to do about the missing drop-in */
@@ -722,15 +715,25 @@ class SSPA_Run_Controller {
     }
 
     /**
-     * Cache-impact runs: each target page profiled twice, cache on vs cache off. Normal
-     * jobs come first so the site-wide fallback (renaming object-cache.php) only kicks in
-     * for the second half of the queue.
+     * Cache-impact runs: each target page profiled twice, cache on vs cache off.
+     * Only our own drop-in can disable the cache for an individual request.
      *
-     * @return array|WP_Error jobs; $oc_mode set by reference to 'flag' or 'sitewide'.
+     * @return array|WP_Error jobs; $oc_mode set by reference to 'flag'.
      */
     private static function build_cache_impact_jobs($args, &$oc_mode) {
         global $wpdb;
 
+        $dropin = SSPA_Helper_Files::dropin_status();
+        if ('ours' !== $dropin) {
+            $owner = in_array($dropin, array('foreign', 'qm'), true)
+                ? SSPA_Helper_Files::dropin_owner_label()
+                : __('no plugin (db.php is absent)', 'super-speedy-performance-analysis');
+            return new WP_Error('sspa_oc_dropin_required', sprintf(
+                /* translators: %s: owner of the database drop-in */
+                __('Cache Impact Analysis requires SSPA\'s own db.php for per-request cache toggling; the current owner is %s. The existing db.php and object-cache.php will not be displaced.', 'super-speedy-performance-analysis'),
+                $owner
+            ));
+        }
         $oc = SSPA_Object_Cache_Capability::inspect();
         if (!$oc['persistent']) {
             return new WP_Error('sspa_no_object_cache', __('No persistent object cache detected - there is nothing to toggle. Install Redis/Memcached first.', 'super-speedy-performance-analysis'));
@@ -739,13 +742,7 @@ class SSPA_Run_Controller {
             return new WP_Error('sspa_object_cache_platform_managed', $oc['reason']);
         }
 
-        if ('ours' === SSPA_Helper_Files::dropin_status()) {
-            $oc_mode = 'flag'; // per-request disable via the shim: zero live impact
-        } elseif (!empty($args['oc_sitewide'])) {
-            $oc_mode = 'sitewide';
-        } else {
-            return new WP_Error('sspa_oc_needs_confirm', __('Per-request cache toggling needs the SSPA db.php shim. Without it the only option is briefly renaming object-cache.php SITE-WIDE - re-run with that option explicitly confirmed, at a low-traffic time.', 'super-speedy-performance-analysis'));
-        }
+        $oc_mode = 'flag';
 
         if (!empty($args['page_keys'])) {
             $page_keys = (array) $args['page_keys'];
@@ -773,7 +770,7 @@ class SSPA_Run_Controller {
             $jobs[] = $job; // cache on
         }
         foreach ($base_jobs as $job) {
-            $job['oc_off'] = true; // cache off (second half - see sitewide note above)
+            $job['oc_off'] = true; // cache off for this request only
             $jobs[] = $job;
         }
         return $jobs ? $jobs : new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
@@ -879,7 +876,7 @@ class SSPA_Run_Controller {
     /** Checkout completion: findings pass, run notes, done. */
     private static function finish_checkout($run_id) {
         global $wpdb;
-        SSPA_Helper_Files::restore_held_dropin();
+        SSPA_Helper_Files::restore_legacy_db_hold();
 
         $queue = SSPA_Run_Queue::get($run_id);
         $checkout = (is_array($queue) && isset($queue['checkout'])) ? $queue['checkout'] : array();
@@ -1265,6 +1262,13 @@ class SSPA_Run_Controller {
                 return;
             }
 
+            // An upgrade may inherit a pre-0.43.4 cache run. Its site-wide cache
+            // intervention is no longer supported: fail visibly and return any hold.
+            if ('sitewide' === ($queue['oc_mode'] ?? '')) {
+                self::fail($run_id, __('This legacy Cache Impact Analysis used site-wide cache toggling. Site-wide toggling is no longer supported; start a new analysis using SSPA\'s own db.php.', 'super-speedy-performance-analysis'), $lock_owner);
+                return;
+            }
+
             // Browser-transport runs are driven one request at a time by the admin's
             // browser (SSPA_Browser_Transport); this server-side pump - including the
             // belt-and-braces cron event that also lands here - must not loopback-crawl
@@ -1279,11 +1283,6 @@ class SSPA_Run_Controller {
             while ($queue['idx'] < count($queue['jobs']) && microtime(true) < $deadline) {
                 SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS, $lock_owner);
                 $job = $queue['jobs'][$queue['idx']];
-
-                // Site-wide cache toggle: engages when the queue reaches its cache-off half.
-                if (!empty($job['oc_off']) && isset($queue['oc_mode']) && 'sitewide' === $queue['oc_mode'] && !get_option('sspa_oc_hold')) {
-                    SSPA_Helper_Files::hold_object_cache();
-                }
 
                 // A checkout flow is one long job that can exceed BATCH_SECONDS. Already
                 // tolerated: the deadline is checked BEFORE starting a job, never during.
@@ -1444,7 +1443,7 @@ class SSPA_Run_Controller {
      */
     private static function finish_sweep($run_id) {
         global $wpdb;
-        SSPA_Helper_Files::restore_held_dropin();
+        SSPA_Helper_Files::restore_legacy_db_hold();
 
         $queue = SSPA_Run_Queue::get($run_id);
         $sweep = (is_array($queue) && isset($queue['sweep'])) ? $queue['sweep'] : array();
@@ -1808,7 +1807,8 @@ class SSPA_Run_Controller {
      */
     private static function finish_cache($run_id) {
         global $wpdb;
-        SSPA_Helper_Files::restore_object_cache();
+        SSPA_Helper_Files::restore_legacy_db_hold();
+        SSPA_Helper_Files::restore_legacy_cache_hold();
         self::delete_queue_and_claim($run_id);
 
         // Verify the off half really ran without a persistent cache (from the captures).
@@ -1912,7 +1912,7 @@ class SSPA_Run_Controller {
 
     private static function finish($run_id) {
         global $wpdb;
-        SSPA_Helper_Files::restore_held_dropin();
+        SSPA_Helper_Files::restore_legacy_db_hold();
         self::delete_queue_and_claim($run_id);
         self::set_status($run_id, 'analysing');
 
@@ -1992,8 +1992,8 @@ class SSPA_Run_Controller {
                 self::finalize_cancelled_locked($run_id);
                 return true;
             }
-            SSPA_Helper_Files::restore_held_dropin();
-            SSPA_Helper_Files::restore_object_cache();
+            SSPA_Helper_Files::restore_legacy_db_hold();
+            SSPA_Helper_Files::restore_legacy_cache_hold();
             self::cleanup_run_state($run_id);
             $wpdb->query($wpdb->prepare(
                 "UPDATE %i SET status='failed',finished=%s,notes=%s WHERE id=%d AND status IN ('queued','crawling','running','analysing')",
@@ -2061,8 +2061,8 @@ class SSPA_Run_Controller {
 
     /** Finalise only while the caller owns run_lock_key(). */
     private static function finalize_cancelled_locked($run_id) {
-        SSPA_Helper_Files::restore_held_dropin();
-        SSPA_Helper_Files::restore_object_cache();
+        SSPA_Helper_Files::restore_legacy_db_hold();
+        SSPA_Helper_Files::restore_legacy_cache_hold();
         self::cleanup_run_state($run_id);
         self::set_status($run_id, 'cancelled', true);
         wp_clear_scheduled_hook('sspa_process_batch_event', array((int) $run_id));
@@ -2315,8 +2315,6 @@ class SSPA_Run_Controller {
         }
         $args = array(
             'type' => $type,
-            'swap_dropin' => !empty($_POST['swap_dropin']),
-            'oc_sitewide' => !empty($_POST['oc_sitewide']),
             'include_writes' => !empty($_POST['include_writes']),
         );
         if ('deep' === $type && !empty($_POST['suspects'])) {
@@ -2403,16 +2401,6 @@ class SSPA_Run_Controller {
             wp_send_json_error(__('No such tab.', 'super-speedy-performance-analysis'));
         }
         wp_send_json_success(array('tabs' => $html, 'active_run' => self::active_run_id()));
-    }
-
-    public static function ajax_replace_stale_dropin() {
-        check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
-        $result = SSPA_Helper_Files::replace_stale_qm_dropin();
-        if (is_wp_error($result)) {
-            wp_send_json_error($result->get_error_message());
-        }
-        wp_send_json_success();
     }
 
     public static function ajax_process_batch() {

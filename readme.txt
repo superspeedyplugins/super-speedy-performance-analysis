@@ -66,6 +66,11 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Changelog ==
 
+= 0.43.4 (16th October 2026) =
+* Removed the temporary `db.php` swap to keep connection-supplying database drop-ins in place during analysis.
+* Cache Impact Analysis now uses only per-request cache toggling and names the database drop-in owner when that prevents analysis.
+* Recovery and uninstall still restore drop-ins held by older versions without replacing another plugin's current file.
+
 = 0.43.3 (13th October 2026) =
 * Fixed `invalid_http_call_evidence` when an outbound HTTP call is recorded on the 404 page.
 * Component settings are included in automatic sharing only when the recorded consent covers them.

@@ -14,16 +14,10 @@ const {
   page.on("pageerror", (e) => errors.push(e.message));
   try {
     await admin(page);
-    // Prior drop-in regressions deliberately retain an orphan Query Monitor fixture.
-    // Exercise the real repair control before requesting destructive-query protection.
-    const repair = page.locator("#sspa-replace-stale-dropin");
-    if (await repair.count()) {
-      const repaired = response(page, "sspa_replace_stale_dropin");
-      await repair.click();
-      expect((await (await repaired).json()).success).toBe(true);
-      await page.reload();
-      await expect(repair).toHaveCount(0);
-    }
+    // Fixture setup installs PA's own drop-in before any browser journey. Foreign
+    // database files have no replacement control in the product.
+    await expect(page.locator("#sspa-replace-stale-dropin")).toHaveCount(0);
+    await expect(page.locator("#sspa-swap-dropin")).toHaveCount(0);
     const start = page.locator("#sspa-run-analysis");
     await expect(start).toBeVisible();
     wp("option", "update", "sspa_fleet_browser_transport", "0");

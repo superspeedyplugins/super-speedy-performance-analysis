@@ -33,16 +33,10 @@ defined('ABSPATH') || exit;
                 <?php
                 printf(
                     /* translators: %s: plugin owning db.php */
-                    esc_html__('%s owns your database drop-in (wp-content/db.php). You can run degraded (no per-query row counts), or temporarily swap it for ours during the run. The swap disables that plugin\'s database layer SITE-WIDE for the duration - only choose it at a low-traffic time. It is restored automatically the moment the run finishes (or fails).', 'super-speedy-performance-analysis'),
+                    esc_html__('%s owns your database drop-in (wp-content/db.php). Analysis uses the existing database layer in degraded mode, without per-query row counts; Query Monitor query logs are used when available. The drop-in is never replaced.', 'super-speedy-performance-analysis'),
                     esc_html($sspa_health['dropin_owner'])
                 );
                 ?>
-            </p>
-            <p>
-                <label>
-                    <input type="checkbox" id="sspa-swap-dropin" value="1">
-                    <?php esc_html_e('Temporarily swap db.php for this run (I understand the warning above)', 'super-speedy-performance-analysis'); ?>
-                </label>
             </p>
         </div>
     <?php endif; ?>

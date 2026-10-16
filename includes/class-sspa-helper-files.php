@@ -5,8 +5,7 @@ defined('ABSPATH') || exit;
  * Installs, verifies and removes the two helper files that must live outside the plugin
  * folder: the mu-loader and the conditional db.php drop-in. Both are generated from
  * templates with the secret and plugin path stamped in, and carry a signature line so we
- * only ever delete files we wrote. Also owns the temporary-swap ("hold") mechanics for
- * foreign db.php drop-ins, with crash-safe restoration.
+ * only ever delete files we wrote. Retains restoration only for files held by versions before 0.43.4.
  */
 class SSPA_Helper_Files {
 
@@ -50,13 +49,13 @@ class SSPA_Helper_Files {
      */
     public static function dropin_status() {
         $path = self::dropin_path();
-        if (!file_exists($path)) {
+        if (!file_exists($path) && !is_link($path)) {
             return 'absent';
         }
         if (self::is_ours($path)) {
             return 'ours';
         }
-        $head = (string) file_get_contents($path, false, null, 0, 2048);
+        $head = is_readable($path) ? (string) file_get_contents($path, false, null, 0, 2048) : '';
         if (stripos($head, 'query monitor') !== false) {
             return 'qm';
         }
@@ -64,7 +63,8 @@ class SSPA_Helper_Files {
     }
 
     public static function dropin_owner_label() {
-        $head = (string) file_get_contents(self::dropin_path(), false, null, 0, 2048);
+        $path = self::dropin_path();
+        $head = is_readable($path) ? (string) file_get_contents($path, false, null, 0, 2048) : '';
         if (preg_match('/Plugin Name:\s*(.+)/i', $head, $m)) {
             return trim($m[1]);
         }
@@ -137,54 +137,15 @@ class SSPA_Helper_Files {
         return $results;
     }
 
-    /**
-     * Temporarily displace a foreign db.php for the duration of a run (user opted in with
-     * the caching-off warning). Restored by restore_held_dropin().
-     */
-    public static function hold_foreign_dropin() {
-        $path = self::dropin_path();
-        if (self::file_mods_blocked()) {
-            return false;
-        }
-        if (self::dropin_status() !== 'foreign' && self::dropin_status() !== 'qm') {
-            return false;
-        }
+    /** Recovery only: versions before 0.43.4 could displace a foreign db.php. */
+    public static function restore_legacy_db_hold() {
         $hold = WP_CONTENT_DIR . '/' . self::HOLD_FILE;
-        if (file_exists($hold)) {
-            return false; // never overwrite an existing hold
-        }
-        $owner = self::dropin_owner_label(); // read before the rename
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- atomic displacement of a foreign db.php drop-in. rename() is atomic; WP_Filesystem::move() is not, and a half-swapped db.php takes the site down. Same approach as Query Monitor's drop-in handling.
-        if (!rename($path, $hold)) {
-            return false;
-        }
-        update_option('sspa_dropin_hold', array('owner' => $owner, 'time' => time()), false);
-        $content = self::generate('dropins/db.php');
-        if ($content === false || !file_put_contents($path, $content)) {
-            // Roll straight back if we could not install ours.
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- crash-safe rollback of the swap above; must not depend on WP_Filesystem being initialisable.
-            rename($hold, $path);
-            delete_option('sspa_dropin_hold');
-            return false;
-        }
-        // db.php keeps its path across the swap, so a serving PHP with a warm opcache keeps
-        // running the displaced drop-in until its next revalidation. Invalidate where we can
-        // (the same php-fpm when the run starts from the browser); a run started from the
-        // CLI cannot reach php-fpm's cache and has to wait out opcache.revalidate_freq.
-        if (function_exists('opcache_invalidate')) {
-            @opcache_invalidate($path, true);
-        }
-        return true;
-    }
-
-    public static function restore_held_dropin() {
-        $hold = WP_CONTENT_DIR . '/' . self::HOLD_FILE;
-        if (!file_exists($hold)) {
+        if (!file_exists($hold) && !is_link($hold)) {
             delete_option('sspa_dropin_hold');
             return true;
         }
         $path = self::dropin_path();
-        if (file_exists($path)) {
+        if (file_exists($path) || is_link($path)) {
             if (!self::is_ours($path)) {
                 return false; // something else owns db.php now - do not touch it
             }
@@ -196,7 +157,7 @@ class SSPA_Helper_Files {
         if ($ok) {
             delete_option('sspa_dropin_hold');
             if (function_exists('opcache_invalidate')) {
-                @opcache_invalidate($path, true); // same reason as in hold_foreign_dropin()
+                @opcache_invalidate($path, true); // discard the restored path from this SAPI's opcache
             }
         }
         return $ok;
@@ -209,13 +170,13 @@ class SSPA_Helper_Files {
     public static function stale_hold_check() {
         $active = class_exists('SSPA_Run_Controller') ? SSPA_Run_Controller::active_run_id() : 0;
         if (get_option('sspa_oc_hold') && !$active) {
-            self::restore_object_cache();
+            self::restore_legacy_cache_hold();
         }
         if (!get_option('sspa_dropin_hold')) {
             return;
         }
         if (!$active) {
-            $restored = self::restore_held_dropin();
+            $restored = self::restore_legacy_db_hold();
             add_action('admin_notices', function () use ($restored) {
                 $msg = $restored
                     ? __('Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored.', 'super-speedy-performance-analysis')
@@ -225,36 +186,15 @@ class SSPA_Helper_Files {
         }
     }
 
-    /**
-     * Site-wide object-cache toggle fallback for cache-impact runs on hosts where our
-     * db.php shim (and its per-request filter) is unavailable. Same hold pattern as the
-     * db.php swap: crash-safe, restored on finish/fail and by the stale check.
-     */
-    public static function hold_object_cache() {
+    /** Recovery only: return object-cache.php held by versions before 0.43.4. */
+    public static function restore_legacy_cache_hold() {
         $path = WP_CONTENT_DIR . '/object-cache.php';
         $hold = WP_CONTENT_DIR . '/object-cache.php.sspa-hold';
-        if (self::file_mods_blocked()) {
-            return false;
-        }
-        if (!file_exists($path) || file_exists($hold)) {
-            return false;
-        }
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- atomic displacement of the drop-in; see hold_foreign_dropin().
-        if (!rename($path, $hold)) {
-            return false;
-        }
-        update_option('sspa_oc_hold', time(), false);
-        return true;
-    }
-
-    public static function restore_object_cache() {
-        $path = WP_CONTENT_DIR . '/object-cache.php';
-        $hold = WP_CONTENT_DIR . '/object-cache.php.sspa-hold';
-        if (!file_exists($hold)) {
+        if (!file_exists($hold) && !is_link($hold)) {
             delete_option('sspa_oc_hold');
             return true;
         }
-        if (file_exists($path)) {
+        if (file_exists($path) || is_link($path)) {
             return false; // something recreated object-cache.php; do not clobber it
         }
         // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- atomic restore of the held foreign drop-in.
@@ -274,8 +214,8 @@ class SSPA_Helper_Files {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only a drop-in is_ours() has confirmed we wrote.
             unlink(self::dropin_path());
         }
-        self::restore_held_dropin();
-        self::restore_object_cache();
+        self::restore_legacy_db_hold();
+        self::restore_legacy_cache_hold();
     }
 
     /** True when the Query Monitor PLUGIN is active. Its db.php can outlive deactivation. */
@@ -295,31 +235,6 @@ class SSPA_Helper_Files {
     /** A Query Monitor db.php whose plugin is deactivated: an orphan that blocks our capture. */
     public static function dropin_is_stale_qm() {
         return self::dropin_status() === 'qm' && !self::qm_plugin_active();
-    }
-
-    /**
-     * Replace an orphaned Query Monitor db.php with our conditional drop-in. The old file
-     * is renamed, never deleted, and Query Monitor reinstates its own copy if reactivated.
-     *
-     * @return true|WP_Error
-     */
-    public static function replace_stale_qm_dropin() {
-        if (self::file_mods_blocked()) {
-            return new WP_Error('sspa_file_mods_disallowed', __('This site has DISALLOW_FILE_MODS enabled, so plugins may not write files. Remove wp-content/db.php by hand, or unset the constant.', 'super-speedy-performance-analysis'));
-        }
-        if (!self::dropin_is_stale_qm()) {
-            return new WP_Error('sspa_not_stale', __('wp-content/db.php is not a leftover Query Monitor drop-in.', 'super-speedy-performance-analysis'));
-        }
-        $path = self::dropin_path();
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- moves a stale Query Monitor drop-in aside atomically rather than deleting another plugin's file.
-        if (!rename($path, WP_CONTENT_DIR . '/db.php.qm-stale-' . gmdate('Ymd-His'))) {
-            return new WP_Error('sspa_rename_failed', __('Could not rename wp-content/db.php - check file permissions.', 'super-speedy-performance-analysis'));
-        }
-        $results = self::ensure_installed();
-        if (empty($results['dropin'])) {
-            return new WP_Error('sspa_install_failed', __('Renamed the old drop-in but could not install ours - wp-content is not writable.', 'super-speedy-performance-analysis'));
-        }
-        return true;
     }
 
     public static function health() {

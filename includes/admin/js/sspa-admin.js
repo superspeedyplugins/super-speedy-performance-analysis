@@ -60,23 +60,6 @@ jQuery(document).on('click', '#sspa-tools-recheck', function () {
 	});
 });
 
-// Replace an orphaned Query Monitor db.php (QM deactivated, drop-in left behind).
-jQuery(document).on('click', '#sspa-replace-stale-dropin', function () {
-	var btn = jQuery(this).prop('disabled', true).text(wp.i18n.__("Replacing…", "super-speedy-performance-analysis"));
-	jQuery.post(ajaxurl, { action: 'sspa_replace_stale_dropin', nonce: sspa_admin.nonce }, function (resp) {
-		if (resp.success) {
-			// The health line lives on Overview, the install steps on Tools.
-			sspa_refresh_tabs(['overview', 'tools'], function () { btn.prop('disabled', false).text(wp.i18n.__("Replace", "super-speedy-performance-analysis")); });
-		} else {
-			btn.prop('disabled', false);
-			alert(resp.data || wp.i18n.__("Could not replace the drop-in.", "super-speedy-performance-analysis"));
-		}
-	}).fail(function () {
-		btn.prop('disabled', false);
-		alert(wp.i18n.__("Could not replace the drop-in.", "super-speedy-performance-analysis"));
-	});
-});
-
 jQuery(document).on('click', '#sspa_main .nav-tab-wrapper .nav-tab', function (e) {
 	var slug = jQuery(this).data('tab');
 	window.history.pushState(null, null, '#' + slug);
@@ -873,7 +856,6 @@ function sspa_start_typed_run(extra, btn) {
 	var payload = jQuery.extend({
 		action: 'sspa_start_run',
 		nonce: sspa_admin.nonce,
-		swap_dropin: jQuery('#sspa-swap-dropin').is(':checked') ? 1 : 0,
 		include_writes: jQuery('#sspa-include-writes').is(':checked') ? 1 : 0
 	}, extra);
 	jQuery.post(ajaxurl, payload, function (resp) {

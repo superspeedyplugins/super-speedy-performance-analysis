@@ -25,7 +25,7 @@ sspa_t(
 
 sspa_t(strlen((string) SSPA_Token::secret()) === 64, 'secret generated');
 
-// Self-heal: a crashed earlier test (06 swaps db.php) can leave a fake drop-in behind.
+// Reset retained foreign drop-in fixtures from earlier test runs.
 // This is a disposable test site, so reset db.php unconditionally before asserting.
 if (SSPA_Helper_Files::dropin_status() !== 'ours' && file_exists(WP_CONTENT_DIR . '/db.php')) {
     unlink(WP_CONTENT_DIR . '/db.php');
@@ -33,6 +33,7 @@ if (SSPA_Helper_Files::dropin_status() !== 'ours' && file_exists(WP_CONTENT_DIR 
 if (file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold')) {
     unlink(WP_CONTENT_DIR . '/db.php.sspa-hold');
 }
+clearstatcache(true, SSPA_Helper_Files::dropin_path());
 SSPA_Helper_Files::ensure_installed();
 $health = SSPA_Helper_Files::health();
 sspa_t($health['mu'] === true, 'mu-loader installed and current');

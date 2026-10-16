@@ -1,10 +1,7 @@
 <?php
 // Issue 12. On a site where the real Query Monitor owns the db.php drop-in, the plugin and
-// QM are compared on the same pages with explicit tolerances, and the ownership contract is
-// proved: by default the plugin rides QM's own query log (or, where QM keeps none, reports a
-// count-only measurement honestly); when asked to swap it holds QM's drop-in aside for the
-// run and gives it back byte-for-byte; QM keeps working throughout. Runs only where QM
-// really owns db.php.
+// QM are compared on the same pages with explicit tolerances. Both ordinary and obsolete
+// swap requests ride QM's query log without ever replacing its database drop-in.
 require __DIR__ . '/../lib/fleet.php';
 
 function sspa_88_t($ok, $label) {
@@ -29,15 +26,10 @@ function sspa_88_probe($url, $cookies = array()) {
     }
     return array('code' => $code, 'qm' => is_array($qm) ? $qm : array());
 }
-function sspa_88_run($page_keys, $extra = array(), $settle_seconds = 0) {
+function sspa_88_run($page_keys, $extra = array()) {
     $id = SSPA_Run_Controller::start(array_merge(array('type' => 'spot', 'page_keys' => $page_keys, 'user_id' => 1), $extra));
     if (is_wp_error($id)) { throw new RuntimeException($id->get_error_message()); }
-    $during = SSPA_Helper_Files::dropin_status(); // start() is where a swap happens
-    if ($settle_seconds) {
-        // A CLI-started run cannot invalidate php-fpm's opcache after swapping db.php; give
-        // opcache.revalidate_freq a chance so the profiled request runs the swapped file.
-        sleep($settle_seconds);
-    }
+    $during = SSPA_Helper_Files::dropin_status(); // inspect ownership throughout the run
     // Ask the fixture to record QM on these exact signed requests, keyed by token.
     $pair_probe = static function ($args) {
         if (!empty($args['headers'][SSPA_Token::HEADER])) {
@@ -99,7 +91,9 @@ if ('ours' === SSPA_Helper_Files::dropin_status()) {
         throw new RuntimeException('Could not retain the preceding PA drop-in');
     }
 }
+clearstatcache(true, SSPA_Helper_Files::dropin_path());
 $result = activate_plugin('query-monitor/query-monitor.php');
+clearstatcache(true, SSPA_Helper_Files::dropin_path());
 if (is_wp_error($result)) { throw new RuntimeException($result->get_error_message()); }
 // Already-active QM may have lost its drop-in to a preceding owned-helper test.
 if ('absent' === SSPA_Helper_Files::dropin_status()) {
@@ -108,7 +102,7 @@ if ('absent' === SSPA_Helper_Files::dropin_status()) {
     }
 }
 // CLI cannot clear the serving workers' realpath cache after replacing the drop-in.
-// Match the existing swap boundary before sending either anonymous probe.
+// Wait for the serving SAPI to resolve the newly installed vendor symlink.
 $entry_settle = (int) getenv('SSPA_88_SETTLE') ?: (int) ini_get('realpath_cache_ttl') + 5;
 sleep($entry_settle);
 
@@ -179,22 +173,17 @@ try {
     sspa_88_t(null !== $ratio && $ratio >= 0.25 && $ratio <= 4.0, 'dashboard query time agrees within a factor of four (plugin ' . var_export($dash['row']['sql_ms'], true) . 'ms, QM ' . $bq['time_ms'] . 'ms, ratio ' . (null === $ratio ? '?' : round($ratio, 2)) . ')');
     sspa_88_t('qm' === $dash_run['during'] && 'qm' === SSPA_Helper_Files::dropin_status(), 'riding QM\'s log never displaced its drop-in');
 
-    // C. When asked to swap, the plugin holds QM's drop-in aside for exactly the run, captures
-    //    through its own shim, and puts QM's back byte-for-byte.
-    // QM's drop-in is a symlink. After the swap, running php-fpm workers keep resolving
-    // db.php to QM's file through PHP's realpath cache for up to realpath_cache_ttl (120s by
-    // default); opcache invalidation cannot reach that. SSPA_88_SETTLE overrides the wait.
-    $swap_settle = (int) getenv('SSPA_88_SETTLE') ?: (int) ini_get('realpath_cache_ttl') + 5;
-    $swap_run = sspa_88_run(array('home'), array('swap_dropin' => true), $swap_settle);
+    // C. A pre-0.43.4 client can still submit swap_dropin; it grants no displacement.
+    $swap_run = sspa_88_run(array('home'), array('swap_dropin' => true));
     $swap = sspa_88_profile($swap_run['id'], 'home');
-    sspa_88_t('ours' === $swap_run['during'], 'with swap_dropin the plugin held QM\'s drop-in aside for the run (' . $swap_run['during'] . ' during)');
-    sspa_88_t('full' === $swap['mode'] && null !== $swap['row']['sql_ms'] && (int) $swap['row']['sql_count'] >= 4, 'the swapped run captured in full through the plugin\'s own shim (' . var_export($swap['mode'], true) . ', ' . $swap['row']['sql_count'] . ' queries, ' . var_export($swap['row']['sql_ms'], true) . 'ms)');
-    sspa_88_t('qm' === SSPA_Helper_Files::dropin_status() && is_link($dropin) && readlink($dropin) === $qm_target && md5_file($dropin) === $qm_bytes, 'QM\'s drop-in is back: the same symlink to the same file');
-    sspa_88_t(false === get_option('sspa_dropin_hold', false) && !file_exists(WP_CONTENT_DIR . '/' . SSPA_Helper_Files::HOLD_FILE), 'no hold file or hold record remains');
+    sspa_88_t('qm' === $swap_run['during'], 'legacy swap request leaves QM in control throughout the run');
+    sspa_88_t(in_array($swap['mode'], array('none', 'degraded', 'qm'), true), 'legacy swap request uses the available QM query log honestly');
+    sspa_88_t('qm' === SSPA_Helper_Files::dropin_status() && is_link($dropin) && readlink($dropin) === $qm_target && md5_file($dropin) === $qm_bytes, 'QM keeps the same symlink to the same file');
+    sspa_88_t(false === get_option('sspa_dropin_hold', false) && !file_exists(WP_CONTENT_DIR . '/' . SSPA_Helper_Files::HOLD_FILE), 'no hold file or hold record is created');
     $after = sspa_88_probe(admin_url('index.php'), $admin_cookies);
-    sspa_88_t(200 === $after['code'] && (int) ($after['qm']['rows'] ?? 0) > 0 && 'qm-symlink' === ($after['qm']['dropin'] ?? ''), 'QM still logs queries through its own drop-in after the swapped run (' . ($after['qm']['rows'] ?? '?') . ' rows)');
+    sspa_88_t(200 === $after['code'] && (int) ($after['qm']['rows'] ?? 0) > 0 && 'qm-symlink' === ($after['qm']['dropin'] ?? ''), 'QM still logs queries through its own drop-in after the legacy swap request (' . ($after['qm']['rows'] ?? '?') . ' rows)');
     sspa_88_t(SSPA_Helper_Files::qm_plugin_active(), 'Query Monitor is still active');
-    echo 'RETAINED: runs ' . $home_run['id'] . ' (anon, count-only), ' . $dash_run['id'] . ' (admin, qm mode), ' . $swap_run['id'] . ' (swap, full mode); QM probes in options sspa_qm_probe_*' . "\n";
+    echo 'RETAINED: runs ' . $home_run['id'] . ' (anon, count-only), ' . $dash_run['id'] . ' (admin, qm mode), ' . $swap_run['id'] . ' (legacy request, QM unchanged); QM probes in options sspa_qm_probe_*' . "\n";
 } catch (Throwable $error) {
     sspa_88_t(false, $error->getMessage());
 }

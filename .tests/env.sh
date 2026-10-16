@@ -38,6 +38,10 @@ else
     return 1
 fi
 
+# A nested harness can create its site before sspa_require_site() runs. Its inherited
+# wp shim must already route to the newly resolved target, not its parent's database.
+export SSPA_TEST_SITE_DIR="$SSPA_SITE_DIR" SSPA_TEST_SITE_URL="$SSPA_SITE_URL"
+
 # Case files are addressed on the host filesystem now - there is no container to copy into,
 # and the site reaches the plugin through parallel-dev's symlink to this repository. Kept
 # under the old name so the case files and run-tests.sh did not have to change.

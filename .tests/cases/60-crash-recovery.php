@@ -25,7 +25,7 @@ if (file_exists($ready)) {
     unlink($ready);
 }
 if (file_exists($hold)) {
-    SSPA_Helper_Files::restore_held_dropin();
+    SSPA_Helper_Files::restore_legacy_db_hold();
 }
 if (file_exists($dropin) && 'ours' === SSPA_Helper_Files::dropin_status()) {
     unlink($dropin);
@@ -33,7 +33,11 @@ if (file_exists($dropin) && 'ours' === SSPA_Helper_Files::dropin_status()) {
 file_put_contents($dropin, $fake_qm);
 sleep(3);
 
-$child_code = '$run = SSPA_Run_Controller::start(array("type" => "spot", "page_keys" => array("home"), "user_id" => 1, "swap_dropin" => true));'
+$child_code = '$run = SSPA_Run_Controller::start(array("type" => "spot", "page_keys" => array("home"), "user_id" => 1));'
+    // Recreate the durable state that an upgrade from an older version can inherit.
+    . 'rename(WP_CONTENT_DIR . "/db.php", WP_CONTENT_DIR . "/db.php.sspa-hold");'
+    . 'update_option("sspa_dropin_hold", array("owner" => "Query Monitor", "time" => time()), false);'
+    . 'SSPA_Helper_Files::ensure_installed();'
     . 'file_put_contents(' . var_export($ready, true) . ', wp_json_encode(array("run_id" => is_wp_error($run) ? 0 : $run, "error" => is_wp_error($run) ? $run->get_error_message() : "")));'
     . 'sleep(120);';
 $process = proc_open(array(
@@ -56,7 +60,7 @@ while (!file_exists($ready) && microtime(true) < $deadline) {
 $started = file_exists($ready) ? json_decode((string) file_get_contents($ready), true) : array();
 $run_id = !empty($started['run_id']) ? (int) $started['run_id'] : 0;
 sspa_60_t($run_id > 0, 'a separate controller process starts the real run before it is killed');
-sspa_60_t(file_exists($hold) && 'ours' === SSPA_Helper_Files::dropin_status(), 'the killed process reached the foreign drop-in hold');
+sspa_60_t(file_exists($hold) && 'ours' === SSPA_Helper_Files::dropin_status(), 'the killed process carries a legacy foreign drop-in hold from before 0.43.4');
 
 $killed = false;
 if (is_resource($process)) {

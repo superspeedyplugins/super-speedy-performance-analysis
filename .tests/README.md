@@ -27,7 +27,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 85-version # one plugin-version normaliser at every History entry point, with explicit invalid/pre-release behaviour
 .tests/run-tests.sh 86-plugin-change # one validated plugin-change record shared by capture, the run context and History
 .tests/run-tests.sh 87-customer-variant # logged-in customer measurements: catalogue, fresh synthetic account, labels, export, History
-.tests/run-tests.sh 88-query-monitor # real Query Monitor agreement on its dedicated site: tolerances, hold-and-restore of QM's db.php
+.tests/run-tests.sh 88-query-monitor # real Query Monitor agreement on its dedicated site: tolerances, QM ownership preserved even for obsolete swap requests
 .tests/browser/run-regressions.sh loopback-fallback # real loopback failure falls back to browser transport with complete evidence
 .tests/browser/run-regressions.sh quick-comparison # detected plugin update -> notice -> one spot run -> History names the change
 .tests/run-tests.sh 92-traffic-deactivation # dedicated lifecycle/concurrency regression, retains its own site
@@ -225,8 +225,16 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 
 ### Harness gotchas (learned the hard way)
 
+- **Nested site creation:** `env.sh` exports the newly resolved shim target before calling
+  a creation script; otherwise an inherited executable shim can install into the parent
+  suite's database while leaving the new site uninstalled.
+- **Drop-in fixture symlinks:** after archiving or removing a test drop-in, clear PHP's
+  cached realpath before installing a replacement. Without that invalidation a cached
+  symlink can direct a write into the vendor source. Case 88 retains its real vendor file;
+  case-entry preparation must leave those bytes unchanged.
+
 - **opcache revalidation**: php-fpm revalidates changed PHP files at most every 2s
-  (`opcache.revalidate_freq`). Tests that swap `wp-content/db.php` or regenerate the
+  (`opcache.revalidate_freq`). Tests that install a `wp-content/db.php` fixture or regenerate the
   traffic observer from CLI sleep 3s before sending HTTP requests. CLI invalidation
   does not invalidate FPM's cache. Case 73 waits after each generated-observer change
   and verifies the GET window has a real request before comparing methods.
@@ -252,9 +260,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 
 - `01-health.php` - tables, secret, helper-file install (mu-loader + db.php shim),
   placeholder replacement. Self-heals a leftover fake db.php from a crashed 06.
-- `60-crash-recovery.php` - kills a separate controller process after a real run has held a
-  foreign database drop-in, ages the killed worker's durable queue, and proves the janitor
-  fails the run, restores the exact drop-in, releases its state, preserves the plugin list
+- `60-crash-recovery.php` - kills a separate controller process after a real run inherits a simulated
+  pre-0.43.4 foreign database hold, ages the killed worker's durable queue, and proves the janitor
+  fails the run, restores the exact legacy drop-in, releases its state, preserves the plugin list
   and permits a new run.
 - `61-taxonomy-placeholder-catalogue.php` - registers real custom post types whose archive
   links contain taxonomy placeholders, proves the largest non-empty term resolves the URL,
@@ -283,7 +291,7 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   row counts present (shim active), captures table drained, `active_plugins` untouched,
   no db.php hold left behind.
 - `06-qm-coexist.php` - a foreign/QM db.php is detected, never clobbered, runs degrade
-  gracefully; hold/swap mechanics displace and restore it correctly.
+  gracefully; obsolete swap requests and helper removal preserve it byte-for-byte.
 - `07-analysis.php` - findings engine against a planted bad plugin (slow query, big
   result set, N+1, dupes), score dented, sector inferred.
 - `09-deep-e2e.php` - the deep sweep end to end: the bad plugin measured by virtual
@@ -561,13 +569,13 @@ disposable test site. A payload containing only supported evidence must finish w
 `processing_status=complete`; `partial` means the manifest retained an explicitly unsupported
 record and needs inspection.
 
-## Not yet covered (planned)
+## Coverage added since the original test plan
 
-- Real Query Monitor cross-check: profile the same page with our profiler and QM's actual
-  QM_DB drop-in and assert SQL count/time/rows agree within tolerance (06 uses a fake QM
-  header; the real-QM path needs `wp plugin install query-monitor` + its symlink).
-- Customer variant (flagged test account) - lands with phase 2 catalogue work.
-- Crash-safety kill test: kill -9 mid-run, assert stale-hold self-heal on next load.
+- Case 88 checks genuine Query Monitor query counts and timing on the same requests,
+  preserving its drop-in even for obsolete swap parameters.
+- Case 87 checks the restricted synthetic-customer variant.
+- Cases 60 and 102 cover killed-worker recovery and legacy upgrade/uninstall holds;
+  production code no longer creates new foreign holds.
 
 ## AJAX profiling integration
 
@@ -676,3 +684,10 @@ contains only a synthetic comment query and measured count/time captured using t
 archive. The current client rejects that finding, opaque old comments/literals and malformed
 JSON before any HTTP request; a valid stored archive reaches an intercepted upload unchanged.
 All transport calls are intercepted, and the fixture site and archive records remain for inspection.
+
+### Issue 46 and legacy drop-in recovery
+
+`SSPA_SCENARIO=tests-issue46 .tests/setup-site.sh` prepares the retained dedicated site.
+Run `SSPA_SCENARIO=tests-issue46 .tests/run-tests.sh 101-foreign` there, or select case 101 from another suite site and its wrapper delegates to that dedicated site. Case 101 supplies the actual database connection from a stand-in foreign `db.php` while stock credentials are unusable, submits the authenticated UI AJAX start action with the old swap parameter, checks both HTTP entry points, completes the degraded run, and requires an owner-naming Cache Impact error with object-cache.php untouched. Its deliberate connection fault is disarmed after a successful run. A red run on pre-fix code leaves the fault and hold for manual recovery, with the original configuration backed up in `.data/w0/issue46-wp-config.backup`.
+
+Case 102 plants only states that versions before 0.43.4 could create, and exercises controller cancellation, idle recovery, conflicting foreign files/dangling symlinks and actual uninstall. Test fixture preparation archives a preceding foreign drop-in explicitly on the guarded test site; production code has no displacement operation.

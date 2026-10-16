@@ -719,9 +719,6 @@
 				nonce: sspa_adhoc.nonce,
 				type: 'deep',
 				cache_modes: cache,
-				// A foreign db.php can be swapped for the run; the Overview checkbox is the
-				// existing consent for that, so honour it when present.
-				swap_dropin: $('#sspa-swap-dropin').is(':checked') ? 1 : 0
 			};
 			// Choosing every plugin IS the classic screened sweep (theme included, phase 1
 			// screens, phase 2 confirms); a shortlist is a targeted run of just those.

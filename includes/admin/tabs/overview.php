@@ -9,11 +9,8 @@ $sspa_runs_table = SSPA_Schema::table('runs');
 // score 0 and an empty insight list.
 // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
 $sspa_last_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", ARRAY_A);
-// Offer the temporary swap for foreign drop-ins AND an active Query Monitor's (anon
-// requests capture nothing through QM's). A stale QM drop-in gets the permanent
-// replace button on the health line instead.
-$sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign'), true)
-    || ('qm' === $sspa_health['dropin'] && empty($sspa_health['stale_qm']));
+// Show the ownership notice for every foreign database drop-in.
+$sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign', 'qm'), true);
 $sspa_run_notes = $sspa_last_run ? json_decode((string) $sspa_last_run['notes'], true) : null;
 $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
 ?>
@@ -423,16 +420,16 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                     break;
                 case 'qm':
                     if (!empty($sspa_health['stale_qm'])) {
-                        echo '&#10060; ' . esc_html__('Query capture: Query Monitor\'s db.php is still installed but Query Monitor is DEACTIVATED. This orphaned drop-in blocks our capture layer and misattributes every query.', 'super-speedy-performance-analysis');
-                        echo ' <button type="button" class="button button-small" id="sspa-replace-stale-dropin">' . esc_html__('Replace it with ours', 'super-speedy-performance-analysis') . '</button>';
+                        echo '&#10060; ' . esc_html__('Query capture: Query Monitor\'s db.php is still installed but Query Monitor is DEACTIVATED. Runs use degraded capture. Remove the leftover file manually if you want SSPA to install its own drop-in.', 'super-speedy-performance-analysis');
+
                     } else {
-                        echo '&#9888;&#65039; ' . esc_html__('Query capture: riding Query Monitor\'s db.php. Logged-in page profiles get full detail, but Query Monitor collects nothing for anonymous (logged-out) requests, so front-end profiles will have no per-query data - and its per-query backtraces inflate every timing. Tick the swap below (or deactivate Query Monitor) for clean, complete capture.', 'super-speedy-performance-analysis');
+                        echo '&#9888;&#65039; ' . esc_html__('Query capture: riding Query Monitor\'s db.php. Logged-in page profiles get full detail, but Query Monitor collects nothing for anonymous (logged-out) requests, so front-end profiles will have no per-query data - and its per-query backtraces inflate every timing. The existing drop-in is never replaced.', 'super-speedy-performance-analysis');
                     }
                     break;
                 case 'foreign':
                     echo '&#9888;&#65039; ' . sprintf(
                         /* translators: %s: plugin name owning db.php */
-                        esc_html__('Query capture: db.php is owned by %s - runs will miss per-query row counts unless you choose the temporary swap below', 'super-speedy-performance-analysis'),
+                        esc_html__('Query capture: db.php is owned by %s - runs use degraded capture without per-query row counts; the existing drop-in is never replaced', 'super-speedy-performance-analysis'),
                         esc_html($sspa_health['dropin_owner'])
                     );
                     break;

@@ -19,11 +19,7 @@ const {
   wp("eval", `
     $active = SSPA_Run_Controller::active_run_id();
     if ($active) SSPA_Run_Controller::cancel($active);
-    deactivate_plugins('query-monitor/query-monitor.php', true);
-    if (SSPA_Helper_Files::dropin_is_stale_qm()) {
-      $result = SSPA_Helper_Files::replace_stale_qm_dropin();
-      if (is_wp_error($result)) WP_CLI::error($result->get_error_message());
-    }
+    require SSPA_PLUGIN_DIR . '.tests/fixtures/reset-retained-plugins.php';
     SSPA_Helper_Files::ensure_installed();
     if ('ours' !== SSPA_Helper_Files::dropin_status()) WP_CLI::error('Loopback fixture requires PA db.php');
   `);

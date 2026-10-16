@@ -85,8 +85,17 @@ $wpdb->query($wpdb->prepare(
     "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
     $wpdb->esc_like('sspa_traffic_key_') . '%'
 ));
-// If we were holding a displaced drop-in (run crashed mid-analysis), restore it.
-if (!file_exists(WP_CONTENT_DIR . '/db.php') && file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold')) {
-    // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- restores a foreign db.php this plugin displaced; leaving it held would break the site.
-    rename(WP_CONTENT_DIR . '/db.php.sspa-hold', WP_CONTENT_DIR . '/db.php');
+// Recovery only for drop-ins displaced by versions before 0.43.4. Never replace a
+// file installed by another plugin while the old hold was pending.
+foreach (array('db.php' => 'sspa_dropin_hold', 'object-cache.php' => 'sspa_oc_hold') as $sspa_name => $sspa_option) {
+    $sspa_path = WP_CONTENT_DIR . '/' . $sspa_name;
+    $sspa_hold = $sspa_path . '.sspa-hold';
+    if (!file_exists($sspa_hold) && !is_link($sspa_hold)) {
+        delete_option($sspa_option);
+    } elseif (!file_exists($sspa_path) && !is_link($sspa_path)) {
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- returns a foreign file held by an older version; no new holds are created.
+        if (rename($sspa_hold, $sspa_path)) {
+            delete_option($sspa_option);
+        }
+    }
 }

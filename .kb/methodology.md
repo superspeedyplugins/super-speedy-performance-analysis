@@ -8,7 +8,7 @@ Every page is requested once as a warm-up (priming caches), then three measured 
 
 ## Capture
 
-For profiling requests only, a conditional `db.php` drop-in swaps in an instrumented database class recording every query's duration, returned row count, errors and call stack. The call stack maps each query to the plugin, theme or core code that ran it. HTTP API calls, object-cache hits/misses, peak memory and emails are captured alongside. For normal traffic the drop-in does nothing - zero overhead.
+When no other database drop-in exists, SSPA installs a conditional `db.php` drop-in which, for profiling requests only, uses an instrumented database class recording every query's duration, returned row count, errors and call stack. The call stack maps each query to the plugin, theme or core code that ran it. HTTP API calls, object-cache hits/misses, peak memory and emails are captured alongside. For ordinary requests, the drop-in returns without replacing WordPress's database class.
 
 Full SQL is kept locally only for the slowest/biggest queries; everything else is stored as a normalised fingerprint with all values stripped.
 
@@ -40,3 +40,5 @@ Profiled requests never send email (recipients are stripped before any transport
 - [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) - reading the findings the method produces
 - [Installing the Optional Profiling Extras](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/setup-server/installing-profiling-extensions/) - what the optional extras add to the measurement
 - [The Archive Query Profile](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/features/archive-query-profile/) - the contract for the archive half of a run
+
+Foreign database drop-ins remain in place. Ordinary analysis uses degraded capture, including Query Monitor query logs when available; Cache Impact Analysis requires SSPA's own database drop-in and reports the existing owner when it cannot run. Cache disabling is confined to each profiling request, with no site-wide rename.

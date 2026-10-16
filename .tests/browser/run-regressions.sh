@@ -20,6 +20,7 @@ for check in browser-transport loopback-fallback quick-comparison admin-journey 
         bash "$PLUGIN_DIR/.tests/run-tests.sh" 71-fast-ajax-profile > "$SSPA_FLEET_OUTPUT/ajax-prerequisite.log" 2>&1 || exit 1
         bash "$PLUGIN_DIR/.tests/run-tests.sh" 72-fast-ajax-spro >> "$SSPA_FLEET_OUTPUT/ajax-prerequisite.log" 2>&1 || exit 1
     fi
+    cli eval-file "$PLUGIN_DIR/.tests/fixtures/reset-retained-plugins.php" > "$SSPA_FLEET_OUTPUT/$check-entry-reset.log" || exit 1
     cli eval-file "$PLUGIN_DIR/.tests/fixtures/browser-prepare.php" > "$SSPA_FLEET_OUTPUT/$check-fixtures.json" || exit 1
     echo "=== $check browser ==="
     node "$PLUGIN_DIR/.tests/browser/$check.e2e.cjs" 2>&1 | tee "$SSPA_FLEET_OUTPUT/$check.log"

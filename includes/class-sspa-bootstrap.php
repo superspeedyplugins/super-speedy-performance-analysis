@@ -54,7 +54,6 @@ class SSPA_Bootstrap {
             'sspa_render_tab' => array('SSPA_Run_Controller', 'ajax_render_tab'),
             'sspa_submission_tick' => array('SSPA_Run_Controller', 'ajax_submission_tick'),
             'sspa_prune_blobs' => array('SSPA_Run_Controller', 'ajax_prune_blobs'),
-            'sspa_replace_stale_dropin' => array('SSPA_Run_Controller', 'ajax_replace_stale_dropin'),
             'sspa_tools_recheck' => array('SSPA_Run_Controller', 'ajax_tools_recheck'),
             'sspa_share_optin' => array('SSPA_Run_Controller', 'ajax_share_optin'),
             'sspa_publisher_toggle' => array('SSPA_Run_Controller', 'ajax_publisher_toggle'),

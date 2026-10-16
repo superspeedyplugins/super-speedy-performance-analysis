@@ -57,13 +57,7 @@ sspa_t($sspa_res['mu'] === false && $sspa_res['dropin'] === false, 'ensure_insta
 sspa_t(!file_exists($sspa_mu), 'mu-loader was NOT written to disk');
 sspa_t(SSPA_Helper_Files::dropin_status() === 'absent', 'db.php was NOT written to disk');
 
-sspa_t(SSPA_Helper_Files::hold_foreign_dropin() === false, 'hold_foreign_dropin() refuses');
-sspa_t(SSPA_Helper_Files::hold_object_cache() === false, 'hold_object_cache() refuses');
 sspa_t(!file_exists(WP_CONTENT_DIR . '/db.php.sspa-hold'), 'no hold file created');
-
-$sspa_qm = SSPA_Helper_Files::replace_stale_qm_dropin();
-sspa_t(is_wp_error($sspa_qm) && $sspa_qm->get_error_code() === 'sspa_file_mods_disallowed',
-    'replace_stale_qm_dropin() returns sspa_file_mods_disallowed');
 
 $sspa_obs = SSPA_Traffic_Helper::install(array(
     'collection_id' => 1, 'collect_until' => time() + 60, 'outcomes_until' => time() + 60,
