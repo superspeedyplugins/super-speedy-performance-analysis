@@ -1,6 +1,8 @@
 .DS_Store
 *.log
 node_modules/
+# Worktrees link this generated dependency directory; the slash rule does not match symlinks.
+/.build/echarts/node_modules
 /.claude/
 /.codex/
 /.data/

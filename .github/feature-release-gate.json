@@ -4,12 +4,13 @@
   "plan": {
     "repository_environment": "SSPA_GATE_METADATA_REPOSITORY",
     "ref": "main",
-    "path": "super-speedy-performance-analysis/.docs/2026-09-08-endpoint-activity-and-submission-retention.md"
+    "path": "super-speedy-performance-analysis/.docs/2026-10-16-wporg-remediation-plan.md"
   },
   "release": {
     "core_bugs": [],
     "sql_reviews": [
-      "super-speedy-performance-analysis/.docs/2026-09-04-fast-ajax-endpoint-sql-review.md"
+      "super-speedy-performance-analysis/.docs/2026-09-04-fast-ajax-endpoint-sql-review.md",
+      "super-speedy-performance-analysis/.docs/2026-10-16-wporg-sql-review.md"
     ],
     "dependencies": [
       {
@@ -143,6 +144,148 @@
           "focused"
         ],
         "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "101-foreign-dropin",
+        "command": "bash .tests/run-tests.sh 101-foreign-dropin",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "102-legacy-dropin-recovery",
+        "command": "bash .tests/run-tests.sh 102-legacy-dropin-recovery",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "103-wporg-metadata",
+        "command": "bash .tests/run-tests.sh 103-wporg-metadata",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "104-bundled-rules",
+        "command": "bash .tests/run-tests.sh 104-bundled-rules",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "105-profiler-consent",
+        "command": "bash .tests/run-tests.sh 105-profiler-consent",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "106-mail-recipients",
+        "command": "bash .tests/run-tests.sh 106-mail-recipients",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "107-traffic-json",
+        "command": "bash .tests/run-tests.sh 107-traffic-json",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "108-neutral-links",
+        "command": "bash .tests/run-tests.sh 108-neutral-links",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "109-sharing-notice",
+        "command": "bash .tests/run-tests.sh 109-sharing-notice",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "110-sql-explain-scope",
+        "command": "bash .tests/run-tests.sh 110-sql-explain-scope",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "111-w3-runtime",
+        "command": "bash .tests/run-tests.sh 111-w3-runtime",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "112-browser-derived-evidence",
+        "command": "bash .tests/run-tests.sh 112-browser-derived-evidence",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "113-loader-ownership",
+        "command": "bash .tests/run-tests.sh 113-loader-ownership",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "declared-response-code",
+        "command": "bash .tests/run-tests.sh 83-history",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "PASS: stable Home prerequisite selects Twenty Twenty-Five",
+          "PASS: a response-code mismatch is reported as its own declared failure",
           "1 case file(s) run, 0 failed"
         ]
       }

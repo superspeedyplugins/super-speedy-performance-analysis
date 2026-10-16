@@ -3,8 +3,9 @@
 // signature. History must evaluate that code for every applicable measured case, report a
 // code mismatch separately from an output-signature change and from missing evidence, and
 // hand the same result to the admin table, the export, the CLI and Abilities. Real spot runs
-// of Home; the After's failure comes from the retained browser fixture answering 503 to
-// captured requests.
+// of Home with an explicitly selected stable theme; the After's failure comes from the
+// retained browser fixture answering 503 to captured requests. Fleet themes such as
+// Blocksy legitimately emit random search-form IDs, so their Home cannot be approved.
 require __DIR__ . '/../lib/fleet.php';
 
 function sspa_83_t($ok, $label) {
@@ -46,7 +47,14 @@ wp_cache_flush();
 $home_identity = SSPA_History_Series::page_identity(array('page_key' => 'home', 'method' => 'GET', 'variant' => 'anon', 'object_cache_mode' => 'normal'));
 SSPA_History::clear_assertion($home_identity);
 
+$original_theme = get_stylesheet();
 try {
+    if (!wp_get_theme('twentytwentyfive')->exists()) {
+        throw new RuntimeException('Case 83 requires the installed Twenty Twenty-Five fixture theme');
+    }
+    switch_theme('twentytwentyfive');
+    wp_cache_flush();
+    sspa_83_t('twentytwentyfive' === get_stylesheet(), 'stable Home prerequisite selects Twenty Twenty-Five (entry theme: ' . $original_theme . ')');
     $before = sspa_83_run(array('home'));
     $approved = SSPA_History::approve_assertion($before, $home_identity);
     sspa_83_t(true === $approved, 'the real Before run approves a Home expectation' . (is_wp_error($approved) ? ' (' . $approved->get_error_message() . ')' : ''));
@@ -85,6 +93,11 @@ try {
     sspa_83_t(($cli_home['declared']['response_code'] ?? null) === $home['declared']['response_code'], 'the real CLI reports the same response-code verdict');
 } catch (Throwable $error) {
     sspa_83_t(false, $error->getMessage());
+} finally {
+    update_option('sspa_fleet_http_error', '0', true);
+    switch_theme($original_theme);
+    wp_cache_flush();
+    sspa_83_t($original_theme === get_stylesheet(), 'the entry theme is restored (' . $original_theme . ')');
 }
 
 if ($GLOBALS['sspa_83_failures']) { exit(1); }

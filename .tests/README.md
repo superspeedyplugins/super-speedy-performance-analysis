@@ -67,6 +67,11 @@ without starting an analysis. It verifies actual axis/point hover, name-only lab
 HTML tooltip timing, escaped label/URL content, pointer exit and narrow-screen containment.
 Prepare the usual History browser fixtures first if the isolated site has no completed runs.
 
+While the suite owns a site, monitor its filesystem log rather than sending additional
+HTTP or WP-CLI requests to that site. A separate WP-CLI bootstrap during an active traffic
+collection also records an origin event. Such a status probe changes case 89's exact
+request count and daily-request denominator; its controlled windows require exclusive use.
+
 For a manually requested warning demonstration on a dedicated local site, install
 `.tests/fixtures/history-shop-warning.php` as an MU plugin on that site only, then run a full
 baseline. It emits a labelled PHP warning only while PA profiles the WooCommerce Shop page;
@@ -739,3 +744,9 @@ Case 102 plants only states that versions before 0.43.4 could create, and exerci
 The translations journey keeps its original five-second canvas assertion; it uses the same entry preparation as the other browser journeys.
 
 Case 97 verifies the removed Super Speedy caches node and action URL are absent with both cache backend modes, while the remaining conditional controls stay available. Case 111 includes a dedicated native multisite ownership regression.
+
+Case 83 requires Twenty Twenty-Five to be installed. It explicitly selects that theme
+for its real Home captures, records the entry theme and restores it in `finally`.
+This establishes a stable-output prerequisite independently of the site's fleet theme:
+Blocksy's random search-form IDs correctly prevent approving its ordinary Home output.
+The response-code, output-signature and missing-evidence assertions are unchanged.
