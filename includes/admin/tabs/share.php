@@ -22,6 +22,10 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
     <p><?php esc_html_e('An admin update/save analysis adds only whether the target was a post, page, product, order or unnamed custom post type; whether the classic form or REST editor saved it; whether it was a real editor update or a no-change Workflows run; and how mail was handled. Object IDs, titles, content and custom post type slugs are never included. Traffic Performance Analysis observations remain local and are not part of this consent.', 'super-speedy-performance-analysis'); ?></p>
     <p><?php esc_html_e('Anonymisation happens in this plugin before the payload enters the local queue. Your domain, URLs, filesystem paths, raw SQL, credentials, emails, customer/order data and request contents are forbidden. A privacy validation failure prevents the payload from being queued or sent.', 'super-speedy-performance-analysis'); ?></p>
 
+    <p><?php esc_html_e('By sharing, you confirm you are entitled to share the analysis of this site and grant WP Intense OÜ a permanent, royalty-free licence to store, process and publish aggregates and anonymised individual results. Submitted archives are stored with Cloudflare R2 indefinitely.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('To delete your submissions and recalculate affected comparisons, email support@superspeedyplugins.com with your installation identifier shown below. Removing the plugin does not delete previous submissions.', 'super-speedy-performance-analysis'); ?></p>
+    <p><a href="https://superspeedy.org/privacy-and-terms/" target="_blank" rel="noopener"><?php esc_html_e('Community privacy policy and terms of service', 'super-speedy-performance-analysis'); ?></a></p>
+
     <h3><?php esc_html_e('1. Share every analysis automatically', 'super-speedy-performance-analysis'); ?></h3>
     <p>
         <label>

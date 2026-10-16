@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-/** Creates and removes the active-only generated MU traffic observer. */
+/** Creates and removes the active-only fixed MU traffic observer. */
 class SSPA_Traffic_Helper {
 
     const SIGNATURE = 'Super Speedy Performance Analysis experimental traffic observer';
@@ -93,35 +93,82 @@ class SSPA_Traffic_Helper {
             'stopped_path' => self::stopped_path(),
         );
         if (class_exists('SSPA_Ajax_Profile') && SSPA_Ajax_Profile::$pending) { $safe['ajax_profile'] = SSPA_Ajax_Profile::$pending; }
-        $content = str_replace(
-            array('/* %%SSPA_TRAFFIC_CONFIG_ASSIGNMENT%% */', '%%SSPA_TRAFFIC_PLUGIN_DIR%%'),
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export -- Return valid escaped PHP literals for the generated observer configuration; this is source serialization, not debug output.
-            array('$sspa_traffic_config = ' . var_export($safe, true) . ';', addslashes(trailingslashit(SSPA_PLUGIN_DIR))),
-            $template
-        );
+        $content = $template;
+        $config_path = self::config_path();
+        if (!wp_mkdir_p(dirname($config_path))) {
+            return new WP_Error('sspa_traffic_config_dir', __('Could not create the traffic configuration directory.', 'super-speedy-performance-analysis'));
+        }
+        $json = wp_json_encode($safe);
+        $written = self::atomic_write($config_path, $json, 0600);
+        if (is_wp_error($written)) {
+            return $written;
+        }
 
         if (is_file(self::stopped_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only this plugin's own observer stop-flag.
             unlink(self::stopped_path());
         }
-        $temporary = self::path() . '.tmp-' . wp_generate_password(8, false, false);
-        if (file_put_contents($temporary, $content, LOCK_EX) !== strlen($content)) {
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- cleans up our own temporary file after a failed write.
-            @unlink($temporary);
-            return new WP_Error('sspa_traffic_mu_write', __('Could not write the traffic observer.', 'super-speedy-performance-analysis'));
-        }
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- sets 0644 on our own temporary file before it is renamed into place.
-        @chmod($temporary, 0644);
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic install of the observer mu-plugin: write to a temporary file, then rename, so no request ever sees a half-written observer.
-        if (!rename($temporary, self::path())) {
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- cleans up our own temporary file after a failed rename.
-            @unlink($temporary);
-            return new WP_Error('sspa_traffic_mu_rename', __('Could not activate the traffic observer atomically.', 'super-speedy-performance-analysis'));
+        $written = self::atomic_write(self::path(), $content, 0644);
+        if (is_wp_error($written)) {
+            return $written;
         }
         if (function_exists('opcache_invalidate')) {
             @opcache_invalidate(self::path(), true);
         }
         return true;
+    }
+
+    public static function config_path() {
+        $uploads = wp_upload_dir(null, false);
+        return $uploads['basedir'] . '/super-speedy-performance-analysis/traffic-config.json';
+    }
+
+    private static function atomic_write($path, $content, $mode) {
+        $temporary = $path . '.tmp-' . wp_generate_password(12, false, false);
+        $handle = fopen($temporary, 'x');
+        if (!$handle) {
+            return new WP_Error('sspa_traffic_write', __('Could not create a temporary traffic file.', 'super-speedy-performance-analysis'));
+        }
+        try {
+            // Set private permissions before any configuration bytes are written.
+            if (!chmod($temporary, $mode) || fwrite($handle, $content) !== strlen($content) || !fflush($handle)) {
+                return new WP_Error('sspa_traffic_write', __('Could not write the traffic file with safe permissions.', 'super-speedy-performance-analysis'));
+            }
+            fclose($handle);
+            $handle = null;
+            if (!rename($temporary, $path)) {
+                return new WP_Error('sspa_traffic_rename', __('Could not activate the traffic file atomically.', 'super-speedy-performance-analysis'));
+            }
+            return true;
+        } finally {
+            if (is_resource($handle)) { fclose($handle); }
+            if (is_file($temporary)) { unlink($temporary); }
+        }
+    }
+
+    /** Rebuild old generated configuration from durable collection state, never eval it. */
+    public static function migrate_config() {
+        if (!self::is_ours()) { return true; }
+        $row = SSPA_Traffic_Collection::active();
+        if (!$row) { return self::remove(); }
+        $config = array(
+            'collection_id' => (int) $row['id'],
+            'collect_until' => strtotime($row['collect_until'] . ' UTC'),
+            'outcomes_until' => strtotime($row['outcomes_until'] . ' UTC'),
+            'event_id_stop' => (int) $row['event_id_stop'],
+            'endpoint_id_stop' => (int) $row['endpoint_id_stop'],
+            'origin_sample_modulus' => (int) $row['origin_sample_modulus'],
+            'key_option' => SSPA_Traffic_Collection::key_option((int) $row['id']),
+        );
+        $pending = SSPA_Ajax_Profile::$pending;
+        foreach (SSPA_Ajax_Profile::windows() as $window) {
+            if ((int) $window['collection_id'] === (int) $row['id']) {
+                SSPA_Ajax_Profile::$pending = $window;
+                break;
+            }
+        }
+        try { return self::install($config); }
+        finally { SSPA_Ajax_Profile::$pending = $pending; }
     }
 
     public static function remove($force = false) {
@@ -147,9 +194,12 @@ class SSPA_Traffic_Helper {
 
     private static function remove_unlocked() {
         $removed = true;
+        if (is_file(self::config_path())) {
+            $removed = unlink(self::config_path());
+        }
         if (self::is_ours(self::path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only the observer mu-plugin this plugin wrote.
-            $removed = @unlink(self::path());
+            $removed = @unlink(self::path()) && $removed;
         }
         if (is_file(self::stopped_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only this plugin's own observer stop-flag.

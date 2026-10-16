@@ -3,8 +3,15 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
 (async()=>{
  const site=process.env.SSPA_E2E_URL;assert.match(new URL(site).hostname,/\.super-speedy-performance-analysis\.localhost$/);
  const browser=await chromium.launch({headless:true});
+ const pending=new Map(), failedRequests=[], lifecycle=[], origins=new Set();
+ let failure=null;
+ const safeUrl=value=>{const url=new URL(value);return url.origin+url.pathname;};
  try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',request=>{pending.set(request,{url:safeUrl(request.url()),method:request.method(),started:Date.now()});const url=new URL(request.url());if(/^https?:$/.test(url.protocol))origins.add(url.origin);});
+ page.on('requestfinished',request=>pending.delete(request));
+ page.on('requestfailed',request=>{failedRequests.push({...pending.get(request),error:request.failure()?.errorText});pending.delete(request);});
+ for(const name of ['domcontentloaded','load'])page.on(name,()=>lifecycle.push({event:name,at:Date.now(),url:safeUrl(page.url())}));
  await page.goto(site+'/wp-login.php');await page.waitForFunction(() => document.activeElement?.id === 'user_login');
 	await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);await Promise.all([page.waitForURL(/\/wp-admin\//),page.locator('#wp-submit').click()]);
  await page.goto(site+'/wp-admin/admin.php?page=sspa#ajax');await page.locator('.sspa-ajax-compare').waitFor();
@@ -29,5 +36,12 @@ const {chromium}=require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory/n
  assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').filter(x=>x.name.includes('echarts-history.min.js')).length),1,'AJAX and History share one chart engine fetch');
  assert.deepEqual(errors,[]);
  console.log('PASS AJAX tab, measured chart, actual summary, capture-time policy and standalone chart export; no browser errors');
- }finally{await browser.close();}
+ }catch(error){failure={name:error.name,message:error.message};throw error;}
+ finally{
+  try{
+   const fs=require('node:fs'),output=process.env.SSPA_AJAX_ARTIFACT_DIR;
+   fs.mkdirSync(output,{recursive:true});
+   fs.writeFileSync(output+'/navigation.json',JSON.stringify({probe:'w1-ajax-navigation',failure,lifecycle,origins:[...origins],pending:[...pending.values()].map(request=>({...request,elapsed_ms:Date.now()-request.started})),failedRequests},null,2),{mode:0o600});
+  }finally{await browser.close();}
+ }
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -138,6 +138,21 @@ export SSPA_SCENARIO=mybranch
 A test case file passes when it prints at least one `PASS` line and no `FAIL` lines.
 `run-tests.sh` exits non-zero if any case fails.
 
+### WordPress.org behaviour regressions
+
+Cases 103 to 109 cover build metadata, bundled-only rules, explicit profiler consent,
+mail-recipient boundaries, Traffic JSON configuration, neutral recommendation links and
+community consent notices. Run a focused case with its filename substring, for example
+`.tests/run-tests.sh 105-profiler`. Case 106 intentionally remains red while the mail
+recipient decision is stopped; it captures core SMTP and replacement mailer recipients,
+an existing-author no-change workflow and the complete baseline/write email count.
+
+Set `SSPA_SITE_SCOPE` to the exact resolved native site directory to forbid nested suite
+scenarios from touching any other site. Cases requiring those separate sites report failures;
+they are neither skipped nor counted as passing. `SSPA_SCENARIO=tests-wporg-readiness`
+selects the W1 site. Fixture preparation explicitly enables the profiler; production
+activation, screen opening and analysis start never enable it.
+
 ## The environment
 
 `setup-site.sh` builds, at `http://tests.super-speedy-performance-analysis.localhost:8081`:
@@ -152,6 +167,18 @@ A test case file passes when it prints at least one `PASS` line and no `FAIL` li
   at all, so store assertions fail with nothing actually wrong
 
 `wp` commands run through `cli()` in `env.sh`, which is just `wp --path=<site> --url=<site>`.
+
+### Browser resource boundaries
+
+The synthetic site disables avatars and uses native emoji, so page-load assertions do not
+depend on Gravatar or the WordPress emoji CDN. The normal 30-second navigation limit and
+all application assertions remain in force. The AJAX browser journey records redacted
+request lifecycle data in `navigation.json`; `SSPA_AJAX_ARTIFACT_DIR` selects its output
+folder without changing the site target.
+
+Case 71 loads the installed SPro fixture before its baseline preparation so its own policy
+writer can disable a retained named-endpoint MU policy before the first measured request.
+The original 120ms fixture and measured reduction assertions are unchanged.
 
 ### Two capabilities the old Docker image provided
 

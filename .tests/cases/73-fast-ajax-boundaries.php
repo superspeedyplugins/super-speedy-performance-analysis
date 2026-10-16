@@ -31,7 +31,7 @@ sspa_boundary_check($faults===1,'comparison and export carry failed samples sepa
 $w=SSPA_Ajax_Profile::start(array('scenario'=>'Expired fixture','label'=>'Expiry fixture'));
 if(is_wp_error($w)){echo 'FAIL: '.$w->get_error_message()."\n";return;}
 sleep(3);
-$helper=SSPA_Traffic_Helper::path();$generated=file_get_contents($helper);$generated=preg_replace("/('collect_until' => )\\d+/",'$1'.(time()-2),$generated);file_put_contents($helper,$generated);if(function_exists('opcache_invalidate'))opcache_invalidate($helper,true);
+$config_path=SSPA_Traffic_Helper::config_path();$config=json_decode(file_get_contents($config_path),true);$config['collect_until']=time()-2;file_put_contents($config_path,wp_json_encode($config),LOCK_EX);
 sleep(3);
 wp_remote_post(admin_url('admin-ajax.php'),array('body'=>array('action'=>'zz_ajax_workflow_fixture'),'timeout'=>30));
 sspa_boundary_check(count(SSPA_Ajax_Profile::rows($w))===0,'expired collection writes no AJAX observation during the later outcomes window');

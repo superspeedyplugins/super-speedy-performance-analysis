@@ -34,6 +34,18 @@ class SSPA_Install {
     }
 
     public static function maybe_upgrade() {
+        if (get_option('sspa_behaviour_version') !== SSPA_VERSION) {
+            SSPA_Helper_Files::migrate_profiler_consent();
+            delete_transient('sspa_rules_feed');
+            delete_transient('sspa_rules_feed_backoff');
+            delete_option('sspa_rules_pubkey');
+            delete_option('sspa_hub_url');
+            $traffic = SSPA_Traffic_Helper::migrate_config();
+            if (is_wp_error($traffic) || false === $traffic) {
+                throw new RuntimeException(is_wp_error($traffic) ? $traffic->get_error_message() : 'Could not migrate traffic configuration.');
+            }
+            update_option('sspa_behaviour_version', SSPA_VERSION, true);
+        }
         $installed = get_option('sspa_db_version');
         if ($installed !== SSPA_Schema::DB_VERSION) {
             SSPA_Schema::upgrade($installed);

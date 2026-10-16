@@ -9,21 +9,6 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Submitter {
 
-    /**
-     * Legacy content/rules hub URL. Community submissions use collector_url() instead.
-     */
-    public static function hub_url() {
-        $url = get_option('sspa_hub_url');
-        return $url ? untrailingslashit($url) : 'https://superspeedy.org';
-    }
-
-    /**
-     * Retained for the independently signed rules feed.
-     */
-    public static function endpoint($path) {
-        return self::hub_url() . '/?rest_route=/ssph/v1/' . ltrim($path, '/');
-    }
-
     public static function collector_url() {
         return SSPA_Community_Identity::collector_url();
     }

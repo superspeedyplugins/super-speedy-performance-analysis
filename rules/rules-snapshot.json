@@ -31,7 +31,7 @@
     },
     "slow_query_found_rows": {
       "title": "SQL_CALC_FOUND_ROWS",
-      "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. Scalability Pro removes it from key queries; on large tables this alone can halve query time.",
+      "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. Scalability Pro removes it from key queries..",
       "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
     },
     "slow_query_rand": {

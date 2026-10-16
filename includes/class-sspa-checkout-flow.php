@@ -65,7 +65,7 @@ class SSPA_Checkout_Flow {
         if (SSPA_Run_Controller::active_run_id()) {
             wp_send_json_error(__('An analysis is already running.', 'super-speedy-performance-analysis'));
         }
-        SSPA_Helper_Files::ensure_installed();
+
 
         $preflight = self::preflight_request();
         if (is_wp_error($preflight)) {

@@ -56,6 +56,7 @@ mkdir -p "$SSPA_SITE_DIR/wp-content/mu-plugins"
 ln -sfn "$PLUGIN_DIR/.tests/fixtures/local-delivery.php" "$SSPA_SITE_DIR/wp-content/mu-plugins/sspa-regression-delivery.php"
 source "$PLUGIN_DIR/.tests/local-services.sh" || exit 1
 cli option update admin_email synthetic-admin@example.invalid --quiet
+cli option update show_avatars 0 --quiet
 for vendor in woocommerce wordpress-importer redis-cache; do
     if [ ! -e "$SSPA_SITE_DIR/wp-content/plugins/$vendor" ]; then
         for source in "$MAIN_SITE/wp-content/plugins/$vendor" "$SITES_ROOT/$PLUGIN_SLUG"/*/wp-content/plugins/"$vendor"; do
@@ -135,7 +136,7 @@ for ($i = (int) wp_count_posts("post")->publish; $i < 30; $i++) {
 }' >/dev/null 2>&1
 
 echo "==> helper files"
-cli eval 'SSPA_Helper_Files::ensure_installed();' >/dev/null 2>&1
+cli eval '$r = SSPA_Helper_Files::enable_profiler(); if (is_wp_error($r)) WP_CLI::error($r->get_error_message());' >/dev/null 2>&1
 
 echo
 echo "site      $SSPA_SITE_URL"

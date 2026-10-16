@@ -234,7 +234,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                     printf(
                         /* translators: %s: link to the Scalability Pro product page. */
                         esc_html__('Prefer not to run this by hand every time the site changes? %s includes an options manager that loads what your site actually uses and unloads what it does not, keeping this list under control as plugins come and go.', 'super-speedy-performance-analysis'),
-                        '<a href="' . esc_url('https://www.superspeedyplugins.com/product/scalability-pro/?utm_source=sspa&utm_content=autoload') . '" target="_blank" rel="noopener">' . esc_html__('Scalability Pro', 'super-speedy-performance-analysis') . '</a>'
+                        '<a href="' . esc_url('https://www.superspeedyplugins.com/product/scalability-pro/') . '" target="_blank" rel="noopener">' . esc_html__('Scalability Pro', 'super-speedy-performance-analysis') . '</a>'
                     );
                     ?>
                 </p>
@@ -406,7 +406,9 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             } elseif (isset($sspa_health['mu_reason']) && 'stale' === $sspa_health['mu_reason']) {
                 // Writable, just not refreshed yet. Telling someone to chmod a directory that
                 // is already writable is the worst kind of wrong advice.
-                esc_html_e('out of date - it will be refreshed the next time an analysis runs', 'super-speedy-performance-analysis');
+                esc_html_e('out of date - use Enable profiler in Tools to update the loader', 'super-speedy-performance-analysis');
+            } elseif (isset($sspa_health['mu_reason']) && 'disabled' === $sspa_health['mu_reason']) {
+                esc_html_e('not enabled - use Enable profiler in Tools', 'super-speedy-performance-analysis');
             } else {
                 esc_html_e('not installed - wp-content/mu-plugins is not writable', 'super-speedy-performance-analysis');
             }

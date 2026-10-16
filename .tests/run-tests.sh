@@ -61,7 +61,8 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
                 cli plugin deactivate scalability-pro || exit 1
             fi
             ;;
-        72-fast-ajax-spro.php)
+        71-fast-ajax-profile.php|72-fast-ajax-spro.php)
+            # The baseline needs the writer loaded to disable a retained MU policy.
             cli plugin activate scalability-pro || exit 1
             ;;
     esac

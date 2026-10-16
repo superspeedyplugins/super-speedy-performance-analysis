@@ -21,7 +21,7 @@ class SSPA_Bootstrap {
     public static function register() {
         spl_autoload_register(array(__CLASS__, 'autoload'));
 
-        if (SSPA_DB_VERSION !== get_option('sspa_db_version')) {
+        if (SSPA_DB_VERSION !== get_option('sspa_db_version') || SSPA_VERSION !== get_option('sspa_behaviour_version')) {
             add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));
         }
         add_action('sspa_process_batch_event', array('SSPA_Run_Controller', 'process_batch'));
@@ -54,6 +54,7 @@ class SSPA_Bootstrap {
             'sspa_render_tab' => array('SSPA_Run_Controller', 'ajax_render_tab'),
             'sspa_submission_tick' => array('SSPA_Run_Controller', 'ajax_submission_tick'),
             'sspa_prune_blobs' => array('SSPA_Run_Controller', 'ajax_prune_blobs'),
+            'sspa_profiler_toggle' => array('SSPA_Run_Controller', 'ajax_profiler_toggle'),
             'sspa_tools_recheck' => array('SSPA_Run_Controller', 'ajax_tools_recheck'),
             'sspa_share_optin' => array('SSPA_Run_Controller', 'ajax_share_optin'),
             'sspa_publisher_toggle' => array('SSPA_Run_Controller', 'ajax_publisher_toggle'),

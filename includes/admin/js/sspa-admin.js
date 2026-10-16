@@ -1204,3 +1204,19 @@ jQuery(function ($) {
 		$tmp.remove();
 	});
 });
+
+// Explicit consent is the only UI path which writes the profiling loader.
+jQuery(document).on('click', '#sspa-profiler-toggle', function () {
+    var button = jQuery(this), enabled = button.attr('data-enabled');
+    button.prop('disabled', true);
+    jQuery.post(ajaxurl, { action: 'sspa_profiler_toggle', nonce: sspa_admin.nonce, enabled: enabled })
+        .done(function (response) {
+            if (!response.success) {
+                button.siblings('.sspa-profiler-status').text(response.data);
+                return;
+            }
+            sspa_refresh_tabs(['tools', 'overview']);
+        }).fail(function (xhr) {
+            button.siblings('.sspa-profiler-status').text(xhr.statusText);
+        }).always(function () { button.prop('disabled', false); });
+});

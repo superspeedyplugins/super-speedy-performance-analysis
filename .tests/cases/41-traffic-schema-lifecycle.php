@@ -63,7 +63,8 @@ $secret = (string) get_option($key_option);
 $observer = (string) file_get_contents(SSPA_Traffic_Helper::path());
 sspa_tl_t(strlen($secret) === 64 && ctype_xdigit($secret), 'temporary collection HMAC key exists');
 sspa_tl_t(false === strpos($observer, $secret), 'generated observer contains no collection secret');
-sspa_tl_t(false === strpos($observer, '%%SSPA_') && false !== strpos($observer, "'collection_id' => " . $id), 'generated observer placeholders are replaced');
+$observer_config = json_decode(file_get_contents(SSPA_Traffic_Helper::config_path()), true);
+sspa_tl_t($observer === file_get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php') && (int) $observer_config['collection_id'] === $id, 'fixed observer reads this collection from JSON');
 sspa_tl_t($started['collection']['event_ceiling'] <= floor($started['collection']['disk_ceiling_bytes'] / SSPA_Traffic_Collection::CONSERVATIVE_EVENT_BYTES), 'event ceiling also respects conservative disk ceiling');
 sspa_tl_t($started['collection']['preflight_insert_ms_p95'] >= 20.0, 'slow insert measurement is informational and does not refuse collection');
 

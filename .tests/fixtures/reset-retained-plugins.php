@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../lib/native-guard.php';
 // A new PHP case starts from ordinary plugins. Finished-case sources/results remain.
-$slugs = array('sspa-turnstile-fixture','sspa-bad-plugin','sspa-caller-fixture','sspa-explain-fixture','sspa-digest-fixture','sspa-option-fixture','sspa-scoped-fixture','sspa-panel-fixture','sspa-dep-fixture','sspa-dependant-fixture','sspa-grp-free','sspa-grp-pro','sspa-guard-dep','sspa-guard-reactor','sspa-admin-save-fixture','sspa-workflow-fixture','sspa-blind-plugin','sspa-friendly-plugin','sspa-slow-integration','sspa-mail-observer','sspa-mail-api-mimic','sspa-renamed-session-cookie');
+$slugs = array('sspa-w1-mail-boundary','sspa-turnstile-fixture','sspa-bad-plugin','sspa-caller-fixture','sspa-explain-fixture','sspa-digest-fixture','sspa-option-fixture','sspa-scoped-fixture','sspa-panel-fixture','sspa-dep-fixture','sspa-dependant-fixture','sspa-grp-free','sspa-grp-pro','sspa-guard-dep','sspa-guard-reactor','sspa-admin-save-fixture','sspa-workflow-fixture','sspa-blind-plugin','sspa-friendly-plugin','sspa-slow-integration','sspa-mail-observer','sspa-mail-api-mimic','sspa-renamed-session-cookie');
 foreach ((array)get_option('active_plugins', array()) as $file) {
     if (in_array(dirname($file), $slugs, true)) {
         // No fixture deactivation hooks: those are exercised explicitly by their own cases.
@@ -13,6 +13,8 @@ foreach ((array)get_option('active_plugins', array()) as $file) {
 update_option('zz_pa_export_probe_armed', 0, true);
 // Case 99's malformed-SQL privacy probe must not run on unrelated anonymous pages.
 update_option('zz_sspa_export_review', 0, true);
+// Synthetic admin avatars must not depend on an external Gravatar connection.
+update_option('show_avatars', 0, true);
 // Retained case89 MU fixture reads this at template_redirect. Store the neutral value
 // autoloaded so unrelated anonymous requests neither sleep nor issue a fixture SQL query.
 update_option('sspa_traffic_delay_ms', 0, true);
@@ -42,3 +44,7 @@ if (in_array(SSPA_Helper_Files::dropin_status(), array('qm', 'foreign'), true)) 
     $settle_seconds = $was_symlink ? max(3, (int) ini_get('realpath_cache_ttl') + 5) : 3;
     sleep($settle_seconds);
 }
+
+// Cases exercise profiling after the site owner explicitly enabled it in Tools.
+$sspa_fixture_enable = SSPA_Helper_Files::enable_profiler();
+if (is_wp_error($sspa_fixture_enable)) { throw new RuntimeException($sspa_fixture_enable->get_error_message()); }

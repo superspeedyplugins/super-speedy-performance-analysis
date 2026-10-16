@@ -1,7 +1,17 @@
 <?php
-// Test transport only. Construction and real PHPMailer completion hooks still run.
+// Isolated regression network boundaries; real PHPMailer completion hooks still run.
 // Only on this plugin's isolated test sites: the default scenario `tests` and any `tests-*`.
 if (!defined('ABSPATH') || !preg_match('/^tests(-|$)/', basename(rtrim(ABSPATH, '/')))) return;
+// Keep native emoji in synthetic browser fixtures instead of fetching CDN artwork.
+$sspa_regression_native_emoji = static function () {
+    remove_action('wp_head', 'print_emoji_detection_script', 7);
+    remove_action('admin_print_scripts', 'print_emoji_detection_script');
+    remove_action('embed_head', 'print_emoji_detection_script');
+};
+add_action('init', $sspa_regression_native_emoji, 0);
+add_action('admin_init', $sspa_regression_native_emoji, 0);
+unset($sspa_regression_native_emoji);
+
 add_action('phpmailer_init', static function ($mailer) {
     $port = (int) get_option('sspa_regression_smtp_port');
     if (!$port) throw new RuntimeException('Local regression SMTP port is required');

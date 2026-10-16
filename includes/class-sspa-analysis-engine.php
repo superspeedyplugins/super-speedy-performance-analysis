@@ -137,7 +137,7 @@ class SSPA_Analysis_Engine {
      * Deterministic misbehaviour signatures over the outbound-call data. No sampling, no
      * guesswork, no LLM: each one is a predicate a call either matches or does not, and
      * each carries a specific fix. The predicates are code; the thresholds and every word
-     * of the recommendations come from the rules feed, so the copy can improve - and new
+     * of the recommendations come from the bundled rules snapshot, so the copy can improve - and new
      * finding types can gain copy - without a plugin release.
      *
      * The three shipped signatures all came out of one real store's first run:

@@ -2,8 +2,7 @@
 defined('ABSPATH') || exit;
 
 /**
- * Rules access. Phase 2: bundled snapshot only. Phase 5 adds the signed superspeedy.org
- * feed with this file as offline fallback - keep the accessor API stable.
+ * Rules access: bundled snapshot only.
  */
 class SSPA_Rules {
 
@@ -16,28 +15,7 @@ class SSPA_Rules {
             if (!is_array(self::$data)) {
                 self::$data = array();
             }
-            // Verified community feed overlays the bundled snapshot (feed wins per key).
-            if (class_exists('SSPA_Rules_Feed')) {
-                $feed = SSPA_Rules_Feed::get();
-                if (is_array($feed)) {
-                    foreach (array('thresholds', 'recommendations', 'categories', 'sector_signatures', 'purpose_taxonomy') as $section) {
-                        if (!empty($feed[$section]) && is_array($feed[$section])) {
-                            self::$data[$section] = array_merge(
-                                isset(self::$data[$section]) ? self::$data[$section] : array(),
-                                $feed[$section]
-                            );
-                        }
-                    }
-                    foreach (array('fragile', 'known_meta_keys') as $list) {
-                        if (!empty($feed[$list]) && is_array($feed[$list])) {
-                            self::$data[$list] = array_values(array_unique(array_merge(
-                                isset(self::$data[$list]) ? self::$data[$list] : array(),
-                                $feed[$list]
-                            )));
-                        }
-                    }
-                }
-            }
+
         }
         return self::$data;
     }
@@ -73,7 +51,7 @@ class SSPA_Rules {
      * otherwise be the first site-authored strings ever to leave an install - option names are
      * not shared, they only live in the local capture.
      *
-     * Overlayable from the community feed, so the list can grow without a plugin release.
+     * Updated with the bundled snapshot in plugin releases.
      */
     public static function known_meta_keys() {
         $data = self::load();
@@ -90,8 +68,7 @@ class SSPA_Rules {
      * purposes. Versioned because the receiver has to know which mapping produced a
      * classification: a site does not change when we improve the taxonomy, but its label may.
      *
-     * The feed can extend it, and `version` comes along with the rest of the section, so an
-     * improved mapping arrives already stamped.
+     * The bundled snapshot carries the mapping version.
      *
      * @return array {version, labels[], content_types{}, plugin_slugs{}, content_classes{}}
      */
@@ -113,7 +90,7 @@ class SSPA_Rules {
     }
 
     /**
-     * Drop the merged in-memory copy (after a feed refresh, and in tests).
+     * Drop the in-memory bundled copy.
      */
     public static function flush() {
         self::$data = null;

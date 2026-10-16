@@ -144,4 +144,5 @@ restore_error_handler();
 $html = ob_get_clean();
 sspa_t(empty($errors), 'tools tab renders with no PHP notices' . ($errors ? ': ' . implode('; ', array_slice($errors, 0, 3)) : ''));
 sspa_t(strpos($html, 'Query plans') !== false, 'tools tab renders the capability table');
-sspa_t(strpos($html, 'never installs anything itself') !== false, 'tools tab states the plugin installs nothing');
+sspa_t(strpos($html, 'These server tools are installed by you or your host.') !== false, 'tools tab leaves server-tool installation to the owner');
+sspa_t(strpos($html, 'id="sspa-profiler-toggle"') !== false, 'tools tab separately exposes explicit profiling-loader consent');

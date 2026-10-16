@@ -38,6 +38,12 @@ else
     return 1
 fi
 
+# Optional strict scope for a workstream authorised to touch one existing site only.
+if [ -n "${SSPA_SITE_SCOPE:-}" ] && [ "$SSPA_SITE_DIR" != "$SSPA_SITE_SCOPE" ]; then
+    echo "FAIL: suite scenario $SSPA_SCENARIO targets $SSPA_SITE_DIR outside authorised site $SSPA_SITE_SCOPE" >&2
+    exit 1
+fi
+
 # A nested harness can create its site before sspa_require_site() runs. Its inherited
 # wp shim must already route to the newly resolved target, not its parent's database.
 export SSPA_TEST_SITE_DIR="$SSPA_SITE_DIR" SSPA_TEST_SITE_URL="$SSPA_SITE_URL"

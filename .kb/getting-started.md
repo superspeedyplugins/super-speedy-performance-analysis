@@ -8,7 +8,7 @@ Super Speedy Performance Analysis finds out what is actually slowing your WordPr
 2. Plugins -> Add New -> Upload Plugin -> activate.
 3. Go to **Super Speedy -> Performance Analysis**.
 
-On activation the plugin installs two small helpers: an mu-plugin loader and a conditional `db.php` drop-in. The profiling helpers operate on signed profiling requests. Separately, an explicitly started traffic or AJAX collection window observes matching real requests on the site. The Overview tab's Health box shows their status.
+On activation the plugin installs its conditional `db.php` drop-in only if that path is unoccupied. Open the existing Tools tab and click **Enable profiler** to install the mu-plugin loader before starting analysis; **Disable profiler** removes it. Opening the screen or starting a run never recreates a missing loader. The profiling helpers operate on signed profiling requests. Separately, an explicitly started traffic or AJAX collection window observes matching real requests on the site. The Overview tab's Health box shows their status.
 
 ## Your first analysis
 

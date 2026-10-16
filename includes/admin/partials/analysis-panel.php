@@ -26,6 +26,10 @@ defined('ABSPATH') || exit;
         <p><?php esc_html_e('Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run sends page requests to your own site (roughly four per page profiled) and stores the measurements. Customer-session tests use the restricted account described below.', 'super-speedy-performance-analysis'); ?></p>
     <?php endif; ?>
 
+    <?php if (!$sspa_health['mu']) : ?>
+        <p class="notice notice-warning inline"><a href="<?php echo esc_url(admin_url('admin.php?page=sspa#tools')); ?>"><?php esc_html_e('Enable profiler in Tools before starting an analysis.', 'super-speedy-performance-analysis'); ?></a></p>
+    <?php endif; ?>
+
     <?php if ($sspa_foreign_dropin) : ?>
         <div class="notice notice-warning inline">
             <p>

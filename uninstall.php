@@ -58,6 +58,14 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
     }
 }
 
+// Live observer configuration must not survive uninstall, even when history is retained.
+$sspa_uploads = wp_upload_dir(null, false);
+$sspa_traffic_config = $sspa_uploads['basedir'] . '/super-speedy-performance-analysis/traffic-config.json';
+if (is_file($sspa_traffic_config)) {
+    unlink($sspa_traffic_config);
+}
+delete_option('sspa_profiler_enabled');
+
 // Remove our helper files if present (installed from Phase 1 onwards). Signature-checked so
 // we never delete another plugin's file.
 $sspa_helper_files = array(

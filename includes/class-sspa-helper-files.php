@@ -92,32 +92,32 @@ class SSPA_Helper_Files {
         return defined('DISALLOW_FILE_MODS') && DISALLOW_FILE_MODS;
     }
 
-    /**
-     * Idempotent: (re)writes helper files when missing or stale. Called on activation and
-     * on admin_init (cheap: two filemtime-free content compares only when files exist).
-     *
-     * Returns both false when DISALLOW_FILE_MODS is set. health() reports that separately
-     * from "not writable" so the reason the user is shown is the real one.
-     */
-    public static function ensure_installed() {
+    /** Refresh the database helper; the loader requires explicit consent. */
+    public static function ensure_installed($enable_mu = false) {
         $results = array('mu' => false, 'dropin' => false);
 
         if (self::file_mods_blocked()) {
             return $results;
         }
 
-        $mu_content = self::generate('mu/sspa-loader.php');
-        if ($mu_content !== false) {
-            if (!is_dir(WPMU_PLUGIN_DIR)) {
-                wp_mkdir_p(WPMU_PLUGIN_DIR);
+        if ($enable_mu) {
+            if (file_exists(self::mu_path()) && !self::is_ours(self::mu_path())) {
+                return $results;
             }
-            $current = file_exists(self::mu_path()) ? file_get_contents(self::mu_path()) : null;
-            if ($current === $mu_content) {
-                $results['mu'] = true;
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write; initialising WP_Filesystem just to answer it can prompt for FTP credentials.
-            } elseif (is_writable(WPMU_PLUGIN_DIR) || (file_exists(self::mu_path()) && is_writable(self::mu_path()))) {
-                $results['mu'] = (bool) file_put_contents(self::mu_path(), $mu_content);
+            $mu_content = self::generate('mu/sspa-loader.php');
+            if ($mu_content !== false) {
+                if (!is_dir(WPMU_PLUGIN_DIR)) {
+                    wp_mkdir_p(WPMU_PLUGIN_DIR);
+                }
+                $current = file_exists(self::mu_path()) ? file_get_contents(self::mu_path()) : null;
+                if ($current === $mu_content) {
+                    $results['mu'] = true;
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write; initialising WP_Filesystem just to answer it can prompt for FTP credentials.
+                } elseif (is_writable(WPMU_PLUGIN_DIR) || (file_exists(self::mu_path()) && is_writable(self::mu_path()))) {
+                    $results['mu'] = (bool) file_put_contents(self::mu_path(), $mu_content);
+                }
             }
+
         }
 
         $status = self::dropin_status();
@@ -205,7 +205,38 @@ class SSPA_Helper_Files {
         return $ok;
     }
 
+    public static function enable_profiler() {
+        if (self::file_mods_blocked()) {
+            return new WP_Error('sspa_file_mods_disallowed', __('This site sets DISALLOW_FILE_MODS, which forbids installing the profiler loader.', 'super-speedy-performance-analysis'));
+        }
+        $result = self::ensure_installed(true);
+        if (!$result['mu']) {
+            return new WP_Error('sspa_loader_write', __('Could not install the profiler loader; check mu-plugins permissions and any existing file at that path.', 'super-speedy-performance-analysis'));
+        }
+        update_option('sspa_profiler_enabled', true, false);
+        return true;
+    }
+
+    public static function disable_profiler() {
+        if (self::is_ours(self::mu_path()) && !unlink(self::mu_path())) {
+            return new WP_Error('sspa_loader_remove', __('Could not remove the profiler loader; check its file permissions.', 'super-speedy-performance-analysis'));
+        }
+        update_option('sspa_profiler_enabled', false, false);
+        return true;
+    }
+
+    /** Record existing pre-consent installs without writing or recreating a loader. */
+    public static function migrate_profiler_consent() {
+        if (false === get_option('sspa_profiler_enabled', null)) {
+            return;
+        }
+        if (null === get_option('sspa_profiler_enabled', null)) {
+            update_option('sspa_profiler_enabled', self::is_ours(self::mu_path()), false);
+        }
+    }
+
     public static function remove_all() {
+        update_option('sspa_profiler_enabled', false, false);
         if (self::is_ours(self::mu_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only the mu-loader this plugin wrote, verified by its signature line.
             unlink(self::mu_path());
@@ -238,13 +269,6 @@ class SSPA_Helper_Files {
     }
 
     public static function health() {
-        // The loader carries the plugin version, so it goes stale on every update - and a
-        // plugin update does NOT fire the activation hook, so nothing would rewrite it until
-        // the next analysis run. Refresh it here, on our own screen, rather than reporting a
-        // stale file as a broken install. Cheap: a comparison, and a write only when it
-        // actually differs.
-        self::ensure_installed();
-
         $mu_content = self::generate('mu/sspa-loader.php');
         $mu_exists = file_exists(self::mu_path());
         $mu_ok = $mu_exists && file_get_contents(self::mu_path()) === $mu_content;
@@ -259,7 +283,7 @@ class SSPA_Helper_Files {
             } elseif (!is_writable(WPMU_PLUGIN_DIR) && !($mu_exists && is_writable(self::mu_path()))) {
                 $mu_reason = 'not_writable';
             } else {
-                $mu_reason = 'stale';
+                $mu_reason = $mu_exists ? 'stale' : 'disabled';
             }
         }
 

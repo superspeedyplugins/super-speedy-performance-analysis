@@ -13,11 +13,21 @@ $sspa_status_label = array(
 );
 ?>
 
+<?php $sspa_profiler_health = SSPA_Helper_Files::health(); ?>
+<div id="sspa-profiler-control">
+    <h2><?php esc_html_e('Profiler', 'super-speedy-performance-analysis'); ?></h2>
+    <p><?php esc_html_e('Enable profiler installs the profiling loader in wp-content/mu-plugins; Disable removes it. Analysis requires this loader.', 'super-speedy-performance-analysis'); ?></p>
+    <button type="button" class="button" id="sspa-profiler-toggle" data-enabled="<?php echo $sspa_profiler_health['mu'] ? '0' : '1'; ?>">
+        <?php echo $sspa_profiler_health['mu'] ? esc_html__('Disable profiler', 'super-speedy-performance-analysis') : esc_html__('Enable profiler', 'super-speedy-performance-analysis'); ?>
+    </button>
+    <p class="sspa-profiler-status" role="status"></p>
+</div>
+
 <p class="description">
-    <?php esc_html_e('Everything on this page is optional - the analysis works without any of it. These add depth, and one stands out: if you install one thing, install excimer. It turns every profile into a function-level view of where the time went, at negligible cost, and it is the instrument that sees inside theme templates where nothing else can.', 'super-speedy-performance-analysis'); ?>
+    <?php esc_html_e('The tools below add depth to analysis, and one stands out: if you install one thing, install excimer. It turns every profile into a function-level view of where the time went, at negligible cost, and it is the instrument that sees inside theme templates where nothing else can.', 'super-speedy-performance-analysis'); ?>
 </p>
 <p class="description">
-    <strong><?php esc_html_e('This plugin never installs anything itself.', 'super-speedy-performance-analysis'); ?></strong>
+    <strong><?php esc_html_e('These server tools are installed by you or your host.', 'super-speedy-performance-analysis'); ?></strong>
     <?php esc_html_e('It does not edit php.ini, run pecl, or restart anything. It shows you the exact commands for this server, and you or your host run them.', 'super-speedy-performance-analysis'); ?>
 </p>
 

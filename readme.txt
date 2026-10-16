@@ -4,7 +4,7 @@ Donate link: https://www.superspeedyplugins.com/
 Tags: speed, performance, profiling, query monitor, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.43.1
+Stable tag: 0.43.12
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -50,11 +50,16 @@ Saved analysis data is retained by default. Before deleting the plugin, enable "
 
 == External services ==
 
-The optional community service at https://superspeedy.org/ collects profiling evidence to build public comparisons of plugin performance. Automatic sharing is disabled by default. An administrator can enable sharing or explicitly submit selected runs; the Share tab provides a payload preview. No purchased account is required. The plugin registers a random installation identifier and a generated authentication secret with https://collector.superspeedy.org/ when submitting evidence.
+The optional community service at https://superspeedy.org/ collects profiling evidence to build public performance comparisons. Automatic sharing is disabled by default. An administrator can enable it or submit selected analyses individually; the Share tab previews the exact evidence before submission. No purchased account is required.
 
-Registration sends that identifier and secret, plus the plugin, WordPress and PHP versions. Submission sends the installation identifier, run/submission identifiers, archive checksums and sizes, and a compressed evidence archive containing measurements, plugin/theme identifiers and versions, page classifications and sanitised profiling details. The collector supplies an HTTPS upload URL for its archive storage, and the plugin confirms receipt with the collector. Queued submissions may retry after temporary failures.
+Registration sends a random installation identifier, a generated authentication secret, and the plugin, WordPress and PHP versions. Each submission sends the installation identifier, run and submission identifiers, archive checksums and compressed/uncompressed sizes, protocol/schema/anonymisation versions, the run type and archive creation time, and a compressed archive containing timings and counts, plugin and theme identifiers and versions, page classifications and sanitised profiling details. These include size bands, normalised query fingerprints, component-published performance settings, external HTTP call aggregates and bounded boot, hook, render and asset summaries where available and covered by consent. Registration and submission metadata go to the community collector; the archive goes to the HTTPS storage upload URL it supplies, followed by receipt confirmation using the reservation identifier and archive checksum. Submission requests carry the installation identifier and cryptographic authentication signatures. Queued submissions may retry after temporary failures. Passive traffic and AJAX observation windows remain local.
 
-Payload anonymisation removes identifying site and customer details from the evidence archive. It does not make the network connection anonymous: receiving servers see the source IP address and request headers. The service operator's privacy policy is https://www.superspeedyplugins.com/privacy-policy/ .
+Before queueing or sending evidence, privacy validation rejects site addresses and file paths, distinctive database names, email and IP addresses, user/order/product identifiers, sessions, cookies and request or response bodies. Calls to the site's own host are excluded. This anonymisation does not make the connection anonymous: the receiving servers and Cloudflare see its source IP address. The collector does not record IP addresses.
+
+WP Intense OÜ operates the service, stores submitted archives with Cloudflare R2 indefinitely, and may publish aggregates and anonymised individual results. Email support@superspeedyplugins.com with the installation identifier shown in Share to request deletion and recalculation of affected comparisons; uninstalling the plugin does not delete previous submissions. Submission grants WP Intense OÜ a permanent, royalty-free licence to store, process and publish that evidence in aggregated or anonymised form.
+
+Privacy policy: https://superspeedy.org/privacy-and-terms/
+Terms of service: https://superspeedy.org/privacy-and-terms/
 
 == Source code and third-party libraries ==
 
@@ -65,6 +70,30 @@ History charts use a locally bundled custom build of Apache ECharts 6.1.0 and it
 The readable chart entry point, pinned dependency lockfile and build script are at https://github.com/superspeedyplugins/super-speedy-performance-analysis/tree/main/.build/echarts . From that directory in a source checkout, run `npm ci` followed by `npm run build` to regenerate includes/admin/vendor/echarts-history.min.js and its licence files. Upstream readable source is at https://github.com/apache/echarts/tree/6.1.0 and https://github.com/ecomfe/zrender ; the exact zrender version is recorded in the lockfile.
 
 == Changelog ==
+
+= 0.43.12 =
+* Updated profiler Health guidance to use the explicit Tools controls.
+
+= 0.43.11 =
+* Removed obsolete settings for the community rules service.
+
+= 0.43.10 =
+* Updated the community sharing notice, privacy policy and terms links.
+
+= 0.43.9 =
+* Removed UTM tracking parameters and an unsupported query-time claim from recommendations.
+
+= 0.43.8 =
+* Traffic collection now stores its observer configuration as JSON.
+
+= 0.43.7 =
+* Added explicit Enable profiler and Disable controls to Tools.
+
+= 0.43.6 =
+* Analysis rules now come only from the bundled snapshot.
+
+= 0.43.5 =
+* Aligned the stable tag and translation template with the plugin version.
 
 = 0.43.4 (16th October 2026) =
 * Removed the temporary `db.php` swap to keep connection-supplying database drop-ins in place during analysis.

@@ -56,13 +56,20 @@ class SSPA_Run_Controller {
         // Baseline the MySQL digest counters before any profiling traffic. They are
         // cumulative and server-wide, so only the delta across this run means anything.
         // Silently a no-op when the database user cannot read performance_schema.
-        SSPA_Helper_Files::ensure_installed();
         $health = SSPA_Helper_Files::health();
         if (!$health['mu']) {
-            // Two different causes, two different fixes - never report one as the other.
-            return !empty($health['file_mods_blocked'])
-                ? new WP_Error('sspa_file_mods_disallowed', __('The mu-plugin loader could not be installed: this site sets DISALLOW_FILE_MODS, which forbids plugins from writing files. Profiling needs that loader, so remove the constant (or install wp-content/mu-plugins/sspa-loader.php by hand) to use this plugin.', 'super-speedy-performance-analysis'))
-                : new WP_Error('sspa_no_mu', __('The mu-plugin loader could not be installed (wp-content/mu-plugins is not writable).', 'super-speedy-performance-analysis'));
+            if (!empty($health['file_mods_blocked'])) {
+                return new WP_Error('sspa_file_mods_disallowed', sprintf(
+                    /* translators: %s: Tools tab URL. */
+                    __('DISALLOW_FILE_MODS prevents installing the profiler loader. Enable profiler in Tools after the site owner permits file changes: %s', 'super-speedy-performance-analysis'),
+                    admin_url('admin.php?page=sspa#tools')
+                ));
+            }
+            return new WP_Error('sspa_no_mu', sprintf(
+                /* translators: %s: Tools tab URL. */
+                __('Enable profiler in Tools before starting an analysis: %s', 'super-speedy-performance-analysis'),
+                admin_url('admin.php?page=sspa#tools')
+            ));
         }
 
         $user_id = !empty($args['user_id']) ? (int) $args['user_id'] : get_current_user_id();
@@ -2179,14 +2186,6 @@ class SSPA_Run_Controller {
                 self::fail($run_id, 'stale - timed out');
             }
         }
-
-        // Refresh the community rules feed daily-ish (transient- and backoff-gated inside).
-        // Only a successful refresh changes what SSPA_Rules would return, so a failed one
-        // must not throw away the merged rules we already have.
-        if (false === get_transient(SSPA_Rules_Feed::CACHE_KEY)
-            && true === SSPA_Rules_Feed::refresh()) {
-            SSPA_Rules::flush();
-        }
     }
 
     /**
@@ -2360,6 +2359,25 @@ class SSPA_Run_Controller {
             SSPA_Change_Set::consume($change_set_id);
         }
         wp_send_json_success(self::status($run_id));
+    }
+
+    /** Explicit owner action for the profiling loader. */
+    public static function ajax_profiler_toggle() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        self::ajax_guard();
+        if (self::active_run_id()) {
+            wp_send_json_error(__('Finish or cancel the active analysis before changing the profiler.', 'super-speedy-performance-analysis'));
+        }
+        $requested = isset($_POST['enabled']) ? (string) wp_unslash($_POST['enabled']) : '';
+        if (!in_array($requested, array('0', '1'), true)) {
+            wp_send_json_error(__('Choose Enable or Disable profiler.', 'super-speedy-performance-analysis'), 400);
+        }
+        $enabled = '1' === $requested;
+        $result = $enabled ? SSPA_Helper_Files::enable_profiler() : SSPA_Helper_Files::disable_profiler();
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success(array('enabled' => $enabled));
     }
 
     /**
