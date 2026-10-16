@@ -10,6 +10,17 @@ const {
 } = require("./fleet-context.cjs");
 (async () => {
   const { browser, page } = await session();
+  let workerLease = null;
+  function holdAutomaticWorker() {
+    if (process.env.SSPA_NEGATIVE === 'sharing-autoworker') return;
+    workerLease = json('echo wp_json_encode(SSPA_Atomic_Claim::acquire(SSPA_Community_Worker::LOCK_OPTION, 300));');
+    expect(typeof workerLease).toBe('string');
+  }
+  function runWorker() {
+    const release = workerLease ? `if (!SSPA_Atomic_Claim::release(SSPA_Community_Worker::LOCK_OPTION, ${JSON.stringify(workerLease)})) WP_CLI::error('Lost fixture worker lease');` : '';
+    wp('eval', release + 'SSPA_Community_Worker::run();');
+    workerLease = null;
+  }
   try {
     fs.writeFileSync(
       output + "/prior-outbox.json",
@@ -23,6 +34,10 @@ const {
       "eval",
       `update_option('sspa_share_optin',0);update_option('sspa_fleet_receiver',1);update_option('sspa_fleet_receiver_log',array());global $wpdb;if(false===$wpdb->query('DELETE FROM '.SSPA_Schema::table('submission_outbox')))WP_CLI::error($wpdb->last_error);`,
     );
+    // Hold the real worker only across UI transitions, then release it before
+    // every asserted manual invocation. Otherwise the five-second cron can send
+    // legitimately while consent is still enabled, before the revoke click.
+    holdAutomaticWorker();
     const run = json("echo wp_json_encode(SSPA_Report::latest_done_run_id());");
     const refused = json(
       `$r=SSPA_Community_Outbox::queue_run(${run});echo wp_json_encode(is_wp_error($r)?$r->get_error_code():$r);`,
@@ -63,23 +78,30 @@ const {
       `echo wp_json_encode(SSPA_Community_Outbox::queue_run(${run}));`,
     );
     expect(Number(queued.run_id)).toBe(run);
+    if (process.env.SSPA_NEGATIVE === 'sharing-autoworker') {
+      await page.waitForTimeout(6500);
+      await page.reload();
+      await expect.poll(() => json('echo count(get_option("sspa_fleet_receiver_log",array()));')).toBeGreaterThan(0);
+      fs.writeFileSync(output + '/permitted-background-worker.json', JSON.stringify(json('echo wp_json_encode(get_option("sspa_fleet_receiver_log",array()));'), null, 2));
+    }
     const revoke = response(page, "sspa_share_optin");
     await panel.locator("#sspa-share-optin").uncheck();
     expect((await (await revoke).json()).success).toBe(true);
     await page.reload();
     await expect(panel.locator("#sspa-share-optin")).not.toBeChecked();
-    wp("eval", "SSPA_Community_Worker::run();");
+    runWorker();
     expect(
       json(
         'echo wp_json_encode(get_option("sspa_fleet_receiver_log",array()));',
       ),
     ).toEqual([]);
+    holdAutomaticWorker();
     const allow = response(page, "sspa_share_optin");
     await panel.locator("#sspa-share-optin").check();
     expect((await (await allow).json()).success).toBe(true);
     await page.reload();
     await expect(panel.locator("#sspa-share-optin")).toBeChecked();
-    wp("eval", "SSPA_Community_Worker::run();");
+    runWorker();
     const requests = json(
       'echo wp_json_encode(get_option("sspa_fleet_receiver_log",array()));',
     );
@@ -115,13 +137,18 @@ const {
     console.log(
       "PASS exact preview/download, zero opted-out queue, real consent/revocation, approved local reservation and retained refused delivery",
     );
+  } catch (error) {
+    console.error('Sharing assertion failed', error);
+    throw error;
   } finally {
+    try {
+    if (workerLease) wp('eval', `SSPA_Atomic_Claim::release(SSPA_Community_Worker::LOCK_OPTION, ${JSON.stringify(workerLease)});`);
     wp("option", "update", "sspa_share_optin", "0");
     await page.screenshot({
       path: output + "/sharing-final.png",
       fullPage: true,
     });
-    await browser.close();
+    } finally { await browser.close(); }
   }
 })().catch((e) => {
   console.error(e);

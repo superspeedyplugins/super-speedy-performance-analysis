@@ -49,17 +49,19 @@ class SSPA_Markdown_Export {
             return $data;
         }
         $profile = (array) $data['profile'];
-        $capture = is_array($data['capture']) ? $data['capture'] : array();
+        $capture = SSPA_Page_Summary::site_capture(is_array($data['capture']) ? $data['capture'] : array());
+        $profile = SSPA_Page_Summary::representative($profile, $capture);
         $page_key = isset($profile['page_key']) ? $profile['page_key'] : 'page-' . $profile_id;
         $queries = isset($capture['sql']['queries']) ? (array) $capture['sql']['queries'] : array();
         $query_groups = self::aggregate_queries($queries);
         $lines = self::header('Page performance analysis', 'page', $profile_id);
-        self::diagnostic_summary($lines, $profile, $query_groups, isset($data['findings']) ? $data['findings'] : array());
+        self::page_summary($lines, $profile, $capture);
+        self::php_evidence($lines, $capture);
         $lines[] = '## Measurement context';
         $lines[] = '';
         $lines[] = '- Page: `' . self::code($page_key) . '`';
         $lines[] = '- URL: `' . self::code(self::safe_url(isset($profile['url']) ? $profile['url'] : '')) . '`';
-        $lines[] = '- Request: `' . self::code((isset($profile['method']) ? $profile['method'] : 'GET') . ' / ' . (isset($profile['variant']) ? $profile['variant'] : 'unknown')) . '`';
+        $lines[] = '- Request: `' . self::code((isset($profile['method']) ? $profile['method'] : 'GET') . ' ' . (wp_parse_url(self::safe_url(isset($profile['url']) ? $profile['url'] : ''), PHP_URL_PATH) ?: '/') . ' ' . (isset($profile['variant']) ? $profile['variant'] : 'unknown')) . '`';
         $lines[] = '- Measured: ' . self::plain(isset($profile['created']) ? $profile['created'] . ' UTC' : 'unknown');
         if (!empty($data['run'])) {
             $lines[] = '- Run type: `' . self::code(isset($data['run']['type']) ? $data['run']['type'] : 'unknown') . '`';
@@ -83,6 +85,8 @@ class SSPA_Markdown_Export {
         $lines[] = '';
         $lines[] = '## Headline metrics';
         $lines[] = '';
+        $lines[] = 'Generation, SQL, HTTP and RAM describe the same retained representative sample; TTFB remains the sample median and the range above describes all measured requests.';
+        $lines[] = '';
         $lines[] = '| Metric | Value |';
         $lines[] = '|---|---:|';
         $metrics = array(
@@ -98,10 +102,13 @@ class SSPA_Markdown_Export {
             $lines[] = '| ' . $label . ' | ' . $value . ' |';
         }
 
-        self::findings($lines, isset($data['findings']) ? $data['findings'] : array());
+        $minor_sql = !empty($capture['overview']['gen_ms']) && isset($capture['sql']['total_ms']) && $capture['sql']['total_ms'] < $capture['overview']['gen_ms'] * .05;
+        self::findings($lines, isset($data['findings']) ? $data['findings'] : array(), $minor_sql);
         self::components($lines, isset($capture['components']) ? $capture['components'] : array(), isset($profile['sql_count']) ? $profile['sql_count'] : null);
+        if ($minor_sql) { $lines[] = '<details><summary>Minor SQL evidence (under 5% of generation)</summary>'; $lines[] = ''; }
         self::queries($lines, $queries, $query_groups);
         self::query_plan_evidence($lines, isset($data['findings']) ? $data['findings'] : array());
+        if ($minor_sql) { $lines[] = '</details>'; $lines[] = ''; }
         self::raw_http($lines, isset($capture['http']['calls']) ? $capture['http']['calls'] : array());
         self::impacts($lines, isset($data['measured_plugin_impacts']) ? $data['measured_plugin_impacts'] : array());
         self::help($lines);
@@ -223,7 +230,7 @@ class SSPA_Markdown_Export {
         );
     }
 
-    private static function findings(&$lines, $findings) {
+    private static function findings(&$lines, $findings, $minor_sql = false) {
         $lines[] = '## Findings and recommendations';
         $lines[] = '';
         if (!$findings) {
@@ -231,7 +238,21 @@ class SSPA_Markdown_Export {
             $lines[] = '';
             return;
         }
-        foreach ((array) $findings as $finding) {
+        $cost = static function ($f) {
+            foreach (array('total_ms', 'ms', 'sql_ms', 'cost_ms') as $key) if (isset($f['evidence'][$key]) && is_numeric($f['evidence'][$key])) return (float) $f['evidence'][$key];
+            return -1;
+        };
+        usort($findings, static function ($a, $b) use ($cost) { return $cost($b) <=> $cost($a); });
+        $minor = array();
+        if ($minor_sql) {
+            foreach ($findings as $key => $finding) {
+                if (!empty($finding['evidence']['fp']) || !empty($finding['evidence']['sql']) || preg_match('/sql|quer|index|autoload/', isset($finding['type']) ? $finding['type'] : '')) { $minor[] = $finding; unset($findings[$key]); }
+            }
+            $findings = array_merge(array_values($findings), $minor);
+        }
+        $minor_at = count($findings) - count($minor);
+        foreach (array_values($findings) as $index => $finding) {
+            if ($minor && $index === $minor_at) { $lines[] = '<details><summary>Minor SQL findings (under 5% of generation)</summary>'; $lines[] = ''; }
             $headline = !empty($finding['headline']) ? $finding['headline'] : (!empty($finding['type']) ? str_replace('_', ' ', $finding['type']) : 'Finding');
             $lines[] = '### [' . strtoupper(self::plain(isset($finding['severity']) ? $finding['severity'] : 'info')) . '] ' . self::plain($headline);
             $lines[] = '';
@@ -260,6 +281,7 @@ class SSPA_Markdown_Export {
             }
             $lines[] = '';
         }
+        if ($minor) { $lines[] = '</details>'; $lines[] = ''; }
     }
 
     private static function components(&$lines, $components, $headline_query_count = null) {
@@ -458,23 +480,62 @@ class SSPA_Markdown_Export {
         $lines[] = '';
     }
 
-    private static function diagnostic_summary(&$lines, $profile, $groups, $findings) {
+    private static function page_summary(&$lines, $profile, $capture) {
+        $summary = SSPA_Page_Summary::build($profile, $capture);
         $lines[] = '## Diagnostic summary';
         $lines[] = '';
-        if (!$groups) {
-            $lines[] = '- Outcome: No retained SQL group was available to identify dominant database work.';
-        } else {
-            $dominant = $groups[0];
-            $sql_ms = isset($profile['sql_ms']) ? (float) $profile['sql_ms'] : 0.0;
-            $generation_ms = isset($profile['page_gen_ms']) ? (float) $profile['page_gen_ms'] : 0.0;
-            $lines[] = '- Outcome: `' . self::code($dominant['component']) . '` dominated the measured retained SQL time.';
-            $lines[] = '- Dominant component: `' . self::code($dominant['component']) . '`';
-            $lines[] = '- Measured contribution: ' . self::ms($dominant['total_ms']) . ' across ' . (int) $dominant['calls'] . ' matching query executions';
-            $lines[] = '- Share of page SQL: ' . ($sql_ms > 0 ? number_format(($dominant['total_ms'] / $sql_ms) * 100, 1) . '%' : 'not calculated');
-            $lines[] = '- Share of request generation: ' . ($generation_ms > 0 ? number_format(($dominant['total_ms'] / $generation_ms) * 100, 1) . '%' : 'not calculated');
+        $lines[] = '- Outcome: ' . self::plain($summary['verdict']);
+        foreach ($summary['culprits'] as $culprit) $lines[] = '- ' . self::plain($culprit);
+        foreach (array('coverage', 'next_action', 'cpu', 'samples') as $key) $lines[] = '- ' . self::plain($summary[$key]);
+        $lines[] = '';
+    }
+
+    private static function php_evidence(&$lines, $capture) {
+        $boot = isset($capture['boot']) ? $capture['boot'] : array();
+        $lines[] = '## Phase breakdown and PHP attribution';
+        if (!empty($capture['raw_streams']['enabled'])) {
+            $lines[] = '';
+            $lines[] = 'Opt-in raw HTTP/HTTPS stream diagnostic: caller-scoped $http_response_header changes; plugins reading it may behave differently. These times overlap SQL/HTTP and other wall-time evidence.';
+            $lines[] = '';
+            $lines[] = '| Raw URL read | Wall time | Bytes | Opened | Caller |';
+            $lines[] = '|---|---:|---:|---|---|';
+            foreach ($capture['raw_streams']['calls'] as $call) $lines[] = '| ' . self::plain($call['url']) . ' | ' . self::ms($call['ms']) . ' | ' . (int) $call['bytes'] . ' | ' . ($call['opened'] ? 'yes' : 'no') . ' | ' . self::plain(SSPA_Page_Summary::file($call['file']) . ':' . $call['line']) . ' |';
         }
-        $sufficiency = self::evidence_sufficiency($findings);
-        $lines[] = '- Evidence sufficiency: **' . $sufficiency['level'] . '**. ' . $sufficiency['detail'];
+        $lines[] = '';
+        $lines[] = 'One retained representative sample. Callback self wall time can contain SQL and HTTP; do not add these instruments together.';
+        if (isset($capture['sql']['profiler_overhead'])) {
+            $overhead = $capture['sql']['profiler_overhead'];
+            $lines[] = 'Profiler SQL overhead: ' . (int) $overhead['count'] . ' queries, ' . self::ms($overhead['total_ms']) . '; excluded from site SQL attribution, still inside observed generation time.';
+        }
+        $lines[] = '';
+        $lines[] = '| Phase | Wall time |';
+        $lines[] = '|---|---:|';
+        foreach ((array) (isset($boot['segments']) ? $boot['segments'] : array()) as $phase => $ms) $lines[] = '| ' . self::plain($phase) . ' | ' . self::ms($ms) . ' |';
+        $lines[] = '';
+        $lines[] = '| Component | Plugin includes and callbacks (template residuals listed separately) |';
+        $lines[] = '|---|---:|';
+        foreach ((array) (isset($boot['components']) ? $boot['components'] : array()) as $component => $ms) $lines[] = '| ' . self::plain($component) . ' | ' . self::ms($ms) . ' |';
+        $lines[] = '';
+        $lines[] = '| Hook | Callback | Component | Self wall time | Source |';
+        $lines[] = '|---|---|---|---:|---|';
+        foreach ((array) (isset($boot['top_callbacks']) ? $boot['top_callbacks'] : array()) as $entry) {
+            $lines[] = '| ' . self::plain($entry['hook']) . ' | ' . self::plain($entry['label']) . ' | ' . self::plain($entry['component']) . ' | ' . self::ms($entry['ms']) . ' | ' . self::plain(!empty($entry['file']) ? SSPA_Page_Summary::file($entry['file']) . ':' . (int) $entry['line'] : 'not captured') . ' |';
+        }
+        $lines[] = '';
+        $lines[] = '| Loaded template | Component | Residual wall time | Loads |';
+        $lines[] = '|---|---|---:|---:|';
+        foreach ((array) (isset($boot['template_files']) ? $boot['template_files'] : array()) as $file) {
+            $lines[] = '| ' . self::plain(SSPA_Page_Summary::file($file['file'])) . ' | ' . self::plain($file['component']) . ' | ' . self::ms($file['ms']) . ' | ' . (int) $file['calls'] . ' |';
+        }
+        $lines[] = '';
+        $lines[] = 'Template residuals remove timed callbacks and child template loads; they can contain other uninstrumented PHP calls. Main-template context windows below are overlapping location evidence.';
+        $lines[] = '';
+        $lines[] = '| Template/render boundary | Next event | Template | Wall time (overlaps callbacks) |';
+        $lines[] = '|---|---|---|---:|';
+        foreach ((array) (isset($boot['render_regions']) ? $boot['render_regions'] : array()) as $region) {
+            if ($region['ms'] < 1) continue;
+            $lines[] = '| ' . self::plain($region['after']) . ' | ' . self::plain($region['before']) . ' | ' . self::plain(SSPA_Page_Summary::file($region['template'])) . ' | ' . self::ms($region['ms']) . ' |';
+        }
         $lines[] = '';
     }
 
@@ -547,6 +608,8 @@ class SSPA_Markdown_Export {
     private static function query_plan_evidence(&$lines, $findings) {
         $lines[] = '### Query-plan evidence';
         $lines[] = '';
+        $sufficiency = self::evidence_sufficiency($findings);
+        $lines[] = '- SQL evidence sufficiency: **' . $sufficiency['level'] . '**. ' . $sufficiency['detail'];
         $plan = array();
         foreach ((array) $findings as $finding) {
             $evidence = isset($finding['evidence']) && is_array($finding['evidence']) ? $finding['evidence'] : array();

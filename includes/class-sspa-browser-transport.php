@@ -206,7 +206,15 @@ class SSPA_Browser_Transport {
             if ($fresh && 'crawling' === $fresh['status']) {
                 SSPA_Run_Controller::complete_run($run_id, $run['run_type']);
             }
-            wp_send_json_success(array('status' => 'done'));
+            $fresh = SSPA_Run_Controller::run_row($run_id);
+            $extended = SSPA_Run_Queue::get($run_id);
+            if ($fresh && 'crawling' === $fresh['status'] && is_array($extended) && $extended['idx'] < count($extended['jobs'])) {
+                // Phase 2 appended work. Keep the same browser driver and sequence.
+                $queue = $extended;
+                $run = $fresh;
+            } else {
+                wp_send_json_success(array('status' => 'done'));
+            }
         }
 
         $job = $queue['jobs'][$queue['idx']];
@@ -377,6 +385,14 @@ class SSPA_Browser_Transport {
             'error_message' => ('' !== $error) ? $error : null,
             'cookies_present' => $cookies_present,
         ), $pending['token_id'], $pending['flags']);
+
+        if ('deep' === $run['run_type'] && empty($job['ps'])
+            && (!empty($sample['blocked_by']) || !empty($sample['error']) || (int) $sample['code'] >= 400)) {
+            $reason = !empty($sample['error_message']) ? $sample['error_message'] : (!empty($sample['blocked_reason']) ? $sample['blocked_reason'] : (!empty($sample['blocked_by']) ? $sample['blocked_by'] : 'No successful capture'));
+            $reason = ((int) $sample['code'] ? 'HTTP ' . (int) $sample['code'] : 'Browser request failed') . ': ' . $reason;
+            SSPA_Run_Controller::refuse_browser_sweep($run_id, $reason);
+            wp_send_json_error(array('code' => 'sspa_browser_target_blocked', 'message' => $reason));
+        }
 
         $bt['attempts']++;
         if (!$sample['cached']) {

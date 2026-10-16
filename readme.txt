@@ -66,6 +66,30 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Changelog ==
 
+= 0.43.50 =
+* Add a separate opt-in raw HTTP stream diagnostic with caller timings and an explicit response-header compatibility warning.
+
+= 0.43.11 =
+* Move page-specific Plugin Impact to the summary, preselect measured suspects and allow verified single-page browser sweeps when loopbacks fail.
+
+= 0.43.10 =
+* Keep page export headlines and component totals on the same measured request, retain sub-page paths and separate profiler SQL overhead.
+
+= 0.43.9 =
+* Lead page reports with the dominant time, measured culprits, attribution coverage and next action, with PHP phases and sample ranges in Markdown.
+
+= 0.43.8 =
+* Add an optional all-hook timing pass with exclusive callback wall time and source locations.
+
+= 0.43.7 =
+* Identify the largest untimed render gap with its surrounding events and template context.
+
+= 0.43.6 =
+* Time bounded template loads and record header, footer, sidebar, template-part and loop boundaries during signed page measurements.
+
+= 0.43.5 =
+* Measure process CPU against elapsed wall time on signed profiling requests.
+
 = 0.43.4 (16th October 2026) =
 * Removed the temporary `db.php` swap to keep connection-supplying database drop-ins in place during analysis.
 * Cache Impact Analysis now uses only per-request cache toggling and names the database drop-in owner when that prevents analysis.

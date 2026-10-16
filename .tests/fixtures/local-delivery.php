@@ -27,7 +27,7 @@ add_filter('pre_http_request', static function ($pre, $args, $url) {
     if (!str_contains((string) $path, '/installations') && !str_contains((string) $path, '/submissions')) return $pre;
     $payload = json_decode($args['body'] ?? '', true);
     $log = get_option('sspa_fleet_receiver_log', array());
-    $log[] = array('path' => $path, 'payload' => str_ends_with($path, '/installations') ? array('registration' => true) : $payload);
+    $log[] = array('at' => microtime(true), 'opted_in' => (bool) get_option('sspa_share_optin'), 'path' => $path, 'payload' => str_ends_with($path, '/installations') ? array('registration' => true) : $payload);
     update_option('sspa_fleet_receiver_log', $log, false);
     if (str_ends_with($path, '/installations')) return array('response' => array('code' => 200), 'headers' => array(), 'body' => wp_json_encode(array('registered' => true, 'install_uuid' => $payload['install_uuid'])), 'cookies' => array());
     return array('response' => array('code' => 503), 'headers' => array(), 'body' => wp_json_encode(array('error' => array('code' => 'synthetic_local_refusal'))), 'cookies' => array());

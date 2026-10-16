@@ -240,20 +240,24 @@ class SSPA_Profile_Panel {
         if (!$row) {
             return new WP_Error('sspa_no_profile', __('That page profile no longer exists.', 'super-speedy-performance-analysis'));
         }
-        $capture = self::capture($row);
+        $capture = SSPA_Page_Summary::site_capture(self::capture($row));
+        $row = SSPA_Page_Summary::representative($row, $capture);
         $cached = !empty($args['cached']);
 
         $left = self::stats_html($row, $capture) . self::phases_html($capture);
         $right = self::boot_components_html($capture) . self::render_breakdown_html($capture) . self::callbacks_html($capture);
 
         $html = '<div class="sspa-adhoc-grid">';
+        $html .= self::summary_html($row, $capture);
         $html .= self::topbar_html($row, $cached);
         $html .= self::notes_html($row, $capture);
         $html .= '<div>' . $left . '</div><div>' . $right . '</div>';
         $html .= self::impact_html($row);
         $html .= self::components_html($capture);
         $html .= self::functions_html($capture);
-        $html .= self::queries_html($capture);
+        $minor_sql = !empty($capture['overview']['gen_ms']) && isset($capture['sql']['total_ms']) && $capture['sql']['total_ms'] < $capture['overview']['gen_ms'] * .05;
+        $queries = self::queries_html($capture);
+        $html .= $minor_sql ? '<details class="sspa-adhoc-span"><summary>' . esc_html__('Minor SQL evidence (under 5% of generation)', 'super-speedy-performance-analysis') . '</summary>' . $queries . '</details>' : $queries;
         $html .= self::http_html($capture);
         if (null === $capture) {
             if (!self::transport_errors($row)) {
@@ -264,6 +268,32 @@ class SSPA_Profile_Panel {
         }
         $html .= '</div>';
         return $html;
+    }
+
+    private static function summary_html($row, $capture) {
+        $summary = SSPA_Page_Summary::build($row, $capture);
+        $html = '<section class="sspa-adhoc-span sspa-page-summary"><h3>' . esc_html($summary['verdict']) . '</h3>';
+        if ($summary['culprits']) {
+            $html .= '<ul>';
+            foreach ($summary['culprits'] as $culprit) $html .= '<li>' . esc_html($culprit) . '</li>';
+            $html .= '</ul>';
+        }
+        $html .= '<p class="sspa-summary-coverage">' . esc_html($summary['coverage_headline']) . '</p>';
+        $html .= '<p>' . esc_html($summary['next_action']) . '</p>';
+        if (self::is_reprofilable($row)) {
+            $html .= '<p><button type="button" class="sspa-adhoc-btn sspa-adhoc-measure" data-profile-id="' . (int) $row['id'] . '">'
+                . esc_html__('Measure plugin impact on this page', 'super-speedy-performance-analysis') . '</button></p><div class="sspa-adhoc-plan"></div>';
+        }
+        $detail_label = __('Gap, coverage limits, CPU and sample range', 'super-speedy-performance-analysis');
+        if ($summary['gap']) {
+            /* translators: 1: largest untimed gap in milliseconds, 2: template filename. */
+            $detail_label = sprintf(__('Largest gap: %1$s ms in %2$s; more timing evidence', 'super-speedy-performance-analysis'), number_format($summary['gap']['ms'], 1), basename($summary['gap']['template']));
+        }
+        $html .= '<details><summary>' . esc_html($detail_label) . '</summary>';
+        foreach (array('coverage', 'cpu', 'samples') as $key) $html .= '<p>' . esc_html($summary[$key]) . '</p>';
+        if (self::is_reprofilable($row)) $html .= '<p><button type="button" class="sspa-adhoc-btn sspa-time-all-hooks">' . esc_html__('Time every hook on this page (adds measurement overhead)', 'super-speedy-performance-analysis') . '</button></p>';
+        if (self::is_reprofilable($row)) $html .= '<p>' . esc_html__('Optional diagnostic: replaces HTTP/HTTPS stream wrappers; plugins reading $http_response_header may behave differently during this pass.', 'super-speedy-performance-analysis') . '</p><p><button type="button" class="sspa-adhoc-btn sspa-time-raw-streams">' . esc_html__('Run raw-stream diagnostic with this compatibility change', 'super-speedy-performance-analysis') . '</button></p>';
+        return $html . '</details></section>';
     }
 
     /**
@@ -629,7 +659,7 @@ class SSPA_Profile_Panel {
         }
         $profile = isset($capture['profile']) ? $capture['profile'] : null;
         $html = '<h4>' . esc_html__('Render breakdown', 'super-speedy-performance-analysis')
-            . ' <small>' . esc_html__('wp_head/wp_footer, content filters, shortcodes, widgets', 'super-speedy-performance-analysis') . '</small></h4>';
+            . ' <small>' . esc_html__('Timed callbacks and bounded template files', 'super-speedy-performance-analysis') . '</small></h4>';
         $html .= '<table class="sspa-adhoc-table">';
         foreach (array_slice((array) (isset($render['top']) ? $render['top'] : array()), 0, 8) as $item) {
             $html .= '<tr><td>' . esc_html($item['label']) . ' <small>' . esc_html($item['hook']) . ' · ' . esc_html($item['component'])
@@ -962,11 +992,6 @@ class SSPA_Profile_Panel {
             $html .= '<p class="sspa-adhoc-note">' . esc_html__('Nothing has been measured on this page yet. Attribution above says which component ran the work; measuring says what actually changes when the plugin is not there.', 'super-speedy-performance-analysis') . '</p>';
         }
 
-        if (self::is_reprofilable($row)) {
-            $html .= '<p><button type="button" class="sspa-adhoc-btn sspa-adhoc-measure" data-profile-id="' . (int) $row['id'] . '">'
-                . esc_html__('Measure plugin impact on this page', 'super-speedy-performance-analysis') . '</button></p>';
-            $html .= '<div class="sspa-adhoc-plan"></div>';
-        }
         $html .= '</div>';
         return $html;
     }
@@ -1015,9 +1040,8 @@ class SSPA_Profile_Panel {
         // Two scopes, one picker. With a profile id it plans "measure plugins on this page";
         // without one it plans the site-wide sweep - which is now reached the same way, by
         // choosing plugins one by one, rather than by a button that swept everything. Nothing
-        // this endpoint returns is preselected: measuring a plugin means excluding it from
-        // test requests, another plugin can react to that, and "we think it is safe" is not a
-        // decision to make on somebody else's site.
+        // page picker preselects the three highest measured suspects; the administrator
+        // reviews the exclusions and starts the run explicitly.
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
         $row = null;
         if ($profile_id) {
@@ -1030,6 +1054,14 @@ class SSPA_Profile_Panel {
             }
         }
 
+        $requested_url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
+        if (!$row && $requested_url) {
+            $job = SSPA_Adhoc::job_for($requested_url);
+            if (is_wp_error($job)) wp_send_json_error($job->get_error_message());
+            $existing = self::newest_profile_id_for_page($job['page_key']);
+            $row = $existing ? self::profile_row($existing) : array('id' => 0, 'page_key' => $job['page_key'], 'url' => $job['url'], 'method' => 'GET');
+        }
+
         $eligible = SSPA_Dependency_Map::isolation_candidates();
         if (!$eligible) {
             wp_send_json_error(__('No plugins can be safely excluded on this site - every active plugin is either a dependency of another or on the fragile list.', 'super-speedy-performance-analysis'));
@@ -1037,7 +1069,7 @@ class SSPA_Profile_Panel {
 
         // What attribution blames, so the list is ordered by who is worth suspecting: SQL +
         // HTTP, plus the PHP the boot timer charged to each plugin (a plugin can cost 200ms
-        // of hook time without running a single query). Ordering only, never preselection.
+        // of hook time without running a single query). Page suspects are offered for review before the administrator starts the run.
         $blamed = array();
         $pages = 1;
         if ($row) {
@@ -1048,7 +1080,9 @@ class SSPA_Profile_Panel {
                         + (float) $stats['sql_ms'] + (float) $stats['http_ms'];
                 }
                 foreach ((array) (isset($capture['boot']['components']) ? $capture['boot']['components'] : array()) as $component => $ms) {
-                    $blamed[$component] = (isset($blamed[$component]) ? $blamed[$component] : 0) + (float) $ms;
+                    // SQL and HTTP can already be inside callback wall time.
+                    // Rank using the larger overlapping instrument, not their sum.
+                    $blamed[$component] = max(isset($blamed[$component]) ? $blamed[$component] : 0, (float) $ms);
                 }
             }
         } else {
@@ -1077,6 +1111,12 @@ class SSPA_Profile_Panel {
         // Plugins that come out in the same cell as this one, so the picker can say so before
         // anybody presses the button rather than after the verdict arrives naming two plugins.
         $together = SSPA_Dependency_Map::must_exclude_together();
+
+        if ($row) {
+            foreach ((array) (isset($capture['boot']['render']['components']) ? $capture['boot']['render']['components'] : array()) as $component => $ms) {
+                $blamed[$component] = max(isset($blamed[$component]) ? $blamed[$component] : 0, (float) $ms);
+            }
+        }
 
         $plugins = array();
         foreach ($eligible as $slug) {

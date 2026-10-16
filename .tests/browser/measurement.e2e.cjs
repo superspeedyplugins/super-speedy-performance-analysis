@@ -55,7 +55,11 @@ const {
       '.sspa-adhoc-pluginpick[value="sspa-browser-fixture"]',
     );
     await expect(box).toBeVisible();
+    // Review the page's preselected suspects, then request exactly this fixture.
+    await page.locator('#sspa-adhoc-pop [data-pick="none"]').click();
+    await expect(page.locator('.sspa-adhoc-pluginpick:checked')).toHaveCount(0);
     await box.check();
+    await expect(page.locator('.sspa-adhoc-pluginpick:checked')).toHaveCount(1);
     const deepStarted = response(page, "sspa_start_run");
     await page.locator(".sspa-adhoc-measure-start").click();
     const deepReply = await (await deepStarted).json();
@@ -83,7 +87,11 @@ const {
       .first()
       .click();
     await page.locator("#sspa-adhoc-pop .sspa-adhoc-measure").click();
+    // Review the page's preselected suspects, then request exactly this fixture.
+    await page.locator('#sspa-adhoc-pop [data-pick="none"]').click();
+    await expect(page.locator('.sspa-adhoc-pluginpick:checked')).toHaveCount(0);
     await box.check();
+    await expect(page.locator('.sspa-adhoc-pluginpick:checked')).toHaveCount(1);
     const restart = response(page, "sspa_start_run");
     await page.locator(".sspa-adhoc-measure-start").click();
     const restartReply = await (await restart).json();

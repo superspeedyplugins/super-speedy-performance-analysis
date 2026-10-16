@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -uo pipefail
-export SSPA_SCENARIO=tests-review-correctness
+export SSPA_SCENARIO="${SSPA_SUITE_SCOPE:+tests-${SSPA_SUITE_SCOPE}-}review-correctness"
+if [ -z "${SSPA_SUITE_SCOPE:-}" ]; then export SSPA_SCENARIO=tests-review-correctness; fi
 source "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" || exit 1
 fi
+ln -sfn "$PLUGIN_DIR" "$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
 sspa_require_site || exit 1
 sync_plugin || exit 1
 if cli plugin is-active woocommerce >/dev/null 2>&1; then

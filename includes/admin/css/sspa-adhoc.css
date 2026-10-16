@@ -891,3 +891,13 @@
     outline: 2px solid var(--sspa-primary);
     outline-offset: 2px;
 }
+
+#sspa-adhoc-pop .sspa-page-summary { min-width: 0; overflow-wrap: anywhere; }
+#sspa-adhoc-pop .sspa-page-summary h3 { font-size: 16px; line-height: 1.4; }
+#sspa-adhoc-pop .sspa-page-summary .sspa-adhoc-btn { white-space: normal; max-width: 100%; }
+#sspa-adhoc-pop .sspa-impact-only-url { width: 100%; max-width: 32em; box-sizing: border-box; }
+
+#sspa-adhoc-pop .sspa-page-summary h3 { margin: 0 0 12px; }
+#sspa-adhoc-pop .sspa-page-summary p { margin: 0 0 12px; font-size: 13px; line-height: 1.5; }
+#sspa-adhoc-pop .sspa-page-summary ul { margin: 0 0 12px; padding-left: 18px; }
+#sspa-adhoc-pop .sspa-page-summary li { margin: 0 0 5px; font-size: 13px; line-height: 1.5; }
