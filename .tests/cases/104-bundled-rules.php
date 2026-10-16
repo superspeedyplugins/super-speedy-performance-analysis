@@ -23,9 +23,19 @@ w1_rules_check(!$requests(), 'cleanup makes no superspeedy.org request with shar
 $run = SSPA_Run_Controller::start(array('type' => 'baseline', 'user_id' => 1, 'share' => false));
 if (is_wp_error($run)) { w1_rules_check(false, $run->get_error_message()); }
 else {
+    $started_at = microtime(true);
     $deadline = time() + 120;
     do { SSPA_Run_Controller::process_batch($run); $status = SSPA_Run_Controller::status($run); }
     while ($status && $status['status'] === 'crawling' && time() < $deadline);
+    echo 'DIAGNOSTIC: sharing-disabled run ' . $run . ' elapsed ' . round(microtime(true) - $started_at, 3) . " seconds\n";
+    if (!$status || $status['status'] !== 'done') {
+        echo 'DIAGNOSTIC: sharing-disabled run ' . wp_json_encode($status) . "\n";
+        global $wpdb;
+        foreach ($wpdb->get_results($wpdb->prepare('SELECT page_key,profile_blob FROM %i WHERE run_id=%d', SSPA_Schema::table('profiles'), $run)) as $profile) {
+            $capture = $profile->profile_blob ? json_decode(gzuncompress($profile->profile_blob), true) : array();
+            echo 'DIAGNOSTIC: ' . $profile->page_key . ' ' . wp_json_encode(array_filter((array) $capture, static function ($key) { return strpos($key, 'http') !== false; }, ARRAY_FILTER_USE_KEY)) . "\n";
+        }
+    }
     w1_rules_check($status && $status['status'] === 'done', 'real sharing-disabled analysis completes');
     w1_rules_check(!$requests(), 'analysis makes no superspeedy.org request');
 }

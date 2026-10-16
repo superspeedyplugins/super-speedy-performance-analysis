@@ -8,23 +8,27 @@ Connect Super Speedy Performance Analysis to Codex or Claude Code to run measure
 
 Open **Super Speedy > MCP setup**, choose execute access only if the assistant may start analyses, traffic collection, submissions or checkout runs, generate the command, paste it into your terminal and restart the client. The setup page creates or reuses a dedicated **Super Speedy Agent** user and a revocable Application Password. No Performance-specific bridge or endpoint is needed.
 
-## The 17 abilities
+## The 21 abilities
 
-The namespace is `super-speedy-performance`.
+The namespace is `sspa`.
 
 ### Read and interpret
 
 - `get-status`
 - `get-report`
+- `compare-history`
+- `get-http-calls`
 - `get-archive-profile`
 - `get-cache-optimisation-analysis`
 - `get-cache-safety-report`
 - `get-findings`
 - `get-plugin-impacts`
+- `get-page-plugin-usage`
 - `get-site-metrics`
 - `get-checkout-flow`
 - `get-traffic-collection-status`
 - `get-traffic-observations`
+- `compare-traffic-collections`
 
 ### Execute
 
@@ -48,10 +52,10 @@ Traffic collection is a separate observational workflow. Start it for an explici
 1. call it with `dry_run: true` and show the pre-flight inventory;
 2. review the product, mail, integrations and webhooks with the owner;
 3. for a real run, pass a genuine boolean `confirm: true`;
-4. enable `allow_integrations`, `allow_webhooks` or `mail_mode: deliver` only when those live side effects are explicitly required for the measurement;
+4. enable `allow_integrations` or `allow_webhooks` only when those side effects are required for the measurement;
 5. poll status and read `get-checkout-flow`, including the cleanup report.
 
-The MCP defaults are `mail_mode: suppress`, `allow_integrations: false` and `allow_webhooks: false`. Guidance alone is not the safety gate: a non-dry run without `confirm: true` is rejected with `sspa_confirm_required`.
+Checkout mail goes to the site administrator and send/queue time is measured; `allow_integrations` and `allow_webhooks` default to false. Guidance alone is not the safety gate: a non-dry run without `confirm: true` is rejected with `sspa_confirm_required`.
 
 ## Permissions
 
@@ -75,3 +79,5 @@ Stored-run retention and deletion are not exposed as abilities. Deleting measure
 
 - [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) - interpreting what the abilities return
 - [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - how a run produces its numbers
+
+As of 0.43.16 the ability namespace and category are `sspa`; clients using the old namespace must update their ability names.

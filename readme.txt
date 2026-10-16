@@ -1,10 +1,9 @@
 === Super Speedy Performance Analysis ===
 Contributors: dhilditch
-Donate link: https://www.superspeedyplugins.com/
-Tags: speed, performance, profiling, query monitor, analysis
+Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.43.15
+Stable tag: 0.43.17
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -52,7 +51,7 @@ Saved analysis data is retained by default. Before deleting the plugin, enable "
 
 The optional community service at https://superspeedy.org/ collects profiling evidence to build public performance comparisons. Automatic sharing is disabled by default. An administrator can enable it or submit selected analyses individually; the Share tab previews the exact evidence before submission. No purchased account is required.
 
-Registration sends a random installation identifier, a generated authentication secret, and the plugin, WordPress and PHP versions. Each submission sends the installation identifier, run and submission identifiers, archive checksums and compressed/uncompressed sizes, protocol/schema/anonymisation versions, the run type and archive creation time, and a compressed archive containing timings and counts, plugin and theme identifiers and versions, page classifications and sanitised profiling details. These include size bands, normalised query fingerprints, component-published performance settings, external HTTP call aggregates and bounded boot, hook, render and asset summaries where available and covered by consent. Registration and submission metadata go to the community collector; the archive goes to the HTTPS storage upload URL it supplies, followed by receipt confirmation using the reservation identifier and archive checksum. Submission requests carry the installation identifier and cryptographic authentication signatures. Queued submissions may retry after temporary failures. Passive traffic and AJAX observation windows remain local.
+Registration sends a random installation identifier, a generated authentication secret, and the plugin, WordPress and PHP versions. Each submission sends the installation identifier, run and submission identifiers, archive checksums and compressed/uncompressed sizes, protocol/schema/anonymisation versions, the run type and archive creation time, and a compressed archive containing timings and counts, plugin and theme identifiers and versions, page classifications and sanitised profiling details. These include size bands, normalised query fingerprints, component-published performance settings, external HTTP call aggregates and bounded boot, hook, render and asset summaries where available and covered by consent. Registration and submission metadata go to collector.superspeedy.org; the archive goes to the HTTPS storage upload URL it supplies, followed by receipt confirmation using the reservation identifier and archive checksum. Submission requests carry the installation identifier and cryptographic authentication signatures. Queued submissions may retry after temporary failures. Passive traffic and AJAX observation windows remain local.
 
 Before queueing or sending evidence, privacy validation rejects site addresses and file paths, distinctive database names, email and IP addresses, user/order/product identifiers, sessions, cookies and request or response bodies. Calls to the site's own host are excluded. This anonymisation does not make the connection anonymous: the receiving servers and Cloudflare see its source IP address. The collector does not record IP addresses.
 
@@ -65,11 +64,45 @@ Terms of service: https://superspeedy.org/privacy-and-terms/
 
 The plugin's readable source and build tools are available at https://github.com/superspeedyplugins/super-speedy-performance-analysis .
 
-History charts use a locally bundled custom build of Apache ECharts 6.1.0 and its zrender dependency. Their Apache-2.0 licence files and the ECharts NOTICE are included in includes/admin/vendor/. No chart script is downloaded from a CDN.
+History charts use a locally bundled custom build of Apache ECharts 6.1.0 and its zrender dependency. The ECharts Apache-2.0 licence, zrender and d3 BSD-3-Clause licences and the ECharts NOTICE are included in includes/admin/vendor/. No chart script is downloaded from a CDN.
 
 The readable chart entry point, pinned dependency lockfile and build script are at https://github.com/superspeedyplugins/super-speedy-performance-analysis/tree/main/.build/echarts . From that directory in a source checkout, run `npm ci` followed by `npm run build` to regenerate includes/admin/vendor/echarts-history.min.js and its licence files. Upstream readable source is at https://github.com/apache/echarts/tree/6.1.0 and https://github.com/ecomfe/zrender ; the exact zrender version is recorded in the lockfile.
 
+== Files outside the plugin directory ==
+
+The database profiler follows the Query Monitor drop-in pattern: activation installs `wp-content/db.php` only when no drop-in exists, honours DISALLOW_FILE_MODS and removes only its own signed file.
+The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/sspa-loader.php`; Disable removes it.
+Traffic recording installs the fixed `wp-content/mu-plugins/sspa-traffic-observer.php` only while recording is enabled.
+Network-wide profiler changes require a network administrator on multisite; Traffic recording is unavailable on multisite.
+
+Non-PHP files live in `uploads/super-speedy-performance-analysis/`: `traffic-config.json`, `sspa-traffic-authority.json` and `sspa-traffic-observer.stopped`, plus temporary traffic-config publication files.
+The authority file uses a locked stable inode to prevent recording after deactivation and is removed on uninstall.
+Upgrades migrate the old authority from mu-plugins; uninstall also removes legacy authority and stop-marker data there.
+Recovery can restore `db.php.sspa-hold` and `object-cache.php.sspa-hold` left by older versions; this version never creates those holds.
+WP-CLI exports write only to an output path explicitly supplied by the administrator.
+
+== Traffic privacy ==
+
+Traffic recording stores pseudonymous keyed visitor, order and path joins, timestamps, event codes, timings, query counts, aggregate basket/order values and currency locally until an administrator deletes the collection in Traffic.
+Pseudonymous observations are not anonymous and are never transmitted to the community service.
+Recording has explicit time and row limits, and community sharing is a separate opt-in for anonymised profiling-run evidence.
+Suggested privacy-policy wording is available in WordPress Settings -> Privacy.
+
+== Library licences ==
+
+Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile code use BSD-3-Clause, which are GPLv3-compatible licences.
+The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
+
 == Changelog ==
+
+= 0.43.17 =
+* Escaped admin report fragments and moved History data and admin-bar styles to WordPress asset APIs.
+* Restricted ad-hoc profiling assets to measurement screens and controls.
+* Sanitised request fields and replaced browser response uploads with derived diagnostic evidence.
+* Moved Traffic authority and stop markers to uploads and protected foreign profiler-loader symlinks.
+* Renamed agent abilities to `sspa/` and included traffic comparisons in discovery.
+* The wp.org cache shortcut clears only Performance Analysis transients.
+* Added Traffic privacy-policy guidance, JavaScript translations and complete chart library notices.
 
 = 0.43.15 =
 * Traffic event batches name their table through a prepared identifier placeholder.

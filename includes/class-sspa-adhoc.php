@@ -21,13 +21,13 @@ class SSPA_Adhoc {
     }
 
     private static function available() {
-        return is_admin_bar_showing() && current_user_can('manage_options');
+        return is_admin_bar_showing() && current_user_can('manage_options') && (!is_admin() || self::on_settings_page());
     }
 
     /** Our own settings page, where the Pages tab opens the same panel from a row click. */
     private static function on_settings_page() {
-        return is_admin() && current_user_can('manage_options')
-            && isset($_GET['page']) && 'sspa' === $_GET['page']; // phpcs:ignore WordPress.Security.NonceVerification
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        return is_admin() && current_user_can('manage_options') && $screen && false !== strpos($screen->id, '_page_sspa'); // phpcs:ignore WordPress.Security.NonceVerification
     }
 
     /**
@@ -80,12 +80,13 @@ class SSPA_Adhoc {
         return false;
     }
 
-    public static function enqueue() {
-        if (!self::panel_context()) {
+    public static function enqueue($editor_profile = false) {
+        if (true !== $editor_profile && !self::panel_context()) {
             return;
         }
         wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
-        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery', 'sspa-transport'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
+        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
+        wp_set_script_translations('sspa-adhoc', 'super-speedy-performance-analysis');
         // The CURRENT white wordmark (text only, per Dave - no icon), bundled with the
         // plugin - the settings submodule's copy is an older mark and submodules are
         // absent from some zips anyway. Source of truth:
@@ -151,7 +152,8 @@ class SSPA_Adhoc {
         // The checkout-flow panel reuses this popover's CSS wholesale; it only needs its
         // own script because the disclosure step has no equivalent here.
         if (self::checkout_flow_available() || self::on_settings_page()) {
-            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery', 'sspa-adhoc'), sspa_asset_version('includes/admin/js/sspa-checkout.js'), true);
+            wp_enqueue_script('sspa-checkout', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-checkout.js', array('jquery', 'sspa-adhoc', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-checkout.js'), true);
+            wp_set_script_translations('sspa-checkout', 'super-speedy-performance-analysis');
             wp_localize_script('sspa-checkout', 'sspa_checkout', array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('sspa_admin'),
@@ -260,7 +262,7 @@ class SSPA_Adhoc {
 
     public static function ajax_start() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
         $job = self::job_for($url);
         if (is_wp_error($job)) {
@@ -283,7 +285,7 @@ class SSPA_Adhoc {
      */
     public static function ajax_result() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
         $fresh = !empty($_POST['fresh']);
         $job = self::job_for($url);

@@ -23,16 +23,23 @@ add_action('init', function () { if (isset($_REQUEST['action']) && $_REQUEST['ac
 FIXTURE
 );
 file_put_contents(WP_PLUGIN_DIR . '/aa-ajax-flat.php', "<?php\n/* Plugin Name: Flat AJAX fixture\nVersion: 1.0 */\n");
-activate_plugin('aa-ajax-flat.php');
-activate_plugin('zz-ajax-owner/fixture.php'); activate_plugin('zz-ajax-slow/fixture.php');
+// WordPress/PUC can read the plugin registry before these files are created. A fresh
+// site must invalidate that registry before activation, rather than needing a second run.
+wp_clean_plugins_cache(false);
+foreach (array('aa-ajax-flat.php', 'zz-ajax-owner/fixture.php', 'zz-ajax-slow/fixture.php') as $fixture_plugin) {
+    $activated = activate_plugin($fixture_plugin);
+    if (is_wp_error($activated)) { throw new RuntimeException($activated->get_error_message()); }
+    sspa_ajax_check(is_plugin_active($fixture_plugin), 'new fixture is active: ' . $fixture_plugin);
+}
 $before = SSPA_Ajax_Profile::start(array('scenario' => 'Fixture action', 'label' => 'Before fixture', 'detail' => true, 'endpoints' => array('admin_ajax:zz_ajax_workflow_fixture')));
 sspa_ajax_check(!is_wp_error($before), 'explicit window starts without altering plugin activation');
 if (is_wp_error($before)) { echo 'FAIL: ' . $before->get_error_message() . "\n"; return; }
 // Use all five permitted detailed samples per action to reduce median timing noise.
 // A real unrelated AJAX request must not consume this named workflow's capture slots.
 $unrelated = wp_remote_post(admin_url('admin-ajax.php'), array('body'=>array('action'=>'zz_ajax_unrelated_fixture'), 'timeout'=>30));
+if (is_wp_error($unrelated) || 200 !== wp_remote_retrieve_response_code($unrelated)) { echo 'DIAGNOSTIC unrelated HTTP: ' . wp_json_encode(is_wp_error($unrelated) ? array('error'=>$unrelated->get_error_code(), 'message'=>$unrelated->get_error_message()) : array('code'=>wp_remote_retrieve_response_code($unrelated), 'body'=>substr(wp_remote_retrieve_body($unrelated),0,1000))) . "\n"; }
 sspa_ajax_check(!is_wp_error($unrelated) && wp_remote_retrieve_response_code($unrelated) === 200, 'unrelated AJAX request succeeds outside selected workflow');
-for ($i=0;$i<5;$i++) { $response = wp_remote_post(admin_url('admin-ajax.php'), array('body'=>array('action'=>'zz_ajax_workflow_fixture'), 'timeout'=>30)); sspa_ajax_check(!is_wp_error($response) && wp_remote_retrieve_response_code($response)===200, 'real fixture request returns successfully'); }
+for ($i=0;$i<5;$i++) { $response = wp_remote_post(admin_url('admin-ajax.php'), array('body'=>array('action'=>'zz_ajax_workflow_fixture'), 'timeout'=>30)); if (is_wp_error($response) || 200 !== wp_remote_retrieve_response_code($response)) { echo 'DIAGNOSTIC selected HTTP: ' . wp_json_encode(is_wp_error($response) ? array('error'=>$response->get_error_code(), 'message'=>$response->get_error_message()) : array('code'=>wp_remote_retrieve_response_code($response), 'body'=>substr(wp_remote_retrieve_body($response),0,1000))) . "\n"; } sspa_ajax_check(!is_wp_error($response) && wp_remote_retrieve_response_code($response)===200, 'real fixture request returns successfully'); }
 SSPA_Ajax_Profile::stop($before['uuid']);
 $rows = SSPA_Ajax_Profile::rows($before);
 sspa_ajax_check(count($rows)===5, 'five actual registered requests retain immutable profile captures');

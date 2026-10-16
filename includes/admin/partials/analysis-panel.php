@@ -60,7 +60,7 @@ defined('ABSPATH') || exit;
         <button type="button" class="button" id="sspa-run-deep"<?php disabled((bool) $sspa_active_run); ?>>
             <?php esc_html_e('Run Plugin Impact Analysis', 'super-speedy-performance-analysis'); ?>
         </button>
-        <?php if (wp_using_ext_object_cache() || file_exists(WP_CONTENT_DIR . '/object-cache.php')) : ?>
+        <?php if (wp_using_ext_object_cache() || file_exists(SSPA_CONTENT_DIR . '/object-cache.php')) : ?>
         <button type="button" class="button" id="sspa-run-cache"<?php disabled((bool) $sspa_active_run); ?>>
             <?php esc_html_e('Run Cache Impact Analysis', 'super-speedy-performance-analysis'); ?>
         </button>

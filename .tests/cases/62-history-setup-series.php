@@ -138,8 +138,8 @@ sspa_62_t(
 
 $chart_html = SSPA_History_Chart::render($restored);
 $embedded_document = array();
-if (preg_match('/<script type="application\/json" class="sspa-history-chart-document">(.*?)<\/script>/s', $chart_html, $embedded_match)) {
-    $embedded_document = json_decode($embedded_match[1], true);
+if (preg_match('/class="sspa-history-chart-document" hidden data-document="([^"]*)"/s', $chart_html, $embedded_match)) {
+    $embedded_document = json_decode(html_entity_decode($embedded_match[1], ENT_QUOTES, 'UTF-8'), true);
 }
 sspa_62_t(
     false !== strpos($chart_html, 'data-sspa-history-chart')

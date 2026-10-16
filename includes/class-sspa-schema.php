@@ -41,7 +41,6 @@ class SSPA_Schema {
 
     public static function create_tables() {
         global $wpdb;
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         $charset_collate = $wpdb->get_charset_collate();
 
@@ -62,6 +61,7 @@ class SSPA_Schema {
         $run_queues = self::table('run_queues');
         $run_jobs = self::table('run_jobs');
 
+        if (!function_exists('dbDelta')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/upgrade.php'; }
         dbDelta("CREATE TABLE $runs (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             run_uuid char(36) NOT NULL DEFAULT '',

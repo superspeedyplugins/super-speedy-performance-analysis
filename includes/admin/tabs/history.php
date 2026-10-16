@@ -74,9 +74,9 @@ if ($sspa_comparable_runs) : ?>
             <button type="button" class="button button-primary" id="sspa-history-compare"><?php esc_html_e('Compare', 'super-speedy-performance-analysis'); ?></button>
             <span class="spinner" aria-hidden="true"></span>
         </div>
-        <div class="sspa-history-chart-host"><?php echo SSPA_History_Chart::render($sspa_history_series); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes fields. ?></div>
+        <div class="sspa-history-chart-host"><?php echo wp_kses(SSPA_History_Chart::render($sspa_history_series), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes fields. ?></div>
         <div id="sspa-history-comparison" aria-live="polite">
-            <?php echo SSPA_History::render(SSPA_History::compare($sspa_before_run_id, $sspa_after_run_id)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes every field. ?>
+            <?php echo wp_kses(SSPA_History::render(SSPA_History::compare($sspa_before_run_id, $sspa_after_run_id)), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- renderer escapes every field. ?>
         </div>
     </section>
 <?php elseif ($sspa_comparable_runs) : ?>

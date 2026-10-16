@@ -8,7 +8,21 @@ class SSPA_Traffic_Authority {
     private static $exclusive = false;
 
     public static function path() {
-        return WPMU_PLUGIN_DIR . '/' . self::FILE;
+        $uploads = wp_upload_dir(null, false);
+        return $uploads['basedir'] . '/super-speedy-performance-analysis/' . self::FILE;
+    }
+
+    public static function migrate() {
+        $legacy = SSPA_MU_DIR . '/' . self::FILE;
+        if (!is_file($legacy)) { return; }
+        if (is_file(self::path())) { throw new RuntimeException('Both legacy and uploads traffic authority files exist.'); }
+        if (!wp_mkdir_p(dirname(self::path()))) { throw new RuntimeException('Cannot create the traffic authority directory.'); }
+        $handle = fopen($legacy, 'r+');
+        if (!$handle) { throw new RuntimeException('Cannot open legacy traffic authority.'); }
+        try {
+            if (!flock($handle, LOCK_EX)) { throw new RuntimeException('Cannot lock legacy traffic authority.'); }
+            if (!rename($legacy, self::path())) { throw new RuntimeException('Cannot migrate traffic authority.'); }
+        } finally { flock($handle, LOCK_UN); fclose($handle); }
     }
 
     public static function synchronized($exclusive, $callback) {
@@ -18,7 +32,7 @@ class SSPA_Traffic_Authority {
             }
             return call_user_func($callback);
         }
-        if ($exclusive && !is_dir(WPMU_PLUGIN_DIR) && !wp_mkdir_p(WPMU_PLUGIN_DIR)) {
+        if ($exclusive && !is_dir(dirname(self::path())) && !wp_mkdir_p(dirname(self::path()))) {
             throw new RuntimeException('Cannot create the traffic authority directory.');
         }
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- The local authority requires a stable PHP stream for flock; WP_Filesystem cannot provide stream locks.
@@ -73,6 +87,7 @@ class SSPA_Traffic_Authority {
     }
 
     public static function revoke() {
+        if (!is_file(self::path())) { return; }
         return self::synchronized(true, static function() {
             self::write(array('generation' => bin2hex(random_bytes(16)), 'enabled' => false));
         });

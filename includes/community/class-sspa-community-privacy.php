@@ -169,8 +169,8 @@ class SSPA_Community_Privacy {
         $host_needle = (false !== strpos($host, '.')) ? $host : '';
         $needles = array_filter(array(
             $host_needle,
-            defined('ABSPATH') ? str_replace('\\', '/', ABSPATH) : '',
-            defined('WP_CONTENT_DIR') ? str_replace('\\', '/', WP_CONTENT_DIR) : '',
+            str_replace('\\', '/', SSPA_CORE_DIR),
+            str_replace('\\', '/', SSPA_CONTENT_DIR),
             defined('DB_NAME') ? self::distinctive_db_name(DB_NAME) : '',
         ));
 

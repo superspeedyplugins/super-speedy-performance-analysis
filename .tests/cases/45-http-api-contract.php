@@ -192,7 +192,7 @@ sspa_http_t(false === strpos($json, 'private.example') && false === strpos($json
 
 if (function_exists('wp_get_ability')) {
     wp_set_current_user(1);
-    $ability = wp_get_ability('super-speedy-performance/get-http-calls');
+    $ability = wp_get_ability('sspa/get-http-calls');
     $ability_result = $ability ? $ability->execute(array('run_id' => $run_id)) : null;
     sspa_http_t(is_object($ability) && $ability_result === $result, 'Abilities API returns the identical HTTP inventory object');
 }

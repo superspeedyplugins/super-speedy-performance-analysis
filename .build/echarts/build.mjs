@@ -1,5 +1,5 @@
 import {build} from 'esbuild';
-import {copyFile, mkdir} from 'node:fs/promises';
+import {copyFile, mkdir, readFile, writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -16,7 +16,8 @@ await build({
   format: 'iife',
   platform: 'browser',
   target: ['es2018'],
-  legalComments: 'none'
+  legalComments: 'linked',
+  banner: {js: '/*! Apache ECharts 6.1.0 (Apache-2.0), zrender 6.1.0 and d3 quantile (BSD-3-Clause). Source: https://github.com/apache/echarts */'}
 });
 
 await copyFile(
@@ -31,3 +32,8 @@ await copyFile(
   path.join(buildDir, 'node_modules/zrender/LICENSE'),
   path.join(outputDir, 'LICENSE-zrender.txt')
 );
+
+await copyFile(path.join(buildDir, 'node_modules/echarts/licenses/LICENSE-d3'), path.join(outputDir, 'LICENSE-d3.txt'));
+
+const legal = path.join(outputDir, 'echarts-history.min.js.LEGAL.txt');
+await writeFile(legal, (await readFile(legal, 'utf8')).replace(/[ \t]+$/gm, ''));

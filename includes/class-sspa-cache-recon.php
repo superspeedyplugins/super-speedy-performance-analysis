@@ -252,6 +252,60 @@ class SSPA_Cache_Recon {
         );
     }
 
+    /** Validate browser-derived signals before the ordinary capture pipeline uses them. */
+    public static function validate_browser_evidence($input) {
+        $invalid = new WP_Error('sspa_browser_evidence', __('The browser response evidence is invalid.', 'super-speedy-performance-analysis'));
+        if (!is_array($input) || '1' !== (string) ($input['schema'] ?? '') || !is_array($input['nonce_evidence'] ?? null)
+            || !is_array($input['client_state_reads'] ?? null) || !is_array($input['coverage'] ?? null)
+            || !is_array($input['coverage']['type_b_regions'] ?? null)) { return $invalid; }
+        $hash = $input['body_hash'] ?? '';
+        if (!is_string($hash) || ('' !== $hash && !preg_match('/^[a-f0-9]{32}$/D', $hash))) { return $invalid; }
+        $out = array('body_hash' => '' === $hash ? null : $hash, 'wordfence' => !empty($input['wordfence']), 'nonce_evidence' => array());
+        foreach (array('bytes_scanned', 'forms') as $key) {
+            if (!isset($input[$key]) || !ctype_digit((string) $input[$key]) || (int) $input[$key] > 20000) { return $invalid; }
+            $out[$key] = (int) $input[$key];
+        }
+        if (($out['bytes_scanned'] > 0) !== (null !== $out['body_hash']) || count($input['nonce_evidence']) > 30) { return $invalid; }
+        foreach ($input['nonce_evidence'] as $row) {
+            if (!is_array($row) || !is_string($row['name'] ?? null) || !preg_match('/^[a-z0-9_-]{1,191}$/D', $row['name'])
+                || !ctype_digit((string) ($row['occurrences'] ?? '')) || (int) $row['occurrences'] > 20000
+                || !is_array($row['contexts'] ?? null) || !is_array($row['containers'] ?? null) || count($row['containers']) > 10) { return $invalid; }
+            foreach ($row['contexts'] as $context) {
+                if (!in_array($context, array('input_field', 'url_parameter', 'data_attribute', 'script_data'), true)) { return $invalid; }
+            }
+            foreach ($row['containers'] as $container) {
+                if (!is_string($container) || !preg_match('/^[a-zA-Z0-9_#-]{1,191}$/D', $container)) { return $invalid; }
+            }
+            $out['nonce_evidence'][$row['name']] = array('occurrences' => (int) $row['occurrences'], 'contexts' => $row['contexts'], 'containers' => $row['containers']);
+        }
+        foreach (array('legacy_cookie_reads' => array('wordpress_logged_in', 'woocommerce_items_in_cart', 'woocommerce_cart_hash'),
+            'private_surface_hints' => array('wishlist', 'shortlist', 'saved_search', 'loyalty', 'quote', 'booking', 'downloads', 'subscription')) as $key => $allowed) {
+            if (!is_array($input[$key] ?? null) || array_diff($input[$key], $allowed)) { return $invalid; }
+            $out[$key] = array_values(array_unique($input[$key]));
+        }
+        foreach (array('client_state_reads' => array('cookie', 'local_storage', 'session_storage'), 'coverage' => array('type_a_in', 'type_a_out', 'cart_fragment_markers')) as $key => $fields) {
+            foreach ($fields as $field) {
+                if (!ctype_digit((string) ($input[$key][$field] ?? '')) || (int) $input[$key][$field] > 20000) { return $invalid; }
+                $out[$key][$field] = (int) $input[$key][$field];
+            }
+        }
+        $out['coverage']['type_b_regions'] = array();
+        foreach (array_slice($input['coverage']['type_b_regions'], 0, 50, true) as $name => $count) {
+            if (!preg_match('/^[a-z0-9_-]{1,191}$/D', (string) $name) || !ctype_digit((string) $count) || (int) $count > 20000) { return $invalid; }
+            $out['coverage']['type_b_regions'][$name] = (int) $count;
+        }
+        return $out;
+    }
+
+    public static function from_browser_evidence($evidence, $headers, $capture) {
+        $result = self::scan_response('', $headers, $capture, true);
+        foreach (array('bytes_scanned', 'nonce_evidence', 'legacy_cookie_reads', 'client_state_reads', 'coverage', 'private_surface_hints', 'forms') as $field) {
+            $result[$field] = $evidence[$field];
+        }
+        $result['nonce_names'] = array_map(static function($row) { return $row['occurrences']; }, $evidence['nonce_evidence']);
+        return $result;
+    }
+
     private static function add_nonce_evidence(&$evidence, $name, $context, $container) {
         if (!isset($evidence[$name])) {
             $evidence[$name] = array('occurrences' => 0, 'contexts' => array(), 'containers' => array());
@@ -534,7 +588,7 @@ class SSPA_Cache_Recon {
                 if (!$size || $size > self::MAX_FILE_BYTES || $bytes_scanned + $size > self::MAX_SOURCE_BYTES) {
                     continue;
                 }
-                $code = @file_get_contents($file);
+                $code = @SSPA_Filesystem::get_contents($file);
                 if (false === $code) {
                     continue;
                 }
@@ -711,7 +765,7 @@ class SSPA_Cache_Recon {
             ), true)) {
                 continue;
             }
-            $path = ('.' !== dirname($entry)) ? WP_PLUGIN_DIR . '/' . dirname($entry) : WP_PLUGIN_DIR . '/' . $entry;
+            $path = ('.' !== dirname($entry)) ? SSPA_PLUGINS_DIR . '/' . dirname($entry) : SSPA_PLUGINS_DIR . '/' . $entry;
             if (file_exists($path)) {
                 $targets[$slug] = array('component' => sanitize_key($slug), 'path' => $path, 'always_relevant' => false);
             }
@@ -733,8 +787,8 @@ class SSPA_Cache_Recon {
                 );
             }
         }
-        if (defined('WPMU_PLUGIN_DIR') && is_dir(WPMU_PLUGIN_DIR)) {
-            $targets['mu-plugins'] = array('component' => 'mu-plugins', 'path' => WPMU_PLUGIN_DIR, 'always_relevant' => true);
+        if (defined('WPMU_PLUGIN_DIR') && is_dir(SSPA_MU_DIR)) {
+            $targets['mu-plugins'] = array('component' => 'mu-plugins', 'path' => SSPA_MU_DIR, 'always_relevant' => true);
         }
         return array_values($targets);
     }

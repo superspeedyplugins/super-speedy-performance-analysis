@@ -11,7 +11,7 @@ defined('ABSPATH') || exit;
 class SSPA_Abilities {
 
     /** Dash-only category slug; ability names are CATEGORY . '/name'. */
-    const CATEGORY = 'super-speedy-performance';
+    const CATEGORY = 'sspa';
     const CAP_MANAGE = 'sspa_manage';
     const CAP_EXECUTE = 'sspa_execute';
 
@@ -42,6 +42,7 @@ class SSPA_Abilities {
             self::CATEGORY . '/get-traffic-collection-status',
             self::CATEGORY . '/stop-traffic-collection',
             self::CATEGORY . '/get-traffic-observations',
+            self::CATEGORY . '/compare-traffic-collections',
             self::CATEGORY . '/submit-results',
         );
     }

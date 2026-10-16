@@ -30,7 +30,7 @@ $discovery = $request('reader', '');
 sspa_fleet_assert($discovery[0] === 200, 'authenticated HTTP tool inventory succeeds');
 $names = array_column($discovery[1], 'name');
 foreach (SSPA_Abilities::ability_names() as $name) sspa_fleet_assert(in_array($name, $names, true), 'HTTP inventory exposes ' . $name);
-$prefix = '/super-speedy-performance/';
+$prefix = '/sspa/';
 $guest = wp_remote_get(rest_url('wp-abilities/v1/abilities' . $prefix . 'get-status/run'));
 sspa_fleet_assert(!is_wp_error($guest) && in_array(wp_remote_retrieve_response_code($guest), array(401,403), true), 'unauthenticated HTTP caller cannot read private status');
 $status = $request('reader', $prefix . 'get-status/run', array());

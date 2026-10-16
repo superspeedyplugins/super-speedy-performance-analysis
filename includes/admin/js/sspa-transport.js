@@ -67,7 +67,7 @@ window.SSPATransport = (function () {
 					final_url: response.redirected ? response.url : '',
 					duration_ms: Math.round(performance.now() - start),
 					headers: JSON.stringify(headers),
-					body_snippet: body.substring(0, 20000)
+					body_evidence: JSON.stringify(SSPABrowserEvidence.derive(body, headers))
 				};
 			});
 		}).catch(function (e) {
@@ -78,7 +78,7 @@ window.SSPATransport = (function () {
 				final_url: '',
 				duration_ms: Math.round(performance.now() - start),
 				headers: '{}',
-				body_snippet: ''
+				body_evidence: JSON.stringify(SSPABrowserEvidence.derive('', {}))
 			};
 		});
 	}
@@ -127,7 +127,7 @@ window.SSPATransport = (function () {
 				final_url: result.final_url,
 				duration_ms: result.duration_ms,
 				headers: result.headers,
-				body_snippet: result.body_snippet
+				body_evidence: result.body_evidence
 			};
 			post(opts.ajaxurl, payload).then(function (resp) {
 				if (!resp || resp.success === false) {

@@ -78,6 +78,14 @@ if [ ! -d "$SSPA_SITE_DIR/wp-content/plugins/scalability-pro" ]; then
     printf '%s\n' "$revision" > "$target/.regression-source-commit"
 fi
 
+# Install an explicitly selected local WooCommerce archive before first activation, so
+# the serving SAPI cannot retain a previous vendor symlink's compiled paths.
+if [ -n "${SSPA_WOOCOMMERCE_ZIP:-}" ]; then
+    woo_target="$SSPA_SITE_DIR/wp-content/plugins/woocommerce"
+    if [ -L "$woo_target" ]; then rm "$woo_target" || exit 1; fi
+    if [ ! -e "$woo_target" ]; then cli plugin install "$SSPA_WOOCOMMERCE_ZIP" || exit 1; fi
+fi
+
 echo "==> plugins"
 cli plugin activate woocommerce --quiet || exit 1
 cli plugin activate wordpress-importer --quiet || exit 1

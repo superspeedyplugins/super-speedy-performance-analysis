@@ -10,7 +10,10 @@ try {
 	$start = $match[0][1];
 	$tail = substr( $readme, $start + strlen( $match[0][0] ) );
 	$next = preg_match( '/^== /m', $tail, $section, PREG_OFFSET_CAPTURE ) ? substr( $tail, $section[0][1] ) : '';
-	$readme = substr( $readme, 0, $start ) . "== Changelog ==\n\n" . rtrim( $match[1][0] ) . "\n\n[Complete changelog](https://github.com/superspeedyplugins/super-speedy-performance-analysis/blob/main/readme.txt#changelog)\n\n" . $next;
+	$readme = substr( $readme, 0, $start ) . "== Changelog ==\n\n" . rtrim( $match[1][0] ) . "\n\n[Complete changelog](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases)\n\n" . $next;
+	$readme = preg_replace('/^This plugin is free\. The build downloaded.*\R/m', '', $readme);
+    $readme = str_replace('1. In Plugins -> Add New -> Upload Plugin, upload the ZIP for your chosen distribution channel.', '1. In Plugins -> Add New, search for Super Speedy Performance Analysis and install it.', $readme);
+    $readme = str_replace('3. Open Performance Analysis in the admin menu, or Super Speedy -> Performance Analysis when the shared Super Speedy menu is installed.', '3. Open Performance in the admin menu.', $readme);
 	if ( false === file_put_contents( $file, $readme ) ) { throw new RuntimeException( 'Could not write the wp.org readme.' ); }
 } catch ( Throwable $error ) {
 	fwrite( STDERR, $error->getMessage() . PHP_EOL );

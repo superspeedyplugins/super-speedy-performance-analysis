@@ -323,7 +323,7 @@ class SSPA_Report {
         }
 
         if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php';
         }
         $all_plugins = get_plugins();
         $slug_to_file = SSPA_Dependency_Map::slug_to_file();
@@ -767,7 +767,7 @@ class SSPA_Report {
 	}
 
 	private static function required_plugin_closure($owners) {
-		if (!function_exists('get_plugins')) { require_once ABSPATH . 'wp-admin/includes/plugin.php'; }
+		if (!function_exists('get_plugins')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php'; }
 		$headers = get_plugins();
 		$slugs = array();
 		foreach ($headers as $file => $header) { $slugs['.' === dirname($file) ? basename($file, '.php') : dirname($file)] = $file; }

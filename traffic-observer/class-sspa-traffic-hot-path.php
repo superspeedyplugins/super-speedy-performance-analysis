@@ -227,16 +227,16 @@ class SSPA_Traffic_Hot_Path {
 
 	private static function request_scalar($key) {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- observer reads an existing third-party request; it neither invokes its action nor changes its authorisation.
-		$has_get = array_key_exists($key, (array) $_GET);
+		$has_get = isset($_GET[$key]);
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- observer reads an existing third-party request; it neither invokes its action nor changes its authorisation.
-		$has_post = array_key_exists($key, (array) $_POST);
+		$has_post = isset($_POST[$key]);
 		if (!$has_get && !$has_post) { return ''; }
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- array_key_exists above proves each accessed key exists; reject non-scalar observed endpoint identities.
 		if (($has_get && !is_scalar($_GET[$key])) || ($has_post && !is_scalar($_POST[$key]))) { return ''; }
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- existence/type checked above; strict endpoint regex below rejects unsafe bytes without changing the observed action identity.
-		$get = $has_get ? (string) wp_unslash($_GET[$key]) : null;
+		$get = $has_get ? (filter_var(wp_unslash($_GET[$key]), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: '') : null;
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- existence/type checked above; strict endpoint regex below rejects unsafe bytes without changing the observed action identity.
-		$post = $has_post ? (string) wp_unslash($_POST[$key]) : null;
+		$post = $has_post ? (filter_var(wp_unslash($_POST[$key]), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: '') : null;
 		if ($has_get && $has_post && !hash_equals($get, $post)) { return ''; }
 		$value = $has_post ? $post : $get;
 		return is_string($value) && preg_match('/\A[A-Za-z0-9_.:-]{1,191}\z/', $value) ? $value : '';
@@ -511,10 +511,9 @@ class SSPA_Traffic_Hot_Path {
             }
         }
         $session_cookie = self::session_cookie_name();
-        foreach ((array) $_COOKIE as $name => $value) {
-            if ($session_cookie === (string) $name && is_string($value) && $value !== '') {
-                return array('wc-cookie:', $value);
-            }
+        if (isset($_COOKIE[$session_cookie]) && is_string($_COOKIE[$session_cookie])) {
+            $value = sanitize_text_field(wp_unslash($_COOKIE[$session_cookie]));
+            if ('' !== $value) { return array('wc-cookie:', $value); }
         }
         return null;
     }
@@ -653,7 +652,7 @@ class SSPA_Traffic_Hot_Path {
 
     private static function request_path() {
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only classifier needs the actual request path; no output or request dispatch uses these bytes.
-        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
+        $uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '/';
         $path = wp_parse_url($uri, PHP_URL_PATH);
         return is_string($path) && $path !== '' ? $path : '/';
     }
@@ -697,7 +696,7 @@ class SSPA_Traffic_Hot_Path {
         $decision = ssf_archive_gate_decision(
             isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : 'GET',
             // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only classifier needs the actual request path; no output or request dispatch uses these bytes.
-            isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/',
+            isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '/',
             $policy
         );
         if ('redirect' === ($decision['action'] ?? '')) {
@@ -790,8 +789,10 @@ class SSPA_Traffic_Hot_Path {
         $stopped = self::$config['stopped_path'];
         if (is_file($observer)) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- retirement path inside the observer's hot path; runs before the plugin (and WP_Filesystem) is available and must stay dependency-free.
-            @rename($observer, $stopped);
-            @file_put_contents($stopped, sanitize_key($reason));
+            require_once __DIR__ . '/../includes/class-sspa-filesystem.php';
+            if (!SSPA_Filesystem::put_contents($stopped, sanitize_key($reason), 0600) || !SSPA_Filesystem::direct()->delete($observer)) {
+                throw new RuntimeException('Could not retire the traffic observer.');
+            }
         }
         if (function_exists('opcache_invalidate')) {
             @opcache_invalidate($observer, true);

@@ -7,12 +7,12 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 - **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|http-calls|cache-scan|cache-optimisation-report|history-compare|report`
   plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts
   take `--format=json` or emit JSON directly).
-- **Abilities API** (WP 6.9+): category `super-speedy-performance`, abilities
+- **Abilities API** (WP 6.9+): category `sspa`, abilities
   `get-status`, `get-report`, `compare-history`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
   `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
   `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at
-  `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
+  `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
   `super-speedy-performance-get-report`). The plugin registers no dedicated MCP server.
@@ -288,3 +288,5 @@ collections retain `@1`. Both advertise capabilities. `plugin_activity` contains
 sample count, include milliseconds, checkpoint registrations, named executed hooks, I/O attempt
 totals and partial-coverage gaps. Neither zero observations nor registration alone proves necessity
 or absence of work. Capture-time policy comes from `spro/endpoint-context@1` when available.
+
+As of 0.43.16 the ability namespace and category are `sspa`; clients using the old namespace must update their ability names.

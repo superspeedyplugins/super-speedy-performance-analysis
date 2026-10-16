@@ -21,7 +21,7 @@ sspa_hardening_t($product && !in_array($product->get_id(), array_map('intval', $
 sspa_hardening_t($product && 'hidden' === $product->get_catalog_visibility(), 'test product is hidden from catalogue and search');
 sspa_hardening_t($product && !$product->managing_stock() && 'checkout_product' === $product->get_meta('_sspa_temp', true), 'test product is marked and cannot alter real stock');
 
-$checkout_ability = function_exists('wp_get_ability') ? wp_get_ability('super-speedy-performance/run-checkout-flow') : null;
+$checkout_ability = function_exists('wp_get_ability') ? wp_get_ability('sspa/run-checkout-flow') : null;
 $checkout_schema = $checkout_ability ? $checkout_ability->get_input_schema() : array();
 sspa_hardening_t(
     !$checkout_ability || !isset($checkout_schema['properties']['product_id']),

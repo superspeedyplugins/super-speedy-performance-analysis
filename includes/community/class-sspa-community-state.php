@@ -13,7 +13,7 @@ defined('ABSPATH') || exit;
  * `sspa_component_state` filter, and registering that filter IS its consent to share what it
  * returns. This plugin never reads another plugin's options directly and never guesses which of
  * them are safe: it cannot know, because it does not know what they mean. Scalability Pro's
- * option table alone holds a licence key and a free-text CSS selector next to the performance
+ * option table alone holds private credentials and a free-text CSS selector next to the performance
  * settings, and no allowlist maintained over here could keep up with that.
  *
  * What this class DOES enforce is a value grammar, because a declaration is not the same as a
@@ -75,7 +75,7 @@ class SSPA_Community_State {
          * Return one entry per component. Registering this filter is an opt-in: whatever is
          * returned is submitted to superspeedy.org when the site's owner has enabled sharing,
          * so return only what your plugin is willing to publish about itself. Never return
-         * licence keys, credentials, hostnames, paths, or any free-text field a site owner can
+         * installation secrets, credentials, hostnames, paths, or any free-text field a site owner can
          * type into.
          *
          *     array(

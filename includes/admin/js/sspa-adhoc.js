@@ -37,7 +37,7 @@
 			'<div class="sspa-adhoc-status" role="status" aria-live="polite" aria-atomic="true"></div>' +
 			'<div class="sspa-adhoc-body"></div>' +
 			// The screenshot line: anyone sharing this panel shares where it came from.
-			'<div class="sspa-adhoc-foot">Powered by <strong>Super Speedy Performance Analysis</strong> &middot; free from <a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener">superspeedyplugins.com</a></div>' +
+			'<div class="sspa-adhoc-foot">' + wp.i18n.sprintf(/* translators: 1: linked product name, 2: linked publisher website. */ wp.i18n.__('Powered by %1$s · free from %2$s', 'super-speedy-performance-analysis'), '<strong>Super Speedy Performance Analysis</strong>', '<a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener">superspeedyplugins.com</a>') + '</div>' +
 			'</div>'
 		);
 		$('body').append(el);
@@ -120,13 +120,13 @@
 			profile_id: profileId
 		}, function (resp) {
 			if (!resp.success) {
-				renderError(resp.data || 'Could not load that page profile.');
+				renderError(resp.data || wp.i18n.__('Could not load that page profile.', 'super-speedy-performance-analysis'));
 				return;
 			}
 			current.profileId = resp.data.profile_id;
 			body(resp.data.html);
 			if (done) { done(); }
-		}).fail(function () { renderError('Request failed.'); });
+		}).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
 	}
 
 	function fetchByUrl(cb, fresh) {
@@ -135,7 +135,7 @@
 			nonce: sspa_adhoc.nonce,
 			url: current.url || pageUrl(),
 			fresh: fresh ? 1 : 0
-		}, cb).fail(function () { renderError('Request failed.'); });
+		}, cb).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
 	}
 
 	// Whatever the panel is showing, show it again with fresh data.
@@ -161,7 +161,7 @@
 		renderProgress(null);
 		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_start', nonce: sspa_adhoc.nonce, url: current.url }, function (resp) {
 			if (!resp.success) {
-				renderError(resp.data || 'Could not start.');
+				renderError(resp.data || wp.i18n.__('Could not start.', 'super-speedy-performance-analysis'));
 				return;
 			}
 			drive(resp.data.run_id, function () {
@@ -174,7 +174,7 @@
 					}
 				}, true);
 			});
-		}).fail(function () { renderError('Request failed.'); });
+		}).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
 	}
 
 	/**
@@ -197,12 +197,12 @@
 				var s = resp.success ? resp.data : null;
 				if (s && (s.status === 'crawling' || s.status === 'analysing')) {
 					if (s.transport === 'browser' && s.status === 'crawling' && !browserDriver && window.SSPATransport) {
-						console.info('[SSPA] loopbacks are blocked on this site - this browser is fetching the pages itself');
+						console.info(wp.i18n.__('[SSPA] loopbacks are blocked on this site - this browser is fetching the pages itself', 'super-speedy-performance-analysis'));
 						browserDriver = window.SSPATransport.drive({
 							ajaxurl: sspa_adhoc.ajaxurl,
 							nonce: sspa_adhoc.nonce,
 							runId: runId,
-							onFail: function (m) { console.error('[SSPA] browser transport stopped: ' + m); }
+							onFail: function (m) { console.error(wp.i18n.__('[SSPA] browser transport stopped: ', 'super-speedy-performance-analysis') + m); }
 						});
 					}
 					renderProgress(s, message);
@@ -223,7 +223,7 @@
 				}
 				driving = false;
 				if (browserDriver) { browserDriver.stop(); }
-				renderError('Request failed.');
+				renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
 			});
 		}
 		renderProgress(null, message);
@@ -236,7 +236,7 @@
 		body('<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.loading) + '</p>');
 		fetchByUrl(function (resp) {
 			if (!resp.success) {
-				renderError(resp.data || 'Request failed.');
+				renderError(resp.data || wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
 				return;
 			}
 			if (resp.data.running) {
@@ -329,7 +329,7 @@
 	});
 
 	$(document).on('keydown', function (e) {
-		if ('Escape' === e.key && $('#sspa-adhoc-pop').is(':visible')) {
+		if (wp.i18n.__('Escape', 'super-speedy-performance-analysis') === e.key && $('#sspa-adhoc-pop').is(':visible')) {
 			hide();
 		}
 	});
@@ -406,7 +406,7 @@
 				link.remove();
 				window.URL.revokeObjectURL(url);
 				button.prop('disabled', false).text(original);
-				status.text('Downloaded.');
+				status.text(wp.i18n.__('Downloaded.', 'super-speedy-performance-analysis'));
 				return;
 			}
 			function copied() {
@@ -431,6 +431,12 @@
 			window.alert(sspa_adhoc.i18n.markdown_failed);
 		});
 	}
+
+	$(document).on('click', '#wp-admin-bar-sspa-copy-markdown > a', function (event) {
+		event.preventDefault();
+		var id = new URL(this.href).searchParams.get('run');
+		markdownExport($(this).data('kind', 'run').data('id', id), 'download');
+	});
 
 	$(document).on('click', '.sspa-markdown-download', function () {
 		markdownExport($(this), 'download');
@@ -537,14 +543,14 @@
 			profile_id: profileId || 0
 		}, function (resp) {
 			if (!resp.success) {
-				target.html('<p class="sspa-adhoc-error">' + esc(resp.data || 'Could not work out what to measure.') + '</p>');
+				target.html('<p class="sspa-adhoc-error">' + esc(resp.data || wp.i18n.__('Could not work out what to measure.', 'super-speedy-performance-analysis')) + '</p>');
 				return;
 			}
 			plan = resp.data;
 			target.html(planHtml(plan));
 			updateEstimate();
 		}).fail(function () {
-			target.html('<p class="sspa-adhoc-error">Request failed.</p>');
+			target.html(('<p class="sspa-adhoc-error">' + wp.i18n.__('Request failed.', 'super-speedy-performance-analysis') + '</p>'));
 		});
 	}
 
@@ -684,7 +690,7 @@
 				.replace('%2$s', duration(extra * plan.seconds_per_job));
 		}
 		// "1 plugins" would be the first thing a careful reader notices.
-		el.text(text.replace('1 plugins ', '1 plugin ').replace(' 1 pages ', ' 1 page ').replace('1 minutes', '1 minute'));
+		el.text(text.replace(wp.i18n.__('1 plugins ', 'super-speedy-performance-analysis'), wp.i18n.__('1 plugin ', 'super-speedy-performance-analysis')).replace(wp.i18n.__(' 1 pages ', 'super-speedy-performance-analysis'), wp.i18n.__(' 1 page ', 'super-speedy-performance-analysis')).replace(wp.i18n.__('1 minutes', 'super-speedy-performance-analysis'), wp.i18n.__('1 minute', 'super-speedy-performance-analysis')));
 	}
 
 	$(document).on('change', '#sspa-adhoc-pop .sspa-adhoc-pluginpick, #sspa-adhoc-cachemodes', updateEstimate);
@@ -728,7 +734,7 @@
 			}
 			$.post(sspa_adhoc.ajaxurl, payload, function (resp) {
 				if (!resp.success) {
-					$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || 'Could not start measuring.');
+					$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
 					btn.prop('disabled', false);
 					return;
 				}
@@ -739,7 +745,7 @@
 					window.sspa_drive_run(resp.data.run_id);
 				}
 			}).fail(function () {
-				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text('Could not start measuring.');
+				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
 				btn.prop('disabled', false);
 			});
 			return;
@@ -754,13 +760,13 @@
 			'suspects[]': slugs
 		}, function (resp) {
 			if (!resp.success) {
-				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || 'Could not start measuring.');
+				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
 				$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
 				return;
 			}
-			drive(resp.data.run_id, reload, 'Measuring plugin impact on this page…');
+			drive(resp.data.run_id, reload, wp.i18n.__('Measuring plugin impact on this page…', 'super-speedy-performance-analysis'));
 		}).fail(function () {
-			$('#sspa-adhoc-pop .sspa-adhoc-estimate').text('Could not start measuring.');
+			$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
 			$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
 		});
 	});

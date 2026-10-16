@@ -16,7 +16,7 @@ const {session, admin, expect, wp, output} = require('./fleet-context.cjs');
     await expect.poll(() => page.locator('.sspa-history-chart').evaluate(node => node.sspaChart.getOption().legend[0].data)).toEqual(['Mesures précédentes', 'Mesures récentes']);
     await expect(page.locator('.sspa-history-chart-status')).toHaveText(/Graphique .+ chargé\./);
     const translatedChart = await page.evaluate(() => {
-      const documentData = JSON.parse(document.querySelector('.sspa-history-chart-document').textContent);
+      const documentData = JSON.parse(document.querySelector('.sspa-history-chart-document').getAttribute('data-document'));
       const option = SSPAMeasurementChart.optionFor(documentData, '');
       return {legends: option.series.map(series => series.name), description: option.aria.description};
     });
@@ -25,7 +25,7 @@ const {session, admin, expect, wp, output} = require('./fleet-context.cjs');
     const tooltipSafety = await page.evaluate(() => {
       const domain = 'super-speedy-performance-analysis';
       wp.i18n.setLocaleData({'Not measured': ['<img src=x onerror=alert(1)>']}, domain);
-      const documentData = JSON.parse(document.querySelector('.sspa-history-chart-document').textContent);
+      const documentData = JSON.parse(document.querySelector('.sspa-history-chart-document').getAttribute('data-document'));
       const option = SSPAMeasurementChart.optionFor(documentData, '');
       const node = document.createElement('div');
       node.innerHTML = option.tooltip.formatter({seriesName: option.series[0].name, data: {value: ['home', null]}});

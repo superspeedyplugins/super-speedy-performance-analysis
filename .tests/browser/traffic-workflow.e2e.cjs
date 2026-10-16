@@ -31,6 +31,11 @@ const {
   const { browser, page } = await session();
   const guest = await browser.newContext();
   const visitor = await guest.newPage();
+  const pendingRequests = new Set();
+  const visitorFailures = [];
+  visitor.on('request', request => pendingRequests.add(request.url()));
+  visitor.on('requestfinished', request => pendingRequests.delete(request.url()));
+  visitor.on('requestfailed', request => { pendingRequests.delete(request.url()); visitorFailures.push({url:request.url(), error:request.failure()?.errorText}); });
   try {
     wp(
       "eval",
@@ -181,11 +186,11 @@ const {
       "PASS real collection consent/window, guest basket+AJAX/REST, retained privacy export and browser-recorded SPro configuration comparison",
     );
   } finally {
-    await page.screenshot({
-      path: output + "/traffic-workflow-final.png",
-      fullPage: true,
-    });
-    await browser.close();
+    fs.writeFileSync(output + '/traffic-visitor-network.json', JSON.stringify({pending:[...pendingRequests], failures:visitorFailures}, null, 2));
+    try {
+      wp('eval', '$active=SSPA_Traffic_Collection::active();if($active&&!SSPA_Traffic_Collection::stop((int)$active["id"],true))WP_CLI::error("Could not stop browser collection");');
+      await page.screenshot({path: output + "/traffic-workflow-final.png", fullPage: true});
+    } finally { await browser.close(); }
   }
 })().catch((e) => {
   console.error(e);

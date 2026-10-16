@@ -11,7 +11,7 @@ class SSPA_History_Ajax {
 
     public static function ajax_compare() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         // Resolve once so the chart and report cannot silently describe different runs.
         $mode = isset($_POST['selection_mode']) ? sanitize_key(wp_unslash($_POST['selection_mode'])) : 'pair';
         $series = SSPA_History_Series::build(
@@ -41,7 +41,7 @@ class SSPA_History_Ajax {
 
     public static function ajax_setting() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $enabled = !empty($_POST['plugin_update_detection']);
         sspa_update_option('plugin_update_detection', $enabled);
         if (!$enabled) {
@@ -52,7 +52,7 @@ class SSPA_History_Ajax {
 
     public static function ajax_assertion() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : '';
         $page = isset($_POST['page_identity']) ? sanitize_text_field(wp_unslash($_POST['page_identity'])) : '';
         $before_id = isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0;
@@ -70,7 +70,7 @@ class SSPA_History_Ajax {
 
     public static function ajax_export() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $comparison = SSPA_History::compare(
             isset($_POST['before_run_id']) ? (int) $_POST['before_run_id'] : 0,
             isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0

@@ -43,10 +43,11 @@ class SSPA_Browser_Transport {
     }
 
     public static function register_script() {
+        wp_register_script('sspa-browser-evidence', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-browser-evidence.js', array(), sspa_asset_version('includes/admin/js/sspa-browser-evidence.js'), true);
         wp_register_script(
             'sspa-transport',
             SSPA_PLUGIN_URL . 'includes/admin/js/sspa-transport.js',
-            array(),
+            array('sspa-browser-evidence'),
             sspa_asset_version('includes/admin/js/sspa-transport.js'),
             true
         );
@@ -146,7 +147,7 @@ class SSPA_Browser_Transport {
      */
     public static function ajax_next() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         $loaded = self::load($run_id);
         if (is_wp_error($loaded)) {
@@ -253,7 +254,7 @@ class SSPA_Browser_Transport {
      */
     public static function ajax_record() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         $loaded = self::load($run_id);
         if (is_wp_error($loaded)) {
@@ -303,14 +304,16 @@ class SSPA_Browser_Transport {
         $redirected = !empty($_POST['redirected']);
         $final_url = isset($_POST['final_url']) ? esc_url_raw(wp_unslash($_POST['final_url'])) : '';
         $duration = isset($_POST['duration_ms']) ? (float) $_POST['duration_ms'] : 0;
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce/capability checked above; bounded raw HTML is classified and hashed by evaluate_sample, never rendered as HTML.
-        $body = isset($_POST['body_snippet']) ? substr((string) wp_unslash($_POST['body_snippet']), 0, 20000) : '';
+        $body_evidence = isset($_POST['body_evidence']) ? map_deep(json_decode(wp_unslash($_POST['body_evidence']), true), 'sanitize_text_field') : null;
+        $body_evidence = SSPA_Cache_Recon::validate_browser_evidence($body_evidence);
+        if (is_wp_error($body_evidence)) { wp_send_json_error($body_evidence->get_error_message(), 400); }
         $headers = array();
         if (isset($_POST['headers'])) {
             // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- decode the JSON structure first; every header key and value is sanitized in the loop below.
-            $decoded = json_decode((string) wp_unslash($_POST['headers']), true);
+            $decoded = map_deep(json_decode((string) wp_unslash($_POST['headers']), true), 'sanitize_text_field');
             if (is_array($decoded)) {
                 foreach ($decoded as $k => $v) {
+                    if (!is_string($v)) { wp_send_json_error(__('Invalid response header.', 'super-speedy-performance-analysis'), 400); }
                     $headers[strtolower(sanitize_text_field($k))] = sanitize_text_field((string) $v);
                 }
             }
@@ -372,7 +375,8 @@ class SSPA_Browser_Transport {
             'wall_ms' => $duration,
             'code' => $code,
             'headers' => $headers,
-            'body' => $body,
+            'body' => '',
+            'body_evidence' => $body_evidence,
             'error' => ('' !== $error) ? 'browser_fetch_failed' : null,
             'error_message' => ('' !== $error) ? $error : null,
             'cookies_present' => $cookies_present,

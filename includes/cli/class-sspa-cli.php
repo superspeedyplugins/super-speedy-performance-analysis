@@ -319,7 +319,7 @@ class SSPA_CLI {
         }
         if (!empty($assoc_args['output'])) {
             $json = wp_json_encode($report, JSON_PRETTY_PRINT) . PHP_EOL;
-            if (false === file_put_contents($assoc_args['output'], $json)) {
+            if (false === SSPA_Filesystem::put_contents($assoc_args['output'], $json)) {
                 WP_CLI::error('Could not write analysis to ' . $assoc_args['output']);
             }
             WP_CLI::success('Wrote ' . $assoc_args['output']);

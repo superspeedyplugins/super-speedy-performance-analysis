@@ -15,9 +15,14 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+if (!function_exists('sspa_sanitize_early_token')) {
+    function sspa_sanitize_early_token($value) {
+        return is_string($value) && preg_match('/\A[a-zA-Z0-9_.:;\-]+\z/D', $value) ? $value : '';
+    }
+}
 $sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
-    ? $_SERVER['HTTP_X_SSPA_TOKEN'] // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- raw HMAC token bytes are verified below before profiling; WordPress sanitizers are unavailable during early bootstrap.
-    : (!empty($_POST['_sspa_profile_token']) ? $_POST['_sspa_profile_token'] : ''); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- profiling uses the expiring path-bound HMAC token verified below, not a WordPress nonce; preserve signed bytes before WordPress bootstrap.
+    ? sspa_sanitize_early_token($_SERVER['HTTP_X_SSPA_TOKEN'])
+    : (!empty($_POST['_sspa_profile_token']) ? sspa_sanitize_early_token($_POST['_sspa_profile_token']) : '');
 if (!$sspa_token_value || !defined('DB_USER')) {
     return;
 }
@@ -53,9 +58,14 @@ if (!function_exists('sspa_token_verify')) {
     }
 }
 
+if (!function_exists('sspa_sanitize_early_path')) {
+    function sspa_sanitize_early_path($value) {
+        return is_string($value) && !preg_match('/[\x00-\x20\x7f]/', $value) ? $value : '';
+    }
+}
 $sspa_shim_tok = sspa_token_verify(
     $sspa_token_value,
-    isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
+    isset($_SERVER['REQUEST_URI']) ? sspa_sanitize_early_path($_SERVER['REQUEST_URI']) : '/', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
     '%%SSPA_SECRET%%'
 );
 if (!$sspa_shim_tok) {

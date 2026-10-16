@@ -68,7 +68,7 @@ class SSPA_Traffic_CLI {
         }
         $json = wp_json_encode($result, JSON_PRETTY_PRINT);
         if (!empty($assoc_args['output'])) {
-            if (false === file_put_contents($assoc_args['output'], $json . PHP_EOL)) {
+            if (false === SSPA_Filesystem::put_contents($assoc_args['output'], $json . PHP_EOL)) {
                 WP_CLI::error('Could not write observations to ' . $assoc_args['output']);
             }
             WP_CLI::success('Wrote ' . $assoc_args['output']);
@@ -101,7 +101,7 @@ class SSPA_Traffic_CLI {
         }
         $json = wp_json_encode($result, JSON_PRETTY_PRINT);
         if (!empty($assoc_args['output'])) {
-            if (false === file_put_contents($assoc_args['output'], $json . PHP_EOL)) {
+            if (false === SSPA_Filesystem::put_contents($assoc_args['output'], $json . PHP_EOL)) {
                 WP_CLI::error('Could not write comparison to ' . $assoc_args['output']);
             }
             WP_CLI::success('Wrote ' . $assoc_args['output']);

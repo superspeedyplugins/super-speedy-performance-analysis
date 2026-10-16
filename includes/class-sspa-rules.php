@@ -10,7 +10,7 @@ class SSPA_Rules {
 
     private static function load() {
         if (self::$data === null) {
-            $json = file_get_contents(SSPA_PLUGIN_DIR . 'rules/rules-snapshot.json');
+            $json = SSPA_Filesystem::get_contents(SSPA_PLUGIN_DIR . 'rules/rules-snapshot.json');
             self::$data = $json ? json_decode($json, true) : array();
             if (!is_array(self::$data)) {
                 self::$data = array();

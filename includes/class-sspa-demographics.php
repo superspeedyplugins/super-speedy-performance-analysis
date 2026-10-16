@@ -93,8 +93,8 @@ class SSPA_Demographics {
             'mysql' => $wpdb->db_version(),
             'db_family' => self::database_family(),
             'object_cache' => wp_using_ext_object_cache(),
-            'object_cache_category' => self::dropin_category(WP_CONTENT_DIR . '/object-cache.php'),
-            'page_cache' => self::dropin_category(WP_CONTENT_DIR . '/advanced-cache.php'),
+            'object_cache_category' => self::dropin_category(SSPA_CONTENT_DIR . '/object-cache.php'),
+            'page_cache' => self::dropin_category(SSPA_CONTENT_DIR . '/advanced-cache.php'),
             'memory_limit' => ini_get('memory_limit'),
             'multisite' => is_multisite(),
             'locale' => get_locale(),
@@ -231,7 +231,7 @@ class SSPA_Demographics {
         if (!is_readable($path)) {
             return null;
         }
-        $head = strtolower((string) @file_get_contents($path, false, null, 0, 8192));
+        $head = strtolower((string) @SSPA_Filesystem::get_contents($path, false, null, 0, 8192));
         if ('' === $head) {
             return null;
         }

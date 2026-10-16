@@ -1,0 +1,567 @@
+{
+  "extends": [
+    "base"
+  ],
+  "slug": "super-speedy-performance-analysis",
+  "main_file": "super-speedy-performance-analysis.php",
+  "prefixes": [
+    "sspa",
+    "SSPA"
+  ],
+  "text_domain": "super-speedy-performance-analysis",
+  "runtime": {
+    "site_group": "super-speedy-performance-analysis",
+    "admin_pages": [
+      "sspa"
+    ],
+    "requires": {},
+    "allowed_http": {}
+  },
+  "sql_executors": {
+    "SSPA_Explain::explain": 0,
+    "SSPA_Profiling_WPDB::query": 0
+  },
+  "exceptions": [
+    {
+      "check": "function-exists-wrapper",
+      "file": "dropins/db.php",
+      "reason": "The database drop-in, copied MU loader and ordinary plugin can load this same small profiling library in one request, including when another integration loads it first. These are shared implementations of the same token/fingerprint/profiler functions; the guards prevent redeclaration. Generated helpers use the plugin-owned template and carry its signature and version."
+    },
+    {
+      "check": "prefix",
+      "file": "dropins/db.php",
+      "reason": "WordPress and caching plugins own SAVEQUERIES. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "SAVEQUERIES"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The litespeed_purge_all action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "litespeed_purge_all"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The litespeed_purge_url action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "litespeed_purge_url"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The siteground_optimizer_flush_cache action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "siteground_optimizer_flush_cache"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The rt_nginx_helper_purge_all action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "rt_nginx_helper_purge_all"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The rt_nginx_helper_purge_url action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "rt_nginx_helper_purge_url"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The cachify_flush_cache action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "cachify_flush_cache"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "admin-bar is the WordPress core stylesheet handle. The plugin adds its small scoped node styles with wp_add_inline_style on the existing handle; it does not register or replace a foreign asset.",
+      "match": "admin-bar"
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-ajax-profile.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-anonymiser.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-auth.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "json-decode-input",
+      "file": "includes/class-sspa-browser-transport.php",
+      "reason": "The authenticated handler visibly checks its nonce and manage_options before reading input. It decodes and recursively applies sanitize_text_field in one statement. Browser evidence then passes a strict schema, character-set, allowlist and counter validator; response headers reject nested non-string values and sanitise both names and values before use. No response HTML is posted or rendered. json_decode is only the parser, not the sanitiser."
+    },
+    {
+      "check": "enqueue",
+      "file": "includes/class-sspa-cache-recon.php",
+      "reason": "This is a regular expression that recognises script tags in a completed measured response for cache-safety evidence. It does not print a script/style tag or load any asset. Plugin assets are bundled and enqueued through WordPress."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-change-set.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-checkout-flow.php",
+      "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_cookie"
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-checkout-flow.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-checkout-preflight.php",
+      "reason": "WooCommerce owns woocommerce_webhook_deliver_async. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_webhook_deliver_async"
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-checkout-preflight.php",
+      "reason": "WooCommerce owns woocommerce_defer_transactional_emails. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_defer_transactional_emails"
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-filesystem.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "location-constants",
+      "file": "includes/class-sspa-filesystem.php",
+      "reason": "Core, content, plugin and MU locations are defined once as SSPA constants in the main plugin. WordPress has no location API for the database drop-in and MU installation directories; those helpers follow Query Monitor QM_Activation::activate/deactivate (classes/Activation.php): WP_CONTENT_DIR/db.php, DISALLOW_FILE_MODS, install only when absent, and remove only the owned helper with the network lifecycle guard. This is an owned database-helper precedent, not a precedent for replacing foreign files or writing data into mu-plugins. Standalone early profiling/observer code runs before the main plugin constants exist, and uninstall runs after deactivation, so those independent entry points read the WordPress locations directly. They never write into the plugin directory."
+    },
+    {
+      "check": "file-writes",
+      "file": "includes/class-sspa-helper-files.php",
+      "reason": "This is recovery only for a db.php or object-cache.php hold created by a version before 0.43.4. It restores the original file only if the destination is absent, preserves foreign files and dangling symlinks, and creates no new hold. Local rename preserves foreign symlinks and atomic ownership restoration; a filesystem copy/delete would change those semantics."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-mail.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "prefix",
+      "file": "includes/class-sspa-probes.php",
+      "reason": "WooCommerce owns woocommerce_cart_needs_payment. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_cart_needs_payment"
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-report.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-run-controller.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-schema.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "function-exists-wrapper",
+      "file": "includes/class-sspa-token.php",
+      "reason": "The database drop-in, copied MU loader and ordinary plugin can load this same small profiling library in one request, including when another integration loads it first. These are shared implementations of the same token/fingerprint/profiler functions; the guards prevent redeclaration. Generated helpers use the plugin-owned template and carry its signature and version."
+    },
+    {
+      "check": "hardcoded-paths",
+      "file": "includes/class-sspa-tools.php",
+      "reason": "The Tools diagnostic reads the local Linux os-release file through WP_Filesystem_Direct to show the correct package-manager instructions. Other /etc paths occur only in commands displayed for an administrator to run manually; the plugin never writes php.ini, invokes a package manager or restarts a service. These are local OS diagnostics, not remote files or service calls."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/community/class-sspa-community-exporter.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "file-writes",
+      "file": "includes/traffic/class-sspa-traffic-authority.php",
+      "reason": "Traffic recording uses a shared/exclusive flock on a stable local authority inode. It drains admitted writes before deactivation and prevents a concurrent start from publishing afterwards. WP_Filesystem does not expose stream locks, and replacing the locked inode would break that guarantee. Authority data lives under uploads/super-speedy-performance-analysis; legacy migration moves that same inode while holding its exclusive lock."
+    },
+    {
+      "check": "file-writes",
+      "file": "includes/traffic/class-sspa-traffic-helper.php",
+      "reason": "Traffic configuration is published by a single local rename from a temporary file with private permissions. Readers must see either the complete old document or the complete new document. WP_Filesystem_Direct::move may copy and delete after a failed rename, which does not preserve atomic publication. Other non-locking reads and writes use WP_Filesystem_Direct."
+    },
+    {
+      "check": "function-exists-wrapper",
+      "file": "mu/sspa-loader.php",
+      "reason": "The database drop-in, copied MU loader and ordinary plugin can load this same small profiling library in one request, including when another integration loads it first. These are shared implementations of the same token/fingerprint/profiler functions; the guards prevent redeclaration. Generated helpers use the plugin-owned template and carry its signature and version."
+    },
+    {
+      "check": "prefix",
+      "file": "mu/sspa-loader.php",
+      "reason": "WordPress and caching plugins own WP_SANDBOX_SCRAPING. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "WP_SANDBOX_SCRAPING"
+    },
+    {
+      "check": "prefix",
+      "file": "mu/sspa-loader.php",
+      "reason": "WordPress and caching plugins own DONOTCACHEPAGE. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "DONOTCACHEPAGE"
+    },
+    {
+      "check": "prefix",
+      "file": "mu/sspa-loader.php",
+      "reason": "WordPress and caching plugins own SAVEQUERIES. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "SAVEQUERIES"
+    },
+    {
+      "check": "location-constants",
+      "file": "mu/sspa-traffic-observer.php",
+      "reason": "Core, content, plugin and MU locations are defined once as SSPA constants in the main plugin. WordPress has no location API for the database drop-in and MU installation directories; those helpers follow Query Monitor QM_Activation::activate/deactivate (classes/Activation.php): WP_CONTENT_DIR/db.php, DISALLOW_FILE_MODS, install only when absent, and remove only the owned helper with the network lifecycle guard. This is an owned database-helper precedent, not a precedent for replacing foreign files or writing data into mu-plugins. Standalone early profiling/observer code runs before the main plugin constants exist, and uninstall runs after deactivation, so those independent entry points read the WordPress locations directly. They never write into the plugin directory."
+    },
+    {
+      "check": "function-exists-wrapper",
+      "file": "profiler/bootstrap.php",
+      "reason": "The database drop-in, copied MU loader and ordinary plugin can load this same small profiling library in one request, including when another integration loads it first. These are shared implementations of the same token/fingerprint/profiler functions; the guards prevent redeclaration. Generated helpers use the plugin-owned template and carry its signature and version."
+    },
+    {
+      "check": "location-constants",
+      "file": "profiler/class-sspa-component-map.php",
+      "reason": "Core, content, plugin and MU locations are defined once as SSPA constants in the main plugin. WordPress has no location API for the database drop-in and MU installation directories; those helpers follow Query Monitor QM_Activation::activate/deactivate (classes/Activation.php): WP_CONTENT_DIR/db.php, DISALLOW_FILE_MODS, install only when absent, and remove only the owned helper with the network lifecycle guard. This is an owned database-helper precedent, not a precedent for replacing foreign files or writing data into mu-plugins. Standalone early profiling/observer code runs before the main plugin constants exist, and uninstall runs after deactivation, so those independent entry points read the WordPress locations directly. They never write into the plugin directory."
+    },
+    {
+      "check": "function-exists-wrapper",
+      "file": "profiler/fingerprint.php",
+      "reason": "The database drop-in, copied MU loader and ordinary plugin can load this same small profiling library in one request, including when another integration loads it first. These are shared implementations of the same token/fingerprint/profiler functions; the guards prevent redeclaration. Generated helpers use the plugin-owned template and carry its signature and version."
+    },
+    {
+      "check": "location-constants",
+      "file": "super-speedy-performance-analysis.php",
+      "reason": "Core, content, plugin and MU locations are defined once as SSPA constants in the main plugin. WordPress has no location API for the database drop-in and MU installation directories; those helpers follow Query Monitor QM_Activation::activate/deactivate (classes/Activation.php): WP_CONTENT_DIR/db.php, DISALLOW_FILE_MODS, install only when absent, and remove only the owned helper with the network lifecycle guard. This is an owned database-helper precedent, not a precedent for replacing foreign files or writing data into mu-plugins. Standalone early profiling/observer code runs before the main plugin constants exist, and uninstall runs after deactivation, so those independent entry points read the WordPress locations directly. They never write into the plugin directory."
+    },
+    {
+      "check": "location-constants",
+      "file": "traffic-observer/class-sspa-endpoint-detail.php",
+      "reason": "Core, content, plugin and MU locations are defined once as SSPA constants in the main plugin. WordPress has no location API for the database drop-in and MU installation directories; those helpers follow Query Monitor QM_Activation::activate/deactivate (classes/Activation.php): WP_CONTENT_DIR/db.php, DISALLOW_FILE_MODS, install only when absent, and remove only the owned helper with the network lifecycle guard. This is an owned database-helper precedent, not a precedent for replacing foreign files or writing data into mu-plugins. Standalone early profiling/observer code runs before the main plugin constants exist, and uninstall runs after deactivation, so those independent entry points read the WordPress locations directly. They never write into the plugin directory."
+    },
+    {
+      "check": "prefix",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_cookie"
+    },
+    {
+      "check": "location-constants",
+      "file": "uninstall.php",
+      "reason": "Core, content, plugin and MU locations are defined once as SSPA constants in the main plugin. WordPress has no location API for the database drop-in and MU installation directories; those helpers follow Query Monitor QM_Activation::activate/deactivate (classes/Activation.php): WP_CONTENT_DIR/db.php, DISALLOW_FILE_MODS, install only when absent, and remove only the owned helper with the network lifecycle guard. This is an owned database-helper precedent, not a precedent for replacing foreign files or writing data into mu-plugins. Standalone early profiling/observer code runs before the main plugin constants exist, and uninstall runs after deactivation, so those independent entry points read the WordPress locations directly. They never write into the plugin directory."
+    },
+    {
+      "check": "core-files",
+      "file": "uninstall.php",
+      "reason": "This loads the local WordPress API definition required by the immediately following operation: plugin.php for get_plugins/get_plugin_data, user.php for wp_delete_user, upgrade.php for dbDelta, and the filesystem base/direct classes for WP_Filesystem_Direct. The include is require_once and normally guarded by function_exists/class_exists; uninstall and already-guarded cleanup loops call the named API immediately afterwards. No wp-load.php, wp-config.php or remote PHP is loaded."
+    },
+    {
+      "check": "file-writes",
+      "file": "uninstall.php",
+      "reason": "This is recovery only for a db.php or object-cache.php hold created by a version before 0.43.4. It restores the original file only if the destination is absent, preserves foreign files and dangling symlinks, and creates no new hold. Local rename preserves foreign symlinks and atomic ownership restoration; a filesystem copy/delete would change those semantics."
+    },
+    {
+      "check": "prefix",
+      "file": "includes/admin/class-sspa-admin-page.php",
+      "reason": "WordPress owns admin_page_hooks. The admin page reads this registry to find the existing shared parent menu, without defining or replacing the registry.",
+      "match": "admin_page_hooks"
+    },
+    {
+      "check": "prefix",
+      "file": "profiler/class-sspa-capture.php",
+      "reason": "WordPress owns timestart; the profiler reads the core request-start timestamp to measure elapsed bootstrap time, without assigning it.",
+      "match": "timestart"
+    },
+    {
+      "check": "prefix",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "Super Speedy Filters owns ssf_archive_gate_policy and ssf_archive_gate_decision. The traffic observer reads the installed policy and calls the owner\u2019s pure decision function to classify protection; it neither recreates nor writes that policy. Introducing a Filters-owned filter requires a separate change in that plugin.",
+      "match": "ssf_archive_gate_policy"
+    },
+    {
+      "check": "minified-source",
+      "file": "includes/admin/vendor/echarts-history.min.js",
+      "reason": "The bundled Apache ECharts 6.1.0 custom build has a provenance/licence banner, linked legal notices, ECharts/zrender/d3 licence files and the ECharts NOTICE. Its readable entry point, exact dependency lock and build script are public in https://github.com/superspeedyplugins/super-speedy-performance-analysis/tree/main/.build/echarts ; the readme links the upstream source and reproducible npm ci / npm run build instructions. No chart code is fetched at runtime."
+    },
+    {
+      "check": "WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler",
+      "file": "profiler/class-sspa-capture.php",
+      "reason": "The signed-request profiler observes PHP warnings/notices as measurement evidence. Its handler returns false to preserve PHP\u2019s normal error handling, chains/restores the previous handler, and is not installed for ordinary visitor requests."
+    },
+    {
+      "check": "WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace",
+      "file": "profiler/class-sspa-capture.php",
+      "reason": "Component and query attribution is the profiler\u2019s purpose. The bounded backtrace identifies the plugin/theme responsible for measured work; it is not printed or logged as debug output. Capture/export privacy filters remove paths and argument values."
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Recommended",
+      "file": "profiler/class-sspa-excimer.php",
+      "reason": "This read observes the existing third-party request solely to classify its transport or endpoint. It neither invokes the endpoint nor changes its authorisation or request fields. Scalars are unslashed and sanitised, endpoint identities are strictly allowlisted and validated, and only bounded local diagnostic evidence is recorded. Adding this plugin\u2019s nonce to the observed request would change the workload being measured."
+    },
+    {
+      "check": "WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace",
+      "file": "profiler/class-sspa-profiling-wpdb.php",
+      "reason": "Component and query attribution is the profiler\u2019s purpose. The bounded backtrace identifies the plugin/theme responsible for measured work; it is not printed or logged as debug output. Capture/export privacy filters remove paths and argument values."
+    },
+    {
+      "check": "WordPress.Security.ValidatedSanitizedInput.MissingUnslash",
+      "file": "dropins/db.php",
+      "reason": "These are unauthenticated loopback measurements authorised by an expiring, path-bound HMAC and a database-backed single-use token. A cookie-user nonce cannot authorise them. The copied early-boot helper rejects non-string tokens and any byte outside its explicit character class, rejects control/space bytes in the request path, then verifies the exact signed bytes before arming capture. This runs before WordPress sanitisation and magic quoting; unslashing would alter signed input. The scanner does not recognise the prefixed sanitising functions."
+    },
+    {
+      "check": "WordPress.Security.ValidatedSanitizedInput.InputNotSanitized",
+      "file": "dropins/db.php",
+      "reason": "These are unauthenticated loopback measurements authorised by an expiring, path-bound HMAC and a database-backed single-use token. A cookie-user nonce cannot authorise them. The copied early-boot helper rejects non-string tokens and any byte outside its explicit character class, rejects control/space bytes in the request path, then verifies the exact signed bytes before arming capture. This runs before WordPress sanitisation and magic quoting; unslashing would alter signed input. The scanner does not recognise the prefixed sanitising functions."
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Missing",
+      "file": "dropins/db.php",
+      "reason": "These are unauthenticated loopback measurements authorised by an expiring, path-bound HMAC and a database-backed single-use token. A cookie-user nonce cannot authorise them. The copied early-boot helper rejects non-string tokens and any byte outside its explicit character class, rejects control/space bytes in the request path, then verifies the exact signed bytes before arming capture. This runs before WordPress sanitisation and magic quoting; unslashing would alter signed input. The scanner does not recognise the prefixed sanitising functions."
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound",
+      "file": "dropins/db.php",
+      "reason": "WordPress and caching plugins own SAVEQUERIES. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "SAVEQUERIES"
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Recommended",
+      "file": "traffic-observer/class-sspa-ajax-measurement.php",
+      "reason": "This read observes the existing third-party request solely to classify its transport or endpoint. It neither invokes the endpoint nor changes its authorisation or request fields. Scalars are unslashed and sanitised, endpoint identities are strictly allowlisted and validated, and only bounded local diagnostic evidence is recorded. Adding this plugin\u2019s nonce to the observed request would change the workload being measured."
+    },
+    {
+      "check": "WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace",
+      "file": "traffic-observer/class-sspa-endpoint-detail.php",
+      "reason": "Component and query attribution is the profiler\u2019s purpose. The bounded backtrace identifies the plugin/theme responsible for measured work; it is not printed or logged as debug output. Capture/export privacy filters remove paths and argument values."
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Recommended",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "This read observes the existing third-party request solely to classify its transport or endpoint. It neither invokes the endpoint nor changes its authorisation or request fields. Scalars are unslashed and sanitised, endpoint identities are strictly allowlisted and validated, and only bounded local diagnostic evidence is recorded. Adding this plugin\u2019s nonce to the observed request would change the workload being measured."
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Missing",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "This read observes the existing third-party request solely to classify its transport or endpoint. It neither invokes the endpoint nor changes its authorisation or request fields. Scalars are unslashed and sanitised, endpoint identities are strictly allowlisted and validated, and only bounded local diagnostic evidence is recorded. Adding this plugin\u2019s nonce to the observed request would change the workload being measured."
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_cookie"
+    },
+    {
+      "check": "WordPress.DB.PreparedSQL.NotPrepared",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "The profiling wpdb subclass receives WordPress/core/plugin statements and delegates the exact statement to parent::query while measuring it. Preparing a complete captured statement as a value or identifier would change the executed SQL. Queries constructed by Performance Analysis are prepared at their actual call sites."
+    },
+    {
+      "check": "PluginCheck.Security.DirectDB.UnescapedDBParameter",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "The profiling wpdb subclass receives WordPress/core/plugin statements and delegates the exact statement to parent::query while measuring it. Preparing a complete captured statement as a value or identifier would change the executed SQL. Queries constructed by Performance Analysis are prepared at their actual call sites."
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-probes.php",
+      "reason": "WooCommerce owns woocommerce_cart_needs_payment. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_cart_needs_payment"
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Recommended",
+      "file": "includes/admin/tabs/plugins.php",
+      "reason": "This is read-only display context. The core current screen selects the editor type; the named HPOS order id is cast to an integer and the action is unslashed and allowlisted. Attribution is a sanitised allowlisted display selector. No state change occurs here; the later measurement/save handlers independently check manage_options and the sspa_admin nonce before minting a target-bound one-use token."
+    },
+    {
+      "check": "PluginCheck.Security.DirectDB.UnescapedDBParameter",
+      "file": "includes/class-sspa-explain.php",
+      "reason": "S22 explains the captured single eligible SELECT. A %s placeholder would explain a string literal and %i would explain an identifier, rather than the captured statement. The executor admits a single SELECT and does not reconstruct arbitrary SQL. SHOW INDEX separately binds its table with %i and restricts index discovery to current-database/current-prefix tables."
+    },
+    {
+      "check": "WordPress.DB.PreparedSQL.NotPrepared",
+      "file": "includes/class-sspa-explain.php",
+      "reason": "S22 explains the captured single eligible SELECT. A %s placeholder would explain a string literal and %i would explain an identifier, rather than the captured statement. The executor admits a single SELECT and does not reconstruct arbitrary SQL. SHOW INDEX separately binds its table with %i and restricts index discovery to current-database/current-prefix tables."
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The litespeed_purge_all action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "litespeed_purge_all"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The litespeed_purge_url action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "litespeed_purge_url"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The siteground_optimizer_flush_cache action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "siteground_optimizer_flush_cache"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The rt_nginx_helper_purge_all action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "rt_nginx_helper_purge_all"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The rt_nginx_helper_purge_url action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "rt_nginx_helper_purge_url"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-admin-bar.php",
+      "reason": "The cachify_flush_cache action belongs to its installed caching plugin (LiteSpeed Cache, SiteGround Optimizer, Nginx Helper or Cachify). An explicit administrator cache action invokes that plugin\u2019s documented purge hook; it does not register or replace the owner\u2019s hook.",
+      "match": "cachify_flush_cache"
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Recommended",
+      "file": "includes/class-sspa-admin-save.php",
+      "reason": "This is read-only display context. The core current screen selects the editor type; the named HPOS order id is cast to an integer and the action is unslashed and allowlisted. Attribution is a sanitised allowlisted display selector. No state change occurs here; the later measurement/save handlers independently check manage_options and the sspa_admin nonce before minting a target-bound one-use token."
+    },
+    {
+      "check": "WordPress.Security.ValidatedSanitizedInput.InputNotSanitized",
+      "file": "includes/class-sspa-browser-transport.php",
+      "reason": "The authenticated handler visibly checks its nonce and manage_options before reading input. It decodes and recursively applies sanitize_text_field in one statement. Browser evidence then passes a strict schema, character-set, allowlist and counter validator; response headers reject nested non-string values and sanitise both names and values before use. No response HTML is posted or rendered. json_decode is only the parser, not the sanitiser."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.rename_rename",
+      "file": "includes/class-sspa-helper-files.php",
+      "reason": "This is recovery only for a db.php or object-cache.php hold created by a version before 0.43.4. It restores the original file only if the destination is absent, preserves foreign files and dangling symlinks, and creates no new hold. Local rename preserves foreign symlinks and atomic ownership restoration; a filesystem copy/delete would change those semantics."
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-checkout-flow.php",
+      "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_cookie"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-checkout-preflight.php",
+      "reason": "WooCommerce owns woocommerce_webhook_deliver_async. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_webhook_deliver_async"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
+      "file": "includes/class-sspa-checkout-preflight.php",
+      "reason": "WooCommerce owns woocommerce_defer_transactional_emails. Performance Analysis invokes the owner\u2019s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
+      "match": "woocommerce_defer_transactional_emails"
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.rename_rename",
+      "file": "includes/traffic/class-sspa-traffic-helper.php",
+      "reason": "Traffic configuration is published by a single local rename from a temporary file with private permissions. Readers must see either the complete old document or the complete new document. WP_Filesystem_Direct::move may copy and delete after a failed rename, which does not preserve atomic publication. Other non-locking reads and writes use WP_Filesystem_Direct."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fopen",
+      "file": "includes/traffic/class-sspa-traffic-authority.php",
+      "reason": "Traffic recording uses a shared/exclusive flock on a stable local authority inode. It drains admitted writes before deactivation and prevents a concurrent start from publishing afterwards. WP_Filesystem does not expose stream locks, and replacing the locked inode would break that guarantee. Authority data lives under uploads/super-speedy-performance-analysis; legacy migration moves that same inode while holding its exclusive lock."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.rename_rename",
+      "file": "includes/traffic/class-sspa-traffic-authority.php",
+      "reason": "Traffic recording uses a shared/exclusive flock on a stable local authority inode. It drains admitted writes before deactivation and prevents a concurrent start from publishing afterwards. WP_Filesystem does not expose stream locks, and replacing the locked inode would break that guarantee. Authority data lives under uploads/super-speedy-performance-analysis; legacy migration moves that same inode while holding its exclusive lock."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fclose",
+      "file": "includes/traffic/class-sspa-traffic-authority.php",
+      "reason": "Traffic recording uses a shared/exclusive flock on a stable local authority inode. It drains admitted writes before deactivation and prevents a concurrent start from publishing afterwards. WP_Filesystem does not expose stream locks, and replacing the locked inode would break that guarantee. Authority data lives under uploads/super-speedy-performance-analysis; legacy migration moves that same inode while holding its exclusive lock."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fwrite",
+      "file": "includes/traffic/class-sspa-traffic-authority.php",
+      "reason": "Traffic recording uses a shared/exclusive flock on a stable local authority inode. It drains admitted writes before deactivation and prevents a concurrent start from publishing afterwards. WP_Filesystem does not expose stream locks, and replacing the locked inode would break that guarantee. Authority data lives under uploads/super-speedy-performance-analysis; legacy migration moves that same inode while holding its exclusive lock."
+    },
+    {
+      "check": "WordPress.Security.ValidatedSanitizedInput.MissingUnslash",
+      "file": "mu/sspa-loader.php",
+      "reason": "These are unauthenticated loopback measurements authorised by an expiring, path-bound HMAC and a database-backed single-use token. A cookie-user nonce cannot authorise them. The copied early-boot helper rejects non-string tokens and any byte outside its explicit character class, rejects control/space bytes in the request path, then verifies the exact signed bytes before arming capture. This runs before WordPress sanitisation and magic quoting; unslashing would alter signed input. The scanner does not recognise the prefixed sanitising functions."
+    },
+    {
+      "check": "WordPress.Security.ValidatedSanitizedInput.InputNotSanitized",
+      "file": "mu/sspa-loader.php",
+      "reason": "These are unauthenticated loopback measurements authorised by an expiring, path-bound HMAC and a database-backed single-use token. A cookie-user nonce cannot authorise them. The copied early-boot helper rejects non-string tokens and any byte outside its explicit character class, rejects control/space bytes in the request path, then verifies the exact signed bytes before arming capture. This runs before WordPress sanitisation and magic quoting; unslashing would alter signed input. The scanner does not recognise the prefixed sanitising functions."
+    },
+    {
+      "check": "WordPress.Security.NonceVerification.Missing",
+      "file": "mu/sspa-loader.php",
+      "reason": "These are unauthenticated loopback measurements authorised by an expiring, path-bound HMAC and a database-backed single-use token. A cookie-user nonce cannot authorise them. The copied early-boot helper rejects non-string tokens and any byte outside its explicit character class, rejects control/space bytes in the request path, then verifies the exact signed bytes before arming capture. This runs before WordPress sanitisation and magic quoting; unslashing would alter signed input. The scanner does not recognise the prefixed sanitising functions."
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound",
+      "file": "mu/sspa-loader.php",
+      "reason": "WordPress and caching plugins own WP_SANDBOX_SCRAPING. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "WP_SANDBOX_SCRAPING"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound",
+      "file": "mu/sspa-loader.php",
+      "reason": "WordPress and caching plugins own DONOTCACHEPAGE. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "DONOTCACHEPAGE"
+    },
+    {
+      "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound",
+      "file": "mu/sspa-loader.php",
+      "reason": "WordPress and caching plugins own SAVEQUERIES. It is defined only after a signed measurement token is verified, to capture database attribution, prevent caching of a measured response or prevent an intentionally isolated measurement fatal from sending WordPress recovery emails. Ordinary visitor requests return before these definitions.",
+      "match": "SAVEQUERIES"
+    },
+    {
+      "check": "WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace",
+      "file": "mu/sspa-loader.php",
+      "reason": "Component and query attribution is the profiler\u2019s purpose. The bounded backtrace identifies the plugin/theme responsible for measured work; it is not printed or logged as debug output. Capture/export privacy filters remove paths and argument values."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.rename_rename",
+      "file": "uninstall.php",
+      "reason": "This is recovery only for a db.php or object-cache.php hold created by a version before 0.43.4. It restores the original file only if the destination is absent, preserves foreign files and dangling symlinks, and creates no new hold. Local rename preserves foreign symlinks and atomic ownership restoration; a filesystem copy/delete would change those semantics."
+    },
+    {
+      "check": "PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite",
+      "file": "uninstall.php",
+      "reason": "This is recovery only for a db.php or object-cache.php hold created by a version before 0.43.4. It restores the original file only if the destination is absent, preserves foreign files and dangling symlinks, and creates no new hold. Local rename preserves foreign symlinks and atomic ownership restoration; a filesystem copy/delete would change those semantics."
+    },
+    {
+      "check": "plugin-check",
+      "file": "*",
+      "match": "WordPress.DB.DirectDatabaseQuery",
+      "reason": "Performance Analysis captures and analyses mutable profiling evidence, coordinates single-use tokens and lifecycle leases, and owns its diagnostic tables. These reads and writes must observe the actual database state rather than a cached measurement. Application statements are prepared at their real call sites; the separately documented EXPLAIN and profiling-wpdb executors preserve captured SQL."
+    },
+    {
+      "check": "plugin-check",
+      "file": "*",
+      "match": "WordPress.DB.SlowDBQuery",
+      "reason": "Meta-key/value reads identify plugin-owned temporary objects, measured order data and archive/query evidence using core APIs or the reviewed statements. Some matches are SQL text being inspected rather than an executed meta query. These heuristics do not indicate unbound input; caching mutable evidence would hide the change being measured."
+    },
+    {
+      "check": "WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting",
+      "file": "profiler/class-sspa-capture.php",
+      "reason": "This is the zero-argument read of the current PHP engine error mask, not a change to error reporting. The real signed-request case 66 proves ini_get returns the configured mask while @ suppression is active, incorrectly retaining suppressed warnings and turning a measured zero into one. Reading error_reporting() preserves suppression and normal PHP handling; the plugin never supplies an argument or changes the mask."
+    },
+    {
+      "check": "PluginCheck.CodeAnalysis.PHPErrorReporting.DirectErrorReportingCall",
+      "file": "profiler/class-sspa-capture.php",
+      "reason": "This is the zero-argument read of the current PHP engine error mask, not a change to error reporting. The real signed-request case 66 proves ini_get returns the configured mask while @ suppression is active, incorrectly retaining suppressed warnings and turning a measured zero into one. Reading error_reporting() preserves suppression and normal PHP handling; the plugin never supplies an argument or changes the mask."
+    },
+    {
+      "check": "forbidden-functions",
+      "file": "profiler/class-sspa-capture.php",
+      "reason": "This is the zero-argument read of the current PHP engine error mask, not a change to error reporting. The real signed-request case 66 proves ini_get returns the configured mask while @ suppression is active, incorrectly retaining suppressed warnings and turning a measured zero into one. Reading error_reporting() preserves suppression and normal PHP handling; the plugin never supplies an argument or changes the mask.",
+      "match": "error_reporting"
+    }
+  ],
+  "retained_sql_statements": {
+    "S22": "EXPLAIN describes the complete captured single eligible SELECT. Binding it as %s or %i explains a value or an identifier, not the captured query. The independent SHOW INDEX statement binds its table through %i and restricts it to current-database/current-prefix tables.",
+    "S52": "The multi-row Traffic INSERT binds its table through %i. Variable row counts and per-cell NULL layout require generated fragments containing fixed column names, placeholders and literal NULL, with every non-NULL value bound. WordPress value placeholders coerce NULL. Splitting the batch changes atomicity, failure behaviour, auto-increment allocation, trigger boundaries and round trips, so the approved single statement is retained unchanged."
+  }
+}

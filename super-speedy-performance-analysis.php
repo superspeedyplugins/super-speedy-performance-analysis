@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: Super Speedy Performance Analysis
- * Plugin URI: https://www.superspeedyplugins.com/
+ * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.43.15
+ * Version: 0.43.17
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -13,7 +13,7 @@
  * Tested up to: 7.1
  * Requires PHP: 7.4
  * WC requires at least: 8.2
- * WC tested up to: 10.5.3
+ * WC tested up to: 11.2.1
  */
 
 defined('ABSPATH') || exit;
@@ -26,6 +26,10 @@ define('SSPA_VERSION', '' !== $sspa_header['Version'] ? $sspa_header['Version'] 
 define('SSPA_PLUGIN_FILE', __FILE__);
 define('SSPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSPA_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('SSPA_CONTENT_DIR', WP_CONTENT_DIR);
+define('SSPA_MU_DIR', WPMU_PLUGIN_DIR);
+define('SSPA_PLUGINS_DIR', WP_PLUGIN_DIR);
+define('SSPA_CORE_DIR', ABSPATH);
 
 require_once SSPA_PLUGIN_DIR . 'defines.php';
 
@@ -77,7 +81,7 @@ add_action('before_woocommerce_init', function () {
 
 // Agent surfaces: Abilities API (WP 6.9+; MCP via the adapter plugin) and WP-CLI.
 // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only substring detection decides whether to register hooks; the raw URI is never rendered, persisted or used as a dispatch target.
-$sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+$sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '';
 $sspa_agent_request = (defined('WP_CLI') && WP_CLI)
     || false !== strpos($sspa_request_uri, '/wp-json/')
     || false !== strpos($sspa_request_uri, 'rest_route=');

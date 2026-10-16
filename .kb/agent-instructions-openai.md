@@ -13,7 +13,7 @@ Workflow:
    https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip
    --activate` over SSH, or ask the user to install it from superspeedyplugins.com).
 2. Start an analysis: `wp sspa run` (synchronous), or POST the `run-analysis` ability at
-   `/wp-json/wp-abilities/v1/abilities/super-speedy-performance/run-analysis/run` with an
+   `/wp-json/wp-abilities/v1/abilities/sspa/run-analysis/run` with an
    application password, then poll `get-status` until `active` is false.
 3. Read `wp sspa report` (JSON). Summarise for the user: lead with `score` and the
    `insights` array - each has a `headline` naming the responsible plugin, `evidence`

@@ -33,3 +33,11 @@ try {
     $check(null !== $bar->get_node('sspa-clear-ours'), 'Database-backed sites keep their selective shortcut');
 } finally { wp_using_ext_object_cache(true); }
 if ($failures) throw new RuntimeException($failures . ' cache scope assertions failed');
+
+// The wp.org build must preserve foreign database-backed transient families as well.
+$process = proc_open(array('bash', SSPA_PLUGIN_DIR . '.tests/cache-scope/run.sh'), array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w')), $pipes);
+if (!is_resource($process)) { throw new RuntimeException('Could not start the wp.org cache-scope regression'); }
+fclose($pipes[0]); $output = stream_get_contents($pipes[1]); $error = stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]); $exit = proc_close($process);
+echo $output;
+$check(0 === $exit && false === strpos($output, 'FAIL:'), 'wp.org database-backed cache action preserves foreign transients' . ($exit ? ': ' . $error : ''));
+if ($failures) { exit(1); }

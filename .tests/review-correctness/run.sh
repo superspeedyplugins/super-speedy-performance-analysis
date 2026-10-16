@@ -5,6 +5,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" || exit 1
 fi
+# A newly created site links the canonical repository. Bind this dedicated harness
+# to its invoking checkout before the realpath guard permits any fixture mutation.
+review_plugin="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
+if [ -L "$review_plugin" ]; then
+    ln -sfn "$PLUGIN_DIR" "$review_plugin" || exit 1
+elif [ ! -e "$review_plugin" ]; then
+    ln -s "$PLUGIN_DIR" "$review_plugin" || exit 1
+else
+    echo "FAIL: refusing non-symlink review plugin directory: $review_plugin" >&2
+    exit 1
+fi
 sspa_require_site || exit 1
 sync_plugin || exit 1
 if cli plugin is-active woocommerce >/dev/null 2>&1; then

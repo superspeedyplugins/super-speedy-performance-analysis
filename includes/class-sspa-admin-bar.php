@@ -28,8 +28,8 @@ class SSPA_Admin_Bar {
     public static function register() {
         add_action('admin_bar_menu', array(__CLASS__, 'nodes'), 80);
         add_action('admin_post_' . self::ACTION, array(__CLASS__, 'handle'));
-        add_action('admin_head', array(__CLASS__, 'styles'));
-        add_action('wp_head', array(__CLASS__, 'styles'));
+        add_action('admin_enqueue_scripts', array(__CLASS__, 'styles'));
+        add_action('wp_enqueue_scripts', array(__CLASS__, 'styles'));
         add_action('admin_notices', array(__CLASS__, 'result_notice'));
     }
 
@@ -303,7 +303,7 @@ class SSPA_Admin_Bar {
 
     /** E. Hand the result to a person or an LLM. */
     private static function group_share($bar, $summary) {
-        if (!is_array($summary)) {
+        if (!is_array($summary) || (is_admin() && (!function_exists('get_current_screen') || !get_current_screen() || false === strpos(get_current_screen()->id, '_page_sspa')))) {
             return;
         }
         $bar->add_group(array('id' => 'sspa-share', 'parent' => 'sspa-menu', 'meta' => array('class' => 'ab-sub-secondary')));
@@ -460,7 +460,7 @@ class SSPA_Admin_Bar {
         check_admin_referer(self::ACTION . '_' . $do);
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL decoding is followed by esc_url_raw and wp_validate_redirect before any redirect.
-        $return = isset($_GET['sspa_return']) ? esc_url_raw(urldecode(wp_unslash($_GET['sspa_return']))) : admin_url();
+        $return = isset($_GET['sspa_return']) ? esc_url_raw(wp_unslash($_GET['sspa_return'])) : admin_url();
         $return = wp_validate_redirect($return, admin_url());
         $message = '';
 
@@ -498,8 +498,8 @@ class SSPA_Admin_Bar {
                 $message = __('Page cache bypass turned off.', 'super-speedy-performance-analysis');
                 break;
             case 'markdown':
-                self::send_markdown(isset($_GET['run']) ? (int) $_GET['run'] : 0);
-                return; // sends a file and exits
+                wp_safe_redirect(admin_url('admin.php?page=sspa#overview'));
+                exit;
             default:
                 $message = __('Unknown action.', 'super-speedy-performance-analysis');
         }
@@ -526,27 +526,6 @@ class SSPA_Admin_Bar {
             : __('Nothing stored for this page.', 'super-speedy-performance-analysis');
     }
 
-    private static function send_markdown($run) {
-        if (!$run || !class_exists('SSPA_Markdown_Export')) {
-            wp_die(esc_html__('No analysis to export.', 'super-speedy-performance-analysis'));
-        }
-        // build() answers with {filename, markdown}, and the filename it chooses already
-        // carries the site prefix, so it is used as given rather than rebuilt here.
-        $built = SSPA_Markdown_Export::build('run', $run);
-        if (is_wp_error($built) || !is_array($built) || empty($built['markdown'])) {
-            wp_die(esc_html(
-                is_wp_error($built)
-                    ? $built->get_error_message()
-                    : __('That analysis could not be exported.', 'super-speedy-performance-analysis')
-            ));
-        }
-        $name = !empty($built['filename']) ? $built['filename'] : 'sspa-analysis-' . $run . '.md';
-        header('Content-Type: text/markdown; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . sanitize_file_name($name) . '"');
-        echo $built['markdown']; // phpcs:ignore WordPress.Security.EscapeOutput -- a generated Markdown file, not HTML.
-        exit;
-    }
-
     public static function result_notice() {
         $key = 'sspa_bar_notice_' . get_current_user_id();
         $message = get_transient($key);
@@ -561,12 +540,11 @@ class SSPA_Admin_Bar {
         if (!self::allowed()) {
             return;
         }
-        ?>
-        <style>
+        wp_enqueue_style('admin-bar');
+        wp_add_inline_style('admin-bar', '
         #wpadminbar .sspa-bar-heading { text-transform: uppercase; font-size: 10px; letter-spacing: .05em; opacity: .6; }
         #wpadminbar .sspa-bar-warn { color: #ffb900; }
         #wpadminbar .sspa-bar-on { color: #46b450; font-weight: 600; }
-        </style>
-        <?php
+        ');
     }
 }

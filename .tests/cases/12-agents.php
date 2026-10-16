@@ -23,20 +23,20 @@ $registered_abilities = array(
 );
 $missing_abilities = array();
 foreach ($registered_abilities as $ability_name) {
-    if (!is_object(wp_get_ability('super-speedy-performance/' . $ability_name))) {
+    if (!is_object(wp_get_ability('sspa/' . $ability_name))) {
         $missing_abilities[] = $ability_name;
     }
 }
 sspa_t(!$missing_abilities, 'all 21 declared abilities are registered' . ($missing_abilities ? ': ' . implode(', ', $missing_abilities) : ''));
 
 // --- Readonly abilities ---
-$ability = wp_get_ability('super-speedy-performance/get-status');
+$ability = wp_get_ability('sspa/get-status');
 sspa_t(is_object($ability), 'get-status ability registered');
 $status = $ability ? $ability->execute(array()) : null;
 sspa_t(is_array($status) && isset($status['active'], $status['latest_done_run_id']), 'get-status executes through the full pipeline');
 sspa_t(is_array($status) && $status['latest_done_run_id'] > 0, 'latest done run visible (' . $status['latest_done_run_id'] . ')');
 
-$report = wp_get_ability('super-speedy-performance/get-report')->execute(array());
+$report = wp_get_ability('sspa/get-report')->execute(array());
 sspa_t(is_array($report) && !is_wp_error($report), 'get-report executes');
 if (is_array($report)) {
     sspa_t(1 === $report['schema'], 'report schema versioned');
@@ -48,26 +48,26 @@ if (is_array($report)) {
     sspa_t(isset($report['cache_safety']['assessment']['shared_cache_status']), 'report carries shared-cache safety status');
 }
 
-$cache_recon = wp_get_ability('super-speedy-performance/get-cache-safety-report')->execute(array());
+$cache_recon = wp_get_ability('sspa/get-cache-safety-report')->execute(array());
 sspa_t(is_array($cache_recon) && isset($cache_recon['assessment']['difficulty']), 'get-cache-safety-report returns the dedicated assessment');
 
-$cache_optimisation = wp_get_ability('super-speedy-performance/get-cache-optimisation-analysis')->execute(array());
+$cache_optimisation = wp_get_ability('sspa/get-cache-optimisation-analysis')->execute(array());
 sspa_t(is_array($cache_optimisation) && 'sspa/shared-cache-safety-report@2' === $cache_optimisation['schema'], 'get-cache-optimisation-analysis returns the complete versioned document');
 
-$findings = wp_get_ability('super-speedy-performance/get-findings')->execute(array());
+$findings = wp_get_ability('sspa/get-findings')->execute(array());
 sspa_t(is_array($findings) && isset($findings['total'], $findings['findings']), 'get-findings shape');
 
-$impacts = wp_get_ability('super-speedy-performance/get-plugin-impacts')->execute(array());
+$impacts = wp_get_ability('sspa/get-plugin-impacts')->execute(array());
 sspa_t(is_array($impacts) && isset($impacts['total']) && $impacts['total'] >= 1, 'get-plugin-impacts returns measured impacts (' . $impacts['total'] . ')');
 
-$metrics = wp_get_ability('super-speedy-performance/get-site-metrics')->execute(array());
+$metrics = wp_get_ability('sspa/get-site-metrics')->execute(array());
 sspa_t(is_array($metrics) && 'e-commerce' === $metrics['sector'], 'get-site-metrics sector (' . (is_array($metrics) ? $metrics['sector'] : '?') . ')');
 
-$traffic_status_ability = wp_get_ability('super-speedy-performance/get-traffic-collection-status');
-$traffic_observations_ability = wp_get_ability('super-speedy-performance/get-traffic-observations');
-$traffic_compare_ability = wp_get_ability('super-speedy-performance/compare-traffic-collections');
+$traffic_status_ability = wp_get_ability('sspa/get-traffic-collection-status');
+$traffic_observations_ability = wp_get_ability('sspa/get-traffic-observations');
+$traffic_compare_ability = wp_get_ability('sspa/compare-traffic-collections');
 sspa_t(is_object($traffic_status_ability) && is_object($traffic_observations_ability) && is_object($traffic_compare_ability), 'traffic status, observations and comparison abilities registered');
-$traffic_started = wp_get_ability('super-speedy-performance/start-traffic-collection')->execute(array('duration' => '2h'));
+$traffic_started = wp_get_ability('sspa/start-traffic-collection')->execute(array('duration' => '2h'));
 sspa_t(is_array($traffic_started) && !empty($traffic_started['active']), 'start-traffic-collection accepts a two-hour duration through the full pipeline' . (is_wp_error($traffic_started) ? ': ' . $traffic_started->get_error_code() . ' - ' . $traffic_started->get_error_message() : ''));
 if (is_array($traffic_started) && !empty($traffic_started['collection']['id'])) {
     $traffic_id = (int) $traffic_started['collection']['id'];
@@ -77,7 +77,7 @@ if (is_array($traffic_started) && !empty($traffic_started['collection']['id'])) 
     sspa_t(is_array($traffic_observations) && SSPA_Traffic_Privacy::SCHEMA === $traffic_observations['schema'], 'get-traffic-observations returns the privacy-safe Phase 3 schema');
     $traffic_comparison = $traffic_compare_ability->execute(array('before_collection_id' => $traffic_id, 'after_collection_id' => $traffic_id));
     sspa_t(is_array($traffic_comparison) && 'sspa/traffic-collection-comparison@1' === $traffic_comparison['schema'], 'compare-traffic-collections returns the duration-normalised schema');
-    $traffic_stopped = wp_get_ability('super-speedy-performance/stop-traffic-collection')->execute(array('collection_id' => $traffic_id, 'emergency' => true));
+    $traffic_stopped = wp_get_ability('sspa/stop-traffic-collection')->execute(array('collection_id' => $traffic_id, 'emergency' => true));
     sspa_t(is_array($traffic_stopped) && 'stopped' === $traffic_stopped['collection']['status'], 'stop-traffic-collection emergency stop executes');
 }
 
@@ -106,14 +106,14 @@ $sspa_switch_to($subscriber_id);
 sspa_t(!current_user_can('sspa_manage'), 'precondition: test user starts without sspa_manage');
 
 sspa_t(get_current_user_id() > 0 && !current_user_can('manage_options'), 'low-privilege test user in place');
-$denied = wp_get_ability('super-speedy-performance/get-report')->execute(array());
+$denied = wp_get_ability('sspa/get-report')->execute(array());
 sspa_t(is_wp_error($denied), 'non-admin denied by permission callback');
 
 $subscriber->add_cap('sspa_manage');
 $sspa_switch_to($subscriber_id);
 sspa_t(current_user_can('sspa_manage'), 'sspa_manage granted and visible to current_user_can()');
-$allowed = wp_get_ability('super-speedy-performance/get-report')->execute(array());
-$denied_execute = wp_get_ability('super-speedy-performance/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
+$allowed = wp_get_ability('sspa/get-report')->execute(array());
+$denied_execute = wp_get_ability('sspa/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
 sspa_t(is_array($allowed) && !is_wp_error($allowed), 'manage-only user can read reports');
 sspa_t(is_wp_error($denied_execute), 'manage-only user cannot start analyses');
 
@@ -122,11 +122,11 @@ $sspa_switch_to($subscriber_id);
 sspa_t(!current_user_can('sspa_manage'), 'cap removed again, so a re-run starts clean');
 wp_set_current_user(1);
 
-$unconfirmed_checkout = wp_get_ability('super-speedy-performance/run-checkout-flow')->execute(array());
+$unconfirmed_checkout = wp_get_ability('sspa/run-checkout-flow')->execute(array());
 sspa_t(is_wp_error($unconfirmed_checkout) && 'sspa_confirm_required' === $unconfirmed_checkout->get_error_code(), 'real checkout run refuses without confirm=true');
 
 // --- run-analysis ability starts an async run ---
-$started = wp_get_ability('super-speedy-performance/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
+$started = wp_get_ability('sspa/run-analysis')->execute(array('type' => 'spot', 'pages' => array('home')));
 sspa_t(is_array($started) && !empty($started['run_id']), 'run-analysis starts a run (' . (is_array($started) ? $started['run_id'] : '?') . ')');
 if (is_array($started)) {
     $deadline = time() + 180;
@@ -139,7 +139,7 @@ if (is_array($started)) {
 
 // --- submit-results refuses without owner opt-in ---
 update_option('sspa_share_optin', 0, false);
-$refused = wp_get_ability('super-speedy-performance/submit-results')->execute(array());
+$refused = wp_get_ability('sspa/submit-results')->execute(array());
 sspa_t(is_wp_error($refused), 'submit-results refuses without owner opt-in');
 
 // --- WP-CLI commands (subprocess - proves registration end to end) ---

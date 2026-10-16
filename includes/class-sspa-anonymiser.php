@@ -35,7 +35,7 @@ class SSPA_Anonymiser {
         $m = $demo ? $demo['metrics'] : array();
 
         if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php';
         }
         $all_plugins = get_plugins();
         $plugins = array();

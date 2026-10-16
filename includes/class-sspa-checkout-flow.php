@@ -58,7 +58,7 @@ class SSPA_Checkout_Flow {
      */
     public static function ajax_preflight() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         if (!class_exists('WooCommerce')) {
             wp_send_json_error(__('WooCommerce is not active, so there is no checkout to profile.', 'super-speedy-performance-analysis'));
         }
@@ -109,7 +109,7 @@ class SSPA_Checkout_Flow {
 
     public static function ajax_start() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $args = array(
             'type' => 'checkout',
             'trigger' => 'adminbar',
@@ -138,7 +138,7 @@ class SSPA_Checkout_Flow {
     public static function ajax_result() {
         global $wpdb;
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
 
         $active = SSPA_Run_Controller::active_run_id();
         if ($active) {
@@ -1603,12 +1603,10 @@ class SSPA_Checkout_Flow {
         if (!$user_ids) {
             return;
         }
-        if (!function_exists('wp_delete_user')) {
-            require_once ABSPATH . 'wp-admin/includes/user.php';
-        }
         $deleted = 0;
         foreach ($user_ids as $user_id) {
             if (get_user_meta($user_id, self::TEMP_META, true)) {
+                if (!function_exists('wp_delete_user')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/user.php'; }
                 wp_delete_user($user_id);
                 if (!get_userdata($user_id)) {
                     $deleted++;

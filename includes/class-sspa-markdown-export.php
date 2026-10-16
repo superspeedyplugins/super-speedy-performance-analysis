@@ -601,7 +601,7 @@ class SSPA_Markdown_Export {
 
     private static function safe_origin($value) {
         $value = (string) $value;
-        foreach (array(defined('ABSPATH') ? ABSPATH : '', defined('WP_CONTENT_DIR') ? WP_CONTENT_DIR : '') as $root) {
+        foreach (array(SSPA_CORE_DIR, SSPA_CONTENT_DIR) as $root) {
             if ($root) {
                 $value = str_replace(rtrim($root, '/\\') . '/', '', $value);
             }

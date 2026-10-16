@@ -13,6 +13,7 @@ class SSPA_History_Run_View {
 
     public static function ajax_run() {
         check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $id = isset($_POST['run_id']) ? absint($_POST['run_id']) : 0;
         $html = self::render($id);
         if (is_wp_error($html)) {

@@ -36,7 +36,7 @@ class SSPA_History_Chart {
                 </div>
             </div>
 
-            <?php echo self::period_summary($document); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?>
+            <?php echo wp_kses(self::period_summary($document), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?>
             <?php if ('setup' === ($document['selection_mode'] ?? 'setup')) : ?>
                 <p class="description"><?php esc_html_e('This chart includes the runs listed in each configuration period. The comparison report below compares the named representative runs, not an aggregate of the whole period.', 'super-speedy-performance-analysis'); ?></p>
             <?php endif; ?>
@@ -59,10 +59,8 @@ class SSPA_History_Chart {
             <p class="description"><?php esc_html_e('Switch off a category to hide its highlighting; timed measurements remain as circles and saved details stay available. Errors without a timing disappear from the chart when errors are off. Diagnostic coverage may be incomplete.', 'super-speedy-performance-analysis'); ?></p>
             <div class="sspa-history-chart" role="img" aria-label="<?php esc_attr_e('Previous and current measured setup performance by page', 'super-speedy-performance-analysis'); ?>"></div>
             <section class="sspa-history-point-details" aria-live="polite" hidden></section>
-            <script type="application/json" class="sspa-history-chart-document"><?php
-                echo wp_json_encode($document, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON hex flags make script-safe text.
-            ?></script>
-            <div class="sspa-history-chart-table"><?php echo self::table($document); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?></div>
+            <div class="sspa-history-chart-document" hidden data-document="<?php echo esc_attr(wp_json_encode($document)); ?>"></div>
+            <div class="sspa-history-chart-table"><?php echo wp_kses(self::table($document), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?></div>
         </section>
         <?php
         return ob_get_clean();

@@ -8,4 +8,5 @@ out="$root/.data/wporg-review/diagnostic"
 mkdir -p "$out"
 echo 'DIAGNOSTIC ONLY: release evidence and approval have not been verified.' >&2
 zip=$(ssx_build_target "$root" "$out" "$PLUGIN_SLUG" "diagnostic-wporg.zip" ssx_hook_wporg)
-bash "$here/pcp-check.sh" "$zip" "$out/pcp"
+printf '%s\n' "$zip"
+sha256sum "$zip"

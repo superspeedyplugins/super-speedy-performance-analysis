@@ -416,7 +416,7 @@ sspa_history_t(
 if (function_exists('wp_get_ability')) {
     $previous_user_id = get_current_user_id();
     wp_set_current_user(1);
-    $ability = wp_get_ability('super-speedy-performance/compare-history');
+    $ability = wp_get_ability('sspa/compare-history');
     $ability_payload = $ability ? $ability->execute(array(
         'before_run_id' => (int) $before_id,
         'after_run_id' => (int) $after_id,

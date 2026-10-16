@@ -167,7 +167,7 @@ class SSPA_Crawler {
         $block = $profiled_success ? null : SSPA_Security_Detect::classify_detail(
             $sample['code'],
             $headers,
-            substr((string) $norm['body'], 0, 20000),
+            isset($norm['body_evidence']) ? ($norm['body_evidence']['wordfence'] ? 'wordfence' : '') : substr((string) $norm['body'], 0, 20000),
             !empty($norm['cookies_present'])
         );
         $sample['blocked_by'] = $block ? SSPA_Security_Detect::display_label($block) : null;
@@ -214,12 +214,12 @@ class SSPA_Crawler {
         // response; comparing a cached body against a live one would be meaningless.
         // Headers are folded in because a plugin can change ONLY headers (security
         // headers, CSP, redirects-adjacent behaviour) while the body stays identical.
-        $sample['body_hash'] = self::body_hash((string) $norm['body'], $headers);
+        $sample['body_hash'] = isset($norm['body_evidence']) ? $norm['body_evidence']['body_hash'] : self::body_hash((string) $norm['body'], $headers);
 
         $capture = self::fetch_capture($token_id);
         if ($capture) {
             if (!empty($flags['cr'])) {
-                $capture['cache_recon'] = SSPA_Cache_Recon::scan_response(
+                $capture['cache_recon'] = isset($norm['body_evidence']) ? SSPA_Cache_Recon::from_browser_evidence($norm['body_evidence'], $headers, $capture) : SSPA_Cache_Recon::scan_response(
                     (string) $norm['body'],
                     $headers,
                     $capture,

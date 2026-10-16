@@ -17,9 +17,9 @@ class SSPA_Ajax_Measurement {
         }, PHP_INT_MAX);
         if (!empty($config['detail'])) {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- observes the existing request only; endpoint identity is strictly regex-validated and allowlisted below, never dispatched by this observer.
-            $action = isset($_REQUEST['action']) && is_string($_REQUEST['action']) ? $_REQUEST['action'] : '';
+            $action = isset($_REQUEST['action']) && is_string($_REQUEST['action']) ? (filter_var(wp_unslash($_REQUEST['action']), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[a-zA-Z0-9_.-]{1,120}\z/'))) ?: '') : '';
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- observes the existing request only; endpoint identity is strictly regex-validated and allowlisted below, never dispatched by this observer.
-            $wc = isset($_GET['wc-ajax']) && is_string($_GET['wc-ajax']) ? $_GET['wc-ajax'] : '';
+            $wc = isset($_GET['wc-ajax']) && is_string($_GET['wc-ajax']) ? (filter_var(wp_unslash($_GET['wc-ajax']), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[a-zA-Z0-9_.-]{1,120}\z/'))) ?: '') : '';
             $candidate = $wc ?: ((defined('DOING_AJAX') && DOING_AJAX) ? $action : '');
             $selector = ($wc ? 'wc_ajax:' : 'admin_ajax:') . $candidate;
             if (!empty($config['endpoints']) && !in_array($selector, $config['endpoints'], true)) { $candidate = ''; }

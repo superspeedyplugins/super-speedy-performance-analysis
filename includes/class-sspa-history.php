@@ -254,18 +254,26 @@ class SSPA_History {
     }
 
     public static function ajax_compare() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         return SSPA_History_Ajax::ajax_compare();
     }
 
     public static function ajax_setting() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         return SSPA_History_Ajax::ajax_setting();
     }
 
     public static function ajax_assertion() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         return SSPA_History_Ajax::ajax_assertion();
     }
 
     public static function ajax_export() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         return SSPA_History_Ajax::ajax_export();
     }
 

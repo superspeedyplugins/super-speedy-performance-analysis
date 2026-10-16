@@ -8,7 +8,7 @@ class SSPA_Community_Exporter {
 
     public static function component_inventory_snapshot() {
         if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php';
         }
         $headers = get_plugins();
         $inventory = array();

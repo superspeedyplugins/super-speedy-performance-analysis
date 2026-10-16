@@ -30,18 +30,19 @@ class SSPA_Admin_Save {
             return null;
         }
 
-        if ('post' === $screen->base && !empty($_GET['post'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
+        $post = get_post();
+        if ('post' === $screen->base && $post && $post->ID) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
             return array(
                 'screen_id' => sanitize_key($screen->id),
                 'object_type' => sanitize_key($screen->post_type ? $screen->post_type : 'post'),
-                'object_id' => (int) $_GET['post'], // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
+                'object_id' => (int) $post->ID, // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
             );
         }
 
         // WooCommerce HPOS order editor: admin.php?page=wc-orders&action=edit&id=N.
         if ('woocommerce_page_wc-orders' === $screen->id
             && isset($_GET['action'], $_GET['id']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
-            && 'edit' === $_GET['action']) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
+            && 'edit' === sanitize_key(wp_unslash($_GET['action']))) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
             return array(
                 'screen_id' => 'woocommerce_page_wc-orders',
                 'object_type' => 'order',
@@ -71,6 +72,8 @@ class SSPA_Admin_Save {
         if (!$context) {
             return;
         }
+        SSPA_Browser_Transport::register_script();
+        SSPA_Adhoc::enqueue(true);
         wp_enqueue_script(
             'sspa-admin-save',
             SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin-save.js',
@@ -302,7 +305,7 @@ class SSPA_Admin_Save {
 
     public static function ajax_prepare() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $prepared = self::prepare(
             isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '',
             isset($_POST['method']) ? sanitize_key(wp_unslash($_POST['method'])) : '',
@@ -325,7 +328,7 @@ class SSPA_Admin_Save {
 
     public static function ajax_finish() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $finished = self::finish(
             isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0,
             isset($_POST['token_id']) ? sanitize_text_field(wp_unslash($_POST['token_id'])) : '',

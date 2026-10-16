@@ -53,7 +53,7 @@ class SSPA_Tools {
         if (PHP_OS_FAMILY !== 'Linux' || !@is_readable('/etc/os-release')) {
             return PHP_OS_FAMILY;
         }
-        $raw = @file_get_contents('/etc/os-release');
+        $raw = @SSPA_Filesystem::get_contents('/etc/os-release');
         if (!is_string($raw)) {
             return PHP_OS_FAMILY;
         }

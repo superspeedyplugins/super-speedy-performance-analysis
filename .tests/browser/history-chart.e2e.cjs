@@ -49,7 +49,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		);
 		const malformedStatus = await page.evaluate(async () => {
 			const probe = document.createElement('div');
-			probe.innerHTML = '<section data-sspa-history-chart><div class="sspa-history-chart-status"></div><div class="sspa-history-chart"></div><script type="application/json" class="sspa-history-chart-document">{broken</script></section>';
+			probe.innerHTML = '<section data-sspa-history-chart><div class="sspa-history-chart-status"></div><div class="sspa-history-chart"></div><div class="sspa-history-chart-document" data-document="{broken"></div></section>';
 			document.body.appendChild(probe);
 			window.jQuery(document).trigger('sspa:tab-rendered', ['history', probe]);
 			await new Promise((resolve) => setTimeout(resolve, 50));
@@ -60,7 +60,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 		assert.match(malformedStatus, /could not be read/i, 'Malformed chart data must surface a visible error');
 
 		assert.deepEqual(await page.locator('.sspa-history-chart').evaluate(mount => mount.sspaChart.getOption().legend[0].data), ['Previous measurements', 'Recent measurements'], 'The period legend does not offer a competing partial error toggle');
-		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.textContent));
+		const source = await page.locator('.sspa-history-chart-document').evaluate((node) => JSON.parse(node.getAttribute('data-document')));
 		const axis = await page.locator('.sspa-history-chart').evaluate(mount => {
 			const option = mount.sspaChart.getOption();
 			return {rotate:option.xAxis[0].axisLabel.rotate, lines:option.xAxis[0].splitLine.show,

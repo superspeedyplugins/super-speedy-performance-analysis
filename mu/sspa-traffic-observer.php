@@ -8,7 +8,8 @@ $sspa_traffic_config_path = $sspa_traffic_uploads['basedir'] . '/super-speedy-pe
 if (!is_readable($sspa_traffic_config_path)) {
     return;
 }
-$sspa_traffic_config = json_decode(file_get_contents($sspa_traffic_config_path), true);
+require_once WP_PLUGIN_DIR . '/super-speedy-performance-analysis/includes/class-sspa-filesystem.php';
+$sspa_traffic_config = json_decode(SSPA_Filesystem::get_contents($sspa_traffic_config_path), true);
 if (!is_array($sspa_traffic_config) || !isset($sspa_traffic_config['outcomes_until']) || time() > (int) $sspa_traffic_config['outcomes_until']) {
     return;
 }

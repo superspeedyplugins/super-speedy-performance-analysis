@@ -25,7 +25,7 @@ class SSPA_Mail {
         if ((int) get_post_field('post_author', $id) !== self::owner_id()) {
             $saved = wp_update_post(array('ID' => $id, 'post_author' => self::owner_id()), true);
             if (is_wp_error($saved)) {
-                throw new RuntimeException($saved->get_error_message());
+                throw new RuntimeException(esc_html($saved->get_error_message()));
             }
         }
     }
@@ -73,16 +73,16 @@ class SSPA_Mail {
             return '';
         }
         $file = (new ReflectionFunction('wp_mail'))->getFileName();
-        if (realpath($file) === realpath(ABSPATH . WPINC . '/pluggable.php')) {
+        if (realpath($file) === realpath(SSPA_CORE_DIR . WPINC . '/pluggable.php')) {
             return '';
         }
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
         $owner = basename(dirname($file)) . '/' . basename($file);
+        if (!function_exists('get_plugins')) {
+            require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php';
+        }
         foreach (get_plugins() as $path => $plugin) {
             $base = dirname($path);
-            $root = realpath(WP_PLUGIN_DIR . '/' . ('.' === $base ? $path : $base));
+            $root = realpath(SSPA_PLUGINS_DIR . '/' . ('.' === $base ? $path : $base));
             if ($root && (realpath($file) === $root || 0 === strpos(realpath($file), $root . DIRECTORY_SEPARATOR))) {
                 $owner = $plugin['Name'];
                 break;

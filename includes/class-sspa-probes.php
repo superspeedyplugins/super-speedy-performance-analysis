@@ -149,14 +149,14 @@ class SSPA_Probes {
 
     private static function done($label) {
         header('Content-Type: text/plain');
-        echo 'sspa-probe-ok:' . $label; // phpcs:ignore WordPress.Security.EscapeOutput
+        echo 'sspa-probe-ok:' . esc_html($label); // phpcs:ignore WordPress.Security.EscapeOutput
         exit; // profiler capture still writes - it runs on PHP shutdown
     }
 
     private static function failed($label, $message) {
         status_header(500);
         header('Content-Type: text/plain');
-        echo 'sspa-probe-error:' . $label . ':' . sanitize_text_field($message); // phpcs:ignore WordPress.Security.EscapeOutput
+        echo 'sspa-probe-error:' . esc_html($label) . ':' . esc_html(sanitize_text_field($message)); // phpcs:ignore WordPress.Security.EscapeOutput
         exit; // profiler capture still writes - it runs on PHP shutdown
     }
 
@@ -176,7 +176,7 @@ class SSPA_Probes {
             'meta_input' => array('_sspa_temp' => '1', '_sspa_workflow' => $workflow ? '1' : ''),
         ), true);
         if (is_wp_error($temp_id)) {
-            throw new RuntimeException($temp_id->get_error_message());
+            throw new RuntimeException(esc_html($temp_id->get_error_message()));
         }
         return (int) $temp_id;
     }

@@ -11,11 +11,11 @@ class SSPA_Traffic_Helper {
     private static $lock_owner = '';
 
     public static function path() {
-        return WPMU_PLUGIN_DIR . '/' . self::FILE;
+        return SSPA_MU_DIR . '/' . self::FILE;
     }
 
     public static function stopped_path() {
-        return WPMU_PLUGIN_DIR . '/' . self::STOPPED_FILE;
+        return dirname(self::config_path()) . '/' . self::STOPPED_FILE;
     }
 
     public static function is_ours($path = null) {
@@ -23,7 +23,7 @@ class SSPA_Traffic_Helper {
         if (!is_file($path)) {
             return false;
         }
-        $head = file_get_contents($path, false, null, 0, 512);
+        $head = SSPA_Filesystem::get_contents($path, false, null, 0, 512);
         return is_string($head) && strpos($head, self::SIGNATURE) !== false;
     }
 
@@ -61,18 +61,18 @@ class SSPA_Traffic_Helper {
         if (SSPA_Helper_Files::file_mods_blocked()) {
             return new WP_Error('sspa_file_mods_disallowed', __('This site sets DISALLOW_FILE_MODS, which forbids plugins from writing files, so the traffic observer cannot be installed.', 'super-speedy-performance-analysis'));
         }
-        if (!is_dir(WPMU_PLUGIN_DIR) && !wp_mkdir_p(WPMU_PLUGIN_DIR)) {
+        if (!is_dir(SSPA_MU_DIR) && !wp_mkdir_p(SSPA_MU_DIR)) {
             return new WP_Error('sspa_traffic_mu_dir', __('Could not create the mu-plugins directory.', 'super-speedy-performance-analysis'));
         }
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write; see class-sspa-helper-files.php.
-        if (!is_writable(WPMU_PLUGIN_DIR) && !(is_file(self::path()) && is_writable(self::path()))) {
+        if (!SSPA_Filesystem::direct()->is_writable(SSPA_MU_DIR) && !(is_file(self::path()) && SSPA_Filesystem::direct()->is_writable(self::path()))) {
             return new WP_Error('sspa_traffic_mu_write', __('The mu-plugins directory is not writable, so the active-only traffic observer cannot be installed.', 'super-speedy-performance-analysis'));
         }
         if (is_file(self::path()) && !self::is_ours(self::path())) {
             return new WP_Error('sspa_traffic_mu_foreign', __('A different file already uses the traffic observer filename. It was not replaced.', 'super-speedy-performance-analysis'));
         }
 
-        $template = file_get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php');
+        $template = SSPA_Filesystem::get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php');
         if (!is_string($template)) {
             return new WP_Error('sspa_traffic_template', __('The traffic observer template is missing.', 'super-speedy-performance-analysis'));
         }
@@ -106,7 +106,7 @@ class SSPA_Traffic_Helper {
 
         if (is_file(self::stopped_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only this plugin's own observer stop-flag.
-            unlink(self::stopped_path());
+            SSPA_Filesystem::direct()->delete(self::stopped_path());
         }
         $written = self::atomic_write(self::path(), $content, 0644);
         if (is_wp_error($written)) {
@@ -125,24 +125,19 @@ class SSPA_Traffic_Helper {
 
     private static function atomic_write($path, $content, $mode) {
         $temporary = $path . '.tmp-' . wp_generate_password(12, false, false);
-        $handle = fopen($temporary, 'x');
-        if (!$handle) {
-            return new WP_Error('sspa_traffic_write', __('Could not create a temporary traffic file.', 'super-speedy-performance-analysis'));
-        }
         try {
-            // Set private permissions before any configuration bytes are written.
-            if (!chmod($temporary, $mode) || fwrite($handle, $content) !== strlen($content) || !fflush($handle)) {
+            if (!SSPA_Filesystem::direct()->touch($temporary) || !SSPA_Filesystem::direct()->chmod($temporary, $mode)) {
+                return new WP_Error('sspa_traffic_permissions', __('Could not secure the temporary traffic file.', 'super-speedy-performance-analysis'));
+            }
+            if (!SSPA_Filesystem::put_contents($temporary, $content, $mode)) {
                 return new WP_Error('sspa_traffic_write', __('Could not write the traffic file with safe permissions.', 'super-speedy-performance-analysis'));
             }
-            fclose($handle);
-            $handle = null;
             if (!rename($temporary, $path)) {
                 return new WP_Error('sspa_traffic_rename', __('Could not activate the traffic file atomically.', 'super-speedy-performance-analysis'));
             }
             return true;
         } finally {
-            if (is_resource($handle)) { fclose($handle); }
-            if (is_file($temporary)) { unlink($temporary); }
+            if (is_file($temporary)) { SSPA_Filesystem::direct()->delete($temporary); }
         }
     }
 
@@ -195,15 +190,15 @@ class SSPA_Traffic_Helper {
     private static function remove_unlocked() {
         $removed = true;
         if (is_file(self::config_path())) {
-            $removed = unlink(self::config_path());
+            $removed = SSPA_Filesystem::direct()->delete(self::config_path());
         }
         if (self::is_ours(self::path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only the observer mu-plugin this plugin wrote.
-            $removed = @unlink(self::path()) && $removed;
+            $removed = @SSPA_Filesystem::direct()->delete(self::path()) && $removed;
         }
         if (is_file(self::stopped_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only this plugin's own observer stop-flag.
-            @unlink(self::stopped_path());
+            @SSPA_Filesystem::direct()->delete(self::stopped_path());
         }
         if (function_exists('opcache_invalidate')) {
             @opcache_invalidate(self::path(), true);
@@ -228,7 +223,7 @@ class SSPA_Traffic_Helper {
             return 'active';
         }
         if (is_file(self::stopped_path())) {
-            $reason = sanitize_key((string) file_get_contents(self::stopped_path()));
+            $reason = sanitize_key((string) SSPA_Filesystem::get_contents(self::stopped_path()));
             return in_array($reason, array('event_limit', 'database_error'), true) ? $reason : 'stopped';
         }
         return 'absent';

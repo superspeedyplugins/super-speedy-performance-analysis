@@ -245,7 +245,7 @@ class SSPA_Workflow_Analysis {
 
     public static function ajax_targets() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $object_type = isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '';
         $targets = self::targets($object_type);
         $object_id = $targets ? (int) $targets[0]['id'] : 0;
@@ -257,7 +257,7 @@ class SSPA_Workflow_Analysis {
 
     public static function ajax_launch() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $launch = self::launch(
             isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '',
             isset($_POST['object_id']) ? (int) $_POST['object_id'] : 0,

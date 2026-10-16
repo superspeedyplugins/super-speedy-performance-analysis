@@ -2281,7 +2281,7 @@ class SSPA_Run_Controller {
             return;
         }
         if (!function_exists('wp_delete_user')) {
-            require_once ABSPATH . 'wp-admin/includes/user.php';
+            require_once SSPA_CORE_DIR . 'wp-admin/includes/user.php';
         }
         wp_delete_user($user_id);
     }
@@ -2310,7 +2310,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_start_run() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $type = 'baseline';
         if (isset($_POST['type']) && in_array($_POST['type'], array('deep', 'cache_impact'), true)) {
             $type = sanitize_key(wp_unslash($_POST['type']));
@@ -2367,11 +2367,11 @@ class SSPA_Run_Controller {
     /** Explicit owner action for the profiling loader. */
     public static function ajax_profiler_toggle() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         if (self::active_run_id()) {
             wp_send_json_error(__('Finish or cancel the active analysis before changing the profiler.', 'super-speedy-performance-analysis'));
         }
-        $requested = isset($_POST['enabled']) ? (string) wp_unslash($_POST['enabled']) : '';
+        $requested = isset($_POST['enabled']) ? sanitize_text_field(wp_unslash($_POST['enabled'])) : '';
         if (!in_array($requested, array('0', '1'), true)) {
             wp_send_json_error(__('Choose Enable or Disable profiler.', 'super-speedy-performance-analysis'), 400);
         }
@@ -2390,7 +2390,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_tools_recheck() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         ob_start();
         include SSPA_PLUGIN_DIR . 'includes/admin/tabs/tools.php';
         wp_send_json_success(array('html' => ob_get_clean()));
@@ -2406,7 +2406,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_render_tab() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $requested = isset($_POST['tabs']) ? sanitize_text_field(wp_unslash($_POST['tabs'])) : '';
         $html = array();
         foreach (array_filter(array_map('sanitize_key', explode(',', $requested))) as $tab) {
@@ -2426,7 +2426,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_process_batch() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         if ($run_id) {
             self::process_batch($run_id);
@@ -2436,14 +2436,14 @@ class SSPA_Run_Controller {
 
     public static function ajax_run_status() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         wp_send_json_success($run_id ? self::status($run_id) : null);
     }
 
     public static function ajax_cancel_run() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         if ($run_id) {
             self::cancel($run_id);
@@ -2453,7 +2453,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_uninstall_setting() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $enabled = !empty($_POST['enabled']);
         sspa_update_option('remove_data_on_uninstall', $enabled);
         wp_send_json_success(array('enabled' => $enabled));
@@ -2468,7 +2468,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_attribution() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $mode = SSPA_Attribution::sanitise_mode(
             isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : ''
         );
@@ -2490,7 +2490,7 @@ class SSPA_Run_Controller {
     public static function ajax_plugin_detail() {
         global $wpdb;
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $plugin = isset($_POST['plugin']) ? sanitize_text_field(wp_unslash($_POST['plugin'])) : '';
         if ('' === $plugin) {
             wp_send_json_error('no plugin');
@@ -2517,7 +2517,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_share_optin() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $optin = !empty($_POST['optin']);
         update_option('sspa_share_optin', $optin ? 1 : 0, false);
         if ($optin) {
@@ -2558,7 +2558,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_publisher_toggle() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $slug = isset($_POST['slug']) ? sanitize_text_field(wp_unslash($_POST['slug'])) : '';
         $enabled = !empty($_POST['enabled']);
         SSPA_Community_State::set_enabled($slug, $enabled);
@@ -2571,7 +2571,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_payload_preview() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $outbox_id = isset($_POST['outbox_id']) ? (int) $_POST['outbox_id'] : 0;
         $json = SSPA_Submitter::preview($outbox_id);
         if (is_wp_error($json)) {
@@ -2598,7 +2598,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_submission_tick() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         SSPA_Community_Worker::run();
         $due = SSPA_Community_Outbox::due();
         $counts = SSPA_Community_Outbox::counts();
@@ -2610,7 +2610,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_submit_now() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $result = SSPA_Submitter::submit();
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
@@ -2624,7 +2624,7 @@ class SSPA_Run_Controller {
      */
     public static function ajax_share_run() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : 0;
         $result = SSPA_Community_Outbox::share_run($run_id);
         if (is_wp_error($result)) {
@@ -2639,7 +2639,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_community_backfill() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $result = SSPA_Community_Backfill::queue_batch(!empty($_POST['restart']));
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
@@ -2649,7 +2649,7 @@ class SSPA_Run_Controller {
 
     public static function ajax_outbox_action() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $id = isset($_POST['outbox_id']) ? (int) $_POST['outbox_id'] : 0;
         $operation = isset($_POST['operation']) ? sanitize_key(wp_unslash($_POST['operation'])) : '';
         if (!$id || !in_array($operation, array('retry', 'pause', 'resume'), true)) {
@@ -2671,7 +2671,7 @@ class SSPA_Run_Controller {
     public static function ajax_prune_blobs() {
         global $wpdb;
         check_ajax_referer('sspa_admin', 'nonce');
-        self::ajax_guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
 
         $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
         $runs_table = SSPA_Schema::table('runs');

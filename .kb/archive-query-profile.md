@@ -32,7 +32,7 @@ $profile = SSPA_Report::archive_profile( 412 );
 Or as an agent ability, also available over MCP:
 
 ```
-super-speedy-performance/get-archive-profile   { "run_id": 412 }
+sspa/get-archive-profile   { "run_id": 412 }
 ```
 
 Returns a `WP_Error` when no completed run exists.

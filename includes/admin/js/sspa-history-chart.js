@@ -17,7 +17,7 @@
 			return null;
 		}
 		try {
-			return JSON.parse(node.textContent);
+			return JSON.parse(node.getAttribute('data-document'));
 		} catch (error) {
 			if (status) {
 				status.textContent = sprintf(/* translators: %s: parsing error message. */ wp.i18n.__("The chart data could not be read: %s", "super-speedy-performance-analysis"), error.message);

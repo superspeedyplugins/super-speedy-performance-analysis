@@ -59,13 +59,10 @@ class SSPA_Dependency_Map {
      * @return array slug => [slugs that require it]
      */
     public static function required_by() {
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
         $map = array();
         $active = (array) get_option('active_plugins', array());
         foreach ($active as $file) {
-            $headers = get_file_data(WP_PLUGIN_DIR . '/' . $file, array('RequiresPlugins' => 'Requires Plugins'));
+            $headers = get_file_data(SSPA_PLUGINS_DIR . '/' . $file, array('RequiresPlugins' => 'Requires Plugins'));
             $requires = array_filter(array_map('trim', explode(',', (string) $headers['RequiresPlugins'])));
             $slug = dirname($file) !== '.' ? dirname($file) : basename($file, '.php');
             foreach ($requires as $required_slug) {
@@ -95,7 +92,7 @@ class SSPA_Dependency_Map {
         // A plugin only changes what it says about its dependencies when its file changes.
         $stamp = array();
         foreach (array_keys($by_path) as $file) {
-            $path = WP_PLUGIN_DIR . '/' . $file;
+            $path = SSPA_PLUGINS_DIR . '/' . $file;
             $stamp[] = $file . ':' . (int) @filemtime($path) . ':' . (int) @filesize($path);
         }
         $fingerprint = md5(implode('|', $stamp));
@@ -106,8 +103,8 @@ class SSPA_Dependency_Map {
 
         $signals = array();
         foreach ($by_path as $file => $slug) {
-            $path = WP_PLUGIN_DIR . '/' . $file;
-            $src = is_readable($path) ? (string) @file_get_contents($path, false, null, 0, self::SCAN_BYTES) : '';
+            $path = SSPA_PLUGINS_DIR . '/' . $file;
+            $src = is_readable($path) ? (string) @SSPA_Filesystem::get_contents($path, false, null, 0, self::SCAN_BYTES) : '';
             $names = array();
             if ('' !== $src && preg_match_all('/[\'"]([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\.php)[\'"]/', $src, $matches)) {
                 foreach (array_unique($matches[1]) as $referenced) {

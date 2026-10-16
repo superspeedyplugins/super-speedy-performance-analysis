@@ -231,7 +231,7 @@ class SSPA_Change_Set {
 
     private static function plugin_identity($plugin) {
         $plugin = wp_normalize_path((string) $plugin);
-        if (0 === strpos($plugin, wp_normalize_path(WP_PLUGIN_DIR) . '/')) {
+        if (0 === strpos($plugin, wp_normalize_path(SSPA_PLUGINS_DIR) . '/')) {
             $plugin = plugin_basename($plugin);
         }
         $plugin = ltrim($plugin, '/');
@@ -249,12 +249,12 @@ class SSPA_Change_Set {
         if (!$identity) {
             return '';
         }
-        $path = WP_PLUGIN_DIR . '/' . $identity['file'];
+        $path = SSPA_PLUGINS_DIR . '/' . $identity['file'];
         if (!is_file($path)) {
             return '';
         }
         if (!function_exists('get_plugin_data')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php';
         }
         $data = get_plugin_data($path, false, false);
         return self::safe_version(isset($data['Version']) ? $data['Version'] : '');

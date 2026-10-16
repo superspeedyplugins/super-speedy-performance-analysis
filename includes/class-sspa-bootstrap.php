@@ -18,9 +18,40 @@ class SSPA_Bootstrap {
         }
     }
 
+    private static function runtime_flags() {
+        $flags = get_option('sspa_runtime_flags', null);
+        if (!is_array($flags)) {
+            $flags = array();
+            foreach (array('sspa_dropin_hold', 'sspa_oc_hold', 'sspa_share_optin', 'sspa_share_manual_pending') as $key) {
+                $flags[$key] = (bool) get_option($key, false);
+            }
+            update_option('sspa_runtime_flags', $flags, true);
+        }
+        return $flags;
+    }
+
+    public static function update_runtime_flag($option, $old = null, $new = null) {
+        if (!in_array($option, array('sspa_dropin_hold', 'sspa_oc_hold', 'sspa_share_optin', 'sspa_share_manual_pending'), true)) { return; }
+        // Read the real stored value for all three option lifecycle hooks.
+        $flags = self::runtime_flags();
+        $flags[$option] = (bool) get_option($option, false);
+        update_option('sspa_runtime_flags', $flags, true);
+    }
+
+    public static function privacy_policy() {
+        if (function_exists('wp_add_privacy_policy_content')) {
+            wp_add_privacy_policy_content('Super Speedy Performance Analysis', wpautop(esc_html__('When enabled by an administrator, Traffic recording stores timestamps, pseudonymous keyed visitor, order and path joins, event codes, timings, query counts, aggregate basket/order values and currency in this site’s database. These observations are not anonymous and are never sent to the community service. Recording stops at its configured time and row limits. Administrators can delete collections in the Traffic tab. Community sharing is a separate explicit opt-in for anonymised profiling-run evidence.', 'super-speedy-performance-analysis')));
+        }
+    }
+
     public static function register() {
         spl_autoload_register(array(__CLASS__, 'autoload'));
+        add_action('added_option', array(__CLASS__, 'update_runtime_flag'), 10, 2);
+        add_action('updated_option', array(__CLASS__, 'update_runtime_flag'), 10, 3);
+        add_action('deleted_option', array(__CLASS__, 'update_runtime_flag'));
+        $flags = self::runtime_flags();
         SSPA_Mail::register();
+        add_action('admin_init', array(__CLASS__, 'privacy_policy'));
         add_action('admin_notices', array('SSPA_Mail', 'notice'));
 
         if (SSPA_DB_VERSION !== get_option('sspa_db_version') || SSPA_VERSION !== get_option('sspa_behaviour_version')) {
@@ -38,10 +69,10 @@ class SSPA_Bootstrap {
             SSPA_Change_Set::register();
         }
 
-        if (get_option('sspa_dropin_hold') || get_option('sspa_oc_hold')) {
+        if ($flags['sspa_dropin_hold'] || $flags['sspa_oc_hold']) {
             add_action('plugins_loaded', array('SSPA_Helper_Files', 'stale_hold_check'), 20);
         }
-        if (get_option('sspa_share_optin') || get_option('sspa_share_manual_pending')) {
+        if ($flags['sspa_share_optin'] || $flags['sspa_share_manual_pending']) {
             add_action('init', array('SSPA_Community_Worker', 'maybe_nudge'));
         }
 

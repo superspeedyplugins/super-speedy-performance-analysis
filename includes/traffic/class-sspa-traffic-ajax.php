@@ -20,7 +20,7 @@ class SSPA_Traffic_Ajax {
 
     public static function start() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         if (empty($_POST['confirmed'])) {
             wp_send_json_error(__('Confirm that you have read the privacy and resource limits before starting.', 'super-speedy-performance-analysis'));
         }
@@ -31,14 +31,14 @@ class SSPA_Traffic_Ajax {
 
     public static function status() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $collection_id = isset($_POST['collection_id']) ? (int) $_POST['collection_id'] : 0;
         self::send(SSPA_Traffic_Collection::status($collection_id));
     }
 
     public static function stop() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $collection_id = isset($_POST['collection_id']) ? (int) $_POST['collection_id'] : 0;
         $emergency = !empty($_POST['emergency']);
         self::send(SSPA_Traffic_Collection::stop($collection_id, $emergency));
@@ -46,7 +46,7 @@ class SSPA_Traffic_Ajax {
 
     public static function observations() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $collection_id = isset($_POST['collection_id']) ? (int) $_POST['collection_id'] : 0;
         $payload = SSPA_Traffic_Collection::observations($collection_id);
         if (is_wp_error($payload)) {
@@ -60,7 +60,7 @@ class SSPA_Traffic_Ajax {
 
     public static function delete() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::guard();
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $collection_id = isset($_POST['collection_id']) ? (int) $_POST['collection_id'] : 0;
         self::send(SSPA_Traffic_Collection::delete($collection_id));
     }

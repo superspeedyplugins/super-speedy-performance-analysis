@@ -15,7 +15,11 @@ update_option('sspa_fleet_http_error', '0', true);
 $plugin = WP_PLUGIN_DIR . '/sspa-browser-fixture';
 wp_mkdir_p($plugin);
 copy(__DIR__ . '/browser-runtime.php', $plugin . '/sspa-browser-fixture.php');
-activate_plugin('sspa-browser-fixture/sspa-browser-fixture.php');
+// A retained plugin-registry cache may predate this fixture file.
+wp_clean_plugins_cache(false);
+$activated = activate_plugin('sspa-browser-fixture/sspa-browser-fixture.php');
+if (is_wp_error($activated)) throw new RuntimeException($activated->get_error_message());
+if (!is_plugin_active('sspa-browser-fixture/sspa-browser-fixture.php')) throw new RuntimeException('Browser fixture was not activated');
 wp_cache_flush();
 $ids = array();
 // These are real captures; no successful report rows or timing values are fabricated.

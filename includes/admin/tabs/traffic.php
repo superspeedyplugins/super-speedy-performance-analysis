@@ -11,7 +11,7 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
 ?>
 <div class="sspa-placeholder sspa-traffic-panel" data-active="<?php echo $sspa_traffic_active ? '1' : '0'; ?>" data-collection-id="<?php echo $sspa_traffic_collection ? (int) $sspa_traffic_collection['id'] : 0; ?>">
     <h2><?php esc_html_e('Traffic collector', 'super-speedy-performance-analysis'); ?> <span class="sspa-status sspa-status-blocked"><?php esc_html_e('Experimental', 'super-speedy-performance-analysis'); ?></span></h2>
-    <p><?php esc_html_e('Observe the anonymous traffic reaching WordPress, with exact request coverage for logged-in visitors and, on a shop, visitors with non-empty baskets. Broad anonymous origin traffic is sampled.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('Observe traffic reaching WordPress, with exact request coverage for logged-in visitors and, on a shop, visitors with non-empty baskets. Broad logged-out origin traffic is sampled.', 'super-speedy-performance-analysis'); ?></p>
     <p class="description"><?php esc_html_e('This is an experimental collector, not the finished Traffic Performance Analysis. The observations download is provided so its measurements, gaps and overhead can be reviewed while the design evolves.', 'super-speedy-performance-analysis'); ?></p>
 
     <?php if (!$sspa_traffic_has_woo) : ?>
@@ -99,7 +99,7 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
                 <option value="7d"><?php esc_html_e('7 days', 'super-speedy-performance-analysis'); ?></option>
             </select>
         </p>
-        <p><label><input type="checkbox" id="sspa-traffic-confirm"> <?php esc_html_e('I understand that this writes small anonymous event rows for observed traffic and WooCommerce funnel events until the stated hard limits or stop time.', 'super-speedy-performance-analysis'); ?></label></p>
+        <p><label><input type="checkbox" id="sspa-traffic-confirm"> <?php esc_html_e('I understand that this writes small pseudonymous event rows for observed traffic and WooCommerce funnel events until the stated hard limits or stop time.', 'super-speedy-performance-analysis'); ?></label></p>
         <p><button type="button" class="button button-primary" id="sspa-traffic-start" <?php disabled(is_multisite()); ?>><?php esc_html_e('Start collection', 'super-speedy-performance-analysis'); ?></button></p>
     <?php else : ?>
         <p class="sspa-traffic-actions">
@@ -120,7 +120,7 @@ $sspa_endpoint_evidence = $sspa_traffic_collection && method_exists('SSPA_Report
 
     <details>
         <summary><?php esc_html_e('Privacy and resource limits', 'super-speedy-performance-analysis'); ?></summary>
-        <p><?php esc_html_e('Stored: timestamps, anonymous keyed actor/order/path joins, fixed state and event codes, timings, query counts, aggregate basket/order value and ISO currency.', 'super-speedy-performance-analysis'); ?></p>
+        <p><?php esc_html_e('Stored: timestamps, pseudonymous keyed actor/order/path joins, fixed state and event codes, timings, query counts, aggregate basket/order value and ISO currency.', 'super-speedy-performance-analysis'); ?></p>
         <p><?php esc_html_e('Never stored: names, email or postal addresses, IP addresses, raw cookies, raw user agents, user/session/order/product ids, product names, SKUs, coupon codes, query values, form bodies or response content.', 'super-speedy-performance-analysis'); ?></p>
         <p><?php esc_html_e('Each observed request buffers its events and performs at most one append statement at shutdown. Collection retires itself at its timestamp or event ceiling even when WP-Cron is unavailable.', 'super-speedy-performance-analysis'); ?></p>
         <p><?php esc_html_e('Experimental raw data and its temporary join key are retained after stopping so you can download observations. Use Delete this collection and its raw data when you have finished reviewing it.', 'super-speedy-performance-analysis'); ?></p>

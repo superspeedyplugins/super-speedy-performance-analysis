@@ -9,7 +9,7 @@ class SSPA_Ajax_Profile {
         if (SSPA_Traffic_Collection::active()) { return new WP_Error('sspa_ajax_busy', 'Stop the active traffic collection before starting an AJAX window.'); }
         $scenario = sanitize_text_field(isset($args['scenario']) ? $args['scenario'] : '');
         if (!$scenario || strlen($scenario) > 80) { return new WP_Error('sspa_ajax_scenario', 'Enter a scenario label of 1–80 characters without personal data.'); }
-        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        if (!function_exists('get_plugins')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php'; }
         $inventory = array(); foreach (get_plugins() as $file => $plugin) { $inventory[$file] = $plugin['Version']; } ksort($inventory);
         $endpoints = array();
         foreach ((array) ($args['endpoints'] ?? array()) as $endpoint) {
@@ -100,8 +100,12 @@ class SSPA_Ajax_Profile {
     public static function ajax() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error('Permission denied.', 403); }
-        $op = sanitize_key($_POST['operation'] ?? '');
-        if ($op === 'start') { $result = self::start(wp_unslash($_POST)); }
+        $op = sanitize_key(wp_unslash($_POST['operation'] ?? ''));
+        if ($op === 'start') { $result = self::start(array(
+            'scenario' => sanitize_text_field(wp_unslash($_POST['scenario'] ?? '')),
+            'endpoints' => map_deep(wp_unslash($_POST['endpoints'] ?? array()), 'sanitize_text_field'),
+            'detail' => !empty($_POST['detail']),
+        )); }
         elseif ($op === 'stop') { $result = self::stop(sanitize_text_field(wp_unslash($_POST['uuid'] ?? ''))); }
         elseif ($op === 'compare') {
             $before = sanitize_text_field(wp_unslash($_POST['before'] ?? '')); $after = sanitize_text_field(wp_unslash($_POST['after'] ?? ''));

@@ -1,5 +1,8 @@
 <?php
 defined('WP_UNINSTALL_PLUGIN') || exit;
+defined('ABSPATH') || exit;
+require_once __DIR__ . '/includes/class-sspa-filesystem.php';
+if (!defined('SSPA_CORE_DIR')) { define('SSPA_CORE_DIR', ABSPATH); }
 
 $sspa_options = get_option('sspa_options', array());
 
@@ -20,7 +23,7 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
                 $sspa_order->delete(true);
             }
         } elseif ('user' === $sspa_entry['type'] && get_user_meta($sspa_id, '_sspa_temp', true)) {
-            require_once ABSPATH . 'wp-admin/includes/user.php';
+            if (!function_exists('wp_delete_user')) { require_once ABSPATH . 'wp-admin/includes/user.php'; }
             wp_delete_user($sspa_id);
         }
     }
@@ -39,8 +42,8 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
     }
     $sspa_test_users = get_users(array('meta_key' => 'sspa_test_account', 'meta_value' => '1', 'fields' => 'ID'));
     if ($sspa_test_users) {
-        require_once ABSPATH . 'wp-admin/includes/user.php';
         foreach ($sspa_test_users as $sspa_user_id) {
+            if (!function_exists('wp_delete_user')) { require_once ABSPATH . 'wp-admin/includes/user.php'; }
             wp_delete_user((int) $sspa_user_id);
         }
     }
@@ -62,9 +65,15 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
 $sspa_uploads = wp_upload_dir(null, false);
 $sspa_traffic_config = $sspa_uploads['basedir'] . '/super-speedy-performance-analysis/traffic-config.json';
 if (is_file($sspa_traffic_config)) {
-    unlink($sspa_traffic_config);
+    SSPA_Filesystem::direct()->delete($sspa_traffic_config);
 }
 delete_option('sspa_profiler_enabled');
+foreach (array('sspa-traffic-authority.json', 'sspa-traffic-observer.stopped') as $sspa_data_file) {
+    foreach (array($sspa_uploads['basedir'] . '/super-speedy-performance-analysis/', WPMU_PLUGIN_DIR . '/') as $sspa_data_dir) {
+        if (is_file($sspa_data_dir . $sspa_data_file)) { SSPA_Filesystem::direct()->delete($sspa_data_dir . $sspa_data_file); }
+    }
+}
+
 
 // Remove our helper files if present (installed from Phase 1 onwards). Signature-checked so
 // we never delete another plugin's file.
@@ -75,16 +84,16 @@ $sspa_helper_files = array(
 );
 foreach ($sspa_helper_files as $sspa_file) {
     if (file_exists($sspa_file)) {
-        $sspa_head = file_get_contents($sspa_file, false, null, 0, 512);
+        $sspa_head = SSPA_Filesystem::get_contents($sspa_file, false, null, 0, 512);
         if ($sspa_head !== false && strpos($sspa_head, 'Super Speedy Performance Analysis') !== false) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- uninstall removes only helper files this plugin wrote; WP_Filesystem is not reliably initialisable during plugin deletion.
-            unlink($sspa_file);
+            SSPA_Filesystem::direct()->delete($sspa_file);
         }
     }
 }
 if (file_exists(WPMU_PLUGIN_DIR . '/sspa-traffic-observer.stopped')) {
     // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- uninstall removes only this plugin's own observer stop-flag.
-    unlink(WPMU_PLUGIN_DIR . '/sspa-traffic-observer.stopped');
+    SSPA_Filesystem::direct()->delete(WPMU_PLUGIN_DIR . '/sspa-traffic-observer.stopped');
 }
 
 // Collection HMAC keys are transient privacy material, not retained analysis data.

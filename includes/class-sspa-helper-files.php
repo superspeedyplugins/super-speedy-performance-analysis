@@ -13,15 +13,15 @@ class SSPA_Helper_Files {
     const HOLD_FILE = 'db.php.sspa-hold';
 
     public static function mu_path() {
-        return WPMU_PLUGIN_DIR . '/sspa-loader.php';
+        return SSPA_MU_DIR . '/sspa-loader.php';
     }
 
     public static function dropin_path() {
-        return WP_CONTENT_DIR . '/db.php';
+        return SSPA_CONTENT_DIR . '/db.php';
     }
 
     private static function generate($template) {
-        $content = file_get_contents(SSPA_PLUGIN_DIR . $template);
+        $content = SSPA_Filesystem::get_contents(SSPA_PLUGIN_DIR . $template);
         if ($content === false) {
             return false;
         }
@@ -40,7 +40,7 @@ class SSPA_Helper_Files {
         if (!file_exists($path)) {
             return false;
         }
-        $head = file_get_contents($path, false, null, 0, 512);
+        $head = SSPA_Filesystem::get_contents($path, false, null, 0, 512);
         return $head !== false && strpos($head, self::SIGNATURE) !== false;
     }
 
@@ -55,7 +55,7 @@ class SSPA_Helper_Files {
         if (self::is_ours($path)) {
             return 'ours';
         }
-        $head = is_readable($path) ? (string) file_get_contents($path, false, null, 0, 2048) : '';
+        $head = is_readable($path) ? (string) SSPA_Filesystem::get_contents($path, false, null, 0, 2048) : '';
         if (stripos($head, 'query monitor') !== false) {
             return 'qm';
         }
@@ -64,7 +64,7 @@ class SSPA_Helper_Files {
 
     public static function dropin_owner_label() {
         $path = self::dropin_path();
-        $head = is_readable($path) ? (string) file_get_contents($path, false, null, 0, 2048) : '';
+        $head = is_readable($path) ? (string) SSPA_Filesystem::get_contents($path, false, null, 0, 2048) : '';
         if (preg_match('/Plugin Name:\s*(.+)/i', $head, $m)) {
             return trim($m[1]);
         }
@@ -96,25 +96,25 @@ class SSPA_Helper_Files {
     public static function ensure_installed($enable_mu = false) {
         $results = array('mu' => false, 'dropin' => false);
 
-        if (self::file_mods_blocked()) {
+        if (self::file_mods_blocked() || (is_multisite() && !current_user_can('manage_network_options'))) {
             return $results;
         }
 
         if ($enable_mu) {
-            if (file_exists(self::mu_path()) && !self::is_ours(self::mu_path())) {
+            if ((file_exists(self::mu_path()) || is_link(self::mu_path())) && !self::is_ours(self::mu_path())) {
                 return $results;
             }
             $mu_content = self::generate('mu/sspa-loader.php');
             if ($mu_content !== false) {
-                if (!is_dir(WPMU_PLUGIN_DIR)) {
-                    wp_mkdir_p(WPMU_PLUGIN_DIR);
+                if (!is_dir(SSPA_MU_DIR)) {
+                    wp_mkdir_p(SSPA_MU_DIR);
                 }
-                $current = file_exists(self::mu_path()) ? file_get_contents(self::mu_path()) : null;
+                $current = file_exists(self::mu_path()) ? SSPA_Filesystem::get_contents(self::mu_path()) : null;
                 if ($current === $mu_content) {
                     $results['mu'] = true;
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write; initialising WP_Filesystem just to answer it can prompt for FTP credentials.
-                } elseif (is_writable(WPMU_PLUGIN_DIR) || (file_exists(self::mu_path()) && is_writable(self::mu_path()))) {
-                    $results['mu'] = (bool) file_put_contents(self::mu_path(), $mu_content);
+                } elseif (SSPA_Filesystem::direct()->is_writable(SSPA_MU_DIR) || (file_exists(self::mu_path()) && SSPA_Filesystem::direct()->is_writable(self::mu_path()))) {
+                    $results['mu'] = (bool) SSPA_Filesystem::put_contents(self::mu_path(), $mu_content);
                 }
             }
 
@@ -124,12 +124,12 @@ class SSPA_Helper_Files {
         if ($status === 'absent' || $status === 'ours') {
             $dropin_content = self::generate('dropins/db.php');
             if ($dropin_content !== false) {
-                $current = file_exists(self::dropin_path()) ? file_get_contents(self::dropin_path()) : null;
+                $current = file_exists(self::dropin_path()) ? SSPA_Filesystem::get_contents(self::dropin_path()) : null;
                 if ($current === $dropin_content) {
                     $results['dropin'] = true;
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write; initialising WP_Filesystem just to answer it can prompt for FTP credentials.
-                } elseif (is_writable(WP_CONTENT_DIR) || (file_exists(self::dropin_path()) && is_writable(self::dropin_path()))) {
-                    $results['dropin'] = (bool) file_put_contents(self::dropin_path(), $dropin_content);
+                } elseif (SSPA_Filesystem::direct()->is_writable(SSPA_CONTENT_DIR) || (file_exists(self::dropin_path()) && SSPA_Filesystem::direct()->is_writable(self::dropin_path()))) {
+                    $results['dropin'] = (bool) SSPA_Filesystem::put_contents(self::dropin_path(), $dropin_content);
                 }
             }
         }
@@ -139,7 +139,7 @@ class SSPA_Helper_Files {
 
     /** Recovery only: versions before 0.43.4 could displace a foreign db.php. */
     public static function restore_legacy_db_hold() {
-        $hold = WP_CONTENT_DIR . '/' . self::HOLD_FILE;
+        $hold = SSPA_CONTENT_DIR . '/' . self::HOLD_FILE;
         if (!file_exists($hold) && !is_link($hold)) {
             delete_option('sspa_dropin_hold');
             return true;
@@ -150,7 +150,7 @@ class SSPA_Helper_Files {
                 return false; // something else owns db.php now - do not touch it
             }
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only a drop-in is_ours() has confirmed we wrote, mirroring Query Monitor's class_exists('QM_DB') ownership check.
-            unlink($path);
+            SSPA_Filesystem::direct()->delete($path);
         }
         // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic restore of the held foreign drop-in.
         $ok = rename($hold, $path);
@@ -188,8 +188,8 @@ class SSPA_Helper_Files {
 
     /** Recovery only: return object-cache.php held by versions before 0.43.4. */
     public static function restore_legacy_cache_hold() {
-        $path = WP_CONTENT_DIR . '/object-cache.php';
-        $hold = WP_CONTENT_DIR . '/object-cache.php.sspa-hold';
+        $path = SSPA_CONTENT_DIR . '/object-cache.php';
+        $hold = SSPA_CONTENT_DIR . '/object-cache.php.sspa-hold';
         if (!file_exists($hold) && !is_link($hold)) {
             delete_option('sspa_oc_hold');
             return true;
@@ -206,6 +206,9 @@ class SSPA_Helper_Files {
     }
 
     public static function enable_profiler() {
+        if (is_multisite() && !current_user_can('manage_network_options')) {
+            return new WP_Error('sspa_network_permission', __('Only a network administrator may install network-wide profiler files.', 'super-speedy-performance-analysis'));
+        }
         if (self::file_mods_blocked()) {
             return new WP_Error('sspa_file_mods_disallowed', __('This site sets DISALLOW_FILE_MODS, which forbids installing the profiler loader.', 'super-speedy-performance-analysis'));
         }
@@ -218,7 +221,10 @@ class SSPA_Helper_Files {
     }
 
     public static function disable_profiler() {
-        if (self::is_ours(self::mu_path()) && !unlink(self::mu_path())) {
+        if (is_multisite() && !current_user_can('manage_network_options')) {
+            return new WP_Error('sspa_network_permission', __('Only a network administrator may remove network-wide profiler files.', 'super-speedy-performance-analysis'));
+        }
+        if (self::is_ours(self::mu_path()) && !SSPA_Filesystem::direct()->delete(self::mu_path())) {
             return new WP_Error('sspa_loader_remove', __('Could not remove the profiler loader; check its file permissions.', 'super-speedy-performance-analysis'));
         }
         update_option('sspa_profiler_enabled', false, false);
@@ -236,14 +242,15 @@ class SSPA_Helper_Files {
     }
 
     public static function remove_all() {
+        if (is_multisite() && !current_user_can('manage_network_options')) { return; }
         update_option('sspa_profiler_enabled', false, false);
         if (self::is_ours(self::mu_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only the mu-loader this plugin wrote, verified by its signature line.
-            unlink(self::mu_path());
+            SSPA_Filesystem::direct()->delete(self::mu_path());
         }
         if (self::is_ours(self::dropin_path())) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- removes only a drop-in is_ours() has confirmed we wrote.
-            unlink(self::dropin_path());
+            SSPA_Filesystem::direct()->delete(self::dropin_path());
         }
         self::restore_legacy_db_hold();
         self::restore_legacy_cache_hold();
@@ -271,7 +278,7 @@ class SSPA_Helper_Files {
     public static function health() {
         $mu_content = self::generate('mu/sspa-loader.php');
         $mu_exists = file_exists(self::mu_path());
-        $mu_ok = $mu_exists && file_get_contents(self::mu_path()) === $mu_content;
+        $mu_ok = $mu_exists && SSPA_Filesystem::get_contents(self::mu_path()) === $mu_content;
 
         // Why it is not installed decides what the user is told to do about it. "Not
         // writable" sends someone to chmod a directory that may be fine.
@@ -280,7 +287,7 @@ class SSPA_Helper_Files {
             if (self::file_mods_blocked()) {
                 $mu_reason = 'file_mods_blocked';
             // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- a pre-flight check, not a write.
-            } elseif (!is_writable(WPMU_PLUGIN_DIR) && !($mu_exists && is_writable(self::mu_path()))) {
+            } elseif (!SSPA_Filesystem::direct()->is_writable(SSPA_MU_DIR) && !($mu_exists && SSPA_Filesystem::direct()->is_writable(self::mu_path()))) {
                 $mu_reason = 'not_writable';
             } else {
                 $mu_reason = $mu_exists ? 'stale' : 'disabled';

@@ -110,7 +110,7 @@ class SSPA_Auth {
         ));
         if ($existing) {
             $updated = wp_update_user(array('ID' => (int) $existing[0], 'user_email' => SSPA_Mail::address('customer')));
-            if (is_wp_error($updated)) { throw new RuntimeException($updated->get_error_message()); }
+            if (is_wp_error($updated)) { throw new RuntimeException(esc_html($updated->get_error_message())); }
             return (int) $existing[0];
         }
         $role = get_role('customer') ? 'customer' : 'subscriber';
@@ -141,10 +141,8 @@ class SSPA_Auth {
     }
 
     private static function replace_customer() {
-        if (!function_exists('wp_delete_user')) {
-            require_once ABSPATH . 'wp-admin/includes/user.php';
-        }
         foreach (get_users(array('meta_key' => self::TEST_ACCOUNT_META, 'meta_value' => '1', 'fields' => 'ID')) as $stale) {
+            if (!function_exists('wp_delete_user')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/user.php'; }
             wp_delete_user((int) $stale);
         }
         return self::test_customer_id();

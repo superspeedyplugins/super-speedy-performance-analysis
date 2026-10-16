@@ -9,7 +9,7 @@ class SSPA_Object_Cache_Capability {
      */
     public static function inspect() {
         $persistent = function_exists('wp_using_ext_object_cache') && wp_using_ext_object_cache();
-        $dropin = WP_CONTENT_DIR . '/object-cache.php';
+        $dropin = SSPA_CONTENT_DIR . '/object-cache.php';
         $has_dropin = file_exists($dropin);
         $source = '';
 
@@ -21,8 +21,8 @@ class SSPA_Object_Cache_Capability {
             }
         }
 
-        $content = self::normalise(realpath(WP_CONTENT_DIR) ?: WP_CONTENT_DIR);
-        $core = self::normalise(realpath(ABSPATH . WPINC) ?: ABSPATH . WPINC);
+        $content = self::normalise(realpath(SSPA_CONTENT_DIR) ?: SSPA_CONTENT_DIR);
+        $core = self::normalise(realpath(SSPA_CORE_DIR . WPINC) ?: SSPA_CORE_DIR . WPINC);
         $source = self::normalise($source);
 
         if (!$persistent && (!$source || self::inside($source, $core))) {

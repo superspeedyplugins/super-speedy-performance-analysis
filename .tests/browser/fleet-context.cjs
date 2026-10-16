@@ -100,7 +100,19 @@ async function session() {
     reducedMotion: "reduce",
     permissions: ["clipboard-read", "clipboard-write"],
   });
-  return { browser, context, page: await login(context) };
+  try {
+    return { browser, context, page: await login(context) };
+  } catch (error) {
+    try {
+      const diagnostics = [];
+      for (const page of context.pages()) {
+        diagnostics.push({url:page.url(), text:await page.locator('body').innerText({timeout:1000}).catch(failure => String(failure))});
+        await page.screenshot({path:output + '/session-login-failed.png', timeout:3000}).catch(failure => diagnostics.push({screenshot_error:String(failure)}));
+      }
+      fs.writeFileSync(output + '/session-login-failed.json', JSON.stringify(diagnostics, null, 2));
+    } finally { await browser.close(); }
+    throw error;
+  }
 }
 async function admin(page, tab = "overview") {
   await page.goto(site + "/wp-admin/admin.php?page=sspa#" + tab);

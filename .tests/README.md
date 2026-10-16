@@ -728,3 +728,14 @@ All transport calls are intercepted, and the fixture site and archive records re
 Run `SSPA_SCENARIO=tests-issue46 .tests/run-tests.sh 101-foreign` there, or select case 101 from another suite site and its wrapper delegates to that dedicated site. Case 101 supplies the actual database connection from a stand-in foreign `db.php` while stock credentials are unusable, submits the authenticated UI AJAX start action with the old swap parameter, checks both HTTP entry points, completes the degraded run, and requires an owner-naming Cache Impact error with object-cache.php untouched. Its deliberate connection fault is disarmed after a successful run. A red run on pre-fix code leaves the fault and hold for manual recovery, with the original configuration backed up in `.data/w0/issue46-wp-config.backup`.
 
 Case 102 plants only states that versions before 0.43.4 could create, and exercises controller cancellation, idle recovery, conflicting foreign files/dangling symlinks and actual uninstall. Test fixture preparation archives a preceding foreign drop-in explicitly on the guarded test site; production code has no displacement operation.
+
+### W3 WordPress.org checks
+
+`bash .tests/run-tests.sh 111-w3` checks the production History adapter, uploads locations and agent discovery.
+`bash .tests/run-tests.sh 112-browser` compares the production JavaScript response extractor with PHP on a real HTTP Home response.
+`bash .tests/run-tests.sh 113-loader` checks a real dangling foreign loader symlink and restores the test fixture in a finally block.
+`bash .tests/browser/run-regressions.sh derived-evidence` completes a real browser-transport spot measurement and asserts that no response HTML is posted.
+`bash .tests/browser/run-regressions.sh checkout-translations` loads a French catalogue into WordPress i18n, opens the actual checkout disclosure and checks translated controls, plural messages and footer without creating an order.
+The translations journey keeps its original five-second canvas assertion; it uses the same entry preparation as the other browser journeys.
+
+Case 97 also builds and installs the actual wp.org diagnostic on its dedicated database-backed cache-scope site, invokes the real administrator action and checks that foreign transient families survive. Case 111 includes a dedicated native multisite ownership regression.

@@ -6,7 +6,7 @@ defined('ABSPATH') || exit;
  */
 class SSPA_Install {
 
-    public static function activate() {
+    public static function activate($network_wide = false) {
         SSPA_Schema::create_tables();
         // Sites that never used Traffic need no authority file or writable MU directory.
         if (is_file(SSPA_Traffic_Authority::path()) || SSPA_Traffic_Helper::is_ours()) {
@@ -14,16 +14,16 @@ class SSPA_Install {
             SSPA_Traffic_Authority::activate();
         }
         SSPA_Token::secret();
-        SSPA_Helper_Files::ensure_installed();
+        if ($network_wide || !is_multisite()) { SSPA_Helper_Files::ensure_installed(); }
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }
     }
 
-    public static function deactivate() {
+    public static function deactivate($network_wide = false) {
         // Remove everything we placed outside the plugin folder and restore any hold.
         SSPA_Traffic_Collection::deactivate();
-        SSPA_Helper_Files::remove_all();
+        if ($network_wide || !is_multisite()) { SSPA_Helper_Files::remove_all(); }
         wp_clear_scheduled_hook('sspa_cleanup_event');
         wp_clear_scheduled_hook('sspa_submission_worker_event');
         wp_clear_scheduled_hook('sspa_traffic_collection_tick');
@@ -35,6 +35,7 @@ class SSPA_Install {
 
     public static function maybe_upgrade() {
         if (get_option('sspa_behaviour_version') !== SSPA_VERSION) {
+            SSPA_Traffic_Authority::migrate();
             SSPA_Helper_Files::migrate_profiler_consent();
             delete_transient('sspa_rules_feed');
             delete_transient('sspa_rules_feed_backoff');
@@ -42,7 +43,7 @@ class SSPA_Install {
             delete_option('sspa_hub_url');
             $traffic = SSPA_Traffic_Helper::migrate_config();
             if (is_wp_error($traffic) || false === $traffic) {
-                throw new RuntimeException(is_wp_error($traffic) ? $traffic->get_error_message() : 'Could not migrate traffic configuration.');
+                throw new RuntimeException(esc_html(is_wp_error($traffic) ? $traffic->get_error_message() : 'Could not migrate traffic configuration.'));
             }
             update_option('sspa_behaviour_version', SSPA_VERSION, true);
         }

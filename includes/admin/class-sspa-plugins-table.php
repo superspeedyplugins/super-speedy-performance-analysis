@@ -164,7 +164,7 @@ class SSPA_Plugins_Table {
                     <td><?php echo esc_html(number_format((int) $c['total_rows'])); ?></td>
                     <td><?php echo esc_html(number_format((float) $c['slowest_query_ms'], 1)); ?></td>
                     <td><?php echo esc_html(number_format((float) $c['total_http_ms'], 1)); ?></td>
-                    <td><?php echo self::impact_cell($c, $impact_rows, $version, $run_id); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+                    <td><?php echo wp_kses(self::impact_cell($c, $impact_rows, $version, $run_id), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
                     <td>
                         <?php
                         if (isset($cache[$c['component']]['saved_pct'])) {
@@ -284,8 +284,8 @@ class SSPA_Plugins_Table {
             )) . '</span>';
         }
 
-        echo self::group_note($mode_rows); // phpcs:ignore WordPress.Security.EscapeOutput
-        echo self::provenance($mode_rows, $version, $run_id); // phpcs:ignore WordPress.Security.EscapeOutput
+        echo wp_kses(self::group_note($mode_rows), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput
+        echo wp_kses(self::provenance($mode_rows, $version, $run_id), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput
         echo '<br><a href="#" class="sspa-impact-details" data-plugin="' . esc_attr($c['component']) . '">' . esc_html__('per-page breakdown', 'super-speedy-performance-analysis') . '</a>';
 
         return ob_get_clean();
