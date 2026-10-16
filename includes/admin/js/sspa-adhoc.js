@@ -156,10 +156,10 @@
 		}
 	}
 
-	function start(url) {
+	function start(url, allHooks, rawStreams) {
 		current.url = url || current.url || pageUrl();
 		renderProgress(null);
-		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_start', nonce: sspa_adhoc.nonce, url: current.url }, function (resp) {
+		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_start', nonce: sspa_adhoc.nonce, url: current.url, all_hooks: allHooks ? 1 : 0, raw_streams: rawStreams ? 1 : 0 }, function (resp) {
 			if (!resp.success) {
 				renderError(resp.data || wp.i18n.__('Could not start.', 'super-speedy-performance-analysis'));
 				return;
@@ -529,18 +529,17 @@
 	// ---- plugin impact: the picker ----
 	// One picker, two scopes. From the page panel it plans "measure plugins on this page";
 	// from the settings page's Plugin Impact Analysis button it plans the site-wide sweep.
-	// NOTHING is preselected in either: measuring a plugin means excluding it from test
-	// requests, another plugin can react to that, and which plugins that risk is acceptable
-	// for is the site owner's call - made here, knowing what is about to happen.
+	// Page-scoped measured suspects are preselected for review; the run starts only on confirmation.
 
 	var plan = null; // the last plan fetched: {scope, plugins, pages, oc_capable, ...}
 
-	function fetchPlan(profileId, target) {
+	function fetchPlan(profileId, target, url) {
 		target.html('<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.loading) + '</p>');
 		$.post(sspa_adhoc.ajaxurl, {
 			action: 'sspa_impact_plan',
 			nonce: sspa_adhoc.nonce,
-			profile_id: profileId || 0
+			profile_id: profileId || 0,
+			url: url || ''
 		}, function (resp) {
 			if (!resp.success) {
 				target.html('<p class="sspa-adhoc-error">' + esc(resp.data || wp.i18n.__('Could not work out what to measure.', 'super-speedy-performance-analysis')) + '</p>');
@@ -554,8 +553,17 @@
 		});
 	}
 
+	$(document).on('click', '#sspa-adhoc-pop .sspa-impact-only-page', function () {
+		var box = $(this).closest('.sspa-adhoc-plan');
+		var url = box.find('.sspa-impact-only-url').val().trim();
+		if (url) { current.url = url; fetchPlan(0, box, url); }
+	});
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-time-raw-streams', function () { start(current.url, true, true); });
+	$(document).on('click', '#sspa-adhoc-pop .sspa-time-all-hooks', function () { start(current.url, true); });
+
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-measure', function () {
-		fetchPlan($(this).data('profile-id'), $('#sspa-adhoc-impact .sspa-adhoc-plan'));
+		fetchPlan($(this).data('profile-id'), $(this).closest('.sspa-page-summary').find('.sspa-adhoc-plan'));
 	});
 
 	// The settings page's Plugin Impact Analysis button opens the same picker in the popover
@@ -571,6 +579,7 @@
 		var i18n = sspa_adhoc.i18n;
 		var site = 'site' === data.scope;
 		var html = '<div class="sspa-adhoc-planbox">';
+		if (site) html += '<p><label>' + esc(i18n.only_page) + ' <input type="url" class="sspa-impact-only-url"></label> <button type="button" class="sspa-adhoc-btn sspa-impact-only-page">' + esc(i18n.only_page_apply) + '</button></p>';
 		html += '<h4>' + esc(site ? i18n.plan_title_site : i18n.plan_title) + '</h4>';
 		html += '<p class="sspa-adhoc-note">' + esc(i18n.plan_hint) + '</p>';
 		html += '<p class="sspa-adhoc-note">' + esc(i18n.plan_risk) + '</p>';
@@ -580,7 +589,7 @@
 			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-pick" data-pick="all">' + esc(i18n.select_all) + '</button> ' +
 			'<button type="button" class="sspa-adhoc-btn sspa-adhoc-pick" data-pick="none">' + esc(i18n.select_none) + '</button></p>';
 		html += '<ul class="sspa-adhoc-planlist">';
-		data.plugins.forEach(function (p) {
+		data.plugins.forEach(function (p, index) {
 			var blamed = p.cost_ms > 0;
 			var cost = blamed
 				? (site ? i18n.attributed_site : i18n.attributed_here).replace('%s', p.cost_ms.toFixed(1))
@@ -591,7 +600,7 @@
 				? ' <small>' + esc(i18n.with_group.replace('%s', p.group.join(', '))) + '</small>'
 				: '';
 			html += '<li><label><input type="checkbox" class="sspa-adhoc-pluginpick" value="' + esc(p.slug) + '"' +
-				' data-blamed="' + (blamed ? '1' : '0') + '"> <code>' + esc(p.slug) + '</code> ' +
+				' data-blamed="' + (blamed ? '1' : '0') + '"' + (!site && blamed && index < 3 ? ' checked' : '') + '> <code>' + esc(p.slug) + '</code> ' +
 				'<small>' + esc(cost) + '</small>' +
 				group + '</label></li>';
 		});
@@ -709,7 +718,7 @@
 			pop().hide();
 			return;
 		}
-		$('#sspa-adhoc-impact .sspa-adhoc-plan').empty();
+		$('#sspa-adhoc-pop .sspa-adhoc-plan').empty();
 	});
 
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-measure-start', function () {

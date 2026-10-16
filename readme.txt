@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.44.1
+Stable tag: 0.44.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -102,6 +102,16 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.44.2 (20th October 2026) =
+* Page reports now lead with the dominant time, the measured culprits, attribution coverage and a next action, with PHP phases and sample ranges in the Markdown export.
+* Signed profiling requests measure process CPU against elapsed wall time.
+* Signed page measurements time bounded template loads and record header, footer, sidebar, template-part and loop boundaries.
+* Reports identify the largest untimed render gap with its surrounding events and template context.
+* Added an optional all-hook timing pass with exclusive callback wall time and source locations.
+* Page export headlines and component totals now come from the same measured request, keep sub-page paths and list profiler SQL separately as overhead.
+* Moved page-specific Plugin Impact to the summary with measured suspects preselected, and single-page sweeps can use the browser when loopbacks fail.
+* Added a separate opt-in raw HTTP stream diagnostic with caller timings and a response-header compatibility warning.
 
 = 0.44.1 (19th October 2026) =
 * Documented the remaining WordPress.org Plugin Check exceptions in the code.

@@ -84,12 +84,13 @@ class SSPA_Run_Controller {
         // (unchanged, works headless); the admin's browser when loopbacks are provably
         // blocked and a browser is driving; a hard, MECHANISM-NAMING error otherwise.
         // Decided once, here - an in-flight run never switches transport.
-        $transport = ('admin_save' === $type) ? 'interactive' : self::decide_transport($type);
+        $transport = ('admin_save' === $type) ? 'interactive' : self::decide_transport($type, $args);
         if (is_wp_error($transport)) {
             SSPA_Helper_Files::restore_legacy_db_hold();
             return $transport;
         }
 
+        $args['transport'] = $transport;
         if ('deep' === $type) {
             $jobs = self::build_sweep_jobs($args, $sweep);
             if (is_wp_error($jobs)) {
@@ -128,6 +129,8 @@ class SSPA_Run_Controller {
                 SSPA_Helper_Files::restore_legacy_db_hold();
                 return $job;
             }
+            if (!empty($args['raw_streams'])) { $job['flags']['rs'] = '1'; $job['flags']['xp'] = '0'; }
+            if (!empty($args['all_hooks'])) { $job['flags']['ah'] = 'all'; $job['flags']['xp'] = '0'; }
             $jobs = array($job);
         } elseif ('admin_save' === $type) {
             $job = SSPA_Admin_Save::job_for(
@@ -418,7 +421,10 @@ class SSPA_Run_Controller {
             }
         }
 
-        $blocked_target = self::preflight_sweep_targets($page_jobs);
+        // Browser runs establish target reachability with their first, unexcluded
+        // baseline. A server probe would repeat the loopback fault they bypass.
+        $blocked_target = isset($args['transport']) && 'browser' === $args['transport']
+            ? true : self::preflight_sweep_targets($page_jobs);
         if (is_wp_error($blocked_target)) {
             return $blocked_target;
         }
@@ -1184,7 +1190,7 @@ class SSPA_Run_Controller {
      * @param string $type Run type.
      * @return string|WP_Error 'loopback' | 'browser', or the reason nothing can run.
      */
-    private static function decide_transport($type) {
+    private static function decide_transport($type, $args = array()) {
         $probe = self::loopback_preflight();
 
         // Testing/override hook. '' means decide normally.
@@ -1197,10 +1203,12 @@ class SSPA_Run_Controller {
             return 'loopback';
         }
 
-        // The checkout flow needs an isolated guest cookie jar (impossible from a
-        // browser - Cookie is a forbidden fetch header) and the sweep types hold
-        // site-wide cache state between requests; both stay loopback-only for now.
-        $eligible = !in_array($type, array('deep', 'cache_impact', 'checkout'), true);
+        // Single-page exclusion and cache bypass are signed, per-request state.
+        // Proved with an actual TLS-reset loopback and browser-driven phase 2.
+        // Checkout still requires an isolated guest cookie jar; site-wide sweeps
+        // and Cache Impact remain outside this verified browser scope.
+        $scoped = 'deep' === $type && !empty($args['url']) && !is_wp_error(SSPA_Adhoc::job_for($args['url']));
+        $eligible = $scoped || !in_array($type, array('deep', 'cache_impact', 'checkout'), true);
         if ($eligible && wp_doing_ajax() && get_current_user_id()) {
             return 'browser';
         }
@@ -1213,6 +1221,11 @@ class SSPA_Run_Controller {
                 : __('This site cannot fetch its own pages: %s. This analysis type needs working loopback requests - fix the block, then run it again.', 'super-speedy-performance-analysis'),
             $probe['reason']
         ));
+    }
+
+    /** The browser must establish its unexcluded target before any isolation. */
+    public static function refuse_browser_sweep($run_id, $reason) {
+        return self::fail($run_id, 'Browser target preflight failed before plugin exclusion: ' . $reason);
     }
 
     /**

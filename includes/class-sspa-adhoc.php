@@ -113,13 +113,14 @@ class SSPA_Adhoc {
                 'markdown_failed' => __('The Markdown report could not be exported.', 'super-speedy-performance-analysis'),
                 // The plugin-impact picker. Built client-side from the plan endpoint so the
                 // estimate can update as boxes are ticked, rather than after a round trip.
-                // NOTHING is preselected: choosing which plugins get excluded from test
-                // requests is the site owner's decision, made knowing what it involves.
+                // Page suspects are preselected for review; nothing runs before Start.
+                'only_page' => __('Only this page (URL)', 'super-speedy-performance-analysis'),
+                'only_page_apply' => __('Use this page', 'super-speedy-performance-analysis'),
                 'plan_title' => __('Which plugins should I measure on this page?', 'super-speedy-performance-analysis'),
                 'plan_title_site' => __('Which plugins should I measure the impact of?', 'super-speedy-performance-analysis'),
                 'plan_hint' => __('Each chosen plugin is left out of our test requests only - it is never deactivated, no activation or deactivation hook fires, and your visitors always get the full site. A measurement is a warm-up plus three samples per page.', 'super-speedy-performance-analysis'),
                 'plan_risk' => __('One caution: a plugin that depends on one you choose may notice it missing during those test requests and react. Reactions we can reach are stopped - your plugin list cannot change, activation and deactivation routines are silenced, and destructive database statements are refused - and any reaction is recorded, with the pair measured together from then on. Even so, choose plugins you understand.', 'super-speedy-performance-analysis'),
-                'plan_pick' => __('Nothing is ticked until you tick it. Plugins are listed by the time attribution charges them, most expensive first.', 'super-speedy-performance-analysis'),
+                'plan_pick' => __('On a single page, the top three measured suspects are ticked for review; change the selection before starting.', 'super-speedy-performance-analysis'),
                 'select_blamed' => __('Select blamed', 'super-speedy-performance-analysis'),
                 'select_all' => __('Select every eligible plugin', 'super-speedy-performance-analysis'),
                 'select_none' => __('Clear', 'super-speedy-performance-analysis'),
@@ -268,7 +269,7 @@ class SSPA_Adhoc {
         if (is_wp_error($job)) {
             wp_send_json_error($job->get_error_message());
         }
-        $run_id = SSPA_Run_Controller::start(array('type' => 'adhoc', 'url' => $url, 'trigger' => 'adminbar'));
+        $run_id = SSPA_Run_Controller::start(array('type' => 'adhoc', 'url' => $url, 'trigger' => 'adminbar', 'all_hooks' => !empty($_POST['all_hooks']), 'raw_streams' => !empty($_POST['raw_streams'])));
         if (is_wp_error($run_id)) {
             wp_send_json_error($run_id->get_error_message());
         }

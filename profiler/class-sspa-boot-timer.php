@@ -10,16 +10,14 @@ defined('ABSPATH') || exit;
 //      loads, so hooking core's per-plugin `plugin_loaded` action and taking deltas
 //      times every plugin's file include + top-level code.
 //
-//   2. Hook callback timing. For each profiled hook, a PHP_INT_MIN callback wraps every
-//      later-priority callback in a timing closure as the hook starts to run. WP_Hook
-//      reads each priority bucket live, so mutating buckets it has not reached yet is
-//      safe, and wrapping from INSIDE the hook catches callbacks whenever they were
-//      registered. Overhead per callback is two microtime() calls on profiled requests
-//      only; real traffic never loads this file.
+//   2. Selected or all-hook callback timing. Core invokes `all` before a hook
+//      enters its callback queue. Wrappers retain registry IDs and accepted_args;
+//      callback time uses a nesting stack. Reference callbacks remain untouched.
+//      CPU and template boundaries complement this ledger. Real traffic never
+//      loads this file.
 //
-// Costs overlap by design: a plugin's include time, its plugins_loaded boot, and its
-// init work are separate rows of the same story, not double counting - but hook totals
-// must not be summed with segment totals blindly.
+// Callback rows use exclusive wall time. Phase windows and SQL/HTTP instruments
+// overlap that wall time and must never be added to it.
 
 if (!class_exists('SSPA_Boot_Timer')) {
     class SSPA_Boot_Timer {
@@ -56,20 +54,43 @@ if (!class_exists('SSPA_Boot_Timer')) {
             return in_array($hook, self::$render_hooks, true) || 0 === strpos($hook, 'woocommerce_');
         }
 
+        private $reference_callbacks = array();
+        private $unreflected_callbacks = array();
+        private $hook_mode = 'selected';
+        private $stack = array();
+        private $wrappers;
+        private $callback_count = 0;
+        private $events = array();
+        private $intervals = array();
+        private $stream_spans = array();
+        private $template = null;
+        private $templates = array();
+        private $template_starts = array();
+        private $template_spans = array();
+        private $cpu_end = null;
+        private $wall_end = null;
+        private $callback_wall_ms = 0;
+        private $last_include_callback_ms = 0;
+        private $cpu_start = null;
+        private $wall_start = null;
+
         private $milestones = array();   // name => seconds since $timestart
         private $plugin_ms = array();    // plugin file (dir/file.php) => include ms
         private $callbacks = array();    // [hook, callable, ms, label?]
-        private $wrapped_hooks = array(); // hook => true once its queue is wrapped
-        private $block_stack = array();  // in-flight dynamic block renders
         private $last_mark;
 
-        public function install() {
+        public function install($hook_mode = 'selected') {
+            $this->hook_mode = $hook_mode;
+            $this->wrappers = new SplObjectStorage();
+            $this->wall_start = microtime(true);
+            $this->cpu_start = function_exists('getrusage') ? getrusage() : null;
             $this->last_mark = microtime(true);
             $this->mark('profiler_armed');
 
             add_action('muplugins_loaded', function () {
                 $this->mark('plugins_start');
                 $this->last_mark = microtime(true);
+                $this->last_include_callback_ms = $this->callback_wall_ms;
             }, PHP_INT_MAX);
 
             // Core fires this after each plugin file is included; the delta since the
@@ -80,7 +101,8 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $file = str_replace('\\', '/', (string) $plugin);
                 $pos = strpos($file, '/wp-content/plugins/');
                 $key = ($pos !== false) ? substr($file, $pos + strlen('/wp-content/plugins/')) : basename($file);
-                $this->plugin_ms[$key] = round(($now - $this->last_mark) * 1000, 2);
+                $this->plugin_ms[$key] = round(max(0, ($now - $this->last_mark) * 1000 - ($this->callback_wall_ms - $this->last_include_callback_ms)), 2);
+                $this->last_include_callback_ms = $this->callback_wall_ms;
                 $this->last_mark = $now;
             });
 
@@ -106,47 +128,47 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $this->mark('template_redirect');
             }, PHP_INT_MIN);
 
-            foreach (self::$hooks as $hook) {
-                // Filter-safe: returns the first argument untouched, so wrapping works
-                // for the_content and any future filter as well as for actions.
-                add_filter($hook, function ($value = null) use ($hook) {
-                    $this->wrap_pending($hook);
-                    return $value;
-                }, PHP_INT_MIN);
+            add_filter('template_include', function ($file) {
+                $this->template = $file;
+                $this->event('template_include');
+                return $file;
+            }, PHP_INT_MAX);
+            foreach (array('get_header', 'get_footer', 'get_sidebar', 'loop_start', 'loop_end', 'shutdown') as $boundary) {
+                add_action($boundary, function () use ($boundary) { $this->event($boundary); }, PHP_INT_MIN);
             }
+            add_action('all', function ($hook) {
+                if (null !== $this->wall_end) return;
+                if (0 === strpos($hook, 'get_template_part_')) $this->event($hook);
+                if ('all' === $this->hook_mode || ('selected' === $this->hook_mode && in_array($hook, self::$hooks, true))) $this->wrap_pending($hook);
+            }, PHP_INT_MIN);
+            add_action('wp_before_load_template', function ($file) {
+                $this->template_starts[] = array('file' => $file, 'start' => microtime(true), 'render' => isset($this->milestones['template_redirect']));
+                $this->templates[] = $this->template;
+                $this->template = $file;
+                $this->event('before template ' . basename($file));
+            }, PHP_INT_MIN);
+            add_action('wp_after_load_template', function ($file) {
+                $span = array_pop($this->template_starts);
+                if ($span) { $span['end'] = microtime(true); $this->template_spans[] = $span; }
+                $this->template = array_pop($this->templates);
+                $this->event('after template ' . basename($file));
+            }, PHP_INT_MAX);
 
             // Shortcodes and widgets are the render phase's named units of work; both
             // registries are plain arrays, fully populated by wp_loaded, and safe to
             // wrap in place.
             add_action('wp_loaded', function () {
-                $this->wrap_shortcodes();
-                $this->wrap_widgets();
+                if ('none' !== $this->hook_mode) { $this->wrap_shortcodes(); $this->wrap_widgets(); }
             }, PHP_INT_MAX);
 
-            // Dynamic blocks: pre_render_block/render_block bracket every block render,
-            // so pairing them times each one. Only blocks WITH a render_callback are
-            // tracked - static blocks are stored HTML with no PHP cost worth naming.
             add_filter('pre_render_block', function ($pre, $parsed = null) {
                 $name = is_array($parsed) && !empty($parsed['blockName']) ? $parsed['blockName'] : null;
-                if ($name && $this->block_is_dynamic($name)) {
-                    $this->block_stack[] = array($name, microtime(true));
+                if ('none' !== $this->hook_mode && $name && $this->block_is_dynamic($name)) {
+                    $type = WP_Block_Type_Registry::get_instance()->get_registered($name);
+                    $type->render_callback = $this->wrapper($type->render_callback, 'block', $name);
                 }
                 return $pre;
             }, PHP_INT_MIN, 2);
-            add_filter('render_block', function ($content, $parsed = null) {
-                $name = is_array($parsed) && !empty($parsed['blockName']) ? $parsed['blockName'] : null;
-                $depth = count($this->block_stack);
-                if ($name && $depth && $this->block_stack[$depth - 1][0] === $name) {
-                    $entry = array_pop($this->block_stack);
-                    // Only OUTERMOST dynamic blocks are recorded: an inner block's time
-                    // is already inside its parent's, and double counting would push
-                    // the render ledger past the segment total.
-                    if (0 === count($this->block_stack)) {
-                        $this->callbacks[] = array('block', $this->block_callback($name), (microtime(true) - $entry[1]) * 1000, $name);
-                    }
-                }
-                return $content;
-            }, PHP_INT_MAX, 2);
         }
 
         private function block_is_dynamic($name) {
@@ -157,24 +179,13 @@ if (!class_exists('SSPA_Boot_Timer')) {
             return $type && !empty($type->render_callback);
         }
 
-        /** The block's render callback, so attribution resolves to the providing plugin. */
-        private function block_callback($name) {
-            $type = WP_Block_Type_Registry::get_instance()->get_registered($name);
-            return ($type && !empty($type->render_callback)) ? $type->render_callback : null;
-        }
-
         private function wrap_shortcodes() {
             global $shortcode_tags;
             if (!is_array($shortcode_tags)) {
                 return;
             }
             foreach ($shortcode_tags as $tag => $callback) {
-                $shortcode_tags[$tag] = function (...$args) use ($callback, $tag) {
-                    $t0 = microtime(true);
-                    $result = call_user_func_array($callback, $args);
-                    $this->callbacks[] = array('shortcode', $callback, (microtime(true) - $t0) * 1000, '[' . $tag . ']');
-                    return $result;
-                };
+                $shortcode_tags[$tag] = $this->wrapper($callback, 'shortcode', '[' . $tag . ']');
             }
         }
 
@@ -189,12 +200,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 }
                 $callback = $widget['callback'];
                 $label = !empty($widget['name']) ? $widget['name'] : $id;
-                $wp_registered_widgets[$id]['callback'] = function (...$args) use ($callback, $label) {
-                    $t0 = microtime(true);
-                    $result = call_user_func_array($callback, $args);
-                    $this->callbacks[] = array('widget', $callback, (microtime(true) - $t0) * 1000, $label);
-                    return $result;
-                };
+                $wp_registered_widgets[$id]['callback'] = $this->wrapper($callback, 'widget', $label);
             }
         }
 
@@ -206,37 +212,77 @@ if (!class_exists('SSPA_Boot_Timer')) {
         }
 
         /**
-         * Replace every not-yet-run callback on $hook with a timing wrapper. Runs as the
-         * hook's first (PHP_INT_MIN) callback; only buckets WP_Hook has not reached yet
-         * are touched, and each entry keeps its accepted_args, so behaviour is identical.
+         * Wrap the queue before WP_Hook enters it, preserving registry IDs,
+         * priority and accepted_args. Reference signatures are handled below.
          */
         private function wrap_pending($hook) {
             global $wp_filter;
-            // Once per hook: the_content and the WooCommerce loop hooks fire once PER
-            // POST/ITEM, and re-wrapping already-wrapped callbacks nests the timers and
-            // counts the same work twice. The wrappers persist, so every later firing
-            // is still timed - only the wrapping happens once.
-            if (isset($this->wrapped_hooks[$hook])) {
-                return;
-            }
-            $this->wrapped_hooks[$hook] = true;
-            if (!isset($wp_filter[$hook]) || !($wp_filter[$hook] instanceof WP_Hook)) {
-                return;
-            }
+            if ('all' === $hook || !isset($wp_filter[$hook]) || !($wp_filter[$hook] instanceof WP_Hook)) return;
+            // Inspect every entry on every firing: callbacks can be added after a hook's
+            // first execution. Preserve priority, accepted_args and original registry ID.
             foreach ($wp_filter[$hook]->callbacks as $priority => $bucket) {
-                if (PHP_INT_MIN === $priority) {
-                    continue; // ourselves (and any coincident callback already running)
-                }
                 foreach ($bucket as $idx => $entry) {
-                    $original = $entry['function'];
-                    $wp_filter[$hook]->callbacks[$priority][$idx]['function'] = function (...$args) use ($original, $hook) {
-                        $t0 = microtime(true);
-                        $result = call_user_func_array($original, $args);
-                        $this->callbacks[] = array($hook, $original, (microtime(true) - $t0) * 1000);
-                        return $result;
-                    };
+                    $wp_filter[$hook]->callbacks[$priority][$idx]['function'] = $this->wrapper($entry['function'], $hook);
                 }
             }
+        }
+
+        private function wrapper($original, $hook, $label = null) {
+            if ($original instanceof Closure && $this->wrappers->offsetExists($original)) return $original;
+            $key = $hook . ':' . (is_object($original) ? spl_object_hash($original) : md5(serialize(is_array($original) ? array(is_object($original[0]) ? spl_object_hash($original[0]) : $original[0], $original[1]) : $original))) . ':' . $label;
+            $class = is_array($original) && is_string($original[0]) ? $original[0] : null;
+            if (is_string($original) && false !== strpos($original, '::')) $class = explode('::', $original, 2)[0];
+            // Reflection would autoload this class before earlier-priority callbacks.
+            // Leave its first invocation native; a later hook firing can inspect it.
+            if ($class && !class_exists($class, false)) {
+                $this->unreflected_callbacks[$key] = $hook . ':' . $this->callable_label($original);
+                return $original;
+            }
+            // A generic variadic closure cannot preserve arbitrary PHP reference
+            // parameters/returns. Keep these callbacks intact and report the gap.
+            try {
+                $ref = $this->reflection($original);
+                $by_reference = $ref->returnsReference();
+                foreach ($ref->getParameters() as $parameter) $by_reference = $by_reference || $parameter->isPassedByReference();
+                if ($by_reference) {
+                    $this->reference_callbacks[$key] = $hook . ':' . $this->callable_label($original);
+                    return $original;
+                }
+            } catch (ReflectionException $e) {
+                // Keep WordPress's native invocation, explicitly recording the
+                // signature we could not inspect (including magic callables).
+                $this->unreflected_callbacks[$key] = $hook . ':' . $this->callable_label($original);
+                return $original;
+            }
+            $file = $ref->getFileName();
+            if ($file && strpos(str_replace('\\', '/', $file), str_replace('\\', '/', dirname(__DIR__)) . '/') === 0) return $original;
+            $wrapper = function (...$args) use ($original, $hook, $label, $key) {
+                if (null !== $this->wall_end) return call_user_func_array($original, $args);
+                $start = microtime(true);
+                $this->callback_count++;
+                $this->stack[] = 0.0;
+                $render = isset($this->milestones['template_redirect']);
+                if ($this->template && count($this->stack) === 1) $this->event('before ' . ($label ?: $hook));
+                try {
+                    return call_user_func_array($original, $args);
+                } finally {
+                    $end = microtime(true);
+                    $wall = ($end - $start) * 1000;
+                    $self = max(0, $wall - array_pop($this->stack));
+                    $this->callback_wall_ms += $self;
+                    if ($this->stack) {
+                        $this->stack[count($this->stack) - 1] += $wall;
+                    } else {
+                        $this->intervals[] = array($start, $end);
+                        if ($this->template) $this->event('after ' . ($label ?: $hook));
+                    }
+                    $phase_key = $key . ($render ? ':render' : ':boot');
+                    if (!isset($this->callbacks[$phase_key])) $this->callbacks[$phase_key] = array($hook, $original, 0, $label, $render);
+                    $this->callbacks[$phase_key][2] += $self;
+                }
+            };
+            $this->wrappers->offsetSet($wrapper);
+            return $wrapper;
         }
 
         /** Raw milestones in ms since request start, for cross-referencing other collectors. */
@@ -255,7 +301,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
         public function report($map) {
             // Called from the capture's shutdown handler, i.e. after output: this mark
             // closes the ledger so the segment table accounts for the WHOLE request.
-            $this->mark('request_end');
+            $this->finish();
             $segments = $this->segments();
 
             // Per-plugin include cost, slugged, largest first.
@@ -294,15 +340,32 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 if ('core' !== $component) {
                     $components[$component] = round((isset($components[$component]) ? $components[$component] : 0) + $ms, 2);
                 }
-                $entry = array('hook' => $hook, 'label' => $label, 'component' => $component, 'ms' => round($ms, 2));
+                $source = $this->callable_source($callable);
+                $entry = array('hook' => $hook, 'label' => $label, 'component' => $component, 'ms' => round($ms, 2), 'file' => $source['file'], 'line' => $source['line'], 'evidence' => 'callback self wall time');
                 $top[] = $entry;
 
-                if (self::is_render_hook($hook)) {
+                if (isset($c[4]) ? $c[4] : self::is_render_hook($hook)) {
                     $render['timed_ms'] += $ms;
                     $render['components'][$component] =
                         round((isset($render['components'][$component]) ? $render['components'][$component] : 0) + $ms, 2);
                     $render['top'][] = $entry;
                 }
+            }
+            foreach ($this->stream_spans as $span) {
+                $owner = $map->classify_file($span['file']);
+                if (!$span['render']) continue;
+                $render['timed_ms'] += $span['ms'];
+                $component = $owner['component'];
+                $render['components'][$component] = (isset($render['components'][$component]) ? $render['components'][$component] : 0) + $span['ms'];
+            }
+            $files = $this->template_files($map);
+            foreach ($files as $entry) {
+                if (empty($entry['render'])) continue;
+                $render['timed_ms'] += $entry['ms'];
+                $component = $entry['component'];
+                $render['components'][$component] = (isset($render['components'][$component]) ? $render['components'][$component] : 0) + $entry['ms'];
+                $render['top'][] = array('hook' => 'template file', 'label' => basename($entry['file']), 'component' => $component,
+                    'ms' => $entry['ms'], 'file' => $entry['file'], 'line' => 1, 'evidence' => 'template residual wall time');
             }
             foreach ($hooks as &$h) {
                 $h['ms'] = round($h['ms'], 2);
@@ -325,6 +388,17 @@ if (!class_exists('SSPA_Boot_Timer')) {
             }
 
             return array(
+                'attributed_ms' => round($this->callback_wall_ms + array_sum($includes), 2),
+                'reference_callbacks_untimed' => array_values($this->reference_callbacks),
+                'unreflected_callbacks_untimed' => array_values($this->unreflected_callbacks),
+                'hook_mode' => $this->hook_mode,
+                'callback_count' => $this->callback_count,
+                'timing_basis' => 'exclusive wall time; SQL and HTTP may be inside callbacks',
+                'template_files' => $files,
+                'template_files_unclosed' => count($this->template_starts),
+                'render_regions' => $this->regions(),
+                'largest_gap' => $this->largest_gap(),
+                'cpu' => $this->cpu_report(),
                 'segments' => $segments,
                 'includes' => array_slice($includes, 0, 100, true),
                 'hooks' => $hooks,
@@ -333,6 +407,121 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 'render' => $render,
                 'assets' => $this->assets(),
             );
+        }
+
+        /** Exact native load_template windows; the main file has context boundaries only. */
+        private function template_files($map) {
+            $files = array();
+            foreach ($this->template_spans as $index => $span) {
+                $covered = $this->intervals;
+                foreach ($this->template_spans as $child_index => $child) {
+                    if ($child_index !== $index && $child['start'] >= $span['start'] && $child['end'] <= $span['end']) $covered[] = array($child['start'], $child['end']);
+                }
+                usort($covered, function ($a, $b) { return $a[0] <=> $b[0]; });
+                $cursor = $span['start'];
+                $self = 0;
+                foreach ($covered as $interval) {
+                    if ($interval[1] <= $cursor) continue;
+                    if ($interval[0] >= $span['end']) break;
+                    $self += max(0, min($interval[0], $span['end']) - $cursor);
+                    $cursor = max($cursor, $interval[1]);
+                }
+                $self += max(0, $span['end'] - $cursor);
+                $key = $span['file'] . ($span['render'] ? ':render' : ':boot');
+                if (!isset($files[$key])) {
+                    $owner = $map->classify_file($span['file']);
+                    $files[$key] = array('file' => $span['file'], 'component' => $owner['component'], 'render' => $span['render'], 'ms' => 0, 'calls' => 0);
+                }
+                $files[$key]['ms'] += $self * 1000;
+                $files[$key]['calls']++;
+            }
+            foreach ($files as &$file) $file['ms'] = round($file['ms'], 2);
+            unset($file);
+            $files = array_values($files);
+            usort($files, function ($a, $b) { return $b['ms'] <=> $a['ms']; });
+            return $files;
+        }
+
+        private function event($name) {
+            if (!$this->template || (null !== $this->wall_end && 'request_end' !== $name)) return;
+            $this->events[] = array('name' => $name, 'time' => microtime(true), 'template' => $this->template);
+        }
+
+        /** Boundary windows locate code; they are not additional callback attribution. */
+        private function regions() {
+            $regions = array();
+            for ($i = 1; $i < count($this->events); $i++) {
+                $a = $this->events[$i - 1];
+                $b = $this->events[$i];
+                $regions[] = array('after' => $a['name'], 'before' => $b['name'],
+                    'template' => $a['template'], 'ms' => round(($b['time'] - $a['time']) * 1000, 2));
+            }
+            usort($regions, function ($a, $b) { return $b['ms'] <=> $a['ms']; });
+            return array_slice($regions, 0, 40);
+        }
+
+        private function largest_gap() {
+            $intervals = $this->intervals;
+            foreach ($this->template_spans as $span) {
+                if ($span['render']) $intervals[] = array($span['start'], $span['end']);
+            }
+            usort($intervals, function ($a, $b) { return $a[0] <=> $b[0]; });
+            $largest = null;
+            $index = 0;
+            for ($i = 1; $i < count($this->events); $i++) {
+                $a = $this->events[$i - 1];
+                $b = $this->events[$i];
+                $cursor = $a['time'];
+                while (isset($intervals[$index]) && $intervals[$index][1] <= $cursor) $index++;
+                for ($j = $index; $j < count($intervals); $j++) {
+                    $span = $intervals[$j];
+                    if ($span[1] <= $cursor) continue;
+                    if ($span[0] >= $b['time']) break;
+                    $end = min($span[0], $b['time']);
+                    if ($end > $cursor && (!$largest || ($end - $cursor) * 1000 > $largest['ms'])) {
+                        $largest = array('ms' => ($end - $cursor) * 1000, 'after' => $a['name'], 'before' => $b['name'], 'template' => $a['template']);
+                    }
+                    $cursor = max($cursor, $span[1]);
+                }
+                if ($cursor < $b['time'] && (!$largest || ($b['time'] - $cursor) * 1000 > $largest['ms'])) {
+                    $largest = array('ms' => ($b['time'] - $cursor) * 1000, 'after' => $a['name'], 'before' => $b['name'], 'template' => $a['template']);
+                }
+            }
+            if ($largest) $largest['ms'] = round($largest['ms'], 2);
+            return $largest;
+        }
+
+        /** Native I/O intervals subtract from enclosing callback/file wall time. */
+        public function stream_interval($start, $end, $call) {
+            if (null !== $this->wall_end) return;
+            $ms = ($end - $start) * 1000;
+            if ($this->stack) $this->stack[count($this->stack) - 1] += $ms;
+            $this->intervals[] = array($start, $end);
+            $this->callback_wall_ms += $ms;
+            $this->stream_spans[] = array('ms' => $ms, 'file' => $call['file'], 'line' => $call['line'], 'url' => $call['url'], 'render' => isset($this->milestones['template_redirect']));
+        }
+
+        public function finish() {
+            if (null !== $this->wall_end) return;
+            $this->wall_end = microtime(true);
+            $this->cpu_end = function_exists('getrusage') ? getrusage() : null;
+            $this->mark('request_end');
+            $this->event('request_end');
+        }
+
+        private function cpu_report() {
+            $wall = ($this->wall_end - $this->wall_start) * 1000;
+            if (null === $this->cpu_start) {
+                return array('available' => false, 'wall_ms' => round($wall, 2));
+            }
+            $end = $this->cpu_end;
+            $cpu = 0;
+            foreach (array('utime', 'stime') as $kind) {
+                $cpu += ($end['ru_' . $kind . '.tv_sec'] - $this->cpu_start['ru_' . $kind . '.tv_sec']) * 1000
+                    + ($end['ru_' . $kind . '.tv_usec'] - $this->cpu_start['ru_' . $kind . '.tv_usec']) / 1000;
+            }
+            return array('available' => true, 'wall_ms' => round($wall, 2), 'cpu_ms' => round($cpu, 2),
+                'non_cpu_ms' => round(max(0, $wall - $cpu), 2), 'scope' => 'profiler arm to request end');
         }
 
         /**
@@ -432,36 +621,34 @@ if (!class_exists('SSPA_Boot_Timer')) {
             return is_object($callable) ? get_class($callable) . '::__invoke' : 'unknown';
         }
 
-        private function callable_file($callable) {
-            try {
-                if ($callable instanceof Closure || (is_string($callable) && function_exists($callable))) {
-                    $ref = new ReflectionFunction($callable);
-                    return $ref->getFileName() ?: null;
-                }
-                if (is_array($callable) && 2 === count($callable) && method_exists($callable[0], $callable[1])) {
-                    $ref = new ReflectionMethod($callable[0], $callable[1]);
-                    $file = $ref->getFileName() ?: null;
-                    // A plugin subclass calling through a core base method (every widget:
-                    // [WC_Widget_X, 'display_callback'] resolves to WP_Widget in core)
-                    // should be attributed to the SUBCLASS's file, or all widgets read
-                    // as "core".
-                    if ($file && is_object($callable[0]) && false !== strpos(str_replace('\\', '/', $file), '/wp-includes/')) {
-                        $cref = new ReflectionClass($callable[0]);
-                        $cfile = $cref->getFileName() ?: null;
-                        if ($cfile && false === strpos(str_replace('\\', '/', $cfile), '/wp-includes/')) {
-                            $file = $cfile;
-                        }
-                    }
-                    return $file;
-                }
-                if (is_object($callable) && method_exists($callable, '__invoke')) {
-                    $ref = new ReflectionMethod($callable, '__invoke');
-                    return $ref->getFileName() ?: null;
-                }
-            } catch (Throwable $e) {
-                return null;
+        private function reflection($callable) {
+            if (is_array($callable)) return new ReflectionMethod($callable[0], $callable[1]);
+            if (is_string($callable) && false !== strpos($callable, '::')) {
+                list($class, $method) = explode('::', $callable, 2);
+                return new ReflectionMethod($class, $method);
             }
-            return null;
+            if (is_object($callable) && !($callable instanceof Closure)) return new ReflectionMethod($callable, '__invoke');
+            return new ReflectionFunction($callable);
+        }
+
+        private function callable_source($callable) {
+            try {
+                $ref = $this->reflection($callable);
+                return array('file' => $ref->getFileName() ?: null, 'line' => $ref->getStartLine() ?: null);
+            } catch (ReflectionException $e) {
+                return array('file' => null, 'line' => null);
+            }
+        }
+
+        /** Ownership can be the widget subclass; source remains the declaring method. */
+        private function callable_file($callable) {
+            $file = $this->callable_source($callable)['file'];
+            if ($file && is_array($callable) && is_object($callable[0]) && false !== strpos(str_replace('\\', '/', $file), '/wp-includes/')) {
+                $ref = new ReflectionClass($callable[0]);
+                $subclass_file = $ref->getFileName();
+                if ($subclass_file && false === strpos(str_replace('\\', '/', $subclass_file), '/wp-includes/')) return $subclass_file;
+            }
+            return $file;
         }
     }
 }

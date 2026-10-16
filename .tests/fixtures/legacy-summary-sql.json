@@ -1,0 +1,225 @@
+{
+  "source": "Actual SQL/HTTP projection of the synthetic native fixture captured on unmodified 0.43.4; unrelated boot/path data omitted.",
+  "sample": {
+    "wall_ms": 1069.2,
+    "code": 200,
+    "error": null,
+    "error_message": null,
+    "cached": false,
+    "gen_ms": 1054.3,
+    "body_hash": "64ecb07297dc38de434cb70278d74b8f",
+    "blocked_by": null,
+    "blocked_confidence": null,
+    "blocked_reason": null,
+    "php_diagnostics": {
+      "schema": 1,
+      "coverage": "observer_delivery",
+      "reason": null,
+      "count": 0,
+      "retained_count": 0,
+      "truncated": false,
+      "events": []
+    }
+  },
+  "capture": {
+    "overview": {
+      "gen_ms": 1054.3489456176758,
+      "peak_mem": 46137344,
+      "via_cloudflare": false,
+      "cf_country": null,
+      "code": 200,
+      "included_files": 1468,
+      "is_admin": false,
+      "php": "8.5.10",
+      "wp": "7.1",
+      "capture_mode": "full"
+    },
+    "sql": {
+      "mode": "full",
+      "count": 9,
+      "total_ms": 5.654,
+      "rows_total": 4,
+      "dupe_count": 1,
+      "dupe_details": [
+        {
+          "count": 2,
+          "ms": 0.367,
+          "sql": "SELECT a.*, g.slug AS `group` FROM wp_actionscheduler_actions a LEFT JOIN wp_actionscheduler_groups g ON a.group_id=g.group_id WHERE a.action_id=6",
+          "component": "woocommerce"
+        }
+      ],
+      "truncated": false,
+      "frames_truncated": 0,
+      "queries": [
+        {
+          "event_id": "q-1",
+          "sql": "INSERT IGNORE INTO wp_options (option_name, option_value, autoload) VALUES ('sspa_used_5c357701c35043cb918e9f20a7ef8d4c', '1792159545', 'off')",
+          "fp": "INSERT IGNORE INTO wp_options (option_name, option_value, autoload) VALUES (?...)",
+          "ms": 4.039,
+          "rows": 1,
+          "err": null,
+          "component": "mu:sspa-loader",
+          "ctype": "mu-plugin",
+          "caller": "SSPA_Profiling_WPDB::query (sspa-loader.php:90)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-2",
+          "sql": "SELECT p.ID FROM wp_posts p WHERE post_type='scheduled-action' AND p.post_title='action_scheduler/migration_hook' AND p.post_status IN ('in-progress') ORDER BY p.post_date_gmt ASC LIMIT 0, 1",
+          "fp": "SELECT p.ID FROM wp_posts p WHERE post_type=? AND p.post_title=? AND p.post_status IN(?...) ORDER BY p.post_date_gmt ASC LIMIT ?, ?",
+          "ms": 0.229,
+          "rows": 0,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_col (ActionScheduler_wpPostStore.php:474)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-3",
+          "sql": "SELECT a.action_id FROM wp_actionscheduler_actions a WHERE 1=1 AND a.hook='action_scheduler/migration_hook' AND a.status IN ('in-progress') ORDER BY a.scheduled_date_gmt ASC LIMIT 0, 1",
+          "fp": "SELECT a.action_id FROM wp_actionscheduler_actions a WHERE ?=? AND a.hook=? AND a.status IN(?...) ORDER BY a.scheduled_date_gmt ASC LIMIT ?, ?",
+          "ms": 0.171,
+          "rows": 0,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_col (ActionScheduler_DBStore.php:646)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-4",
+          "sql": "SELECT p.ID FROM wp_posts p WHERE post_type='scheduled-action' AND p.post_title='action_scheduler/migration_hook' AND p.post_status IN ('pending') ORDER BY p.post_date_gmt ASC LIMIT 0, 1",
+          "fp": "SELECT p.ID FROM wp_posts p WHERE post_type=? AND p.post_title=? AND p.post_status IN(?...) ORDER BY p.post_date_gmt ASC LIMIT ?, ?",
+          "ms": 0.167,
+          "rows": 0,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_col (ActionScheduler_wpPostStore.php:474)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-5",
+          "sql": "SELECT a.action_id FROM wp_actionscheduler_actions a WHERE 1=1 AND a.hook='action_scheduler/migration_hook' AND a.status IN ('pending') ORDER BY a.scheduled_date_gmt ASC LIMIT 0, 1",
+          "fp": "SELECT a.action_id FROM wp_actionscheduler_actions a WHERE ?=? AND a.hook=? AND a.status IN(?...) ORDER BY a.scheduled_date_gmt ASC LIMIT ?, ?",
+          "ms": 0.201,
+          "rows": 1,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_col (ActionScheduler_DBStore.php:646)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-6",
+          "sql": "SELECT a.*, g.slug AS `group` FROM wp_actionscheduler_actions a LEFT JOIN wp_actionscheduler_groups g ON a.group_id=g.group_id WHERE a.action_id=6",
+          "fp": "SELECT a.*, g.slug AS `group` FROM wp_actionscheduler_actions a LEFT JOIN wp_actionscheduler_groups g ON a.group_id=g.group_id WHERE a.action_id=?",
+          "ms": 0.155,
+          "rows": 1,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_row (ActionScheduler_DBStore.php:338)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-7",
+          "sql": "SELECT a.*, g.slug AS `group` FROM wp_actionscheduler_actions a LEFT JOIN wp_actionscheduler_groups g ON a.group_id=g.group_id WHERE a.action_id=6",
+          "fp": "SELECT a.*, g.slug AS `group` FROM wp_actionscheduler_actions a LEFT JOIN wp_actionscheduler_groups g ON a.group_id=g.group_id WHERE a.action_id=?",
+          "ms": 0.212,
+          "rows": 1,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_row (ActionScheduler_DBStore.php:338)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-8",
+          "sql": "SELECT p.ID FROM wp_posts p WHERE post_type='scheduled-action' AND p.post_title='wc_schedule_pending_batch_processes' AND p.post_status IN ('in-progress', 'pending') ORDER BY p.post_date_gmt ASC LIMIT 0, 1",
+          "fp": "SELECT p.ID FROM wp_posts p WHERE post_type=? AND p.post_title=? AND p.post_status IN(?...) ORDER BY p.post_date_gmt ASC LIMIT ?, ?",
+          "ms": 0.291,
+          "rows": 0,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_col (ActionScheduler_wpPostStore.php:474)",
+          "via": null,
+          "chain": null
+        },
+        {
+          "event_id": "q-9",
+          "sql": "SELECT a.action_id FROM wp_actionscheduler_actions a WHERE 1=1 AND a.hook='wc_schedule_pending_batch_processes' AND a.status IN ('in-progress', 'pending') LIMIT 0, 1",
+          "fp": "SELECT a.action_id FROM wp_actionscheduler_actions a WHERE ?=? AND a.hook=? AND a.status IN(?...) LIMIT ?, ?",
+          "ms": 0.189,
+          "rows": 0,
+          "err": null,
+          "component": "woocommerce",
+          "ctype": "plugin",
+          "caller": "wpdb::get_col (ActionScheduler_DBStore.php:646)",
+          "via": null,
+          "chain": null
+        }
+      ]
+    },
+    "components": {
+      "mu:sspa-loader": {
+        "type": "mu-plugin",
+        "query_count": 1,
+        "sql_ms": 4.039,
+        "rows": 1,
+        "slowest_ms": 4.039,
+        "http_ms": 0,
+        "mail_count": 0
+      },
+      "woocommerce": {
+        "type": "plugin",
+        "query_count": 8,
+        "sql_ms": 1.615,
+        "rows": 3,
+        "slowest_ms": 0.291,
+        "http_ms": 0,
+        "mail_count": 0
+      },
+      "core": {
+        "type": "core",
+        "query_count": 0,
+        "sql_ms": 0,
+        "rows": 0,
+        "slowest_ms": 0,
+        "http_ms": 2.8,
+        "mail_count": 0
+      }
+    },
+    "http": {
+      "count": 1,
+      "total_ms": 2.8,
+      "calls": [
+        {
+          "scheme": "http",
+          "url": "tests-actionable-summary.super-speedy-performance-analysis.localhost/wp-cron.php",
+          "q": "doing_wp_cron",
+          "method": "POST",
+          "ms": 2.8,
+          "code": false,
+          "blocking": false,
+          "sslverify": false,
+          "trace": "SSPA_Capture::http_end < WP_Hook::apply_filters < WP_Hook::do_action",
+          "component": "core",
+          "ctype": "core",
+          "caller": "SSPA_Capture::http_end (class-wp-hook.php:353)",
+          "via": null,
+          "chain": null
+        }
+      ]
+    }
+  }
+}

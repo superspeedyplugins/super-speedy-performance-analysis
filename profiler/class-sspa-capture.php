@@ -55,12 +55,16 @@ if (!class_exists('SSPA_Capture')) {
             require_once __DIR__ . '/class-sspa-boot-timer.php';
             if (class_exists('SSPA_Boot_Timer')) {
                 $this->boot_timer = new SSPA_Boot_Timer();
-                $this->boot_timer->install();
+                $this->boot_timer->install(isset($this->flags['ah']) && in_array($this->flags['ah'], array('all', 'none'), true) ? $this->flags['ah'] : 'selected');
+            }
+            if (!empty($this->flags['rs'])) {
+                require_once __DIR__ . '/class-sspa-stream-timer.php';
+                SSPA_Stream_Timer::install($this->boot_timer);
             }
             // Phase-5 sampling collector: negligible overhead, so it runs during the
             // measurement pass without distorting it. Absent extension = null section.
             require_once __DIR__ . '/class-sspa-excimer.php';
-            if (class_exists('SSPA_Excimer') && SSPA_Excimer::available()) {
+            if (class_exists('SSPA_Excimer') && SSPA_Excimer::available() && (!isset($this->flags['xp']) || '0' !== $this->flags['xp'])) {
                 $this->excimer = new SSPA_Excimer();
                 $this->excimer->start();
             }
@@ -292,6 +296,8 @@ if (!class_exists('SSPA_Capture')) {
                 return;
             }
 
+            $request_end = microtime(true);
+            if ($this->boot_timer) $this->boot_timer->finish();
             require_once __DIR__ . '/class-sspa-component-map.php';
             require_once __DIR__ . '/fingerprint.php';
             $map = new SSPA_Component_Map();
@@ -310,7 +316,7 @@ if (!class_exists('SSPA_Capture')) {
             $mail = $this->collect_mail($map);
 
             $overview = array(
-                'gen_ms' => isset($timestart) ? (microtime(true) - $timestart) * 1000 : null,
+                'gen_ms' => isset($timestart) ? ($request_end - $timestart) * 1000 : null,
                 'peak_mem' => memory_get_peak_usage(true),
                 // The measurement path matters: a loopback that bypasses a CDN arrives
                 // WITHOUT CDN-added headers (Cloudflare geolocation, WAF marks), so
@@ -356,6 +362,7 @@ if (!class_exists('SSPA_Capture')) {
                 'overview' => $overview,
                 'sql' => $sql,
                 'http' => $http,
+                'raw_streams' => !empty($this->flags['rs']) ? SSPA_Stream_Timer::report() : array('enabled' => false),
                 'mail' => $mail,
                 'cache' => $cache,
                 'fatal' => $fatal,
@@ -459,6 +466,19 @@ if (!class_exists('SSPA_Capture')) {
                 }
             }
 
+            // The profiler's own queries are observer overhead, not site components.
+            // Preserve the cost explicitly, outside the site's SQL ledger.
+            $observer = array('count' => 0, 'total_ms' => 0);
+            $entries = array_values(array_filter($entries, function ($entry) use (&$observer) {
+                if (in_array($entry['component'], array('mu:sspa-loader', 'super-speedy-performance-analysis'), true)) {
+                    $observer['count']++;
+                    $observer['total_ms'] += $entry['ms'];
+                    return false;
+                }
+                return true;
+            }));
+            $observer['total_ms'] = round($observer['total_ms'], 3);
+
             // Decide which entries keep full SQL: top N slowest, slow, big, or errored.
             $by_ms = array();
             foreach ($entries as $i => $e) {
@@ -521,6 +541,7 @@ if (!class_exists('SSPA_Capture')) {
 
             return array(
                 'mode' => $mode,
+                'profiler_overhead' => $observer,
                 'count' => ($mode === 'none' && isset($wpdb->num_queries)) ? (int) $wpdb->num_queries : count($entries),
                 // With no per-query capture these are UNKNOWN, not zero. Storing 0 made a
                 // blind run (e.g. riding an active Query Monitor on an anonymous request)
