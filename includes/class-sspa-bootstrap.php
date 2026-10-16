@@ -20,6 +20,8 @@ class SSPA_Bootstrap {
 
     public static function register() {
         spl_autoload_register(array(__CLASS__, 'autoload'));
+        SSPA_Mail::register();
+        add_action('admin_notices', array('SSPA_Mail', 'notice'));
 
         if (SSPA_DB_VERSION !== get_option('sspa_db_version') || SSPA_VERSION !== get_option('sspa_behaviour_version')) {
             add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));

@@ -40,6 +40,7 @@ class SSPA_Checkout_Preflight {
             // Where orders live. The order screens this flow measures are a different piece
             // of software under HPOS, so a management timing without it is uncomparable.
             'hpos' => null,
+            'mail_warning' => SSPA_Mail::warning(),
             'emails' => array(),
             'emails_deferred' => null,
             'webhooks' => array(),
@@ -174,7 +175,7 @@ class SSPA_Checkout_Preflight {
                 'enabled' => (bool) $email->is_enabled(),
                 // A customer email has no configured recipient: it goes to the address on
                 // the order, which for this run is the tagged admin address.
-                'recipient' => $recipient !== '' ? $recipient : null,
+                'recipient' => SSPA_Mail::address('analysis'),
                 'hooks' => array_values($hooks),
             );
         }

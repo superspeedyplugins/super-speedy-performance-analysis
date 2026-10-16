@@ -74,7 +74,7 @@
 		data.url = url;
 		data.method = method;
 		if (workflow) {
-			data.mail_mode = workflow.mail_mode || 'suppress';
+			data.mail_mode = 'deliver';
 			data.trigger = 'workflow';
 			data.workflow_transport = workflow.transport || '';
 		}

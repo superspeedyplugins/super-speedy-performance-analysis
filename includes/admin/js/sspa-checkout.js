@@ -68,6 +68,7 @@
 		var inv = d.inventory;
 		var html = '<div class="sspa-adhoc-span"><h3 class="sspa-ck-h">Before this runs, here is exactly what it will do</h3>';
 
+		if (inv.mail_warning) html += '<p class="sspa-adhoc-error">' + esc(inv.mail_warning) + '</p>';
 		if (!inv.woocommerce) {
 			body('<p class="sspa-adhoc-error">WooCommerce is not active, so there is no checkout to profile.</p>');
 			return;
@@ -146,7 +147,7 @@
 		});
 
 		html += '<h4 class="sspa-ck-h4">Leave everything on for a real measurement</h4>' +
-			'<label class="sspa-ck-opt"><input type="checkbox" class="sspa-ck-mail" checked> Send the order emails for real (measures your mail server too)</label>' +
+			'<p class="sspa-adhoc-note">Emails go to the site administrator; send/queue time is measured.</p>' +
 			'<label class="sspa-ck-opt"><input type="checkbox" class="sspa-ck-integrations" checked> Let third-party integrations run</label>' +
 			'<label class="sspa-ck-opt"><input type="checkbox" class="sspa-ck-webhooks" checked> Let webhooks fire</label>' +
 			'<p class="sspa-adhoc-note">Turning any of these off is recorded with the result, so a partial run cannot later be mistaken for a full one.</p>';
@@ -225,7 +226,7 @@
 				return component + ' (' + d.mail.by_component[component] + ')';
 			}).join(', ');
 			html += '<p class="sspa-adhoc-note"><strong>Mail:</strong> ' + esc(d.mail.count) +
-				' message' + (1 === d.mail.count ? '' : 's') + ' constructed in ' + ms(d.mail.ms) +
+				' message' + (1 === d.mail.count ? '' : 's') + ('deliver' === d.mail.mode ? ' sent/queued in ' + ms(d.mail.ms) : ('construct' === d.mail.mode ? ' constructed in ' + ms(d.mail.ms) : ' attempted; transport time not measured')) +
 				(senders ? ' by ' + esc(senders) : '') +
 				(d.mail.mode ? ' · mode: ' + esc(d.mail.mode) : '') + '.</p>';
 		}
@@ -542,7 +543,7 @@
 		var pop = panel();
 		post('sspa_checkout_start', {
 			payment_mode: pop.find('input[name="sspa-ck-pm"]:checked').val() || 'no_payment',
-			mail_mode: pop.find('.sspa-ck-mail').is(':checked') ? 'deliver' : 'construct',
+			mail_mode: 'deliver',
 			allow_integrations: pop.find('.sspa-ck-integrations').is(':checked') ? 1 : 0,
 			allow_webhooks: pop.find('.sspa-ck-webhooks').is(':checked') ? 1 : 0
 		}, function (resp) {

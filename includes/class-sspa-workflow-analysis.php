@@ -4,10 +4,9 @@ defined('ABSPATH') || exit;
 /**
  * Settings-page workflow picker and controlled editor launcher.
  *
- * The browser loads the selected object's real editor in a same-origin frame. Classic
- * workflows submit that editor's complete form; REST workflows send one empty update through
- * the editor's own authenticated API client. Both are no-change saves, so real update hooks
- * run without SSPA inventing a field mutation that then has to be restored.
+ * The browser loads a temporary administrator-owned object's editor in a same-origin frame.
+ * Classic workflows submit its form; REST workflows send an empty update through the
+ * authenticated API client. The run removes the object after measuring its save hooks.
  */
 class SSPA_Workflow_Analysis {
 
@@ -49,82 +48,84 @@ class SSPA_Workflow_Analysis {
         return $types;
     }
 
-    /** The newest modified editable object is first and therefore the picker default. */
+    const TEMP_OPTION = 'sspa_workflow_object';
+
+    /** Existing site content is never offered as a workflow target. */
     public static function targets($object_type, $limit = 50) {
-        $object_type = sanitize_key($object_type);
-        $limit = max(1, min(100, (int) $limit));
-        $targets = array();
+        return array();
+    }
 
+    public static function owns($object_type, $object_id) {
+        $entry = get_option(self::TEMP_OPTION, array());
+        if (empty($entry['id']) || (int) $entry['id'] !== (int) $object_id || $entry['type'] !== $object_type) {
+            return false;
+        }
         if ('order' === $object_type) {
-            if (!class_exists('WooCommerce') || !function_exists('wc_get_orders')) {
-                return $targets;
-            }
-            $orders = wc_get_orders(array(
-                'limit' => $limit,
-                'return' => 'objects',
-                'type' => 'shop_order',
-                'status' => array_keys(wc_get_order_statuses()),
-                'orderby' => 'modified',
-                'order' => 'DESC',
-            ));
-            foreach ($orders as $order) {
-                if (!$order || !current_user_can('edit_shop_order', $order->get_id())) {
-                    continue;
-                }
-                $targets[] = array(
-                    'id' => $order->get_id(),
-                    'label' => sprintf(
-                        /* translators: 1: order number, 2: billing name, 3: status, 4: modified date */
-                        __('Order #%1$s · %2$s · %3$s · modified %4$s', 'super-speedy-performance-analysis'),
-                        $order->get_order_number(),
-                        trim($order->get_formatted_billing_full_name()) ?: __('Guest', 'super-speedy-performance-analysis'),
-                        wc_get_order_status_name($order->get_status()),
-                        $order->get_date_modified() ? $order->get_date_modified()->date_i18n(get_option('date_format') . ' ' . get_option('time_format')) : __('unknown', 'super-speedy-performance-analysis')
-                    ),
-                );
-            }
-            return $targets;
+            $order = wc_get_order($object_id);
+            return $order && $order->get_meta('_sspa_temp') && $order->get_meta('_sspa_workflow');
         }
+        return (bool) get_post_meta($object_id, '_sspa_workflow', true);
+    }
 
-        $object = get_post_type_object($object_type);
-        if (!$object || !$object->public || !$object->show_ui || empty($object->cap->edit_posts)
-            || !current_user_can($object->cap->edit_posts)) {
-            return $targets;
+    public static function bind_run($run_id) {
+        $entry = get_option(self::TEMP_OPTION, array());
+        $entry['run_id'] = (int) $run_id;
+        update_option(self::TEMP_OPTION, $entry, false);
+    }
+
+    public static function cleanup($run_id = 0) {
+        $entry = get_option(self::TEMP_OPTION, array());
+        if (!$entry || ($run_id && (int) ($entry['run_id'] ?? 0) !== (int) $run_id)) {
+            return;
         }
-        $posts = get_posts(array(
-            'post_type' => $object_type,
-            'post_status' => 'any',
-            'posts_per_page' => $limit,
-            'orderby' => 'modified',
-            'order' => 'DESC',
-            'suppress_filters' => false,
-        ));
-        foreach ($posts as $post) {
-            if (!current_user_can('edit_post', $post->ID)) {
-                continue;
+        if (self::owns($entry['type'], $entry['id'])) {
+            SSPA_Probes::delete_temp((int) $entry['id'], 'order' === $entry['type']);
+        }
+        delete_option(self::TEMP_OPTION);
+    }
+
+    private static function create_target($object_type) {
+        self::cleanup();
+        // Recover marked objects even if PHP stopped before the launch registry was saved.
+        foreach (get_posts(array('post_type' => 'any', 'post_status' => 'any', 'posts_per_page' => -1, 'meta_key' => '_sspa_workflow', 'meta_value' => '1', 'fields' => 'ids')) as $stale_id) {
+            SSPA_Probes::delete_temp((int) $stale_id);
+        }
+        if (function_exists('wc_get_orders')) {
+            foreach (wc_get_orders(array('limit' => -1, 'type' => 'shop_order', 'meta_key' => '_sspa_workflow', 'meta_value' => '1', 'return' => 'ids')) as $stale_id) {
+                SSPA_Probes::delete_temp((int) $stale_id, true);
             }
-            $title = get_the_title($post);
-            $status = get_post_status_object($post->post_status);
-            $targets[] = array(
-                'id' => $post->ID,
-                'label' => sprintf(
-                    /* translators: 1: title, 2: object ID, 3: status, 4: modified date */
-                    __('%1$s · #%2$d · %3$s · modified %4$s', 'super-speedy-performance-analysis'),
-                    $title ? $title : __('(untitled)', 'super-speedy-performance-analysis'),
-                    $post->ID,
-                    $status ? $status->label : $post->post_status,
-                    get_the_modified_date(get_option('date_format') . ' ' . get_option('time_format'), $post)
-                ),
-            );
         }
-        return $targets;
+        if ('order' === $object_type) {
+            $id = SSPA_Probes::create_temp_order(true);
+            if (!$id) {
+                return new WP_Error('sspa_workflow_create', __('Could not create the workflow order.', 'super-speedy-performance-analysis'));
+            }
+            update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0), false);
+            $order = wc_get_order($id);
+            $order->update_meta_data('_sspa_workflow', '1');
+            SSPA_Mail::with_admin(static function() use ($order) { $order->save(); });
+        } else {
+            $id = SSPA_Probes::create_temp_copy($object_type, true);
+            update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0), false);
+            if ('product' === $object_type) {
+                $product = wc_get_product($id);
+                $product->set_regular_price('0');
+                $product->set_price('0');
+                $product->set_manage_stock(true);
+                $product->set_stock_quantity(100);
+                $product->set_catalog_visibility('hidden');
+                SSPA_Mail::with_admin(static function() use ($product) { $product->save(); });
+            }
+        }
+        update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0), false);
+        return $id;
     }
 
     /** Transports exposed by the installed editor for this object. */
     public static function transports($object_type, $object_id = 0) {
         $object_type = sanitize_key($object_type);
         if ('order' === $object_type) {
-            if (!class_exists('WooCommerce') || !$object_id || !function_exists('wc_get_order') || !wc_get_order($object_id)) {
+            if (!class_exists('WooCommerce') || !function_exists('wc_get_order')) {
                 return array();
             }
             return array(
@@ -148,20 +149,27 @@ class SSPA_Workflow_Analysis {
      * Build one signed editor URL. Loading this URL alone is harmless; the admin-save driver
      * validates the nonce again before it automates the selected transport.
      */
-    public static function launch($object_type, $object_id, $transport, $suppress_mail = true) {
+    public static function launch($object_type, $object_id, $transport, $legacy_mail_option = null) {
         $object_type = sanitize_key($object_type);
         $object_id = (int) $object_id;
         $transport = sanitize_key($transport);
-        $mail_mode = $suppress_mail ? 'suppress' : 'deliver';
+        $mail_mode = 'deliver';
 
         if (SSPA_Run_Controller::active_run_id()) {
             return new WP_Error('sspa_workflow_active', __('An analysis is already running.', 'super-speedy-performance-analysis'));
+        }
+        if (!in_array($object_type, wp_list_pluck(self::object_types(), 'key'), true)) {
+            return new WP_Error('sspa_workflow_type', __('That content type cannot be analysed.', 'super-speedy-performance-analysis'));
         }
         $available = wp_list_pluck(self::transports($object_type, $object_id), 'key');
         if (!in_array($transport, $available, true)) {
             return new WP_Error('sspa_workflow_transport', __('That save transport is not available for this editor.', 'super-speedy-performance-analysis'));
         }
 
+        $object_id = self::create_target($object_type);
+        if (is_wp_error($object_id)) {
+            return $object_id;
+        }
         if ('order' === $object_type) {
             $order = function_exists('wc_get_order') ? wc_get_order($object_id) : false;
             if (!$order || !current_user_can('edit_shop_order', $object_id)) {
@@ -186,7 +194,7 @@ class SSPA_Workflow_Analysis {
             'sspa_workflow_mail' => $mail_mode,
             'sspa_workflow_nonce' => wp_create_nonce($action),
         ), $editor_url);
-        return array('editor_url' => $editor_url);
+        return array('editor_url' => $editor_url, 'object_id' => $object_id, 'warning' => SSPA_Mail::warning());
     }
 
     /** Validated workflow configuration for the editor currently being rendered. */
@@ -197,10 +205,9 @@ class SSPA_Workflow_Analysis {
         $object_type = isset($context['object_type']) ? sanitize_key($context['object_type']) : '';
         $object_id = isset($context['object_id']) ? (int) $context['object_id'] : 0;
         $transport = isset($_GET['sspa_workflow_transport']) ? sanitize_key(wp_unslash($_GET['sspa_workflow_transport'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $mail_mode = isset($_GET['sspa_workflow_mail']) ? sanitize_key(wp_unslash($_GET['sspa_workflow_mail'])) : 'suppress'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $mail_mode = 'deliver' === $mail_mode ? 'deliver' : 'suppress';
+        $mail_mode = 'deliver';
         $nonce = sanitize_text_field(wp_unslash($_GET['sspa_workflow_nonce'])); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        if (!wp_verify_nonce($nonce, self::nonce_action($object_type, $object_id, $transport, $mail_mode))
+        if (!self::owns($object_type, $object_id) || !wp_verify_nonce($nonce, self::nonce_action($object_type, $object_id, $transport, $mail_mode))
             || !in_array($transport, wp_list_pluck(self::transports($object_type, $object_id), 'key'), true)) {
             return array('active' => false);
         }
@@ -244,7 +251,7 @@ class SSPA_Workflow_Analysis {
         $object_id = $targets ? (int) $targets[0]['id'] : 0;
         wp_send_json_success(array(
             'targets' => $targets,
-            'transports' => self::transports($object_type, $object_id),
+            'transports' => self::transports($object_type),
         ));
     }
 
@@ -254,8 +261,7 @@ class SSPA_Workflow_Analysis {
         $launch = self::launch(
             isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '',
             isset($_POST['object_id']) ? (int) $_POST['object_id'] : 0,
-            isset($_POST['transport']) ? sanitize_key(wp_unslash($_POST['transport'])) : '',
-            !empty($_POST['suppress_mail'])
+            isset($_POST['transport']) ? sanitize_key(wp_unslash($_POST['transport'])) : ''
         );
         if (is_wp_error($launch)) {
             wp_send_json_error(array('message' => $launch->get_error_message(), 'code' => $launch->get_error_code()));

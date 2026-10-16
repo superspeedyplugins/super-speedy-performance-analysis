@@ -40,8 +40,8 @@ class SSPA_Catalogue {
         // Noise-floor baseline (handled by the mu-loader, near-zero WP work).
         $add('baseline', home_url('/?sspa_baseline=1'));
 
-        // Mail stack construction cost (one intercepted wp_mail; nothing is delivered).
-        $add('mail-probe', home_url('/?sspa_mail_probe=1'), 'anon', array('mp' => '1', 'mail' => 'c'));
+        // Mail send/queue time (one real email to the administrator per sample).
+        $add('mail-probe', home_url('/?sspa_mail_probe=1'), 'anon', array('mp' => '1', 'mail' => 'd'));
 
         // --- Front end ---
         $add('home', home_url('/'));

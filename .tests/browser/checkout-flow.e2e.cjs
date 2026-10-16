@@ -52,7 +52,9 @@ const {
       ).toBeChecked();
       await panel.locator(".sspa-ck-webhooks").uncheck();
       await panel.locator(".sspa-ck-integrations").uncheck();
-      await expect(panel.locator(".sspa-ck-mail")).toBeChecked();
+      await expect(panel.locator(".sspa-ck-mail")).toHaveCount(0);
+      await expect(panel).toContainText("Emails go to the site administrator");
+      await expect(panel).toContainText("send/queue time is measured");
       await page.screenshot({
         path: output + "/checkout-" + kind + "-consent.png",
         fullPage: true,

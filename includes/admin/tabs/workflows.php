@@ -17,7 +17,7 @@ $sspa_workflow_types = SSPA_Workflow_Analysis::object_types();
 
     <section class="sspa-placeholder sspa-workflow-card">
         <h2><?php esc_html_e('Edit and save', 'super-speedy-performance-analysis'); ?></h2>
-        <p><?php esc_html_e('Load the selected item in a controlled same-site editor and profile its real no-change update request. This exercises the normal save hooks without changing a title, taxonomy or meta value, so no recovery save is needed.', 'super-speedy-performance-analysis'); ?></p>
+        <p><?php esc_html_e('Create a temporary administrator-owned item and profile its save through the selected editor transport, then remove it. Order workflows use a dedicated zero-price product with separate stock. Existing content and orders are never saved by this workflow.', 'super-speedy-performance-analysis'); ?></p>
 
         <?php if ($sspa_workflow_types) : ?>
             <div class="sspa-workflow-fields">
@@ -30,25 +30,14 @@ $sspa_workflow_types = SSPA_Workflow_Analysis::object_types();
                     </select>
                 </label>
 
-                <label for="sspa-workflow-object-id">
-                    <strong><?php esc_html_e('Item', 'super-speedy-performance-analysis'); ?></strong>
-                    <select id="sspa-workflow-object-id" disabled>
-                        <option><?php esc_html_e('Loading latest item…', 'super-speedy-performance-analysis'); ?></option>
-                    </select>
-                    <span class="description"><?php esc_html_e('Defaults to the most recently modified item.', 'super-speedy-performance-analysis'); ?></span>
-                </label>
-
                 <label for="sspa-workflow-transport">
                     <strong><?php esc_html_e('Save transport', 'super-speedy-performance-analysis'); ?></strong>
                     <select id="sspa-workflow-transport" disabled></select>
                 </label>
             </div>
 
-            <label class="sspa-workflow-mail">
-                <input type="checkbox" id="sspa-workflow-suppress-mail" checked>
-                <strong><?php esc_html_e('Suppress email delivery', 'super-speedy-performance-analysis'); ?></strong>
-                <span class="description"><?php esc_html_e('Recommended. Email attempts are still counted and attributed, but no message reaches the mail transport.', 'super-speedy-performance-analysis'); ?></span>
-            </label>
+            <p class="description"><?php esc_html_e('Emails go to the site administrator through the installed mailer; send/queue time is measured.', 'super-speedy-performance-analysis'); ?></p>
+            <?php if (SSPA_Mail::warning()) : ?><p class="notice notice-warning"><?php echo esc_html(SSPA_Mail::warning()); ?></p><?php endif; ?>
 
             <p>
                 <button type="button" class="button button-primary" id="sspa-workflow-run" disabled><?php esc_html_e('Analyse edit/save', 'super-speedy-performance-analysis'); ?></button>

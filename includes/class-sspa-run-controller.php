@@ -799,7 +799,7 @@ class SSPA_Run_Controller {
             // run - no temporary admin users (Dave's rule) - so the flow needs their id.
             'user_id' => !empty($args['user_id']) ? (int) $args['user_id'] : get_current_user_id(),
             'quantity' => !empty($args['quantity']) ? (int) $args['quantity'] : max(1, (int) sspa_get_option('checkout_quantity')),
-            'mail_mode' => in_array($mail_mode, array('deliver', 'construct', 'suppress'), true) ? $mail_mode : 'deliver',
+            'mail_mode' => 'deliver',
             // Whitelist: an unknown mode falls through to no payment, never to a payment.
             'payment_mode' => ('sandbox' === $payment_mode) ? 'sandbox' : 'no_payment',
             'allow_integrations' => isset($args['allow_integrations'])
@@ -1972,6 +1972,7 @@ class SSPA_Run_Controller {
     }
 
     private static function delete_queue_and_claim($run_id, $queue = null) {
+        SSPA_Workflow_Analysis::cleanup($run_id);
         if (!is_array($queue)) {
             $queue = SSPA_Run_Queue::get((int) $run_id);
         }
@@ -2128,6 +2129,8 @@ class SSPA_Run_Controller {
             'done' => $idx,
             'current' => $current,
             'current_plugin' => $current_plugin,
+            'mail_warning' => SSPA_Mail::warning(),
+            'mail_mode' => 'deliver',
             'recent' => $recent,
             'phase' => (is_array($queue) && isset($queue['sweep']['phase'])) ? (int) $queue['sweep']['phase'] : null,
             'elapsed_seconds' => $elapsed,

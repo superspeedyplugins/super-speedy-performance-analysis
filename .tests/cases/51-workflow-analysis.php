@@ -2,9 +2,9 @@
 require_once __DIR__ . "/../lib/retained-fixtures.php";
 sspa_retained_reset("51");
 // Settings-page workflow analysis. This proves the target picker discovers a newly
-// registered public CPT without a hard-coded list, defaults to its most recently modified
-// item, exposes both supported WooCommerce order transports, and runs a real no-change REST
-// save with mail suppressed while retaining the mail attempt in the profile.
+// registered public CPT without a hard-coded list, creates its own marked
+// item type, exposes both supported WooCommerce order transports, and saves a temporary
+// CPT through REST with real administrator mail and cleanup after measurement.
 
 function sspa_workflow_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
@@ -83,20 +83,13 @@ sspa_workflow_t(in_array('order', $type_keys, true), 'orders appear in the workf
 sspa_workflow_t(in_array('sspa_book', $type_keys, true), 'a public custom post type appears automatically');
 
 $targets = SSPA_Workflow_Analysis::targets('sspa_book');
-sspa_workflow_t(!empty($targets) && (int) $targets[0]['id'] === (int) $latest_id, 'the picker defaults to the most recently modified item');
+sspa_workflow_t(empty($targets), 'the workflow API never offers existing content as targets');
 
 $book_transports = wp_list_pluck(SSPA_Workflow_Analysis::transports('sspa_book', $latest_id), 'key');
 sspa_workflow_t(in_array('rest', $book_transports, true), 'a REST-enabled custom post type exposes its editor transport');
 
 $order_targets = SSPA_Workflow_Analysis::targets('order');
-$only_parent_orders = !empty($order_targets);
-foreach ($order_targets as $order_target) {
-    $target_order = wc_get_order((int) $order_target['id']);
-    if (!$target_order || is_a($target_order, 'WC_Order_Refund') || $target_order->has_status('trash')) {
-        $only_parent_orders = false;
-    }
-}
-sspa_workflow_t($only_parent_orders, 'the order picker excludes refund records and trashed synthetic orders');
+sspa_workflow_t(empty($order_targets), 'the workflow API never offers existing orders or refunds as targets');
 
 $order_ids = function_exists('wc_get_orders') ? wc_get_orders(array(
     'limit' => 1,
@@ -131,7 +124,11 @@ $request_cookies = array(
     (is_ssl() ? SECURE_AUTH_COOKIE : AUTH_COOKIE) => $auth_cookie,
 );
 
+$original_before = get_post($latest_id, ARRAY_A);
 $launch = SSPA_Workflow_Analysis::launch('sspa_book', $latest_id, 'rest', true);
+$workflow_id = is_wp_error($launch) ? 0 : ($launch['object_id'] ?? 0);
+sspa_workflow_t($workflow_id && $workflow_id !== $latest_id && SSPA_Workflow_Analysis::owns('sspa_book', $workflow_id), 'launch replaces the supplied real ID with a marked PA-owned CPT');
+update_option('sspa_workflow_fixture_target', (int) $workflow_id, false);
 if (is_wp_error($launch)) {
     echo 'FAIL: prepare workflow editor launch: ' . $launch->get_error_message() . "\n";
 } else {
@@ -142,17 +139,17 @@ if (is_wp_error($launch)) {
     ));
     $editor_html = is_wp_error($editor_response) ? '' : wp_remote_retrieve_body($editor_response);
     sspa_workflow_t(false !== strpos($editor_html, 'sspa-admin-save.js'), 'the controlled editor loads the real save driver');
-    sspa_workflow_t(false !== strpos($editor_html, '"active":true') && false !== strpos($editor_html, '"mail_mode":"suppress"'), 'the controlled editor receives the validated suppress-mail workflow');
+    sspa_workflow_t(false !== strpos($editor_html, '"active":true') && false !== strpos($editor_html, '"mail_mode":"deliver"'), 'the controlled editor receives the validated administrator-mail workflow');
 }
 
-$before = get_post($latest_id);
-$rest_target = rest_url('wp/v2/sspa_book/' . $latest_id);
+$before = get_post($workflow_id);
+$rest_target = rest_url('wp/v2/sspa_book/' . $workflow_id);
 $prepared = SSPA_Admin_Save::prepare($rest_target, 'POST', array(
     'screen_id' => 'sspa_book',
     'object_type' => 'sspa_book',
-    'object_id' => (int) $latest_id,
+    'object_id' => (int) $workflow_id,
 ), array(
-    'mail_mode' => 'suppress',
+    'mail_mode' => 'deliver',
     'trigger' => 'workflow',
     'workflow_transport' => 'rest',
 ));
@@ -191,12 +188,15 @@ if (is_wp_error($prepared)) {
     } else {
         $profile = SSPA_Profile_Panel::profile_row($finished['profile_id']);
         $capture = SSPA_Profile_Panel::capture($profile);
-        $after = get_post($latest_id);
+        $after = get_post($latest_id, ARRAY_A);
         sspa_workflow_t('workflow' === SSPA_Run_Controller::run_row($prepared['run_id'])['trigger_source'], 'the run records that the Workflows tab triggered it');
         sspa_workflow_t('admin-save-sspa_book-rest' === $profile['page_key'], 'the result names the selected editor transport');
-        sspa_workflow_t((int) $profile['mail_count'] >= 1 && 'suppress' === $capture['mail']['mode'], 'suppressed mail attempts remain visible in the profile');
-        sspa_workflow_t(!get_option('sspa_workflow_fixture_delivered') && !get_option('sspa_workflow_fixture_transport_reached'), 'suppressed workflow mail never reaches a transport');
-        sspa_workflow_t($before->post_title === $after->post_title && $before->post_content === $after->post_content, 'the save exercises update hooks without changing content or needing restoration');
+        sspa_workflow_t((int) $profile['mail_count'] >= 1 && 'deliver' === $capture['mail']['mode'], 'real administrator mail sends remain visible in the profile');
+        wp_cache_delete('sspa_workflow_fixture_delivered', 'options');
+        wp_cache_delete('sspa_workflow_fixture_transport_reached', 'options');
+        wp_cache_delete('notoptions', 'options');
+        sspa_workflow_t(get_option('sspa_workflow_fixture_delivered') && get_option('sspa_workflow_fixture_transport_reached') && $capture['mail']['total_construct_ms'] > 0, 'workflow mail reaches the real SMTP sink and records send time');
+        sspa_workflow_t($original_before === $after && !get_post($workflow_id), 'the workflow measures an owned object, removes it, and leaves the real CPT unchanged');
 
         $payload = SSPA_Community_Exporter::build(
             (int) $prepared['run_id'],
@@ -219,7 +219,7 @@ if (is_wp_error($prepared)) {
             && 'custom-post-type' === $save_evidence['data']['object_type']
             && 'rest' === $save_evidence['data']['transport']
             && 'no-change' === $save_evidence['data']['save_mode']
-            && 'suppress' === $save_evidence['data']['mail_mode']
+            && 'deliver' === $save_evidence['data']['mail_mode']
             && false === strpos(wp_json_encode($save_evidence), 'sspa_book'),
             'the shared workflow identifies a no-change custom-post-type save without exposing its private slug'
         );

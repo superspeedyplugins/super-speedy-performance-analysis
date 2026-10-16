@@ -344,6 +344,16 @@ class SSPA_Profile_Panel {
      */
     private static function notes_html($row, $capture) {
         $html = '';
+        if (!empty($capture['mail']['warning'])) {
+            $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">' . esc_html($capture['mail']['warning']) . '</p>';
+        }
+        if (!empty($capture['mail']['count']) && 'deliver' === ($capture['mail']['mode'] ?? '') && empty($capture['mail']['warning'])) {
+            $html .= '<p class="sspa-adhoc-note sspa-adhoc-span">' . esc_html(sprintf(
+                /* translators: 1: message count, 2: measured mail time in milliseconds. */
+                __('Mail: %1$d message attempts; measured send/queue time %2$s ms.', 'super-speedy-performance-analysis'),
+                $capture['mail']['count'], number_format_i18n($capture['mail']['total_construct_ms'], 2)
+            )) . '</p>';
+        }
         $samples = json_decode((string) ($row['samples'] ?? ''), true);
         $has_request_block_data = false;
         foreach ((array) $samples as $index => $sample) {

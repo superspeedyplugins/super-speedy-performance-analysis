@@ -49,7 +49,7 @@ defined('ABSPATH') || exit;
     <p>
         <label style="margin-right:1em">
             <input type="checkbox" id="sspa-include-writes" value="1">
-            <?php esc_html_e('Include write profiles (creates temporary post/product copies and an order containing its own zero-price test product with separate stock; these objects are deleted after measurement, and no email is sent)', 'super-speedy-performance-analysis'); ?>
+            <?php esc_html_e('Include write profiles (creates temporary posts/products and an order containing its own zero-price test product with separate stock; these objects are deleted after measurement, and emails go to the site administrator)', 'super-speedy-performance-analysis'); ?>
         </label>
     </p>
     <p>

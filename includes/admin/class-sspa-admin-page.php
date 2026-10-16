@@ -200,8 +200,8 @@ class SSPA_Admin_Page {
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
             'i18n' => array(
-                'loading' => __('Loading the latest items…', 'super-speedy-performance-analysis'),
-                'ready' => __('Ready. The selected item will be saved with its current values.', 'super-speedy-performance-analysis'),
+                'loading' => __('Loading save transports…', 'super-speedy-performance-analysis'),
+                'ready' => __('Ready. A temporary administrator-owned item will be created, saved and removed.', 'super-speedy-performance-analysis'),
                 'launching' => __('Loading the controlled editor…', 'super-speedy-performance-analysis'),
                 'running' => __('Saving and profiling the update request…', 'super-speedy-performance-analysis'),
                 'complete' => __('Save profiled. Opening the result…', 'super-speedy-performance-analysis'),

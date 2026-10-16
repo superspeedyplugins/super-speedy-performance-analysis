@@ -47,6 +47,7 @@
 	function body(html) {
 		var panel = pop();
 		var content = panel.find('.sspa-adhoc-body').html(html);
+		if (sspa_adhoc.mail_warning) content.prepend($('<p class="sspa-adhoc-error sspa-adhoc-span">').text(sspa_adhoc.mail_warning));
 		var running = content.find('.sspa-adhoc-running').first().clone();
 		running.find('.sspa-adhoc-elapsed').remove();
 		var message = content.find('.sspa-adhoc-error').first().text().trim()

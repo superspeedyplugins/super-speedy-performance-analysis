@@ -110,7 +110,7 @@ class SSPA_CLI {
      * what a customer waits through at each step, with the full plugin set active.
      *
      * This creates a real order, but never orders a catalogue product. Real emails are sent
-     * and real integrations fire unless their switches say otherwise. The order is completed,
+     * to the site administrator; integrations fire unless their switches say otherwise. The order is completed,
      * fully refunded locally and moved to Trash. Use --dry-run first to see what it will do.
      *
      * ## OPTIONS
@@ -122,7 +122,7 @@ class SSPA_CLI {
      * : no_payment (default) or sandbox. Sandbox needs a supported gateway in test mode.
      *
      * [--mail=<mode>]
-     * : deliver (default - real emails, really sent, really timed), construct or suppress.
+     * : Compatibility argument: mail always delivers to the site administrator; legacy construct/suppress values warn and deliver.
      *
      * [--[no-]integrations]
      * : --no-integrations unhooks third-party order callbacks. The number is then not a real-store number.
@@ -163,7 +163,10 @@ class SSPA_CLI {
             $start_args['payment_mode'] = $assoc_args['payment'];
         }
         if (!empty($assoc_args['mail'])) {
-            $start_args['mail_mode'] = $assoc_args['mail'];
+            if ('deliver' !== $assoc_args['mail']) {
+                WP_CLI::warning('No-send mail modes are retired. Emails go to the site administrator and send/queue time is measured.');
+            }
+            $start_args['mail_mode'] = 'deliver';
         }
         // WP-CLI parses --no-integrations as integrations=false; the [--[no-]x] synopsis is what
         // lets the switch through validation at all.

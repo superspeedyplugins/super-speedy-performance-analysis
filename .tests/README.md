@@ -143,9 +143,9 @@ A test case file passes when it prints at least one `PASS` line and no `FAIL` li
 Cases 103 to 109 cover build metadata, bundled-only rules, explicit profiler consent,
 mail-recipient boundaries, Traffic JSON configuration, neutral recommendation links and
 community consent notices. Run a focused case with its filename substring, for example
-`.tests/run-tests.sh 105-profiler`. Case 106 intentionally remains red while the mail
-recipient decision is stopped; it captures core SMTP and replacement mailer recipients,
-an existing-author no-change workflow and the complete baseline/write email count.
+`.tests/run-tests.sh 105-profiler`. Case 106 captures real SMTP envelopes and replacement mailer recipients, checks owned-target
+workflows for all five content types, verifies stored/rendered replacement warnings, cleanup,
+untouched real records and stock, and counts the complete baseline/write mail sends.
 
 Set `SSPA_SITE_SCOPE` to the exact resolved native site directory to forbid nested suite
 scenarios from touching any other site. Cases requiring those separate sites report failures;
@@ -485,9 +485,9 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   fields. It also fetches real post, product and HPOS order editors and pins their control and
   object-specific configuration.
 - `51-workflow-analysis.php` - the settings-page Workflows tab: automatic public-CPT
-  discovery, latest-modified target selection, both WooCommerce order transports, validated
-  controlled-editor launches, and a real no-change REST save whose attempted mail is measured
-  but suppressed before transport.
+  discovery, exclusion of existing targets, both WooCommerce order transports, validated
+  controlled-editor launches, and a real REST save of an owned temporary CPT with SMTP delivery,
+  measured send time, cleanup and untouched existing content.
 - `52-release-hardening.php` - dedicated hidden checkout product, verified/bounded profiling
   HTTP arguments, atomic owner leases, lazy anonymous bootstrap and the History uninstall
   control. The build smoke separately proves opt-in uninstall drops every table and removes

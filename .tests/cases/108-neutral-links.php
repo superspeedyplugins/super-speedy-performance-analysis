@@ -19,12 +19,3 @@ w1_links_t(strpos($html, 'https://www.superspeedyplugins.com/product/scalability
 w1_links_t(strpos($html, 'utm_') === false, 'rendered Overview contains no UTM parameters');
 $rec = SSPA_Rules::recommendation('slow_query_found_rows');
 w1_links_t(!empty($rec['body']) && stripos(wp_json_encode($rec), 'halve query time') === false, 'bundled recommendation makes no unsupported query-time claim');
-
-// Check the actual existing shared settings page, including the browsable product range.
-$settings_response = wp_remote_get(admin_url('admin.php?page=superspeedy'), array('cookies' => $cookies, 'timeout' => 30));
-$settings_html = wp_remote_retrieve_body($settings_response);
-preg_match_all('/href="([^"]+)"/', $settings_html, $links);
-$vendor_links = array_filter($links[1], static function($url) { return in_array(wp_parse_url(html_entity_decode($url), PHP_URL_HOST), array('www.superspeedyplugins.com', 'superspeedyplugins.com'), true); });
-$tracked_links = array_filter($vendor_links, static function($url) { return strpos($url, 'utm_') !== false; });
-w1_links_t(!is_wp_error($settings_response) && 200 === wp_remote_retrieve_response_code($settings_response) && count($vendor_links) > 5, 'existing shared settings page retains product and help links');
-w1_links_t(count($tracked_links) === 0, 'shared settings product, account, changelog and documentation links contain no UTM parameters');

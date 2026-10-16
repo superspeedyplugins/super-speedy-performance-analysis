@@ -6,8 +6,7 @@ defined('ABSPATH') || exit;
  * mu-loader armed the profiler (a valid signed token was present) AND the token's flags
  * request the probe - an unsigned request to the same URL renders the normal page.
  *
- * - mail probe (mp): sends one test wp_mail so the mail stack's construction cost is
- *   measured. The capture's construct mode guarantees nothing is delivered.
+ * - mail probe (mp): sends one email to the administrator and measures send/queue time.
  * - write probes (wp): perform the real save/transition cascade on a TEMPORARY object
  *   created (and deleted) by the run controller - never on real content. We deliberately
  *   run the cascade server-side rather than simulating an admin form POST: the hook
@@ -30,15 +29,10 @@ class SSPA_Probes {
         }
 
         if (!empty($flags['mp'])) {
-            // Hostname-only site URLs (docker, some intranets) make the default From
-            // invalid, which would abort construction at setFrom(). Not what we measure.
-            add_filter('wp_mail_from', function ($from) {
-                return (strpos((string) $from, '.') === false || !is_email($from)) ? 'wordpress@example.com' : $from;
-            }, PHP_INT_MAX);
             wp_mail(
-                'sspa-probe@blackhole.invalid',
+                SSPA_Mail::address('probe'),
                 'SSPA mail probe',
-                'Timing probe from Super Speedy Performance Analysis. This message is never delivered.'
+                'Timing probe from Super Speedy Performance Analysis. Emails go to the site administrator.'
             );
             self::done('mail-probe');
         }
@@ -168,43 +162,38 @@ class SSPA_Probes {
 
     // ---------------- temp objects (created/deleted by the run controller) ----------------
 
-    public static function create_temp_copy($post_type) {
-        $source = get_posts(array('numberposts' => 1, 'post_type' => $post_type, 'post_status' => 'publish'));
-        if (!$source) {
-            return 0;
-        }
-        $src = $source[0];
+    public static function create_temp_copy($post_type, $workflow = false) {
+        return SSPA_Mail::with_admin(static function() use ($post_type, $workflow) { return self::create_temp_copy_owned($post_type, $workflow); });
+    }
+
+    private static function create_temp_copy_owned($post_type, $workflow) {
         $temp_id = wp_insert_post(array(
             'post_type' => $post_type,
             'post_status' => 'draft',
-            'post_title' => '[SSPA temp] ' . $src->post_title,
-            'post_content' => $src->post_content,
-            'post_excerpt' => $src->post_excerpt,
-        ));
-        if (is_wp_error($temp_id) || !$temp_id) {
-            return 0;
+            'post_title' => '[SSPA temp] Performance Analysis',
+            'post_content' => 'Performance Analysis test content.',
+            'post_author' => SSPA_Mail::owner_id(),
+            'meta_input' => array('_sspa_temp' => '1', '_sspa_workflow' => $workflow ? '1' : ''),
+        ), true);
+        if (is_wp_error($temp_id)) {
+            throw new RuntimeException($temp_id->get_error_message());
         }
-        foreach (get_post_meta($src->ID) as $key => $values) {
-            if ('_sspa_temp' === $key) {
-                continue;
-            }
-            foreach ($values as $value) {
-                add_post_meta($temp_id, $key, maybe_unserialize($value));
-            }
-        }
-        update_post_meta($temp_id, '_sspa_temp', '1');
         return (int) $temp_id;
     }
 
-    public static function create_temp_order() {
+    public static function create_temp_order($workflow = false) {
+        return SSPA_Mail::with_admin(static function() use ($workflow) { return self::create_temp_order_owned($workflow); });
+    }
+
+    private static function create_temp_order_owned($workflow) {
         if (!function_exists('wc_create_order')) {
             return 0;
         }
-        $order = wc_create_order();
-        if (is_wp_error($order)) {
-            return 0;
-        }
+        $order = new WC_Order();
+        $order->set_billing_email(SSPA_Mail::address('write'));
+        $order->set_customer_id(SSPA_Mail::owner_id());
         $order->update_meta_data('_sspa_temp', '1');
+        if ($workflow) { $order->update_meta_data('_sspa_workflow', '1'); }
         $order->save();
         $product = new WC_Product_Simple();
         try {
@@ -221,10 +210,11 @@ class SSPA_Probes {
             $product->update_meta_data('_sspa_temp', 'write_product');
             $product->update_meta_data('_sspa_temp_order_id', $order->get_id());
             $product->save();
+            SSPA_Mail::own_product($product->get_id());
             $order->update_meta_data('_sspa_temp_product_id', $product->get_id());
             $order->save();
             $order->add_product($product, 1);
-            $order->set_address(array('first_name' => 'SSPA', 'last_name' => 'Temp', 'email' => 'sspa-temp@blackhole.invalid'), 'billing');
+            $order->set_address(array('first_name' => 'SSPA', 'last_name' => 'Temp', 'email' => SSPA_Mail::address('write')), 'billing');
             $order->calculate_totals();
             $order->set_status('pending');
             $order->save();
@@ -240,6 +230,10 @@ class SSPA_Probes {
     }
 
     public static function delete_temp($id, $is_order = false) {
+        return SSPA_Mail::with_admin(static function() use ($id, $is_order) { return self::delete_temp_owned($id, $is_order); });
+    }
+
+    private static function delete_temp_owned($id, $is_order = false) {
         if (!$id) {
             return;
         }

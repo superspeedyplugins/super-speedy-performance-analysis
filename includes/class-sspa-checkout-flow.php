@@ -397,6 +397,10 @@ class SSPA_Checkout_Flow {
 
     /** Return the plugin-owned hidden product; real catalogue inventory is never used. */
     public static function default_product() {
+        return SSPA_Mail::with_admin(static function() { return self::default_product_owned(); });
+    }
+
+    private static function default_product_owned() {
         if (!class_exists('WC_Product_Simple')) {
             return null;
         }
@@ -418,6 +422,7 @@ class SSPA_Checkout_Flow {
         $product->set_weight('0.1');
         $product->update_meta_data(self::TEMP_META, self::TEST_PRODUCT_MARKER);
         $product->save();
+        SSPA_Mail::own_product($product->get_id());
         return $product;
     }
 
@@ -436,6 +441,10 @@ class SSPA_Checkout_Flow {
 
     /** Delete only the marked product created by this plugin. */
     public static function delete_test_product() {
+        return SSPA_Mail::with_admin(static function() { return self::delete_test_product_owned(); });
+    }
+
+    private static function delete_test_product_owned() {
         foreach (self::test_product_ids() as $product_id) {
             $product = wc_get_product((int) $product_id);
             if ($product && self::TEST_PRODUCT_MARKER === $product->get_meta(self::TEMP_META, true)) {
@@ -501,17 +510,7 @@ class SSPA_Checkout_Flow {
      *                           runs before a run exists ("+sspa-perf-0" would be a lie).
      */
     public static function billing_email($run_id) {
-        $override = sspa_get_option('checkout_email');
-        if (is_string($override) && is_email($override)) {
-            return $override;
-        }
-        $admin = (string) get_option('admin_email');
-        if (!is_email($admin)) {
-            return 'sspa-perf@' . (string) wp_parse_url(home_url(), PHP_URL_HOST);
-        }
-        $tag = is_int($run_id) ? (string) $run_id : (string) $run_id;
-        $at = strrpos($admin, '@');
-        return substr($admin, 0, $at) . '+sspa-perf-' . $tag . substr($admin, $at);
+        return SSPA_Mail::address($run_id);
     }
 
     // ---------------- the run ----------------
@@ -525,6 +524,10 @@ class SSPA_Checkout_Flow {
      *                notes} - outcome is 'ok' or one of the failure codes in doc C4.
      */
     public static function run($opts = array()) {
+        return SSPA_Mail::with_admin(static function() use ($opts) { return self::run_owned($opts); });
+    }
+
+    private static function run_owned($opts = array()) {
         $run_id = isset($opts['run_id']) ? (int) $opts['run_id'] : 0;
         $result = array('steps' => array(), 'order_ids' => array(), 'outcome' => 'ok', 'notes' => array());
 
@@ -553,7 +556,7 @@ class SSPA_Checkout_Flow {
 
         $quantity = max(1, (int) (isset($opts['quantity']) ? $opts['quantity'] : sspa_get_option('checkout_quantity')));
         $address = isset($opts['address']) && is_array($opts['address']) ? $opts['address'] : self::default_address();
-        $email = isset($opts['email']) && is_email($opts['email']) ? $opts['email'] : self::billing_email($run_id);
+        $email = self::billing_email($run_id);
         $payment_mode = isset($opts['payment_mode']) ? $opts['payment_mode'] : 'no_payment';
 
         $flags = self::step_flags($opts, $payment_mode);
@@ -566,7 +569,7 @@ class SSPA_Checkout_Flow {
             'product_name' => $product->get_name(),
             'quantity' => $quantity,
             'payment_mode' => $payment_mode,
-            'mail_mode' => isset($opts['mail_mode']) ? $opts['mail_mode'] : 'deliver',
+            'mail_mode' => 'deliver',
             'allow_integrations' => !isset($opts['allow_integrations']) || !empty($opts['allow_integrations']),
             'allow_webhooks' => !isset($opts['allow_webhooks']) || !empty($opts['allow_webhooks']),
             'checkout_type' => $checkout_type,
@@ -1259,12 +1262,8 @@ class SSPA_Checkout_Flow {
     private static function step_flags($opts, $payment_mode) {
         $flags = array('v' => 'guest', 'ck' => 'flow');
 
-        $mail_mode = isset($opts['mail_mode']) ? $opts['mail_mode'] : sspa_get_option('checkout_mail_mode');
-        if ('construct' === $mail_mode) {
-            $flags['mail'] = 'c';
-        } elseif ('suppress' !== $mail_mode) {
-            $flags['mail'] = 'd'; // the default: real emails, really sent, really timed
-        }
+        $flags['mail'] = 'd';
+
 
         if ('sandbox' === $payment_mode) {
             // Two independent checks before a payment can be attempted, because getting

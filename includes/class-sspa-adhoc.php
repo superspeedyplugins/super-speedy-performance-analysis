@@ -96,6 +96,7 @@ class SSPA_Adhoc {
             'nonce' => wp_create_nonce('sspa_admin'),
             'logo_url' => $logo,
             'version' => SSPA_VERSION,
+            'mail_warning' => SSPA_Mail::warning(),
             'download_prefix' => sspa_download_prefix(),
             'i18n' => array(
                 'running' => __('Profiling this page…', 'super-speedy-performance-analysis'),
@@ -161,6 +162,7 @@ class SSPA_Adhoc {
                     : __('Install Excimer to improve this data', 'super-speedy-performance-analysis'),
                 'logo_url' => $logo,
                 'version' => SSPA_VERSION,
+            'mail_warning' => SSPA_Mail::warning(),
             ));
         }
     }

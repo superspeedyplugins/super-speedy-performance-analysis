@@ -25,10 +25,8 @@
 
 	function loadTargets() {
 		var type = $('#sspa-workflow-object-type').val();
-		var target = $('#sspa-workflow-object-id');
 		var transport = $('#sspa-workflow-transport');
 		$('#sspa-workflow-run').prop('disabled', true);
-		target.prop('disabled', true);
 		transport.prop('disabled', true);
 		status(cfg.i18n.loading);
 		post('sspa_workflow_targets', { object_type: type }).done(function (response) {
@@ -36,9 +34,8 @@
 				status((response && response.data && response.data.message) || cfg.i18n.failed, true);
 				return;
 			}
-			fill(target, response.data.targets, cfg.i18n.no_targets);
 			fill(transport, response.data.transports, cfg.i18n.no_transports);
-			var ready = response.data.targets.length && response.data.transports.length;
+			var ready = response.data.transports.length;
 			$('#sspa-workflow-run').prop('disabled', !ready);
 			status(ready ? cfg.i18n.ready : cfg.i18n.no_targets, !ready);
 		}).fail(function () {
@@ -55,9 +52,7 @@
 		status(cfg.i18n.launching);
 		post('sspa_workflow_launch', {
 			object_type: $('#sspa-workflow-object-type').val(),
-			object_id: $('#sspa-workflow-object-id').val(),
-			transport: $('#sspa-workflow-transport').val(),
-			suppress_mail: $('#sspa-workflow-suppress-mail').is(':checked') ? 1 : 0
+			transport: $('#sspa-workflow-transport').val()
 		}).done(function (response) {
 			if (!response || !response.success) {
 				running = false;
@@ -65,7 +60,7 @@
 				status((response && response.data && response.data.message) || cfg.i18n.failed, true);
 				return;
 			}
-			status(cfg.i18n.running);
+			status(response.data.warning || cfg.i18n.running);
 			$('#sspa-workflow-frame').attr('src', response.data.editor_url);
 		}).fail(function () {
 			running = false;

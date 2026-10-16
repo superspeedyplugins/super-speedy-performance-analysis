@@ -98,6 +98,10 @@ class SSPA_Auth {
     }
 
     public static function test_customer_id() {
+        return SSPA_Mail::with_admin(static function() { return self::create_customer(); });
+    }
+
+    private static function create_customer() {
         $existing = get_users(array(
             'meta_key' => self::TEST_ACCOUNT_META,
             'meta_value' => '1',
@@ -105,13 +109,15 @@ class SSPA_Auth {
             'fields' => 'ID',
         ));
         if ($existing) {
+            $updated = wp_update_user(array('ID' => (int) $existing[0], 'user_email' => SSPA_Mail::address('customer')));
+            if (is_wp_error($updated)) { throw new RuntimeException($updated->get_error_message()); }
             return (int) $existing[0];
         }
         $role = get_role('customer') ? 'customer' : 'subscriber';
         $user_id = wp_insert_user(array(
             'user_login' => 'sspa-test-customer',
             'user_pass' => wp_generate_password(32),
-            'user_email' => 'sspa-test-customer@' . wp_parse_url(home_url(), PHP_URL_HOST),
+            'user_email' => SSPA_Mail::address('customer'),
             'role' => $role,
             'display_name' => 'SSPA Test Customer',
         ));
@@ -131,6 +137,10 @@ class SSPA_Auth {
      * @return int The fresh account's id, or 0 when one could not be created.
      */
     public static function fresh_test_customer() {
+        return SSPA_Mail::with_admin(static function() { return self::replace_customer(); });
+    }
+
+    private static function replace_customer() {
         if (!function_exists('wp_delete_user')) {
             require_once ABSPATH . 'wp-admin/includes/user.php';
         }

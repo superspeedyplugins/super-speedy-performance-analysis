@@ -23,7 +23,7 @@ if (!class_exists('SSPA_Capture')) {
         private $flags;
         private $http_pending = array();
         private $http_calls = array();
-        private $mail_mode = 'suppress';
+        private $mail_mode = 'deliver';
         private $mail_calls = array();
         private $mail_pending = null;
         private $conditionals = array();
@@ -34,14 +34,6 @@ if (!class_exists('SSPA_Capture')) {
         public function __construct($token_id, $flags) {
             $this->token_id = $token_id;
             $this->flags = $flags;
-            if (isset($flags['mail']) && 'c' === $flags['mail']) {
-                $this->mail_mode = 'construct';
-            } elseif (isset($flags['mail']) && 'd' === $flags['mail']) {
-                // Deliver: lets a profiled request send real mail. Reachable only from an
-                // explicitly accepted checkout flow or from the administrator's own real
-                // Update/Save action. Never the default for synthetic measurements.
-                $this->mail_mode = 'deliver';
-            }
         }
 
         private $boot_timer = null;
@@ -74,32 +66,13 @@ if (!class_exists('SSPA_Capture')) {
             }
             add_filter('pre_http_request', array($this, 'http_start'), 9999, 3);
             add_action('http_api_debug', array($this, 'http_end'), 10, 5);
-            // Safety rail: no profiled request may ever send real mail.
-            // - suppress (default): short-circuit wp_mail entirely, count + attribute.
-            // - construct: let the mail stack BUILD the message (measuring template/SMTP
-            //   plugin setup cost), then strip every recipient at phpmailer_init so
-            //   PHPMailer::preSend() aborts before any transport I/O.
-            if ('deliver' === $this->mail_mode) {
-                // Timing only, nothing intercepted and nothing altered: the measurement is
-                // of the real thing, transport included. The wp_mail filter runs BEFORE
-                // pre_wp_mail (pluggable.php:209 vs :233), so this also times API mailers
-                // (SendGrid, Mailgun, Postmark) that short-circuit and never touch PHPMailer.
-                add_filter('wp_mail', array($this, 'mail_deliver_start'), 1);
-                // A short-circuiting mailer returns from wp_mail() without firing either
-                // wp_mail_succeeded or wp_mail_failed, so without this the API-mailer case -
-                // the very case the wp_mail hook was chosen to cover - would record nothing.
-                add_filter('pre_wp_mail', array($this, 'mail_deliver_short_circuit'), PHP_INT_MAX, 2);
-                add_action('wp_mail_succeeded', array($this, 'mail_deliver_end'));
-                add_action('wp_mail_failed', array($this, 'mail_deliver_end'));
-            } elseif ('construct' === $this->mail_mode) {
-                add_filter('wp_mail', array($this, 'mail_construct_start'), 1);
-                add_action('phpmailer_init', array($this, 'mail_construct_end'), PHP_INT_MAX);
-                // Construction can abort before phpmailer_init (e.g. an invalid From
-                // address makes setFrom() throw). Record those too or they vanish.
-                add_action('wp_mail_failed', array($this, 'mail_construct_failed'));
-            } else {
-                add_filter('pre_wp_mail', array($this, 'intercept_mail'), 9999, 2);
-            }
+            // Send through the installed mailer, redirecting recipients to the administrator.
+            require_once dirname(__DIR__) . '/includes/class-sspa-mail.php';
+            SSPA_Mail::register();
+            add_filter('wp_mail', array($this, 'mail_deliver_start'), 1);
+            add_filter('pre_wp_mail', array($this, 'mail_deliver_short_circuit'), PHP_INT_MAX, 2);
+            add_action('wp_mail_succeeded', array($this, 'mail_deliver_end'));
+            add_action('wp_mail_failed', array($this, 'mail_deliver_end'));
             // Which WP_Query instances Super Speedy Archives could optimise, and what they
             // order by once every plugin has had its say. Hooks only, no work per request
             // beyond a query-var read on the queries that qualify.
@@ -249,41 +222,6 @@ if (!class_exists('SSPA_Capture')) {
                 'frames' => $frames,
             );
         }
-
-        public function intercept_mail($short_circuit, $atts) {
-            $this->mail_calls[] = array('frames' => $this->trigger_frames(), 'construct_ms' => null);
-            return true; // report success to the caller, send nothing
-        }
-
-        public function mail_construct_start($atts) {
-            $this->mail_pending = array('start' => microtime(true), 'frames' => $this->trigger_frames());
-            return $atts;
-        }
-
-        public function mail_construct_end($phpmailer) {
-            if ($this->mail_pending) {
-                $this->mail_calls[] = array(
-                    'frames' => $this->mail_pending['frames'],
-                    'construct_ms' => (microtime(true) - $this->mail_pending['start']) * 1000,
-                );
-                $this->mail_pending = null;
-            }
-            // The no-send guarantee: preSend() throws before any transport work when
-            // there are no recipients; wp_mail() catches it and returns false.
-            $phpmailer->clearAllRecipients();
-        }
-
-        public function mail_construct_failed($error) {
-            if ($this->mail_pending) {
-                $this->mail_calls[] = array(
-                    'frames' => $this->mail_pending['frames'],
-                    'construct_ms' => (microtime(true) - $this->mail_pending['start']) * 1000,
-                );
-                $this->mail_pending = null;
-            }
-        }
-
-        // ---------------- deliver mode (checkout flow only) ----------------
 
         public function mail_deliver_start($atts) {
             // A plugin that REPLACES the pluggable wp_mail() (Mailgun's HTTP mode, and
@@ -707,6 +645,7 @@ if (!class_exists('SSPA_Capture')) {
             return array(
                 'count' => count($this->mail_calls),
                 'mode' => $this->mail_mode,
+                'warning' => SSPA_Mail::warning(),
                 'total_construct_ms' => round($total_construct_ms, 2),
                 'by_component' => $components,
                 'calls' => $calls,
