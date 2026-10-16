@@ -156,17 +156,20 @@ class SSPA_Community_Outbox {
     public static function due() {
         global $wpdb;
         $now = gmdate('Y-m-d H:i:s');
-        $consent_clause = get_option('sspa_share_optin') ? '' : " AND consent_scope = 'manual'";
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The consent clause is one of two local SQL literals; the table and timestamp use prepare placeholders.
+        if (get_option('sspa_share_optin')) {
+            return $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM %i
+                 WHERE state IN ('pending','retry') AND (next_attempt IS NULL OR next_attempt <= %s)
+                 ORDER BY created ASC, id ASC LIMIT 1",
+                self::table(), $now
+            ), ARRAY_A);
+        }
         return $wpdb->get_row($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The consent clause is one of two local SQL literals; the table and timestamp use prepare placeholders.
             "SELECT * FROM %i
              WHERE state IN ('pending','retry') AND (next_attempt IS NULL OR next_attempt <= %s)
-             $consent_clause
+             AND consent_scope = 'manual'
              ORDER BY created ASC, id ASC LIMIT 1",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            self::table(),
-            $now
+            self::table(), $now
         ), ARRAY_A);
     }
 
@@ -222,15 +225,13 @@ class SSPA_Community_Outbox {
         global $wpdb;
         $attempt = (int) $row['attempts'] + 1;
         $table = self::table();
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $claimed = $wpdb->query($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-            "UPDATE $table
+            "UPDATE %i
                 SET state = 'retry', phase = 'reserving', attempts = %d,
                     last_attempt = %s, next_attempt = %s,
                     last_http_status = NULL, last_error_code = NULL, last_error_detail = NULL
               WHERE id = %d AND attempts = %d AND state IN ('pending','retry')",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $table,
             $attempt,
             gmdate('Y-m-d H:i:s'),
             gmdate('Y-m-d H:i:s', time() + self::ATTEMPT_LEASE_SECONDS),

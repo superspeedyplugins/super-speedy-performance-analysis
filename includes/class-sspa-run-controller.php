@@ -975,8 +975,7 @@ class SSPA_Run_Controller {
     public static function active_run_id() {
         global $wpdb;
         $table = SSPA_Schema::table('runs');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-        return (int) $wpdb->get_var("SELECT id FROM $table WHERE status IN ('queued','crawling','analysing') ORDER BY id DESC LIMIT 1");
+        return (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM %i WHERE status IN ('queued','crawling','analysing') ORDER BY id DESC LIMIT 1", $table));
     }
 
     /** How many completed measurements status() reports back, newest last. */
@@ -1025,8 +1024,10 @@ class SSPA_Run_Controller {
     public static function run_row($run_id) {
         global $wpdb;
         $table = SSPA_Schema::table('runs');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $run_id), ARRAY_A);
+        return $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE id = %d",
+            $table,
+            $run_id
+        ), ARRAY_A);
     }
 
     /**
@@ -1933,13 +1934,11 @@ class SSPA_Run_Controller {
         // answered before PHP ran) have NULL metrics and silently distort the score if
         // they pass unmentioned. Count them into the run so the UI can be honest.
         $profiles = SSPA_Schema::table('profiles');
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $unmeasured = (int) $wpdb->get_var($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-            "SELECT COUNT(*) FROM $profiles
+            "SELECT COUNT(*) FROM %i
              WHERE run_id = %d AND page_gen_ms IS NULL AND blocked_by IS NULL
                AND page_key <> 'baseline'",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $profiles,
             $run_id
         ));
 
@@ -2145,10 +2144,13 @@ class SSPA_Run_Controller {
     public static function cleanup() {
         global $wpdb;
         $captures = SSPA_Schema::table('captures');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-        $wpdb->query($wpdb->prepare("DELETE FROM $captures WHERE created < %s", gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS)));
+        $wpdb->query($wpdb->prepare("DELETE FROM %i WHERE created < %s",
+            $captures,
+            gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS)
+        ));
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value < %d",
+            "DELETE FROM %i WHERE option_name LIKE %s AND option_value < %d",
+            $wpdb->options,
             $wpdb->esc_like('sspa_used_') . '%',
             time() - HOUR_IN_SECONDS
         ));
@@ -2160,10 +2162,8 @@ class SSPA_Run_Controller {
         // (the driver tab may have closed with no event pending); only a run that still
         // makes no progress after 3 hours is failed.
         $runs = SSPA_Schema::table('runs');
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $candidates = $wpdb->get_results(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-            "SELECT id, status, started FROM $runs WHERE status IN ('queued','crawling','analysing','cancelling')",
+            $wpdb->prepare("SELECT id, status, started FROM %i WHERE status IN ('queued','crawling','analysing','cancelling')", $runs),
             ARRAY_A
         );
         foreach ($candidates as $r) {
@@ -2235,10 +2235,10 @@ class SSPA_Run_Controller {
             $meta_tables[$hpos_meta] = 'order_id';
         }
         foreach ($meta_tables as $table => $id_col) {
-            // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The loop uses only core postmeta/post_id and prefix + wc_orders_meta/order_id pairs; the meta key uses %s.
             $ids = array_merge($ids, (array) $wpdb->get_col($wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The loop uses only core postmeta/post_id and prefix + wc_orders_meta/order_id pairs; the meta key uses %s.
-                "SELECT $id_col FROM $table WHERE meta_key = %s LIMIT 50",
+                "SELECT %i FROM %i WHERE meta_key = %s LIMIT 50",
+                $id_col,
+                $table,
                 SSPA_Checkout_Flow::TEMP_META
             )));
         }
@@ -2494,8 +2494,7 @@ class SSPA_Run_Controller {
         }
         // Newest measurement per page and cache mode, matching the Plugins tab: a sweep scoped
         // to one page must not hide every other page it did not re-measure.
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
-        $rows = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql($plugin), ARRAY_A);
+        $rows = SSPA_Plugins_Table::latest_impacts($plugin);
         if (!$rows) {
             wp_send_json_error(__('No measured impacts for this plugin yet - run a plugin impact analysis.', 'super-speedy-performance-analysis'));
         }
@@ -2673,22 +2672,30 @@ class SSPA_Run_Controller {
 
         $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
         $runs_table = SSPA_Schema::table('runs');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-        $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $runs_table ORDER BY id DESC LIMIT %d", $keep));
+        $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM %i ORDER BY id DESC LIMIT %d",
+            $runs_table,
+            $keep
+        ));
         $keep_ids = array_map('intval', $keep_ids);
 
         // Preserve every opted-in run as immutable outbox bytes before deleting source blobs.
         // Delivery can then happen later even if the collector is offline during this request.
         if (SSPA_Submitter::opted_in()) {
-            $where = $keep_ids ? 'AND id NOT IN (' . implode(',', $keep_ids) . ')' : '';
-            // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The table comes from SSPA_Schema::table; the optional exclusion contains only IDs already mapped through intval.
-            $share_ids = $wpdb->get_col(
-                // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table comes from SSPA_Schema::table; the optional exclusion contains only IDs already mapped through intval.
-                "SELECT id FROM $runs_table
-                 WHERE (status = 'done' OR (run_type = 'checkout' AND status = 'failed')) $where
-                 ORDER BY id ASC"
-                // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            );
+            if ($keep_ids) {
+                $share_ids = $wpdb->get_col($wpdb->prepare(
+                    "SELECT id FROM %i
+                     WHERE (status = 'done' OR (run_type = 'checkout' AND status = 'failed')) AND id NOT IN (" . implode(', ', array_fill(0, count($keep_ids), '%d')) . ")
+                     ORDER BY id ASC",
+                    array_merge(array($runs_table), $keep_ids)
+                ));
+            } else {
+                $share_ids = $wpdb->get_col($wpdb->prepare(
+                    "SELECT id FROM %i
+                     WHERE (status = 'done' OR (run_type = 'checkout' AND status = 'failed'))
+                     ORDER BY id ASC",
+                    $runs_table
+                ));
+            }
             foreach ($share_ids as $share_id) {
                 $queued = SSPA_Community_Outbox::queue_run((int) $share_id);
                 if (is_wp_error($queued)) {
@@ -2705,12 +2712,12 @@ class SSPA_Run_Controller {
 
         $profiles = SSPA_Schema::table('profiles');
         if ($keep_ids) {
-            $in = implode(',', $keep_ids);
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- The table comes from SSPA_Schema::table; every comma-joined keep ID has already passed through intval.
-            $wpdb->query("UPDATE $profiles SET profile_blob = NULL WHERE run_id NOT IN ($in)");
+            $wpdb->query($wpdb->prepare(
+                "UPDATE %i SET profile_blob = NULL WHERE run_id NOT IN (" . implode(', ', array_fill(0, count($keep_ids), '%d')) . ")",
+                array_merge(array($profiles), $keep_ids)
+            ));
         }
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-        $bytes = (int) $wpdb->get_var("SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM $profiles");
+        $bytes = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM %i", $profiles));
         wp_send_json_success(array('bytes' => $bytes, 'human' => size_format($bytes)));
     }
 }

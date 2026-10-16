@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
-export SSPA_SCENARIO=tests-review-correctness
+export SSPA_SCENARIO="${SSPA_REVIEW_SCENARIO:-tests-review-correctness}"
 source "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" || exit 1

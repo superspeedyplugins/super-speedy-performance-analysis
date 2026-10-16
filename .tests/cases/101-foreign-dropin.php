@@ -4,7 +4,7 @@
 // admin-ajax entry point used by Run Analysis, including obsolete client parameters.
 defined('ABSPATH') || exit;
 require __DIR__ . '/../lib/native-guard.php';
-if (basename(rtrim(ABSPATH, '/')) !== 'tests-issue46') {
+if (basename(rtrim(ABSPATH, '/')) !== (getenv('SSPA_ISSUE46_SCENARIO') ?: 'tests-issue46')) {
     passthru('bash ' . escapeshellarg(SSPA_PLUGIN_DIR . '.tests/issue46/run.sh'), $exit);
     if ($exit !== 0) { WP_CLI::error('Dedicated issue 46 regression failed'); }
     return;

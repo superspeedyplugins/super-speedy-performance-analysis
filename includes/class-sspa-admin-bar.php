@@ -516,10 +516,9 @@ class SSPA_Admin_Bar {
         }
         global $wpdb;
         $table = SSPA_Schema::table('runs');
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
         $rows = $wpdb->query($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only the table identifier from SSPA_Schema::table and the trusted WordPress prefix is interpolated; values use prepare placeholders where present.
-            "UPDATE {$table} SET status = 'superseded' WHERE run_type = 'adhoc' AND notes LIKE %s AND status = 'done'",
+            "UPDATE %i SET status = 'superseded' WHERE run_type = 'adhoc' AND notes LIKE %s AND status = 'done'",
+            $table,
             '%' . $wpdb->esc_like($url) . '%'
         ));
         return $rows

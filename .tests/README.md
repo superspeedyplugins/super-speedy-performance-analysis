@@ -153,6 +153,16 @@ they are neither skipped nor counted as passing. `SSPA_SCENARIO=tests-wporg-read
 selects the W1 site. Fixture preparation explicitly enables the profiler; production
 activation, screen opening and analysis start never enable it.
 
+Case 110 drives real EXPLAIN/index discovery on prefixed, unprefixed and explicitly
+qualified tables, and observes that a foreign database reference issues no index query.
+
+Dedicated worktrees can override the nested scenarios with `SSPA_ISSUE46_SCENARIO`,
+`SSPA_DEACTIVATION_SCENARIO`, `SSPA_REINSTALL_SCENARIO`, `SSPA_READONLY_SCENARIO` and
+`SSPA_REVIEW_SCENARIO`; prepare those retained native sites against the invoking checkout.
+The native path/source guards and all case assertions still apply. The lifecycle legacy
+fixture reads the current collection's JSON and replays the archived production template
+with its original missing-generation state; case 107 separately checks compatible migration.
+
 ## The environment
 
 `setup-site.sh` builds, at `http://tests.super-speedy-performance-analysis.localhost:8081`:

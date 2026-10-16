@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-export SSPA_SCENARIO=tests-deactivation-readonly
+export SSPA_SCENARIO="${SSPA_READONLY_SCENARIO:-tests-deactivation-readonly}"
 source "$repo/.tests/env.sh"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     bash "$(dirname "$PD_LIB")/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" || exit 1

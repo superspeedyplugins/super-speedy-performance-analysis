@@ -7,8 +7,7 @@ $sspa_active_run = SSPA_Run_Controller::active_run_id();
 $sspa_runs_table = SSPA_Schema::table('runs');
 // Score/insights only exist on profiling runs - a deep or cache run here would render
 // score 0 and an empty insight list.
-// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-$sspa_last_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", ARRAY_A);
+$sspa_last_run = $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", $sspa_runs_table), ARRAY_A);
 // Show the ownership notice for every foreign database drop-in.
 $sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign', 'qm'), true);
 $sspa_run_notes = $sspa_last_run ? json_decode((string) $sspa_last_run['notes'], true) : null;
@@ -287,8 +286,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     <?php
     // Deep runs land back on this tab when they finish - surface their outcome here
     // instead of leaving the results buried in the Plugins tab.
-    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-    $sspa_deep_run = $wpdb->get_row("SELECT * FROM $sspa_runs_table WHERE status = 'done' AND run_type = 'deep' ORDER BY id DESC LIMIT 1", ARRAY_A);
+    $sspa_deep_run = $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE status = 'done' AND run_type = 'deep' ORDER BY id DESC LIMIT 1", $sspa_runs_table), ARRAY_A);
     if ($sspa_deep_run) :
         $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
         $sspa_deep_notes = is_array($sspa_deep_notes) ? $sspa_deep_notes : array(); ?>

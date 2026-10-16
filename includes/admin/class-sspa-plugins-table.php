@@ -32,6 +32,8 @@ class SSPA_Plugins_Table {
      * touch, and the plugin would appear to affect one page only. Keying on the measurement
      * lets a targeted re-measure update exactly what it measured and leave the rest standing.
      *
+     * This reader prepares and executes each complete branch and returns its rows.
+     *
      * MAX(id) rather than MAX(created): two sweeps in the same second are possible, and the
      * autoincrement is the only strict ordering.
      *
@@ -40,31 +42,43 @@ class SSPA_Plugins_Table {
      *                         "what has been measured HERE", which is the same query the
      *                         other way round.
      */
-    public static function latest_impacts_sql($plugin = '', $page_key = '') {
+    public static function latest_impacts($plugin = '', $page_key = '') {
         global $wpdb;
-        // Every value goes in as a placeholder and the table name as %i, so the caller
-        // receives a fully prepared string. Callers pass it straight to $wpdb and carry a
-        // phpcs:ignore saying so, because the sniff cannot see the prepare() from there.
-        $conditions = array();
-        $args = array(SSPA_Schema::table('plugin_impacts'), SSPA_Schema::table('plugin_impacts'));
+        $table = SSPA_Schema::table('plugin_impacts');
+        if ('' !== $plugin && '' !== $page_key) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT pi.* FROM %i pi
+                    JOIN (SELECT MAX(id) mid FROM %i WHERE plugin = %s AND page_key = %s
+                          GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
+                    ORDER BY pi.page_key, pi.id",
+                $table, $table, $plugin, $page_key
+            ), ARRAY_A);
+        }
         if ('' !== $plugin) {
-            $conditions[] = 'plugin = %s';
-            $args[] = $plugin;
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT pi.* FROM %i pi
+                    JOIN (SELECT MAX(id) mid FROM %i WHERE plugin = %s
+                          GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
+                    ORDER BY pi.page_key, pi.id",
+                $table, $table, $plugin
+            ), ARRAY_A);
         }
         if ('' !== $page_key) {
-            $conditions[] = 'page_key = %s';
-            $args[] = $page_key;
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT pi.* FROM %i pi
+                    JOIN (SELECT MAX(id) mid FROM %i WHERE page_key = %s
+                          GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
+                    ORDER BY pi.page_key, pi.id",
+                $table, $table, $page_key
+            ), ARRAY_A);
         }
-        $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Each optional condition is a literal with one %s and appends one argument; the argument array starts with the two %i table identifiers.
-        return $wpdb->prepare(
+        return $wpdb->get_results($wpdb->prepare(
             "SELECT pi.* FROM %i pi
-                JOIN (SELECT MAX(id) mid FROM %i$where
+                JOIN (SELECT MAX(id) mid FROM %i
                       GROUP BY plugin, page_key, object_cache_mode) latest ON latest.mid = pi.id
                 ORDER BY pi.page_key, pi.id",
-            $args
-        );
-        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+            $table, $table
+        ), ARRAY_A);
     }
 
     public static function render($run_id, $mode) {
@@ -113,8 +127,7 @@ class SSPA_Plugins_Table {
         }
 
         $impacts = array();
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
-        foreach ($wpdb->get_results(self::latest_impacts_sql(), ARRAY_A) as $row) {
+        foreach (self::latest_impacts() as $row) {
             $impacts[$row['plugin']][] = $row;
         }
 

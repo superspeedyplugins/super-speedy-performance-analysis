@@ -159,7 +159,7 @@ if (!is_wp_error($sspa_wide)) {
         $s = SSPA_Run_Controller::status($sspa_again);
     } while ($s && in_array($s['status'], array('crawling', 'analysing'), true) && time() < $deadline);
 
-    $shown = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('sspa-scoped-fixture'), ARRAY_A);
+    $shown = SSPA_Plugins_Table::latest_impacts('sspa-scoped-fixture');
     $shown_pages = array_values(array_unique(array_column($shown, 'page_key')));
     sort($shown_pages);
     sspa_scoped_t(count($shown_pages) >= 2, 'a page-scoped re-measure keeps the other pages: ' . implode(',', $shown_pages));

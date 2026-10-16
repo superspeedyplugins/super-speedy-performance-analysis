@@ -462,12 +462,10 @@ if (!class_exists('SSPA_Capture')) {
             $table = $wpdb->prefix . 'sspa_captures';
             // Suppress errors so a missing table (plugin deleted mid-run) can't break the page.
             $suppress = $wpdb->suppress_errors(true);
-            // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- The identifier is the trusted WordPress prefix plus literal sspa_captures; token, payload and timestamp all use %s.
             $wpdb->query($wpdb->prepare(
-                // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The identifier is the trusted WordPress prefix plus literal sspa_captures; token, payload and timestamp all use %s.
-                "INSERT INTO $table (token_id, capture, created) VALUES (%s, %s, %s)
+                "INSERT INTO %i (token_id, capture, created) VALUES (%s, %s, %s)
                  ON DUPLICATE KEY UPDATE capture = VALUES(capture), created = VALUES(created)",
-                // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $table,
                 $this->token_id,
                 gzcompress($json, 6),
                 gmdate('Y-m-d H:i:s')

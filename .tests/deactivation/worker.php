@@ -22,15 +22,20 @@ if ('deactivate'===$mode) {
 }
 
 if ('legacy'===$mode) {
-    $source=file_get_contents(SSPA_Traffic_Helper::path());
-    if(!preg_match('/(\$sspa_traffic_config = array \([\s\S]*?\n\);)/',$source,$match))throw new RuntimeException('Cannot read the actual generated config');
-    eval($match[1]);
-    $config=$sspa_traffic_config;
-    unset($config['generation']);
+    $config_path=SSPA_Traffic_Helper::config_path();
+    $config=json_decode((string)file_get_contents($config_path),true);
+    if(!is_array($config) || empty($config['collection_id']))throw new RuntimeException('Cannot read the actual generated JSON config');
     $id=(int)$config['collection_id'];
+    // Exact pre-authority production template from 90407f925ea9c158f9f1bb1af6e9d4a9a2e3adc5.
+    // Its observer contract and fields match the current real config apart from generation.
+    // Keep the original missing-generation retirement case, not a different contract mismatch.
+    unset($config['generation']);
     delete_option(SSPA_Traffic_Authority::option($id));
-    $code="<?php\n// ".SSPA_Traffic_Helper::SIGNATURE."\n".'$sspa_traffic_config = '.var_export($config,true).";\nrequire_once ".var_export(SSPA_PLUGIN_DIR.'traffic-observer/bootstrap.php',true).";\nSSPA_Traffic_Hot_Path::boot(\$sspa_traffic_config);\n";
+    $template=file_get_contents(SSPA_PLUGIN_DIR.'.tests/fixtures/legacy-traffic-observer-pre-authority.template');
+    $code=str_replace(array('/* %%SSPA_TRAFFIC_CONFIG_ASSIGNMENT%% */','%%SSPA_TRAFFIC_PLUGIN_DIR%%'),array('$sspa_traffic_config = '.var_export($config,true).';',addslashes(trailingslashit(SSPA_PLUGIN_DIR))),$template);
+    update_option('sspa_behaviour_version','0.43.4');
     file_put_contents(SSPA_Traffic_Helper::path(),$code);
+    if(!unlink($config_path))throw new RuntimeException('Cannot remove fixture JSON config');
     if(function_exists('opcache_invalidate'))opcache_invalidate(SSPA_Traffic_Helper::path(),true);
     echo $id;
 }

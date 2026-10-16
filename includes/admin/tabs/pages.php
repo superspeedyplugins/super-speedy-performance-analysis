@@ -5,8 +5,7 @@ global $wpdb;
 $sspa_runs_table = SSPA_Schema::table('runs');
 // Profiling runs only - deep-run profiles include plugin-set-modified re-measurements
 // of the same pages, which read as duplicate/garbled rows here.
-// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-$sspa_last_run_id = (int) $wpdb->get_var("SELECT id FROM $sspa_runs_table WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1");
+$sspa_last_run_id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM %i WHERE status = 'done' AND run_type IN ('baseline','spot') ORDER BY id DESC LIMIT 1", $sspa_runs_table));
 
 // Checkout flow: a permanent entry point, because the pages below are all GETs of an
 // EMPTY cart - the expensive parts of a real purchase are POSTs a crawler never sends.

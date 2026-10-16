@@ -496,8 +496,10 @@ class SSPA_Crawler {
     public static function discard_capture($token_id) {
         global $wpdb;
         $table = SSPA_Schema::table('captures');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-        $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE token_id = %s", $token_id));
+        $wpdb->query($wpdb->prepare("DELETE FROM %i WHERE token_id = %s",
+            $table,
+            $token_id
+        ));
         // Keep the single-use claim until hourly cleanup, beyond the token's lifetime.
     }
 
@@ -538,13 +540,17 @@ class SSPA_Crawler {
     private static function fetch_capture($token_id) {
         global $wpdb;
         $table = SSPA_Schema::table('captures');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-        $blob = $wpdb->get_var($wpdb->prepare("SELECT capture FROM $table WHERE token_id = %s", $token_id));
+        $blob = $wpdb->get_var($wpdb->prepare("SELECT capture FROM %i WHERE token_id = %s",
+            $table,
+            $token_id
+        ));
         if (!$blob) {
             return null;
         }
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-        $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE token_id = %s", $token_id));
+        $wpdb->query($wpdb->prepare("DELETE FROM %i WHERE token_id = %s",
+            $table,
+            $token_id
+        ));
         // Keep the single-use claim until hourly cleanup, beyond the token's lifetime.
         $json = @gzuncompress($blob);
         if ($json === false) {

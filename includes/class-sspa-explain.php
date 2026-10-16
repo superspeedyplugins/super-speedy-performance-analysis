@@ -137,17 +137,19 @@ class SSPA_Explain {
             }
             $parts = explode('.', $identifier, 2);
             $table = end($parts);
-            $tables[$table] = $identifier;
+            // Metadata belongs to this WordPress installation only. EXPLAIN itself still
+            // describes the captured SELECT, including any external tables it references.
+            if ((count($parts) === 2 && $parts[0] !== $wpdb->dbname)
+                || strpos($table, $wpdb->prefix) !== 0) {
+                continue;
+            }
+            $tables[$table] = true;
         }
 
         $out = array();
-        foreach ($tables as $table => $identifier) {
-            $quoted = implode('.', array_map(function ($part) {
-                return '`' . str_replace('`', '``', $part) . '`';
-            }, explode('.', $identifier)));
+        foreach (array_keys($tables) as $table) {
             $suppress = $wpdb->suppress_errors(true);
-            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- identifier is restricted above to letters, digits, underscore and one optional database separator, then identifier-quoted.
-            $rows = $wpdb->get_results('SHOW INDEX FROM ' . $quoted, ARRAY_A);
+            $rows = $wpdb->get_results($wpdb->prepare('SHOW INDEX FROM %i', $table), ARRAY_A);
             $wpdb->suppress_errors($suppress);
             if (!$rows) {
                 continue;

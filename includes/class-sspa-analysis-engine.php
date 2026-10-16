@@ -1076,11 +1076,9 @@ class SSPA_Analysis_Engine {
         $autoload_values = function_exists('wp_autoload_values_to_autoload')
             ? wp_autoload_values_to_autoload()
             : array('yes');
-        $placeholders = implode(',', array_fill(0, count($autoload_values), '%s'));
         $rows = $wpdb->get_results($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- The interpolated list is generated solely from %s placeholders; each autoload value is passed separately to prepare in the matching array.
-            "SELECT option_name, LENGTH(option_value) AS bytes FROM $wpdb->options WHERE autoload IN ($placeholders)",
-            $autoload_values
+            "SELECT option_name, LENGTH(option_value) AS bytes FROM %i WHERE autoload IN (" . implode(', ', array_fill(0, count($autoload_values), '%s')) . ")",
+            array_merge(array($wpdb->options), $autoload_values)
         ), ARRAY_A);
 
         $autoloaded = array();
@@ -1123,7 +1121,8 @@ class SSPA_Analysis_Engine {
                 continue;
             }
             $bytes = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT LENGTH(option_value) FROM $wpdb->options WHERE option_name = %s",
+                "SELECT LENGTH(option_value) FROM %i WHERE option_name = %s",
+                $wpdb->options,
                 $name
             ));
             if ($bytes > 0 && $bytes <= $max_bytes) {

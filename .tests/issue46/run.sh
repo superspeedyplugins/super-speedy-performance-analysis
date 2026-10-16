@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export SSPA_SCENARIO=tests-issue46
+export SSPA_SCENARIO="${SSPA_ISSUE46_SCENARIO:-tests-issue46}"
 source "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 set -euo pipefail
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then

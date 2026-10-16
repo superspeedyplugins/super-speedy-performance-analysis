@@ -50,7 +50,7 @@ foreach (array('sspa-fixture-alpha', 'sspa-fixture-beta') as $sspa_slug) {
 }
 
 $sspa_q = function ($plugin = '', $page = '') use ($wpdb) {
-    return $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql($plugin, $page), ARRAY_A);
+    return SSPA_Plugins_Table::latest_impacts($plugin, $page);
 };
 
 // ---------------------------------------------------------------- the filters discriminate

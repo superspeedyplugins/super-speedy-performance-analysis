@@ -189,8 +189,7 @@ class SSPA_Profile_Panel {
         $findings = array_values(array_filter(SSPA_Report::findings((int) $row['run_id']), function ($finding) use ($row) {
             return empty($finding['page_key']) || $finding['page_key'] === $row['page_key'];
         }));
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
-        $impacts = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('', (string) $row['page_key']), ARRAY_A);
+        $impacts = SSPA_Plugins_Table::latest_impacts('', (string) $row['page_key']);
 
         return array(
             'schema' => 'sspa/page-diagnostic-export@1',
@@ -883,8 +882,7 @@ class SSPA_Profile_Panel {
         global $wpdb;
 
         $page_key = (string) $row['page_key'];
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- latest_impacts_sql() returns a string already run through $wpdb->prepare().
-        $rows = $wpdb->get_results(SSPA_Plugins_Table::latest_impacts_sql('', $page_key), ARRAY_A);
+        $rows = SSPA_Plugins_Table::latest_impacts('', $page_key);
 
         $html = '<div class="sspa-adhoc-span" id="sspa-adhoc-impact"><h4>'
             . esc_html__('Measured plugin impact on this page', 'super-speedy-performance-analysis')

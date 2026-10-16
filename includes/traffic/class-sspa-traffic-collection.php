@@ -135,12 +135,10 @@ class SSPA_Traffic_Collection {
         // the measurement as information, not a target or a startup condition.
 
         $events = SSPA_Schema::table('traffic_events');
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-        $max_id = (int) $wpdb->get_var("SELECT COALESCE(MAX(id),0) FROM $events");
+        $max_id = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(MAX(id),0) FROM %i", $events));
         $event_id_stop = $max_id + $event_ceiling;
 		$endpoint_table = SSPA_Schema::table('traffic_endpoint_observations');
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-		$endpoint_max_id = (int) $wpdb->get_var("SELECT COALESCE(MAX(id),0) FROM $endpoint_table");
+		$endpoint_max_id = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(MAX(id),0) FROM %i", $endpoint_table));
 		$endpoint_id_stop = $endpoint_max_id + $event_ceiling;
         $helper = SSPA_Traffic_Helper::install(array(
             'collection_id' => $collection_id,
@@ -211,17 +209,19 @@ class SSPA_Traffic_Collection {
     public static function active() {
         global $wpdb;
         $table = SSPA_Schema::table('traffic_collections');
-        $running = implode(',', array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME));
         $row = $wpdb->get_row($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $running is a comma-joined list of integer class constants.
-            "SELECT * FROM %i WHERE blog_id = %d AND status_code IN ($running) ORDER BY id DESC LIMIT 1",
+            "SELECT * FROM %i WHERE blog_id = %d AND status_code IN (%d, %d) ORDER BY id DESC LIMIT 1",
             $table,
-            (int) get_current_blog_id()
+            (int) get_current_blog_id(),
+            SSPA_Traffic_Codes::COLLECTION_RUNNING,
+            SSPA_Traffic_Codes::COLLECTION_OUTCOME
         ), ARRAY_A);
         if ($row) {
             self::reconcile($row);
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-            $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $row['id']), ARRAY_A);
+            $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE id = %d",
+            $table,
+            $row['id']
+        ), ARRAY_A);
             if ($row && !in_array((int) $row['status_code'], array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME), true)) {
                 $row = null;
             }
@@ -260,10 +260,9 @@ class SSPA_Traffic_Collection {
             return array('available' => true, 'active' => false, 'collection' => null);
         }
         $events = SSPA_Schema::table('traffic_events');
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $summary = $wpdb->get_row($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-            "SELECT COUNT(*) event_count, MIN(observed_at) first_event, MAX(observed_at) last_event, SUM(CASE WHEN event_code = 1 THEN 1 ELSE 0 END) request_count, COALESCE(SUM(CASE WHEN event_code = 1 THEN observer_us ELSE 0 END),0) observer_us_sum, COALESCE(MAX(CASE WHEN event_code = 1 THEN observer_us ELSE NULL END),0) observer_us_max FROM $events WHERE collection_id = %d",
+            "SELECT COUNT(*) event_count, MIN(observed_at) first_event, MAX(observed_at) last_event, SUM(CASE WHEN event_code = 1 THEN 1 ELSE 0 END) request_count, COALESCE(SUM(CASE WHEN event_code = 1 THEN observer_us ELSE 0 END),0) observer_us_sum, COALESCE(MAX(CASE WHEN event_code = 1 THEN observer_us ELSE NULL END),0) observer_us_max FROM %i WHERE collection_id = %d",
+            $events,
             $row['id']
         ), ARRAY_A);
         $status = SSPA_Traffic_Codes::collection_status($row['status_code']);
@@ -545,12 +544,12 @@ class SSPA_Traffic_Collection {
 
     private static function raw_active() {
         global $wpdb;
-        $running = implode(',', array(SSPA_Traffic_Codes::COLLECTION_RUNNING, SSPA_Traffic_Codes::COLLECTION_OUTCOME));
         return $wpdb->get_row($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- integer constants only.
-            "SELECT * FROM %i WHERE blog_id=%d AND status_code IN ($running) ORDER BY id DESC LIMIT 1",
+            "SELECT * FROM %i WHERE blog_id=%d AND status_code IN (%d, %d) ORDER BY id DESC LIMIT 1",
             SSPA_Schema::table('traffic_collections'),
-            get_current_blog_id()
+            get_current_blog_id(),
+            SSPA_Traffic_Codes::COLLECTION_RUNNING,
+            SSPA_Traffic_Codes::COLLECTION_OUTCOME
         ), ARRAY_A) ?: null;
     }
 
@@ -560,21 +559,34 @@ class SSPA_Traffic_Collection {
 
     private static function conditional_transition($collection_id, $expected_status, $data) {
         global $wpdb;
-        $sets = array();
-        $values = array();
-        foreach ($data as $column => $value) {
-            $sets[] = sanitize_key($column) . '=%s';
-            $values[] = $value;
+        // Private callers use these four ordered layouts. Keep string-bound SET values
+        // and both compare-and-set guards identical to the original statement.
+        $table = SSPA_Schema::table('traffic_collections');
+        if (array_keys($data) === array('status_code', 'stop_reason_code', 'finished_at')) {
+            return 1 === (int) $wpdb->query($wpdb->prepare(
+                'UPDATE %i SET status_code=%s,stop_reason_code=%s,finished_at=%s WHERE id=%d AND status_code=%d',
+                $table, $data['status_code'], $data['stop_reason_code'], $data['finished_at'], (int) $collection_id, (int) $expected_status
+            ));
         }
-        $values[] = (int) $collection_id;
-        $values[] = (int) $expected_status;
-        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Private callers supply literal column keys; sanitize_key restricts identifier characters, each value appends one %s and matching argument, followed by the two %d guards and %i table.
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Private callers supply literal column keys; sanitize_key restricts identifier characters, each value appends one %s and matching argument, followed by the two %d guards and %i table.
-        return 1 === (int) $wpdb->query($wpdb->prepare(
-            'UPDATE %i SET ' . implode(',', $sets) . ' WHERE id=%d AND status_code=%d',
-            array_merge(array(SSPA_Schema::table('traffic_collections')), $values)
-        ));
-        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+        if (array_keys($data) === array('status_code', 'stop_reason_code', 'collect_until', 'outcomes_until')) {
+            return 1 === (int) $wpdb->query($wpdb->prepare(
+                'UPDATE %i SET status_code=%s,stop_reason_code=%s,collect_until=%s,outcomes_until=%s WHERE id=%d AND status_code=%d',
+                $table, $data['status_code'], $data['stop_reason_code'], $data['collect_until'], $data['outcomes_until'], (int) $collection_id, (int) $expected_status
+            ));
+        }
+        if (array_keys($data) === array('status_code', 'finished_at')) {
+            return 1 === (int) $wpdb->query($wpdb->prepare(
+                'UPDATE %i SET status_code=%s,finished_at=%s WHERE id=%d AND status_code=%d',
+                $table, $data['status_code'], $data['finished_at'], (int) $collection_id, (int) $expected_status
+            ));
+        }
+        if (array_keys($data) === array('status_code')) {
+            return 1 === (int) $wpdb->query($wpdb->prepare(
+                'UPDATE %i SET status_code=%s WHERE id=%d AND status_code=%d',
+                $table, $data['status_code'], (int) $collection_id, (int) $expected_status
+            ));
+        }
+        throw new InvalidArgumentException('Unknown traffic collection transition columns.');
     }
 
     private static function clear_ticks($collection_id) {
@@ -610,10 +622,9 @@ class SSPA_Traffic_Collection {
             $id
         ), ARRAY_A), array('SSPA_Traffic_Codes', 'page_class'));
         $values = array();
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         foreach ($wpdb->get_results($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
-            "SELECT event_code, currency, COUNT(*) total, SUM(value_minor) value_minor_sum FROM $table WHERE collection_id = %d AND value_minor IS NOT NULL GROUP BY event_code,currency",
+            "SELECT event_code, currency, COUNT(*) total, SUM(value_minor) value_minor_sum FROM %i WHERE collection_id = %d AND value_minor IS NOT NULL GROUP BY event_code,currency",
+            $table,
             $id
         ), ARRAY_A) as $row) {
             $values[] = array(
@@ -623,9 +634,7 @@ class SSPA_Traffic_Collection {
                 'value_minor_sum' => (int) $row['value_minor_sum'],
             );
         }
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $cohorts = $wpdb->get_row($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT
                 COUNT(DISTINCT CASE WHEN event_code = 1 AND actor_state IN (3,5) THEN actor_key END) basket_actors,
                 COUNT(DISTINCT CASE WHEN event_code = 1 AND actor_state IN (4,5) THEN actor_key END) logged_in_customer_actors,
@@ -633,33 +642,30 @@ class SSPA_Traffic_Collection {
                 SUM(CASE WHEN event_code = 1 AND actor_state IN (3,5) THEN 1 ELSE 0 END) basket_actor_requests,
                 SUM(CASE WHEN event_code = 1 AND actor_state IN (4,5) THEN 1 ELSE 0 END) logged_in_customer_requests,
                 SUM(CASE WHEN event_code = 1 AND actor_state = 6 THEN 1 ELSE 0 END) staff_requests
-             FROM $table WHERE collection_id = %d",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+             FROM %i WHERE collection_id = %d",
+            $table,
             $id
         ), ARRAY_A);
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $commerce = $wpdb->get_row($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT
                 COUNT(DISTINCT CASE WHEN event_code = 10 THEN actor_key END) basket_started_actors,
-                COUNT(DISTINCT CASE WHEN event_code = 14 AND actor_key NOT IN (SELECT actor_key FROM $table started WHERE started.collection_id = %d AND started.event_code = 10 AND started.actor_key IS NOT NULL) THEN actor_key END) pre_existing_basket_actors,
+                COUNT(DISTINCT CASE WHEN event_code = 14 AND actor_key NOT IN (SELECT actor_key FROM %i started WHERE started.collection_id = %d AND started.event_code = 10 AND started.actor_key IS NOT NULL) THEN actor_key END) pre_existing_basket_actors,
                 COUNT(DISTINCT CASE WHEN event_code = 30 AND (flags & 448) = 0 THEN commerce_key END) shopper_orders_created,
                 COUNT(DISTINCT CASE WHEN event_code IN (31,32) AND (flags & 448) = 0 THEN commerce_key END) paid_order_events_observed
-             FROM $table WHERE collection_id = %d",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+             FROM %i WHERE collection_id = %d",
+            $table,
             $id,
+            $table,
             $id
         ), ARRAY_A);
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $linked_paid = (int) $wpdb->get_var($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT COUNT(*) FROM (
-                SELECT commerce_key FROM $table
+                SELECT commerce_key FROM %i
                 WHERE collection_id = %d AND commerce_key IS NOT NULL AND (flags & 448) = 0
                 GROUP BY commerce_key
                 HAVING SUM(event_code = 30) > 0 AND SUM(event_code IN (31,32)) > 0
             ) linked",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $table,
             $id
         ));
         $duration_seconds = self::observed_duration_seconds($status['collection']);
@@ -827,12 +833,10 @@ class SSPA_Traffic_Collection {
     private static function request_performance_data($collection_id, $sample_modulus, $duration_seconds) {
         global $wpdb;
         $table = SSPA_Schema::table('traffic_events');
-        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
         $rows = $wpdb->get_results($wpdb->prepare(
-            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only identifiers from SSPA_Schema::table with literal suffixes and the trusted WordPress prefix are interpolated; values use prepare placeholders.
             "SELECT actor_key,actor_state,automation_code,surface_code,page_class,ssf_protection_code,wall_ms,cpu_us,query_count,flags
-             FROM $table WHERE collection_id = %d AND event_code = %d ORDER BY id",
-            // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+             FROM %i WHERE collection_id = %d AND event_code = %d ORDER BY id",
+            $table,
             $collection_id,
             SSPA_Traffic_Codes::EVENT_REQUEST
         ), ARRAY_A);

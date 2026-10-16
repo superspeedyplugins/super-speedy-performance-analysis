@@ -49,15 +49,16 @@ class SSPA_Insights {
 
     public static function top($run_id, $limit = 5) {
         global $wpdb;
-        $excluded = implode(',', array_fill(0, count(self::STANDALONE), '%s'));
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The generated list contains only %s placeholders, one per STANDALONE constant; the merged argument array includes the %i table and %d run ID.
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM %i WHERE run_id = %d
-             AND finding_type NOT IN ($excluded)
+             AND finding_type NOT IN (%s, %s, %s)
              ORDER BY FIELD(severity, 'critical', 'warn', 'info'), id ASC",
-            array_merge(array(SSPA_Schema::table('findings'), $run_id), self::STANDALONE)
+            SSPA_Schema::table('findings'),
+            $run_id,
+            self::STANDALONE[0],
+            self::STANDALONE[1],
+            self::STANDALONE[2]
         ), ARRAY_A);
-        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         // Secondary ordering: biggest measured impact first within each severity.
         usort($rows, function ($a, $b) {

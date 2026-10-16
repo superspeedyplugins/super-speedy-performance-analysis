@@ -1384,8 +1384,10 @@ class SSPA_Checkout_Flow {
         $table = $wpdb->prefix . 'woocommerce_sessions';
         $deleted = 0;
         foreach (array_unique(array_filter($keys)) as $key) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- The identifier is the trusted WordPress prefix plus literal woocommerce_sessions; the session key uses %s.
-            $deleted += (int) $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE session_key = %s", $key));
+            $deleted += (int) $wpdb->query($wpdb->prepare("DELETE FROM %i WHERE session_key = %s",
+            $table,
+            $key
+        ));
         }
         $result['notes']['sessions_deleted'] = $deleted;
     }
