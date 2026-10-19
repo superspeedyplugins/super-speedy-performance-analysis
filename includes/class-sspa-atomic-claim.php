@@ -7,7 +7,8 @@ class SSPA_Atomic_Claim {
     public static function create_value($key, $value) {
         global $wpdb;
         $wpdb->query($wpdb->prepare(
-            "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
+            "INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
+            $wpdb->options,
             $key,
             maybe_serialize($value)
         ));
@@ -32,7 +33,8 @@ class SSPA_Atomic_Claim {
         $expires = time() + max(5, (int) $ttl);
         $value = $owner . '|' . $expires;
         $inserted = $wpdb->query($wpdb->prepare(
-            "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+            "INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+            $wpdb->options,
             $key,
             $value
         ));
@@ -42,7 +44,8 @@ class SSPA_Atomic_Claim {
         }
 
         $current = (string) $wpdb->get_var($wpdb->prepare(
-            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+            "SELECT option_value FROM %i WHERE option_name = %s",
+            $wpdb->options,
             $key
         ));
         list($current_owner, $current_expires) = array_pad(explode('|', $current, 2), 2, '0');
@@ -54,7 +57,8 @@ class SSPA_Atomic_Claim {
         }
         if ($current_owner === $owner || (int) $current_expires < time()) {
             $updated = $wpdb->query($wpdb->prepare(
-                "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+                "UPDATE %i SET option_value = %s WHERE option_name = %s AND option_value = %s",
+                $wpdb->options,
                 $value,
                 $key,
                 $current
@@ -71,7 +75,8 @@ class SSPA_Atomic_Claim {
         global $wpdb;
         $key = sanitize_key($key);
         $deleted = $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value LIKE %s",
+            "DELETE FROM %i WHERE option_name = %s AND option_value LIKE %s",
+            $wpdb->options,
             $key,
             $wpdb->esc_like(sanitize_text_field($owner) . '|') . '%'
         ));

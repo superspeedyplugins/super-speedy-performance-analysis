@@ -169,7 +169,7 @@ class SSPA_Probes {
     private static function create_temp_copy_owned($post_type, $workflow) {
         $temp_id = wp_insert_post(array(
             'post_type' => $post_type,
-            'post_status' => 'draft',
+            'post_status' => 'private',
             'post_title' => '[SSPA temp] Performance Analysis',
             'post_content' => 'Performance Analysis test content.',
             'post_author' => SSPA_Mail::owner_id(),
@@ -198,7 +198,7 @@ class SSPA_Probes {
         $product = new WC_Product_Simple();
         try {
             $product->set_name(__('SSPA write-profile test product', 'super-speedy-performance-analysis'));
-            $product->set_status('publish');
+            $product->set_status('private');
             $product->set_catalog_visibility('hidden');
             $product->set_regular_price('0');
             $product->set_price('0');
@@ -227,6 +227,37 @@ class SSPA_Probes {
             throw $error;
         }
         return (int) $order->get_id();
+    }
+
+    /** Recover objects left by interrupted requests, including pre-registry failures. */
+    public static function sweep_abandoned($all = false) {
+        $entry = get_option(SSPA_Workflow_Analysis::TEMP_OPTION, array());
+        $created_at = (int) ($entry['created_at'] ?? 0);
+        if ($entry && !$created_at) {
+            if ('order' === $entry['type'] && function_exists('wc_get_order')) {
+                $order = wc_get_order($entry['id']);
+                $created_at = $order && $order->get_date_created() ? $order->get_date_created()->getTimestamp() : 0;
+            } else {
+                $created_at = (int) get_post_timestamp((int) $entry['id']);
+            }
+        }
+        if ($entry && ($all || (empty($entry['run_id']) && $created_at < time() - 15 * MINUTE_IN_SECONDS))) {
+            SSPA_Workflow_Analysis::cleanup();
+        }
+        $args = array(
+            'post_type' => array_keys(get_post_types()), 'post_status' => array_keys(get_post_stati()),
+            'posts_per_page' => -1, 'fields' => 'ids',
+            'meta_query' => array(array('key' => '_sspa_temp', 'value' => array('1', 'write_product'), 'compare' => 'IN')),
+        );
+        if (!$all) { $args['date_query'] = array(array('column' => 'post_date_gmt', 'before' => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS))); }
+        foreach (get_posts($args) as $id) { self::delete_temp((int) $id, 'shop_order' === get_post_type($id)); }
+        if (function_exists('wc_get_orders')) {
+            $args = array('limit' => -1, 'type' => 'shop_order', 'meta_key' => '_sspa_temp', 'meta_compare' => 'EXISTS');
+            if (!$all) { $args['date_created'] = '<' . (time() - HOUR_IN_SECONDS); }
+            foreach (wc_get_orders($args) as $order) {
+                if ($order->get_meta('_sspa_workflow') || $order->get_meta('_sspa_temp_product_id')) { self::delete_temp($order->get_id(), true); }
+            }
+        }
     }
 
     public static function delete_temp($id, $is_order = false) {

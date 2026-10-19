@@ -57,9 +57,6 @@ class SSPA_Traffic_CLI {
      *
      * [--collection=<id>]
      * : Specific collection; defaults to the active or latest collection.
-     *
-     * [--output=<path>]
-     * : Write JSON to this path instead of stdout.
      */
     public function observations($args, $assoc_args) {
         $result = SSPA_Traffic_Collection::observations(!empty($assoc_args['collection']) ? (int) $assoc_args['collection'] : 0);
@@ -67,13 +64,6 @@ class SSPA_Traffic_CLI {
             WP_CLI::error($result->get_error_message());
         }
         $json = wp_json_encode($result, JSON_PRETTY_PRINT);
-        if (!empty($assoc_args['output'])) {
-            if (false === SSPA_Filesystem::put_contents($assoc_args['output'], $json . PHP_EOL)) {
-                WP_CLI::error('Could not write observations to ' . $assoc_args['output']);
-            }
-            WP_CLI::success('Wrote ' . $assoc_args['output']);
-            return;
-        }
         WP_CLI::line($json);
     }
 
@@ -85,9 +75,6 @@ class SSPA_Traffic_CLI {
      *
      * <after-collection-id>
      * : Collection recorded after the change.
-     *
-     * [--output=<path>]
-     * : Write JSON to this path instead of stdout.
      */
     public function compare($args, $assoc_args) {
         $before = isset($args[0]) ? (int) $args[0] : 0;
@@ -100,13 +87,6 @@ class SSPA_Traffic_CLI {
             WP_CLI::error($result->get_error_message());
         }
         $json = wp_json_encode($result, JSON_PRETTY_PRINT);
-        if (!empty($assoc_args['output'])) {
-            if (false === SSPA_Filesystem::put_contents($assoc_args['output'], $json . PHP_EOL)) {
-                WP_CLI::error('Could not write comparison to ' . $assoc_args['output']);
-            }
-            WP_CLI::success('Wrote ' . $assoc_args['output']);
-            return;
-        }
         WP_CLI::line($json);
     }
 

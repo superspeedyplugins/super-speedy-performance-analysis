@@ -205,7 +205,7 @@ class SSPA_Admin_Page {
                 'launching' => __('Loading the controlled editor…', 'super-speedy-performance-analysis'),
                 'running' => __('Saving and profiling the update request…', 'super-speedy-performance-analysis'),
                 'complete' => __('Save profiled. Opening the result…', 'super-speedy-performance-analysis'),
-                'no_targets' => __('No editable items were found for this content type.', 'super-speedy-performance-analysis'),
+                'no_targets' => __('No supported editor transport is available for this content type.', 'super-speedy-performance-analysis'),
                 'no_transports' => __('No supported save transport was found.', 'super-speedy-performance-analysis'),
                 'failed' => __('The workflow could not be started.', 'super-speedy-performance-analysis'),
             ),

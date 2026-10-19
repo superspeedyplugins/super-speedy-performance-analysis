@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 /**
  * Minimal production-request observer. Loaded only by the generated active MU file.
- * It buffers request/Woo events and performs one append statement at shutdown.
+ * It buffers request/Woo events and appends each row at shutdown.
  */
 class SSPA_Traffic_Hot_Path {
 
@@ -218,7 +218,8 @@ class SSPA_Traffic_Hot_Path {
 			return;
 		}
 		$home_path = wp_parse_url(home_url('/'), PHP_URL_PATH);
-		$wc_action = self::request_scalar('wc-ajax');
+		$wc_action = isset($GLOBALS['wp_query']) ? $GLOBALS['wp_query']->get('wc-ajax') : '';
+        $wc_action = is_string($wc_action) ? sanitize_key($wc_action) : '';
 		if ($wc_action && is_string($home_path) && untrailingslashit($path) === untrailingslashit($home_path)
 			&& has_action('wc_ajax_' . $wc_action)) {
 			self::arm_endpoint(array('transport' => 'wc_ajax', 'endpoint' => $wc_action, 'method' => $method, 'context' => $context), 'wc_ajax_' . $wc_action);
@@ -226,21 +227,9 @@ class SSPA_Traffic_Hot_Path {
 	}
 
 	private static function request_scalar($key) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- observer reads an existing third-party request; it neither invokes its action nor changes its authorisation.
-		$has_get = isset($_GET[$key]);
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- observer reads an existing third-party request; it neither invokes its action nor changes its authorisation.
-		$has_post = isset($_POST[$key]);
-		if (!$has_get && !$has_post) { return ''; }
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- array_key_exists above proves each accessed key exists; reject non-scalar observed endpoint identities.
-		if (($has_get && !is_scalar($_GET[$key])) || ($has_post && !is_scalar($_POST[$key]))) { return ''; }
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- existence/type checked above; strict endpoint regex below rejects unsafe bytes without changing the observed action identity.
-		$get = $has_get ? (filter_var(wp_unslash($_GET[$key]), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: '') : null;
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- existence/type checked above; strict endpoint regex below rejects unsafe bytes without changing the observed action identity.
-		$post = $has_post ? (filter_var(wp_unslash($_POST[$key]), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: '') : null;
-		if ($has_get && $has_post && !hash_equals($get, $post)) { return ''; }
-		$value = $has_post ? $post : $get;
-		return is_string($value) && preg_match('/\A[A-Za-z0-9_.:-]{1,191}\z/', $value) ? $value : '';
-	}
+        $value = filter_var(wp_unslash($_REQUEST[$key] ?? ''), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: '';
+        return is_string($value) ? $value : '';
+    }
 
 	private static function arm_endpoint($identity, $hook = '') {
 		if (self::$endpoint_identity) { return; }
@@ -598,7 +587,7 @@ class SSPA_Traffic_Hot_Path {
             return SSPA_Traffic_Codes::SURFACE_WP_ADMIN;
         }
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only classification of an observed WooCommerce request, not execution of the endpoint.
-        if (isset($_GET['wc-api'])) {
+        if (isset($GLOBALS['wp']->query_vars['wc-api'])) {
             return SSPA_Traffic_Codes::SURFACE_WEBHOOK;
         }
         if (function_exists('is_cart') && is_cart()) {
@@ -731,56 +720,38 @@ class SSPA_Traffic_Hot_Path {
 
     private static function insert_rows($rows) {
         global $wpdb;
-        $values = array();
-        $groups = array();
         foreach ($rows as $row) {
-            $parts = array('%d', '%d');
-            $values[] = (int) self::$config['collection_id'];
-            $values[] = time();
-            foreach (array('actor_key', 'related_actor_key', 'commerce_key', 'path_key') as $binary) {
-                if ($row[$binary] === null) {
-                    $parts[] = 'NULL';
-                } else {
-                    $parts[] = '%s';
-                    $values[] = $row[$binary];
-                }
+            $inserted = $wpdb->insert(self::$config['table'], array(
+                'collection_id' => (int) self::$config['collection_id'],
+                'observed_at' => time(),
+                'actor_key' => null === $row['actor_key'] ? null : $row['actor_key'],
+                'related_actor_key' => null === $row['related_actor_key'] ? null : $row['related_actor_key'],
+                'commerce_key' => null === $row['commerce_key'] ? null : $row['commerce_key'],
+                'path_key' => null === $row['path_key'] ? null : $row['path_key'],
+                'event_code' => (int) $row['event_code'],
+                'actor_state' => (int) $row['actor_state'],
+                'automation_code' => (int) $row['automation_code'],
+                'surface_code' => (int) $row['surface_code'],
+                'page_class' => (int) $row['page_class'],
+                'ssf_protection_code' => (int) $row['ssf_protection_code'],
+                'status_code' => (int) $row['status_code'],
+                'wall_ms' => (int) $row['wall_ms'],
+                'cpu_us' => null === $row['cpu_us'] ? null : (int) $row['cpu_us'],
+                'query_count' => null === $row['query_count'] ? null : (int) $row['query_count'],
+                'observer_us' => null === $row['observer_us'] ? null : (int) $row['observer_us'],
+                'value_minor' => null === $row['value_minor'] ? null : (int) $row['value_minor'],
+                'currency' => null === $row['currency'] ? null : $row['currency'],
+                'flags' => (int) $row['flags'],
+            ), array('%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%d'));
+            if (false === $inserted) {
+                self::retire('database_error');
+                return;
             }
-            foreach (array('event_code', 'actor_state', 'automation_code', 'surface_code', 'page_class', 'ssf_protection_code', 'status_code', 'wall_ms') as $number) {
-                $parts[] = '%d';
-                $values[] = (int) $row[$number];
+            // Each insert supplies its own actual id, including non-unit increment setups.
+            if ((int) $wpdb->insert_id >= (int) self::$config['event_id_stop']) {
+                self::retire('event_limit');
+                return;
             }
-            foreach (array('cpu_us', 'query_count', 'observer_us', 'value_minor') as $nullable_number) {
-                if ($row[$nullable_number] === null) {
-                    $parts[] = 'NULL';
-                } else {
-                    $parts[] = '%d';
-                    $values[] = (int) $row[$nullable_number];
-                }
-            }
-            if ($row['currency'] === null) {
-                $parts[] = 'NULL';
-            } else {
-                $parts[] = '%s';
-                $values[] = $row['currency'];
-            }
-            $parts[] = '%d';
-            $values[] = (int) $row['flags'];
-            $groups[] = '(' . implode(',', $parts) . ')';
-        }
-        $columns = '(collection_id,observed_at,actor_key,related_actor_key,commerce_key,path_key,event_code,actor_state,automation_code,surface_code,page_class,ssf_protection_code,status_code,wall_ms,cpu_us,query_count,observer_us,value_minor,currency,flags)';
-        $sql = 'INSERT INTO %i ' . $columns . ' VALUES ' . implode(',', $groups);
-        array_unshift($values, self::$config['table']);
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is built above from literal column names and generated %i/%s/%d/NULL placeholders only; the table and every value go in through $values.
-        $prepared = $wpdb->prepare($sql, $values);
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $prepared is the prepare() result above: literal columns/placeholders, bound row values, and the traffic_events table generated by SSPA_Traffic_Helper::install().
-        $inserted = $wpdb->query($prepared);
-        if ($inserted === false) {
-            self::retire('database_error');
-            return;
-        }
-        $last_id = (int) $wpdb->insert_id + max(0, count($rows) - 1);
-        if ($last_id >= (int) self::$config['event_id_stop']) {
-            self::retire('event_limit');
         }
     }
 
@@ -791,7 +762,7 @@ class SSPA_Traffic_Hot_Path {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- retirement path inside the observer's hot path; runs before the plugin (and WP_Filesystem) is available and must stay dependency-free.
             require_once __DIR__ . '/../includes/class-sspa-filesystem.php';
             if (!SSPA_Filesystem::put_contents($stopped, sanitize_key($reason), 0600) || !SSPA_Filesystem::direct()->delete($observer)) {
-                throw new RuntimeException('Could not retire the traffic observer.');
+                update_option('sspa_traffic_retirement_error', 'Could not retire the traffic observer.', false);
             }
         }
         if (function_exists('opcache_invalidate')) {

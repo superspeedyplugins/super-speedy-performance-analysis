@@ -28,6 +28,7 @@ $sspa_pins = array(
             '1.0.1' => '7361c5c13a4a8dfd7c90ad5188321b8334cac0f5876a02403e2afc1eefedc7f1',
             '1.0.2' => '18afca7c76f7559799b9d8dc346bbd5f8fc5a7fbbfeac6efb1eeeab8eccc4ccd',
             '1.0.3' => '2c96790978d81ab988de9c8cd466e9a3b0cba3e3ec9adbda7d35d8ddd776710e',
+            '1.0.4' => '87efea4f722d351fda9568b0f7555403101d4a7cf41a33bf5c97b130f50d27d1',
         ),
     ),
     'dropins/db.php' => array(
@@ -38,6 +39,7 @@ $sspa_pins = array(
             '1.0.1' => '484d8f49aeb8e7c06e99b34204f72a01549f89773a2bd77a8db858f85424abd5',
             '1.0.2' => '744639af3c47afdfbe4a6f2689985d6d8a94b57e9e337cbbaf11a6b26a4e6779',
             '1.0.3' => '12f440a0c6d4ce4b1a32c5d054476ae29daeacaa0c708d893434339cfc92d6c7',
+            '1.0.4' => 'ec20a09bd12acbae9a8aace04e748737196d89dc9e7f20636ab341d210c18a41',
         ),
     ),
 );

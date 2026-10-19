@@ -24,11 +24,18 @@ window.SSPATransport = (function () {
 	}
 
 	function post(ajaxurl, data) {
+		var fields = new URLSearchParams();
+		function append(name, value) {
+			if (value && typeof value === 'object') {
+				Object.keys(value).forEach(function (key) { append(name + '[' + key + ']', value[key]); });
+			} else { fields.append(name, typeof value === 'boolean' ? (value ? '1' : '0') : String(value == null ? '' : value)); }
+		}
+		Object.keys(data).forEach(function (name) { append(name, data[name]); });
 		return fetch(ajaxurl, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams(data).toString()
+			body: fields.toString()
 		}).then(function (r) {
 			if (!r.ok) {
 				var err = new Error('HTTP ' + r.status);
@@ -66,8 +73,8 @@ window.SSPATransport = (function () {
 					redirected: response.redirected ? 1 : 0,
 					final_url: response.redirected ? response.url : '',
 					duration_ms: Math.round(performance.now() - start),
-					headers: JSON.stringify(headers),
-					body_evidence: JSON.stringify(SSPABrowserEvidence.derive(body, headers))
+					headers: headers,
+					body_evidence: SSPABrowserEvidence.derive(body, headers)
 				};
 			});
 		}).catch(function (e) {
@@ -77,8 +84,8 @@ window.SSPATransport = (function () {
 				redirected: 0,
 				final_url: '',
 				duration_ms: Math.round(performance.now() - start),
-				headers: '{}',
-				body_evidence: JSON.stringify(SSPABrowserEvidence.derive('', {}))
+				headers: {},
+				body_evidence: SSPABrowserEvidence.derive('', {})
 			};
 		});
 	}

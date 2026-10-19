@@ -304,13 +304,18 @@ class SSPA_Browser_Transport {
         $redirected = !empty($_POST['redirected']);
         $final_url = isset($_POST['final_url']) ? esc_url_raw(wp_unslash($_POST['final_url'])) : '';
         $duration = isset($_POST['duration_ms']) ? (float) $_POST['duration_ms'] : 0;
-        $body_evidence = isset($_POST['body_evidence']) ? map_deep(json_decode(wp_unslash($_POST['body_evidence']), true), 'sanitize_text_field') : null;
+        $body_evidence = isset($_POST['body_evidence']) ? map_deep(wp_unslash($_POST['body_evidence']), 'sanitize_text_field') : null;
+        // Form encoding omits empty arrays. Restore those declared array fields only.
+        if (is_array($body_evidence)) {
+            $body_evidence += array_fill_keys(array('nonce_evidence', 'legacy_cookie_reads', 'private_surface_hints'), array());
+            if (is_array($body_evidence['coverage'] ?? null)) { $body_evidence['coverage'] += array('type_b_regions' => array()); }
+        }
         $body_evidence = SSPA_Cache_Recon::validate_browser_evidence($body_evidence);
         if (is_wp_error($body_evidence)) { wp_send_json_error($body_evidence->get_error_message(), 400); }
         $headers = array();
         if (isset($_POST['headers'])) {
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- decode the JSON structure first; every header key and value is sanitized in the loop below.
-            $decoded = map_deep(json_decode((string) wp_unslash($_POST['headers']), true), 'sanitize_text_field');
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Form array values are sanitised here and header names are sanitised below.
+            $decoded = map_deep(wp_unslash($_POST['headers']), 'sanitize_text_field');
             if (is_array($decoded)) {
                 foreach ($decoded as $k => $v) {
                     if (!is_string($v)) { wp_send_json_error(__('Invalid response header.', 'super-speedy-performance-analysis'), 400); }

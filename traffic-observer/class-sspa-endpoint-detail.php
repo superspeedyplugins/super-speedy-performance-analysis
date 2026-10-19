@@ -14,8 +14,9 @@ class SSPA_Endpoint_Detail {
     private $actions;
     public function __construct($action = '') {
         $this->last = microtime(true);
-        foreach ((array) get_option('active_plugins', array()) as $plugin) {
-            $file = realpath(WP_PLUGIN_DIR . '/' . $plugin);
+        foreach (wp_get_active_and_valid_plugins() as $plugin) {
+            $file = realpath($plugin);
+            $plugin = plugin_basename($plugin);
             if ($file) { $this->roots[$plugin] = dirname($plugin) === '.' ? wp_normalize_path($file) : wp_normalize_path(dirname($file)) . '/'; }
         }
         $this->actions = array('plugins_loaded', 'after_setup_theme', 'init', 'wp_loaded', 'admin_init', 'rest_api_init');
@@ -52,12 +53,10 @@ class SSPA_Endpoint_Detail {
     private function owner($file) {
         $file = wp_normalize_path($file);
         foreach ($this->roots as $plugin => $root) { if ($file === $root || (substr($root, -1) === '/' && strpos($file, $root) === 0)) { return $plugin; } }
-        $normal = wp_normalize_path(WP_PLUGIN_DIR) . '/';
-        if (strpos($file, $normal) === 0) {
-            $relative = substr($file, strlen($normal));
-            foreach ((array) get_option('active_plugins', array()) as $plugin) {
-                if ($relative === $plugin || (dirname($plugin) !== '.' && strpos($relative, dirname($plugin) . '/') === 0)) { $this->ensure($plugin); return $plugin; }
-            }
+        foreach (wp_get_active_and_valid_plugins() as $active_file) {
+            $plugin = plugin_basename($active_file);
+            $root = wp_normalize_path(dirname($active_file)) . '/';
+            if ($file === wp_normalize_path($active_file) || (dirname($plugin) !== '.' && strpos($file, $root) === 0)) { $this->ensure($plugin); return $plugin; }
         }
         return '';
     }

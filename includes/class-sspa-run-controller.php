@@ -791,7 +791,6 @@ class SSPA_Run_Controller {
      * never later be mistaken for a full one.
      */
     private static function checkout_opts($args, $run_id) {
-        $mail_mode = !empty($args['mail_mode']) ? $args['mail_mode'] : sspa_get_option('checkout_mail_mode');
         $payment_mode = !empty($args['payment_mode']) ? $args['payment_mode'] : sspa_get_option('checkout_payment_mode');
         return array(
             'run_id' => (int) $run_id,
@@ -1366,6 +1365,8 @@ class SSPA_Run_Controller {
             } else {
                 wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
             }
+        } catch (Throwable $error) {
+            self::fail($run_id, $error->getMessage(), $lock_owner);
         } finally {
             SSPA_Atomic_Claim::release($lock_key, $lock_owner);
         }
@@ -2159,6 +2160,7 @@ class SSPA_Run_Controller {
         ));
 
         self::sweep_flow_orders();
+        SSPA_Probes::sweep_abandoned();
 
         // Staleness is judged by PROGRESS, not age: a full sweep legitimately runs for
         // hours. A run with no progress for 30 minutes gets its batch event re-kicked
@@ -2289,6 +2291,10 @@ class SSPA_Run_Controller {
     private static function trash_marked_order($order_id) {
         $order = wc_get_order($order_id);
         if (!$order || is_a($order, 'WC_Order_Refund') || !$order->get_meta(SSPA_Checkout_Flow::TEMP_META)) {
+            return;
+        }
+        if ($order->get_meta('_sspa_temp_product_id') || $order->get_meta('_sspa_workflow')) {
+            SSPA_Probes::delete_temp($order_id, true);
             return;
         }
         if (!$order->has_status('trash')) {

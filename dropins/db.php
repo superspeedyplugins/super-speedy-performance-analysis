@@ -21,8 +21,8 @@ if (!function_exists('sspa_sanitize_early_token')) {
     }
 }
 $sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
-    ? sspa_sanitize_early_token($_SERVER['HTTP_X_SSPA_TOKEN'])
-    : (!empty($_POST['_sspa_profile_token']) ? sspa_sanitize_early_token($_POST['_sspa_profile_token']) : '');
+    ? sspa_sanitize_early_token(wp_unslash($_SERVER['HTTP_X_SSPA_TOKEN']))
+    : sspa_sanitize_early_token(wp_unslash($_POST['_sspa_profile_token'] ?? ''));
 if (!$sspa_token_value || !defined('DB_USER')) {
     return;
 }
@@ -58,14 +58,9 @@ if (!function_exists('sspa_token_verify')) {
     }
 }
 
-if (!function_exists('sspa_sanitize_early_path')) {
-    function sspa_sanitize_early_path($value) {
-        return is_string($value) && !preg_match('/[\x00-\x20\x7f]/', $value) ? $value : '';
-    }
-}
 $sspa_shim_tok = sspa_token_verify(
     $sspa_token_value,
-    isset($_SERVER['REQUEST_URI']) ? sspa_sanitize_early_path($_SERVER['REQUEST_URI']) : '/', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
+    filter_var($_SERVER['REQUEST_URI'] ?? '/', FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[^\x00-\x20\x7f]*\z/'))) ?: '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
     '%%SSPA_SECRET%%'
 );
 if (!$sspa_shim_tok) {

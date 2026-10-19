@@ -39,15 +39,10 @@ class SSPA_Admin_Save {
             );
         }
 
-        // WooCommerce HPOS order editor: admin.php?page=wc-orders&action=edit&id=N.
-        if ('woocommerce_page_wc-orders' === $screen->id
-            && isset($_GET['action'], $_GET['id']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
-            && 'edit' === sanitize_key(wp_unslash($_GET['action']))) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
-            return array(
-                'screen_id' => 'woocommerce_page_wc-orders',
-                'object_type' => 'order',
-                'object_id' => (int) $_GET['id'], // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display context only.
-            );
+        if (class_exists('\\Automattic\\WooCommerce\\Utilities\\OrderUtil')
+            && \Automattic\WooCommerce\Utilities\OrderUtil::is_order_edit_screen()
+            && !empty($GLOBALS['theorder']) && is_object($GLOBALS['theorder'])) {
+            return array('screen_id' => sanitize_key($screen->id), 'object_type' => 'order', 'object_id' => (int) $GLOBALS['theorder']->get_id());
         }
         return null;
     }
@@ -210,6 +205,7 @@ class SSPA_Admin_Save {
             SSPA_Workflow_Analysis::bind_run($run_id);
         }
         $flags = array('v' => 'admin', 'as' => '1', 'mail' => 'd');
+        $flags['workflow' === $trigger ? 'wf' : 'real_save'] = '1';
         $token = SSPA_Token::mint($job['url'], $flags);
         $queue = SSPA_Run_Queue::get($run_id);
         $queue['interactive'] = array(
@@ -315,8 +311,7 @@ class SSPA_Admin_Save {
                 'object_id' => isset($_POST['object_id']) ? (int) $_POST['object_id'] : 0,
             ),
             array(
-                'mail_mode' => isset($_POST['mail_mode']) ? sanitize_key(wp_unslash($_POST['mail_mode'])) : 'deliver',
-                'trigger' => isset($_POST['trigger']) ? sanitize_key(wp_unslash($_POST['trigger'])) : 'adminbar',
+                    'trigger' => isset($_POST['trigger']) ? sanitize_key(wp_unslash($_POST['trigger'])) : 'adminbar',
                 'workflow_transport' => isset($_POST['workflow_transport']) ? sanitize_key(wp_unslash($_POST['workflow_transport'])) : '',
             )
         );

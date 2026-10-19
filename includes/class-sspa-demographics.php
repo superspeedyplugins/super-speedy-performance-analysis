@@ -77,7 +77,7 @@ class SSPA_Demographics {
             'checkout_type' => class_exists('SSPA_Checkout_Preflight') && class_exists('WooCommerce')
                 ? SSPA_Checkout_Preflight::checkout_type()
                 : null,
-            'users' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->users}"),
+            'users' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %i", $wpdb->users)),
             'comments' => (int) (wp_count_comments()->approved ?? 0),
             'terms' => isset($rows[$wpdb->terms]) ? $rows[$wpdb->terms] : null,
             'postmeta_rows' => isset($rows[$wpdb->postmeta]) ? $rows[$wpdb->postmeta] : null,

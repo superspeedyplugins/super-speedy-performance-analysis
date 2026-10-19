@@ -19,7 +19,7 @@ defined('ABSPATH') || exit;
  * sampling cost lands in the very measurement it is attached to.
  *
  * PRIVACY: meta KEYS, types and counts leave this class. Meta VALUES never do, not even a
- * sample - they hold licence keys, customer addresses and order data.
+ * sample - they hold credentials and API keys, customer addresses and order data.
  */
 class SSPA_Archive_Types {
 
@@ -98,7 +98,8 @@ class SSPA_Archive_Types {
         global $wpdb;
 
         $bounds = $wpdb->get_row($wpdb->prepare(
-            "SELECT MIN(meta_id) lo, MAX(meta_id) hi FROM {$wpdb->postmeta} WHERE meta_key = %s",
+            "SELECT MIN(meta_id) lo, MAX(meta_id) hi FROM %i WHERE meta_key = %s",
+            $wpdb->postmeta,
             $meta_key
         ), ARRAY_A);
 
@@ -119,7 +120,8 @@ class SSPA_Archive_Types {
         for ($i = 0; $i < self::CHUNKS; $i++) {
             $from = $lo + ($i * $span);
             $rows = $wpdb->get_col($wpdb->prepare(
-                "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_id >= %d LIMIT %d",
+                "SELECT meta_value FROM %i WHERE meta_key = %s AND meta_id >= %d LIMIT %d",
+                $wpdb->postmeta,
                 $meta_key,
                 $from,
                 $per_chunk

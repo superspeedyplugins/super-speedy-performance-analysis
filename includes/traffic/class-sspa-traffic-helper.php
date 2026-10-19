@@ -89,11 +89,9 @@ class SSPA_Traffic_Helper {
             'table' => SSPA_Schema::table('traffic_events'),
 			'endpoint_table' => SSPA_Schema::table('traffic_endpoint_observations'),
 			'endpoint_id_stop' => max(1, isset($config['endpoint_id_stop']) ? (int) $config['endpoint_id_stop'] : 4294967295),
-            'observer_path' => self::path(),
-            'stopped_path' => self::stopped_path(),
         );
         if (class_exists('SSPA_Ajax_Profile') && SSPA_Ajax_Profile::$pending) { $safe['ajax_profile'] = SSPA_Ajax_Profile::$pending; }
-        $content = $template;
+        $content = str_replace('%%SSPA_PLUGIN_DIR%%', addslashes(trailingslashit(SSPA_PLUGIN_DIR)), $template);
         $config_path = self::config_path();
         if (!wp_mkdir_p(dirname($config_path))) {
             return new WP_Error('sspa_traffic_config_dir', __('Could not create the traffic configuration directory.', 'super-speedy-performance-analysis'));

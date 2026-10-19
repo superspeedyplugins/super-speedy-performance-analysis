@@ -75,7 +75,6 @@ class SSPA_Checkout_Flow {
             'inventory' => $preflight['inventory'],
             'consented' => (bool) sspa_get_option('checkout_consent'),
             'defaults' => array(
-                'mail_mode' => sspa_get_option('checkout_mail_mode'),
                 'payment_mode' => sspa_get_option('checkout_payment_mode'),
                 'allow_integrations' => (bool) sspa_get_option('checkout_allow_integrations'),
                 'allow_webhooks' => (bool) sspa_get_option('checkout_allow_webhooks'),
@@ -115,10 +114,9 @@ class SSPA_Checkout_Flow {
             'trigger' => 'adminbar',
             'allow_integrations' => !empty($_POST['allow_integrations']),
             'allow_webhooks' => !empty($_POST['allow_webhooks']),
-            'mail_mode' => isset($_POST['mail_mode']) ? sanitize_key(wp_unslash($_POST['mail_mode'])) : 'deliver',
             // Whitelist again here. The panel already refuses to offer sandbox mode
             // without a matching adapter; this is the second, independent check.
-            'payment_mode' => (isset($_POST['payment_mode']) && 'sandbox' === $_POST['payment_mode'] && self::sandbox_adapter())
+            'payment_mode' => (isset($_POST['payment_mode']) && 'sandbox' === sanitize_key(wp_unslash($_POST['payment_mode'])) && self::sandbox_adapter())
                 ? 'sandbox'
                 : 'no_payment',
         );
@@ -496,7 +494,7 @@ class SSPA_Checkout_Flow {
             'state' => (string) $state,
             'postcode' => (string) $postcode,
             'country' => (string) $country,
-            'phone' => '01234567890',
+            'phone' => '01632960000',
         );
     }
 
@@ -524,7 +522,11 @@ class SSPA_Checkout_Flow {
      *                notes} - outcome is 'ok' or one of the failure codes in doc C4.
      */
     public static function run($opts = array()) {
-        return SSPA_Mail::with_admin(static function() use ($opts) { return self::run_owned($opts); });
+        try {
+            return SSPA_Mail::with_admin(static function() use ($opts) { return self::run_owned($opts); });
+        } catch (Throwable $error) {
+            return array('steps' => array(), 'order_ids' => array(), 'outcome' => 'exception', 'notes' => array('error' => $error->getMessage()));
+        }
     }
 
     private static function run_owned($opts = array()) {

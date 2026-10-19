@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-/** Markup emitted by PA's returned admin fragments. No scripts or inline styles. */
+/** Markup emitted by PA's returned admin fragments. Scripts are excluded; styles use the WordPress CSS allowlist. */
 class SSPA_Admin_HTML {
     public static function allowed_tags() {
         $tags = wp_kses_allowed_html('post');

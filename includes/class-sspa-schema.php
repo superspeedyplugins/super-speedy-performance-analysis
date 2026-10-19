@@ -21,11 +21,11 @@ class SSPA_Schema {
     }
 
     /**
-     * Schema work runs from plugins_loaded on whichever request arrives first after an update,
-     * so it must not run twice at once: dbDelta plus ensure_run_uuids()'s ALTER TABLE are DDL,
-     * and two concurrent requests can race the ADD UNIQUE into a duplicate-key-name error. The
-     * lock is an add_option insert, which is the cheapest thing WordPress offers that fails for
-     * the second caller, and it expires so a fatal cannot wedge the upgrade forever.
+     * Schema changes run on activation or an authorised wp-admin upgrade.
+     * They must not overlap: dbDelta plus ensure_run_uuids()'s ALTER TABLE are DDL,
+     * and two callers can race ADD UNIQUE into a duplicate-key-name error.
+     * The add_option claim fails for a second caller and expires so an interrupted
+     * upgrade can retry.
      */
     private static function lock() {
         self::$lock_owner = SSPA_Atomic_Claim::acquire(self::LOCK_OPTION, 300);

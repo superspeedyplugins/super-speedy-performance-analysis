@@ -153,7 +153,7 @@ class SSPA_Helper_Files {
             SSPA_Filesystem::direct()->delete($path);
         }
         // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic restore of the held foreign drop-in.
-        $ok = rename($hold, $path);
+        $ok = SSPA_Filesystem::direct()->move($hold, $path, false);
         if ($ok) {
             delete_option('sspa_dropin_hold');
             if (function_exists('opcache_invalidate')) {
@@ -198,7 +198,7 @@ class SSPA_Helper_Files {
             return false; // something recreated object-cache.php; do not clobber it
         }
         // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- atomic restore of the held foreign drop-in.
-        $ok = rename($hold, $path);
+        $ok = SSPA_Filesystem::direct()->move($hold, $path, false);
         if ($ok) {
             delete_option('sspa_oc_hold');
         }
@@ -215,6 +215,9 @@ class SSPA_Helper_Files {
         $result = self::ensure_installed(true);
         if (!$result['mu']) {
             return new WP_Error('sspa_loader_write', __('Could not install the profiler loader; check mu-plugins permissions and any existing file at that path.', 'super-speedy-performance-analysis'));
+        }
+        if ('ours' === self::dropin_status() && !$result['dropin']) {
+            return new WP_Error('sspa_dropin_write', __('Could not refresh the profiler db.php; check wp-content permissions.', 'super-speedy-performance-analysis'));
         }
         update_option('sspa_profiler_enabled', true, false);
         return true;
@@ -278,7 +281,8 @@ class SSPA_Helper_Files {
     public static function health() {
         $mu_content = self::generate('mu/sspa-loader.php');
         $mu_exists = file_exists(self::mu_path());
-        $mu_ok = $mu_exists && SSPA_Filesystem::get_contents(self::mu_path()) === $mu_content;
+        $dropin_stale = 'ours' === self::dropin_status() && SSPA_Filesystem::get_contents(self::dropin_path()) !== self::generate('dropins/db.php');
+        $mu_ok = $mu_exists && SSPA_Filesystem::get_contents(self::mu_path()) === $mu_content && !$dropin_stale;
 
         // Why it is not installed decides what the user is told to do about it. "Not
         // writable" sends someone to chmod a directory that may be fine.
@@ -290,7 +294,7 @@ class SSPA_Helper_Files {
             } elseif (!SSPA_Filesystem::direct()->is_writable(SSPA_MU_DIR) && !($mu_exists && SSPA_Filesystem::direct()->is_writable(self::mu_path()))) {
                 $mu_reason = 'not_writable';
             } else {
-                $mu_reason = $mu_exists ? 'stale' : 'disabled';
+                $mu_reason = ($mu_exists || $dropin_stale) ? 'stale' : 'disabled';
             }
         }
 
@@ -301,6 +305,7 @@ class SSPA_Helper_Files {
             // configuration choice, not a permissions fault. The UI must say which it is.
             'file_mods_blocked' => self::file_mods_blocked(),
             'dropin' => self::dropin_status(),
+            'dropin_stale' => $dropin_stale,
             'dropin_owner' => in_array(self::dropin_status(), array('qm', 'foreign'), true) ? self::dropin_owner_label() : null,
             'hold' => (bool) get_option('sspa_dropin_hold'),
             'stale_qm' => self::dropin_is_stale_qm(),

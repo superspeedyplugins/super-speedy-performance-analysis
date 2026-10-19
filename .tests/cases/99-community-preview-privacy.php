@@ -99,7 +99,7 @@ $intercept = static function ($pre, $args, $url) use (&$requests, &$upload_bytes
     }
     $body = false !== strpos($url, '/installations')
         ? array('registered' => true, 'install_uuid' => SSPA_Community_Identity::install_uuid())
-        : array('submission_uuid' => $row['submission_uuid'], 'reservation_uuid' => '11111111-1111-4111-8111-111111111111', 'storage_status' => 'awaiting_upload', 'upload_url' => 'https://93.184.215.14/synthetic', 'required_headers' => array('Content-Type' => 'application/gzip'));
+        : array('submission_uuid' => $row['submission_uuid'], 'reservation_uuid' => '11111111-1111-4111-8111-111111111111', 'storage_status' => 'awaiting_upload', 'upload_url' => 'https://00000000000000000000000000000000.r2.cloudflarestorage.com/synthetic', 'required_headers' => array('Content-Type' => 'application/gzip'));
     return array('response' => array('code' => 200), 'headers' => array(), 'body' => wp_json_encode($body), 'cookies' => array());
 };
 $collector = static function () { return 'https://collector.example.org'; };

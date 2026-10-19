@@ -235,7 +235,7 @@ if (!class_exists('SSPA_Capture')) {
                 $this->mail_calls[] = array('frames' => $this->mail_pending['frames'], 'construct_ms' => null);
             }
             $this->mail_pending = array('start' => microtime(true), 'frames' => $this->trigger_frames());
-            return $atts; // unchanged - altering it would measure a message nobody sends
+            return $atts; // Recipient policy runs separately after timing begins.
         }
 
         /**
@@ -363,7 +363,7 @@ if (!class_exists('SSPA_Capture')) {
                 // allowlist and does not transmit this section or its messages.
                 'php_diagnostics' => $php_diagnostics,
                 // Which options this request actually read. Names and call counts only -
-                // never values, which hold licence keys, API tokens and customer data.
+                // never values, which hold credentials and API keys, API tokens and customer data.
                 // Armed in the db.php drop-in; see the coverage note there.
                 'options' => $this->collect_options(),
                 // Reactions to a plugin being virtually excluded: another plugin trying to

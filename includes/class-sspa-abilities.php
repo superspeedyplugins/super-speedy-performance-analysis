@@ -307,7 +307,7 @@ class SSPA_Abilities {
                 'properties' => array(
                     'type' => array('type' => 'string', 'enum' => array('baseline', 'spot', 'cache_impact')),
                     'pages' => array('type' => 'array', 'items' => array('type' => 'string'), 'description' => __('Page keys to limit the run to (e.g. home, shop).', 'super-speedy-performance-analysis')),
-                    'include_writes' => array('type' => 'boolean', 'description' => __('Also profile saves using temporary copies and order processing using a temporary zero-price product with its own stock. These objects are deleted after measurement.', 'super-speedy-performance-analysis')),
+                    'include_writes' => array('type' => 'boolean', 'description' => __('Also profile saves using temporary administrator-owned objects and order processing using a temporary zero-price product with its own stock. These objects are deleted after measurement.', 'super-speedy-performance-analysis')),
                 ),
                 'additionalProperties' => false,
                 'default' => array(),
@@ -363,7 +363,7 @@ class SSPA_Abilities {
                     'confirm' => array('type' => 'boolean', 'description' => __('Must be true for a real checkout run.', 'super-speedy-performance-analysis')),
                     'allow_integrations' => array('type' => 'boolean', 'description' => __('Default false. Set true explicitly to fire store integrations.', 'super-speedy-performance-analysis')),
                     'allow_webhooks' => array('type' => 'boolean', 'description' => __('Default false. Set true explicitly to fire webhooks.', 'super-speedy-performance-analysis')),
-                    'mail_mode' => array('type' => 'string', 'enum' => array('deliver', 'construct', 'suppress'), 'description' => __('Compatibility argument only: emails always go to the site administrator, including when an older caller passes construct or suppress.', 'super-speedy-performance-analysis')),
+                    'mail_mode' => array('type' => 'string', 'description' => __('Deprecated compatibility argument, ignored: emails always go to the site administrator.', 'super-speedy-performance-analysis')),
                 ),
                 'additionalProperties' => false,
                 'default' => array(),
@@ -642,7 +642,7 @@ class SSPA_Abilities {
             return $run_id;
         }
         $status = SSPA_Run_Controller::status($run_id);
-        return array('run_id' => (int) $run_id, 'status' => (string) $status['status'], 'dry_run' => false);
+        return array('run_id' => (int) $run_id, 'status' => (string) $status['status'], 'dry_run' => false, 'note' => isset($input['mail_mode']) ? 'mail_mode was ignored; emails are delivered to the administrator.' : '');
     }
 
     public static function exec_get_checkout_flow($input) {

@@ -3,7 +3,8 @@ defined('ABSPATH') || exit;
 
 /** Site-local collection authority. The stable inode is also the publication/write lock. */
 class SSPA_Traffic_Authority {
-    const FILE = 'sspa-traffic-authority.json';
+    const FILE = 'sspa-traffic-authority.php';
+    const GUARD = "<?php exit; ?>\n";
     private static $handle = null;
     private static $exclusive = false;
 
@@ -13,16 +14,31 @@ class SSPA_Traffic_Authority {
     }
 
     public static function migrate() {
-        $legacy = SSPA_MU_DIR . '/' . self::FILE;
-        if (!is_file($legacy)) { return; }
-        if (is_file(self::path())) { throw new RuntimeException('Both legacy and uploads traffic authority files exist.'); }
-        if (!wp_mkdir_p(dirname(self::path()))) { throw new RuntimeException('Cannot create the traffic authority directory.'); }
-        $handle = fopen($legacy, 'r+');
-        if (!$handle) { throw new RuntimeException('Cannot open legacy traffic authority.'); }
-        try {
-            if (!flock($handle, LOCK_EX)) { throw new RuntimeException('Cannot lock legacy traffic authority.'); }
-            if (!rename($legacy, self::path())) { throw new RuntimeException('Cannot migrate traffic authority.'); }
-        } finally { flock($handle, LOCK_UN); fclose($handle); }
+        $files = array(
+            SSPA_MU_DIR . '/sspa-traffic-authority.json',
+            dirname(self::path()) . '/sspa-traffic-authority.json',
+        );
+        if (!is_file($files[0]) && !is_file($files[1])) { return; }
+        self::synchronized(true, static function() use ($files) {
+            $state = self::read();
+            // The uploads authority supersedes the legacy MU authority after activation.
+            foreach (array_reverse($files) as $legacy) {
+                if (!is_file($legacy)) { continue; }
+                $handle = fopen($legacy, 'r');
+                if (!$handle) { throw new RuntimeException('Cannot open legacy traffic authority.'); }
+                try {
+                    if (!flock($handle, LOCK_EX)) { throw new RuntimeException('Cannot lock legacy traffic authority.'); }
+                    if (!$state) {
+                        $state = json_decode(stream_get_contents($handle), true);
+                        if (!is_array($state) || !isset($state['generation'], $state['enabled']) || !is_string($state['generation'])) {
+                            throw new RuntimeException('The legacy traffic authority file is invalid.');
+                        }
+                        self::write($state);
+                    }
+                    if (!SSPA_Filesystem::direct()->delete($legacy)) { throw new RuntimeException('Cannot remove legacy traffic authority.'); }
+                } finally { flock($handle, LOCK_UN); fclose($handle); }
+            }
+        });
     }
 
     public static function synchronized($exclusive, $callback) {
@@ -64,7 +80,7 @@ class SSPA_Traffic_Authority {
         if ('' === $raw) {
             return null;
         }
-        $state = json_decode($raw, true);
+        $state = json_decode(0 === strpos($raw, self::GUARD) ? substr($raw, strlen(self::GUARD)) : $raw, true);
         if (!is_array($state) || !isset($state['generation'], $state['enabled']) || !is_string($state['generation'])) {
             throw new RuntimeException('The traffic authority file is invalid.');
         }
@@ -72,7 +88,7 @@ class SSPA_Traffic_Authority {
     }
 
     private static function write($state) {
-        $json = wp_json_encode($state);
+        $json = self::GUARD . wp_json_encode($state);
         rewind(self::$handle);
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Write through the same locked inode; WP_Filesystem cannot preserve this flock-protected stream.
         if (!ftruncate(self::$handle, 0) || fwrite(self::$handle, $json) !== strlen($json) || !fflush(self::$handle)) {

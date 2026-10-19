@@ -158,6 +158,8 @@ they are neither skipped nor counted as passing. `SSPA_SCENARIO=tests-wporg-read
 selects the W1 site. Fixture preparation explicitly enables the profiler; production
 activation, screen opening and analysis start never enable it.
 
+W5b cases 114 to 117 cover private workflow/write objects, deferred and late mail recipients, abandoned-object cleanup, explicit setup failures, visitor-safe admin upgrades, helper-lock retries and guarded authority HTTP access, plus a separate native legacy-CPT workflow browser case. Override its site with SSPA_LEGACY_SCENARIO; the main suite remains on HPOS. The registered workflows-private browser journey checks the saved status through the real page/product/order controls.
+
 Case 110 drives real EXPLAIN/index discovery on prefixed, unprefixed and explicitly
 qualified tables, and observes that a foreign database reference issues no index query.
 
@@ -750,3 +752,17 @@ for its real Home captures, records the entry theme and restores it in `finally`
 This establishes a stable-output prerequisite independently of the site's fleet theme:
 Blocksy's random search-form IDs correctly prevent approving its ordinary Home output.
 The response-code, output-signature and missing-evidence assertions are unchanged.
+
+Case 93's dedicated non-WooCommerce site explicitly rejects server-side external HTTP
+through `WP_HTTP_BLOCK_EXTERNAL`, and asserts the real `http_request_not_executed`
+error. Local HTTP and anonymous Traffic recording stay real. Its browser fixture turns
+off synthetic-user avatars and WordPress's optional emoji image loader, so an unrelated
+Gravatar or s.w.org connection cannot hold the existing thirty-second page-load assertion.
+The W5b traces retain the actual 207 ms PA response and pending external images; no
+browser timeout or PA assertion was loosened.
+The dedicated anonymous observation also selects and asserts the bundled Twenty Twenty-Five
+theme, whose fonts are local. Hestia's real Google Fonts dependency reproduced the guest
+navigation failure under a bounded 35-second network stall; the local-theme fixture passes
+the same journey under that fault condition with the original thirty-second deadline.
+
+W5c: case 79 checks the signed Clear all caches node; the registered cache-controls browser journey clicks it and verifies ordered effects and rendered outcomes, including absent/refused/throwing page caches. Case 119 runs the real SiteGround file-cache browser regression on SSPA_SG_SCENARIO (default tests-siteground-cache). Supply SSPA_SG_ZIP as an absolute path to the official sg-cachepress ZIP when that retained site does not already have the vendor installed; SSPA_SG_OUTPUT selects its evidence directory. No hosted SiteGround cache is claimed by this local file-cache test.

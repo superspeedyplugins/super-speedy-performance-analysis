@@ -13,6 +13,7 @@ class SSPA_Workflow_Analysis {
     public static function register() {
         add_action('wp_ajax_sspa_workflow_targets', array(__CLASS__, 'ajax_targets'));
         add_action('wp_ajax_sspa_workflow_launch', array(__CLASS__, 'ajax_launch'));
+        add_action('wp_ajax_sspa_workflow_cleanup', array(__CLASS__, 'ajax_cleanup'));
     }
 
     /** Every editable public post type, plus WooCommerce orders as their own data model. */
@@ -87,7 +88,7 @@ class SSPA_Workflow_Analysis {
     private static function create_target($object_type) {
         self::cleanup();
         // Recover marked objects even if PHP stopped before the launch registry was saved.
-        foreach (get_posts(array('post_type' => 'any', 'post_status' => 'any', 'posts_per_page' => -1, 'meta_key' => '_sspa_workflow', 'meta_value' => '1', 'fields' => 'ids')) as $stale_id) {
+        foreach (get_posts(array('post_type' => array_keys(get_post_types()), 'post_status' => 'any', 'posts_per_page' => -1, 'meta_key' => '_sspa_workflow', 'meta_value' => '1', 'fields' => 'ids')) as $stale_id) {
             SSPA_Probes::delete_temp((int) $stale_id);
         }
         if (function_exists('wc_get_orders')) {
@@ -100,13 +101,13 @@ class SSPA_Workflow_Analysis {
             if (!$id) {
                 return new WP_Error('sspa_workflow_create', __('Could not create the workflow order.', 'super-speedy-performance-analysis'));
             }
-            update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0), false);
+            update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0, 'created_at' => time()), false);
             $order = wc_get_order($id);
             $order->update_meta_data('_sspa_workflow', '1');
             SSPA_Mail::with_admin(static function() use ($order) { $order->save(); });
         } else {
             $id = SSPA_Probes::create_temp_copy($object_type, true);
-            update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0), false);
+            update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0, 'created_at' => time()), false);
             if ('product' === $object_type) {
                 $product = wc_get_product($id);
                 $product->set_regular_price('0');
@@ -117,7 +118,7 @@ class SSPA_Workflow_Analysis {
                 SSPA_Mail::with_admin(static function() use ($product) { $product->save(); });
             }
         }
-        update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0), false);
+        update_option(self::TEMP_OPTION, array('id' => $id, 'type' => $object_type, 'run_id' => 0, 'created_at' => time()), false);
         return $id;
     }
 
@@ -150,6 +151,16 @@ class SSPA_Workflow_Analysis {
      * validates the nonce again before it automates the selected transport.
      */
     public static function launch($object_type, $object_id, $transport, $legacy_mail_option = null) {
+        try {
+            $result = self::launch_owned($object_type, $object_id, $transport);
+        } catch (Throwable $error) {
+            $result = new WP_Error('sspa_workflow_failed', $error->getMessage());
+        }
+        if (is_wp_error($result) && !SSPA_Run_Controller::active_run_id()) { self::cleanup(); }
+        return $result;
+    }
+
+    private static function launch_owned($object_type, $object_id, $transport) {
         $object_type = sanitize_key($object_type);
         $object_id = (int) $object_id;
         $transport = sanitize_key($transport);
@@ -203,6 +214,7 @@ class SSPA_Workflow_Analysis {
             return array('active' => false);
         }
         $object_type = isset($context['object_type']) ? sanitize_key($context['object_type']) : '';
+        if ('shop_order' === $object_type) { $object_type = 'order'; }
         $object_id = isset($context['object_id']) ? (int) $context['object_id'] : 0;
         $transport = isset($_GET['sspa_workflow_transport']) ? sanitize_key(wp_unslash($_GET['sspa_workflow_transport'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $mail_mode = 'deliver';
@@ -248,21 +260,37 @@ class SSPA_Workflow_Analysis {
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $object_type = isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '';
         $targets = self::targets($object_type);
-        $object_id = $targets ? (int) $targets[0]['id'] : 0;
         wp_send_json_success(array(
             'targets' => $targets,
             'transports' => self::transports($object_type),
         ));
     }
 
+    public static function ajax_cleanup() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error('forbidden', 403); }
+        try {
+            $entry = get_option(self::TEMP_OPTION, array());
+            $id = isset($_POST['object_id']) ? absint($_POST['object_id']) : 0;
+            if (!$id || (int) ($entry['id'] ?? 0) !== $id) { wp_send_json_success(); }
+            if (!empty($entry['run_id'])) { SSPA_Run_Controller::cancel((int) $entry['run_id']); }
+            self::cleanup();
+        } catch (Throwable $error) { wp_send_json_error(array('message' => $error->getMessage())); }
+        wp_send_json_success();
+    }
+
     public static function ajax_launch() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
+        try {
         $launch = self::launch(
             isset($_POST['object_type']) ? sanitize_key(wp_unslash($_POST['object_type'])) : '',
-            isset($_POST['object_id']) ? (int) $_POST['object_id'] : 0,
+            0,
             isset($_POST['transport']) ? sanitize_key(wp_unslash($_POST['transport'])) : ''
         );
+        } catch (Throwable $error) {
+            $launch = new WP_Error('sspa_workflow_failed', $error->getMessage());
+        }
         if (is_wp_error($launch)) {
             wp_send_json_error(array('message' => $launch->get_error_message(), 'code' => $launch->get_error_code()));
         }

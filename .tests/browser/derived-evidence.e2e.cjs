@@ -19,7 +19,8 @@ const {wp, state, session, admin, response, expect} = require('./fleet-context.c
     }, id);
     await expect.poll(() => !!record, {timeout:30000}).toBe(true);
     expect(record.has('body_snippet')).toBe(false);
-    const evidence = JSON.parse(record.get('body_evidence'));
+    expect(record.has('body_evidence')).toBe(false);
+    const evidence = {schema:Number(record.get('body_evidence[schema]')), bytes_scanned:Number(record.get('body_evidence[bytes_scanned]')), body_hash:record.get('body_evidence[body_hash]')};
     expect(evidence.schema).toBe(1);
     expect(evidence.bytes_scanned).toBeGreaterThan(0);
     expect(evidence.body_hash).toMatch(/^[a-f0-9]{32}$/);

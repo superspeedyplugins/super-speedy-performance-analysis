@@ -109,8 +109,11 @@ class SSPA_Auth {
             'fields' => 'ID',
         ));
         if ($existing) {
-            $updated = wp_update_user(array('ID' => (int) $existing[0], 'user_email' => SSPA_Mail::address('customer')));
-            if (is_wp_error($updated)) { throw new RuntimeException(esc_html($updated->get_error_message())); }
+            $email = SSPA_Mail::address('customer');
+            if (get_userdata((int) $existing[0])->user_email !== $email) {
+                $updated = wp_update_user(array('ID' => (int) $existing[0], 'user_email' => $email));
+                if (is_wp_error($updated)) { throw new RuntimeException(esc_html($updated->get_error_message())); }
+            }
             return (int) $existing[0];
         }
         $role = get_role('customer') ? 'customer' : 'subscriber';

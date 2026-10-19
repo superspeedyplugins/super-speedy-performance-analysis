@@ -3,6 +3,18 @@
 
 	var cfg = window.sspa_workflows || {};
 	var running = false;
+	var objectId = 0;
+	function cleanup() {
+		if (objectId) { return post('sspa_workflow_cleanup', {object_id: objectId}); }
+	}
+	window.addEventListener('pagehide', function () {
+		if (!running || !objectId) { return; }
+		var data = new FormData();
+		data.set('action', 'sspa_workflow_cleanup');
+		data.set('nonce', cfg.nonce);
+		data.set('object_id', objectId);
+		navigator.sendBeacon(cfg.ajaxurl, data);
+	});
 
 	function status(message, failed) {
 		$('#sspa-workflow-status').text(message || '').toggleClass('sspa-workflow-error', !!failed);
@@ -60,9 +72,11 @@
 				status((response && response.data && response.data.message) || cfg.i18n.failed, true);
 				return;
 			}
+			objectId = response.data.object_id;
 			status(response.data.warning || cfg.i18n.running);
 			$('#sspa-workflow-frame').attr('src', response.data.editor_url);
 		}).fail(function () {
+			cleanup();
 			running = false;
 			$('#sspa-workflow-run').prop('disabled', false);
 			status(cfg.i18n.failed, true);
@@ -74,6 +88,7 @@
 			return;
 		}
 		if ('error' === event.data.type) {
+			cleanup();
 			running = false;
 			$('#sspa-workflow-run').prop('disabled', false);
 			status(event.data.message || cfg.i18n.failed, true);

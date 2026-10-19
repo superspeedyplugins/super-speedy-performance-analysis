@@ -53,9 +53,10 @@ class SSPA_Bootstrap {
         SSPA_Mail::register();
         add_action('admin_init', array(__CLASS__, 'privacy_policy'));
         add_action('admin_notices', array('SSPA_Mail', 'notice'));
+        add_action('admin_notices', array('SSPA_Install', 'upgrade_notice'));
 
         if (SSPA_DB_VERSION !== get_option('sspa_db_version') || SSPA_VERSION !== get_option('sspa_behaviour_version')) {
-            add_action('plugins_loaded', array('SSPA_Install', 'maybe_upgrade'));
+            add_action('admin_init', array('SSPA_Install', 'admin_upgrade'));
         }
         add_action('sspa_process_batch_event', array('SSPA_Run_Controller', 'process_batch'));
         add_action('sspa_cleanup_event', array('SSPA_Run_Controller', 'cleanup'));

@@ -1,5 +1,7 @@
 # The Archive Query Profile
 
+Abilities use only the `sspa/` namespace; update existing agent configurations to these names. WP-CLI output is written to stdout and can be redirected by the shell.
+
 This is the definitive contract for the archive query profile: the structure Super Speedy Performance Analysis emits describing what your archive pages actually filter and sort by, and the database indexes that would make them fast. It is what Super Speedy Archives reads to configure itself, and it is stable enough to build against.
 
 If you only want to know what the feature does, the short version is this: your category, tag, shop, product-category, custom-post-type and custom-taxonomy archives each run a database query, and the plugin records exactly how that query filters and sorts. From that it works out the one index that would serve both at once.

@@ -9,7 +9,7 @@ $config = is_file($path) ? json_decode(file_get_contents($path), true) : null;
 w1_traffic_t(is_array($config) && (int) $config['collection_id'] === $id, 'real collection writes JSON configuration in uploads');
 w1_traffic_t(is_file($path) && (fileperms($path) & 0777) === 0600, 'traffic configuration is readable and writable only by its owner');
 $bytes = file_get_contents(SSPA_Traffic_Helper::path());
-w1_traffic_t($bytes === file_get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php'), 'installed observer is the fixed source file with no generated PHP');
+w1_traffic_t($bytes === str_replace('%%SSPA_PLUGIN_DIR%%', addslashes(trailingslashit(SSPA_PLUGIN_DIR)), file_get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php')), 'installed observer is the fixed template with only its trusted plugin path substituted');
 // Simulate upgrading the previously installed generated file while a real collection runs.
 // The archived production template plus this real collection's generated data is a
 // complete, valid legacy observer, not a partial or invented PHP configuration.
@@ -28,7 +28,7 @@ if (is_file($path)) unlink($path);
 update_option('sspa_behaviour_version', '0.43.4');
 SSPA_Install::maybe_upgrade();
 $config = is_file($path) ? json_decode(file_get_contents($path), true) : null;
-w1_traffic_t(is_array($config) && (int) $config['collection_id'] === $id && file_get_contents(SSPA_Traffic_Helper::path()) === file_get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php'), 'upgrade replaces generated config from the active collection without evaluating old PHP');
+w1_traffic_t(is_array($config) && (int) $config['collection_id'] === $id && file_get_contents(SSPA_Traffic_Helper::path()) === str_replace('%%SSPA_PLUGIN_DIR%%', addslashes(trailingslashit(SSPA_PLUGIN_DIR)), file_get_contents(SSPA_PLUGIN_DIR . 'mu/sspa-traffic-observer.php')), 'upgrade replaces generated config from the active collection without evaluating old PHP');
 SSPA_Traffic_Collection::stop($id, true);
 w1_traffic_t(!is_file($path), 'emergency stop removes live configuration');
 

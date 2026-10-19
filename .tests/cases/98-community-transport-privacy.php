@@ -15,10 +15,12 @@ try {
     SSPA_Community_Client::register(true);
     $upload = new ReflectionMethod('SSPA_Community_Client', 'upload');
     $upload->setAccessible(true);
-    $upload->invoke(null, array('payload_gzip' => 'test', 'compressed_bytes' => 4), array(
+    $unapproved = $upload->invoke(null, array('payload_gzip' => 'test', 'compressed_bytes' => 4), array(
         'upload_url' => 'https://93.184.215.14/sspa-privacy-test',
         'required_headers' => array('Content-Type' => 'application/gzip'),
     ));
+    $unapproved_blocked = count($requests) === 1;
+    $upload->invoke(null, array('payload_gzip' => 'test', 'compressed_bytes' => 4), array('upload_url' => 'https://00000000000000000000000000000000.r2.cloudflarestorage.com/sspa-privacy-test', 'required_headers' => array('Content-Type' => 'application/gzip')));
     $before_insecure_upload = count($requests);
     $insecure_upload = $upload->invoke(null, array('payload_gzip' => 'test', 'compressed_bytes' => 4), array(
         'upload_url' => 'http://93.184.215.14/sspa-privacy-test',
@@ -35,6 +37,7 @@ $check = static function ($ok, $label) use (&$failures) {
     echo ($ok ? 'PASS' : 'FAIL') . ': ' . $label . "\n";
     if (!$ok) { ++$failures; }
 };
+$check($unapproved_blocked && is_wp_error($unapproved) && 'sspa_invalid_upload_authorisation' === $unapproved->get_error_code(), 'unapproved HTTPS upload host is refused before transport');
 $check(2 === count($requests), 'registration and direct upload reached the real intercepted HTTP boundary');
 $check($insecure_upload_blocked, 'plaintext upload authorisation sends no HTTP request');
 $check(is_wp_error($insecure_upload) && 'sspa_invalid_upload_authorisation' === $insecure_upload->get_error_code(), 'plaintext upload authorisation is rejected with the real validation error');

@@ -118,6 +118,7 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 		if (window.history.replaceState) {
 			var url = new URL(window.location.href);
 			url.searchParams.set('attrib', resp.data.mode);
+			url.searchParams.set('_wpnonce', sspa_admin.nonce);
 			// url already carries the current hash, so the tab stays selected on reload.
 			window.history.replaceState(null, '', url.toString());
 		}

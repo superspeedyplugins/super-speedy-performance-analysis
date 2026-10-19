@@ -136,7 +136,7 @@ class SSPA_Admin_Bar {
     /**
      * B. Clear before measuring.
      *
-     * Every entry is conditional on the thing existing. A menu item that silently does
+     * Individual backend entries are conditional on the thing existing. A menu item that silently does
      * nothing is worse than no menu item, so nothing here is shown "just in case".
      */
     private static function group_clear($bar) {
@@ -155,6 +155,13 @@ class SSPA_Admin_Bar {
             'title' => __('All transients', 'super-speedy-performance-analysis'),
             'href' => self::action_url('clear_transients'),
             'meta' => array('title' => __('Every plugin\'s cached data. The site will be slower until they refill, which is the point when you are measuring.', 'super-speedy-performance-analysis')),
+        ));
+
+        $bar->add_node(array(
+            'id' => 'sspa-clear-all-caches',
+            'parent' => 'sspa-clear',
+            'title' => __('Clear all caches', 'super-speedy-performance-analysis'),
+            'href' => self::action_url('clear_all_caches'),
         ));
 
         if (wp_using_ext_object_cache()) {
@@ -345,13 +352,14 @@ class SSPA_Admin_Bar {
         if (!$cache) {
             return __('No page cache was detected, so nothing was purged.', 'super-speedy-performance-analysis');
         }
+        $outcome = null;
         switch ($cache['key']) {
             case 'rocket':
                 if (!$everything && function_exists('rocket_clean_files')) {
-                    rocket_clean_files(array($url));
+                    $outcome = rocket_clean_files(array($url));
                     break;
                 }
-                rocket_clean_domain();
+                $outcome = rocket_clean_domain();
                 break;
             case 'litespeed':
                 if ($everything) {
@@ -364,21 +372,24 @@ class SSPA_Admin_Bar {
                 break;
             case 'w3tc':
                 if (!$everything && function_exists('w3tc_flush_url')) {
-                    w3tc_flush_url($url);
+                    $outcome = w3tc_flush_url($url);
                     break;
                 }
-                w3tc_flush_all();
+                $outcome = w3tc_flush_all();
                 break;
             case 'wpsc':
                 if (!$everything && function_exists('wpsc_delete_url_cache')) {
-                    wpsc_delete_url_cache($url);
+                    $outcome = wpsc_delete_url_cache($url);
                     break;
                 }
-                wp_cache_clear_cache();
+                $outcome = wp_cache_clear_cache();
                 break;
             case 'sgo':
-                // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- invokes the existing SiteGround Optimizer purge API; its hook name belongs to that plugin.
-                do_action('siteground_optimizer_flush_cache');
+                // SiteGround documents this function as the purge entry point; its flush hook only notifies listeners.
+                if (!function_exists('sg_cachepress_purge_cache')) {
+                    return __('SG Optimizer page cache purge failed: its public purge API is unavailable.', 'super-speedy-performance-analysis');
+                }
+                $outcome = sg_cachepress_purge_cache();
                 break;
             case 'nginx-helper':
                 if ($everything) {
@@ -394,17 +405,51 @@ class SSPA_Admin_Bar {
                 do_action('cachify_flush_cache');
                 break;
         }
+        if (false === $outcome || is_wp_error($outcome)) {
+            /* translators: 1: page cache plugin name, 2: backend refusal or error. */
+            return sprintf(__('%1$s page cache purge failed: %2$s', 'super-speedy-performance-analysis'), $cache['name'], is_wp_error($outcome) ? $outcome->get_error_message() : __('the backend refused the purge', 'super-speedy-performance-analysis'));
+        }
         return $everything
             /* translators: %s: page cache plugin name */
-            ? sprintf(__('Purged the whole %s page cache.', 'super-speedy-performance-analysis'), $cache['name'])
+            ? sprintf(__('Requested a whole page-cache purge from %s.', 'super-speedy-performance-analysis'), $cache['name'])
             /* translators: 1: page cache plugin name, 2: URL purged */
-            : sprintf(__('Purged %1$s for %2$s.', 'super-speedy-performance-analysis'), $cache['name'], $url);
+            : sprintf(__('Requested a page-cache purge from %1$s for %2$s.', 'super-speedy-performance-analysis'), $cache['name'], $url);
+    }
+
+    /** Shared by individual controls and the combined action; preserve backend refusals. */
+    private static function flush_object_cache() {
+        return wp_cache_flush()
+            ? __('Flushed the object cache.', 'super-speedy-performance-analysis')
+            : __('Object cache refused the flush.', 'super-speedy-performance-analysis');
+    }
+
+    private static function reset_opcache() {
+        return function_exists('opcache_reset') && opcache_reset()
+            ? __('Reset OPcache.', 'super-speedy-performance-analysis')
+            : __('OPcache refused the reset. Some hosts disable it for web requests.', 'super-speedy-performance-analysis');
+    }
+
+    private static function clear_all_caches() {
+        $messages = array();
+        foreach (array(
+            __('Object cache', 'super-speedy-performance-analysis') => 'flush_object_cache',
+            __('Page cache', 'super-speedy-performance-analysis') => 'purge_page_cache',
+            __('OPcache', 'super-speedy-performance-analysis') => 'reset_opcache',
+        ) as $step => $method) {
+            try {
+                $messages[] = 'purge_page_cache' === $method ? self::purge_page_cache(true) : self::$method();
+            } catch (Throwable $error) {
+                /* translators: 1: cache step, 2: backend error message. */
+                $messages[] = sprintf(__('%1$s failed: %2$s', 'super-speedy-performance-analysis'), $step, $error->getMessage());
+            }
+        }
+        return implode(' ', $messages);
     }
 
     private static function clear_all_transients() {
         global $wpdb;
         $rows = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->options} WHERE option_name REGEXP '^_(site_)?transient(_timeout)?_'"
+            $wpdb->prepare("DELETE FROM %i WHERE option_name REGEXP %s", $wpdb->options, '^_(site_)?transient(_timeout)?_')
         );
         if (wp_using_ext_object_cache()) {
             wp_cache_flush();
@@ -431,7 +476,7 @@ class SSPA_Admin_Bar {
         }
         check_admin_referer(self::ACTION . '_' . $do);
 
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL decoding is followed by esc_url_raw and wp_validate_redirect before any redirect.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Input sanitisation is followed by esc_url_raw and wp_validate_redirect before any redirect.
         $return = isset($_GET['sspa_return']) ? esc_url_raw(wp_unslash($_GET['sspa_return'])) : admin_url();
         $return = wp_validate_redirect($return, admin_url());
         $message = '';
@@ -440,9 +485,11 @@ class SSPA_Admin_Bar {
             case 'clear_transients':
                 $message = self::clear_all_transients();
                 break;
+            case 'clear_all_caches':
+                $message = self::clear_all_caches();
+                break;
             case 'flush_object_cache':
-                wp_cache_flush();
-                $message = __('Flushed the object cache.', 'super-speedy-performance-analysis');
+                $message = self::flush_object_cache();
                 break;
             case 'purge_url':
                 $message = self::purge_page_cache(false, $return);
@@ -451,9 +498,7 @@ class SSPA_Admin_Bar {
                 $message = self::purge_page_cache(true);
                 break;
             case 'reset_opcache':
-                $message = function_exists('opcache_reset') && opcache_reset()
-                    ? __('Reset OPcache.', 'super-speedy-performance-analysis')
-                    : __('OPcache refused the reset. Some hosts disable it for web requests.', 'super-speedy-performance-analysis');
+                $message = self::reset_opcache();
                 break;
             case 'forget_page':
                 $message = self::forget_stored_page($return);

@@ -7,8 +7,8 @@ define('SSPA_DB_VERSION', '2.7');
 // plugin release usually changes neither. Version them independently so an ordinary patch
 // bump stops rewriting them, and bump the one that changed when its template changes.
 // .tests/cases/55-installed-file-versions.php fails if a template is edited without one.
-define('SSPA_MU_VERSION', '1.0.3');
-define('SSPA_DROPIN_VERSION', '1.0.3');
+define('SSPA_MU_VERSION', '1.0.4');
+define('SSPA_DROPIN_VERSION', '1.0.4');
 
 // All plugin settings live in one option row (autoloaded: it is small and read on every
 // admin page). Profiling data lives in the sspa_* tables, never in options.
@@ -25,8 +25,6 @@ function sspa_default_options() {
         // something sensible on a store that has never opened these settings.
         'checkout_quantity' => 1,
         'checkout_address' => null,       // null = store base country, valid postcode for it
-        'checkout_email' => '',           // '' = admin_email tagged +sspa-perf-<run_id>
-        'checkout_mail_mode' => 'deliver', // Emails go to the site administrator.
         // Enum: no_payment | sandbox | live_declined. sandbox is only selectable when a
         // gateway adapter matched a gateway in test mode; live_declined is reserved and
         // deliberately unbuilt (doc A6.3).

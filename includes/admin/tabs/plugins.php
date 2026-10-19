@@ -8,12 +8,10 @@ if (!$sspa_last_run_id) : ?>
         <p><?php esc_html_e('Per-plugin costs will appear here after your first analysis.', 'super-speedy-performance-analysis'); ?></p>
     </div>
 <?php else :
-    // Attribution mode is a read-only view switch (no state written, nothing recomputed on
-    // the stored numbers), so a plain query arg is enough to deep-link one - no nonce, no
-    // option. Switching it in the page is an AJAX table swap, like every other control here.
+    // A stale bookmarked nonce selects the default attribution mode.
     $sspa_attrib_mode = SSPA_Attribution::sanitise_mode(
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display selector; sanitise_mode allowlists it and no state is saved.
-        isset($_GET['attrib']) ? sanitize_key(wp_unslash($_GET['attrib'])) : ''
+        isset($_GET['_wpnonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'sspa_admin')
+            && isset($_GET['attrib']) ? sanitize_key(wp_unslash($_GET['attrib'])) : ''
     );
     ?>
     <div class="sspa-attrib-switch" style="margin:0 0 12px;">

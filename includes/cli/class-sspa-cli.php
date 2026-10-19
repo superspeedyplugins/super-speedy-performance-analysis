@@ -32,7 +32,7 @@ class SSPA_CLI {
      * otherwise add for every plugin that shows an impact.
      *
      * [--include-writes]
-     * : Profile saves on temporary copies and orders using a temporary zero-price product with its own stock.
+     * : Profile saves on private temporary objects and orders using a private zero-price product with its own stock.
      *
      * [--porcelain]
      * : Output only the run id.
@@ -307,23 +307,12 @@ class SSPA_CLI {
      * [--format=<format>]
      * : summary (default) or json.
      *
-     * [--output=<path>]
-     * : Write the complete JSON document to this path.
-     *
      * @subcommand cache-optimisation-report
      */
     public function cache_optimisation_report($args, $assoc_args) {
         $report = SSPA_Cache_Recon::export_data(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
         if (is_wp_error($report)) {
             WP_CLI::error($report->get_error_message());
-        }
-        if (!empty($assoc_args['output'])) {
-            $json = wp_json_encode($report, JSON_PRETTY_PRINT) . PHP_EOL;
-            if (false === SSPA_Filesystem::put_contents($assoc_args['output'], $json)) {
-                WP_CLI::error('Could not write analysis to ' . $assoc_args['output']);
-            }
-            WP_CLI::success('Wrote ' . $assoc_args['output']);
-            return;
         }
         if (isset($assoc_args['format']) && 'json' === $assoc_args['format']) {
             WP_CLI::line(wp_json_encode($report));

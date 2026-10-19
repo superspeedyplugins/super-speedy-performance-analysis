@@ -1,5 +1,7 @@
 # Using Super Speedy Performance Analysis from OpenAI-based agents
 
+Abilities use only the `sspa/` namespace; update existing agent configurations to these names. WP-CLI output is written to stdout and can be redirected by the shell.
+
 The equivalent of SKILL.md for GPT/OpenAI agent builders (custom GPT instructions, an
 Agents SDK tool preamble, or function-calling setups). Same workflow, provider-neutral.
 

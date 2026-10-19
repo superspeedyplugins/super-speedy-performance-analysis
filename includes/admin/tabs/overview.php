@@ -416,6 +416,10 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <?php
             switch ($sspa_health['dropin']) {
                 case 'ours':
+                    if (!empty($sspa_health['dropin_stale'])) {
+                        echo '&#10060; ' . esc_html__('Query capture (db.php) is stale. Use Enable profiler in Tools to refresh it.', 'super-speedy-performance-analysis');
+                        break;
+                    }
                     echo '&#9989; ' . esc_html__('Query capture (db.php): full detail - row counts and errors per query', 'super-speedy-performance-analysis');
                     break;
                 case 'qm':

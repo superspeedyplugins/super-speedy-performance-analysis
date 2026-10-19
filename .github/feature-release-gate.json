@@ -288,6 +288,77 @@
           "PASS: a response-code mismatch is reported as its own declared failure",
           "1 case file(s) run, 0 failed"
         ]
+      },
+      {
+        "id": "114-w5b-object-lifecycle",
+        "command": "bash .tests/run-tests.sh 114-w5b-object-lifecycle",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "115-w5b-failure-boundaries",
+        "command": "bash .tests/run-tests.sh 115-w5b-failure-boundaries",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "116-w5b-upgrade-boundaries",
+        "command": "bash .tests/run-tests.sh 116-w5b-upgrade-boundaries",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "117-legacy-workflow",
+        "command": "bash .tests/run-tests.sh 117-legacy-workflow",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "118-retirement-failure",
+        "command": "bash .tests/run-tests.sh 118-retirement-failure",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "real-save-recipients",
+        "command": "bash .tests/run-tests.sh 50-admin-save",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "PASS: Analyse update/save preserves the real save recipient",
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "complete-suite",
+        "command": "bash .tests/run-tests.sh",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "125 case file(s) run, 0 failed"
+        ]
       }
     ]
   }

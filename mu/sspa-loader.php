@@ -16,8 +16,8 @@ if (!function_exists('sspa_sanitize_early_token')) {
     }
 }
 $sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
-    ? sspa_sanitize_early_token($_SERVER['HTTP_X_SSPA_TOKEN'])
-    : (!empty($_POST['_sspa_profile_token']) ? sspa_sanitize_early_token($_POST['_sspa_profile_token']) : '');
+    ? sspa_sanitize_early_token(sanitize_text_field(wp_unslash($_SERVER['HTTP_X_SSPA_TOKEN'])))
+    : sspa_sanitize_early_token(sanitize_text_field(wp_unslash($_POST['_sspa_profile_token'] ?? '')));
 if (!$sspa_token_value) {
     return;
 }
@@ -50,14 +50,9 @@ if (!function_exists('sspa_token_verify')) {
     }
 }
 
-if (!function_exists('sspa_sanitize_early_path')) {
-    function sspa_sanitize_early_path($value) {
-        return is_string($value) && !preg_match('/[\x00-\x20\x7f]/', $value) ? $value : '';
-    }
-}
 $sspa_tok = sspa_token_verify(
     $sspa_token_value,
-    isset($_SERVER['REQUEST_URI']) ? sspa_sanitize_early_path($_SERVER['REQUEST_URI']) : '/', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
+    filter_var($_SERVER['REQUEST_URI'] ?? '/', FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[^\x00-\x20\x7f]*\z/'))) ?: '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- HMAC authenticates the exact raw request path and query; normalising it would invalidate the signature.
     '%%SSPA_SECRET%%'
 );
 if (!$sspa_tok) {
@@ -74,18 +69,6 @@ unset($_POST['_sspa_profile_token'], $_REQUEST['_sspa_profile_token'], $sspa_tok
 // real visitor, and a stored copy answers later profiling requests without running PHP.
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-// A fatal on a profiled request - above all in Plugin Impact Analysis, where a plugin is
-// virtually excluded and a dependant may break without it - is a MEASUREMENT RESULT
-// (the cell is reported unresolved), not a site emergency. Without this, core's fatal
-// handler emails the admin a "technical issue" recovery-mode warning blaming whichever
-// plugin's file happened to throw. Core sets this same constant for its own loopback
-// sandbox tests; it only short-circuits the fatal handler, nothing else. Real visitor
-// requests never reach this code, so their protection is unchanged.
-if (!defined('WP_SANDBOX_SCRAPING')) {
-    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- WordPress core sandbox switch prevents an intentional isolated measurement from entering recovery mode.
-    define('WP_SANDBOX_SCRAPING', true);
-}
-
 // Baseline endpoint: answer with near-zero WordPress work so the crawler can measure the
 // server's noise floor. Deliberately before single-use marking (no DB write needed).
 if (!empty($sspa_tok['flags']['bl'])) {
@@ -98,13 +81,26 @@ if (!empty($sspa_tok['flags']['bl'])) {
 // Single use: add_option is an INSERT - the second attempt with the same token fails.
 $sspa_used_key = 'sspa_used_' . $sspa_tok['id'];
 $sspa_used = $wpdb->query($wpdb->prepare(
-    "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
+    "INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
+    $wpdb->options,
     $sspa_used_key,
     (string) time()
 ));
 if (1 !== (int) $sspa_used) {
     header('X-SSPA-Replay: 1');
     return;
+}
+
+// A fatal on a profiled request - above all in Plugin Impact Analysis, where a plugin is
+// virtually excluded and a dependant may break without it - is a MEASUREMENT RESULT
+// (the cell is reported unresolved), not a site emergency. Without this, core's fatal
+// handler emails the admin a "technical issue" recovery-mode warning blaming whichever
+// plugin's file happened to throw. Core sets this same constant for its own loopback
+// sandbox tests; it only short-circuits the fatal handler, nothing else. Real visitor
+// requests never reach this code, so their protection is unchanged.
+if (!defined('WP_SANDBOX_SCRAPING')) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- WordPress core sandbox switch prevents an intentional isolated measurement from entering recovery mode.
+    define('WP_SANDBOX_SCRAPING', true);
 }
 
 header('X-SSPA-Profiled: ' . $sspa_tok['id']);
@@ -209,47 +205,46 @@ if (!empty($sspa_tok['flags']['ps'])) {
             // grouped from the next run on) and then remove every listener core is about to
             // call - its own routine, and third-party observers such as a security plugin's
             // audit log, which would otherwise record a deactivation that never happened.
-            if (!function_exists('sspa_catch_plugin_reaction')) {
-                function sspa_catch_plugin_reaction($sspa_which, $sspa_plugin) {
-                    if (!isset($GLOBALS['sspa_plugin_reactions'])) {
-                        $GLOBALS['sspa_plugin_reactions'] = array();
+                        function sspa_catch_plugin_reaction($sspa_which, $sspa_plugin) {
+                if (!isset($GLOBALS['sspa_plugin_reactions'])) {
+                    $GLOBALS['sspa_plugin_reactions'] = array();
+                }
+                // The backtrace names the REACTOR - the plugin whose code called
+                // (de)activate - which is not the same as the target: Rank Math Pro
+                // reacting calls activate_plugin() on Rank Math. Our own catcher frames
+                // are skipped or attribution lands on this loader instead of the plugin
+                // that actually reacted.
+                $sspa_frames = array();
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- bounded argument-free stack identifies the profiled query caller for plugin attribution.
+                foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 24) as $sspa_f) {
+                    if (isset($sspa_f['file']) && __FILE__ !== $sspa_f['file']) {
+                        $sspa_frames[] = array(
+                            $sspa_f['file'],
+                            isset($sspa_f['line']) ? $sspa_f['line'] : 0,
+                            (isset($sspa_f['class']) ? $sspa_f['class'] . '::' : '') . $sspa_f['function'],
+                        );
                     }
-                    // The backtrace names the REACTOR - the plugin whose code called
-                    // (de)activate - which is not the same as the target: Rank Math Pro
-                    // reacting calls activate_plugin() on Rank Math. Our own catcher frames
-                    // are skipped or attribution lands on this loader instead of the plugin
-                    // that actually reacted.
-                    $sspa_frames = array();
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- bounded argument-free stack identifies the profiled query caller for plugin attribution.
-                    foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 24) as $sspa_f) {
-                        if (isset($sspa_f['file']) && __FILE__ !== $sspa_f['file']) {
-                            $sspa_frames[] = array(
-                                $sspa_f['file'],
-                                isset($sspa_f['line']) ? $sspa_f['line'] : 0,
-                                (isset($sspa_f['class']) ? $sspa_f['class'] . '::' : '') . $sspa_f['function'],
-                            );
-                        }
-                    }
-                    $GLOBALS['sspa_plugin_reactions'][] = array(
-                        'op' => $sspa_which,
-                        'plugin' => (string) $sspa_plugin,
-                        'frames' => $sspa_frames,
-                    );
-                    remove_all_actions($sspa_which . '_' . $sspa_plugin);
-                    remove_all_actions($sspa_which . 'd_plugin');
-                    // Clear the general hook too (third-party observers), then re-arm this
-                    // catcher so a second attempt in the same request is still caught.
-                    $sspa_self = ('deactivate' === $sspa_which) ? 'sspa_catch_deactivation' : 'sspa_catch_activation';
-                    remove_all_actions($sspa_which . '_plugin');
-                    add_action($sspa_which . '_plugin', $sspa_self, PHP_INT_MIN);
                 }
-                function sspa_catch_deactivation($sspa_plugin) {
-                    sspa_catch_plugin_reaction('deactivate', $sspa_plugin);
-                }
-                function sspa_catch_activation($sspa_plugin) {
-                    sspa_catch_plugin_reaction('activate', $sspa_plugin);
-                }
+                $GLOBALS['sspa_plugin_reactions'][] = array(
+                    'op' => $sspa_which,
+                    'plugin' => (string) $sspa_plugin,
+                    'frames' => $sspa_frames,
+                );
+                remove_all_actions($sspa_which . '_' . $sspa_plugin);
+                remove_all_actions($sspa_which . 'd_plugin');
+                // Clear the general hook too (third-party observers), then re-arm this
+                // catcher so a second attempt in the same request is still caught.
+                $sspa_self = ('deactivate' === $sspa_which) ? 'sspa_catch_deactivation' : 'sspa_catch_activation';
+                remove_all_actions($sspa_which . '_plugin');
+                add_action($sspa_which . '_plugin', $sspa_self, PHP_INT_MIN);
             }
+            function sspa_catch_deactivation($sspa_plugin) {
+                sspa_catch_plugin_reaction('deactivate', $sspa_plugin);
+            }
+            function sspa_catch_activation($sspa_plugin) {
+                sspa_catch_plugin_reaction('activate', $sspa_plugin);
+            }
+
             if (!isset($GLOBALS['sspa_plugin_reactions'])) {
                 $GLOBALS['sspa_plugin_reactions'] = array();
             }

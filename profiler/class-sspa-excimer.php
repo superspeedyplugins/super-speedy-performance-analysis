@@ -89,7 +89,7 @@ if (!class_exists('SSPA_Excimer')) {
             if (defined('REST_REQUEST') && REST_REQUEST) {
                 return true;
             }
-            if (isset($_GET['wc-ajax']) || isset($_GET['rest_route'])) { // phpcs:ignore WordPress.Security.NonceVerification
+            if (defined('WC_DOING_AJAX') && WC_DOING_AJAX) { // phpcs:ignore WordPress.Security.NonceVerification
                 return true;
             }
             // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only request classification requires the actual URI; it is not rendered or executed.

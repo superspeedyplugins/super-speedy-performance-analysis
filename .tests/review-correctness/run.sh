@@ -18,6 +18,15 @@ else
 fi
 sspa_require_site || exit 1
 sync_plugin || exit 1
+# This isolated UI regression does not test external update servers or icon CDNs.
+# Keep their failure explicit, and keep the real local HTTP/traffic paths enabled.
+cli config set WP_HTTP_BLOCK_EXTERNAL true --raw --anchor='if ( ! defined(' --placement=before || exit 1
+cli option update show_avatars 0 --quiet || exit 1
+cli eval '$r=wp_remote_get("https://api.wordpress.org/core/version-check/1.7/"); if(!is_wp_error($r) || "http_request_not_executed" !== $r->get_error_code()) WP_CLI::error("Dedicated review site must reject external HTTP explicitly."); echo "PASS: dedicated non-WooCommerce browser fixture explicitly blocks external HTTP (http_request_not_executed)\n";' || exit 1
+# Guest recording needs a real local page, independent of a fleet theme's font CDN.
+cli theme is-installed twentytwentyfive || exit 1
+cli theme activate twentytwentyfive --quiet || exit 1
+cli eval 'if("twentytwentyfive" !== get_stylesheet()) WP_CLI::error("Dedicated review page requires the bundled local-asset theme."); echo "PASS: dedicated guest page uses bundled Twenty Twenty-Five (".wp_get_theme()->get("Version").")\n";' || exit 1
 if cli plugin is-active woocommerce >/dev/null 2>&1; then
     echo 'FAIL: dedicated non-WooCommerce scenario has WooCommerce active' >&2
     exit 1
@@ -27,6 +36,14 @@ cat > "$SSPA_SITE_DIR/wp-content/mu-plugins/sspa-review-sampling.php" <<'PHP'
 <?php
 // Dedicated regression fixture: observe every anonymous request deterministically.
 add_filter('sspa_traffic_origin_sample_modulus', function () { return 1; });
+// Native Unicode icons avoid an unrelated s.w.org image download during page load.
+$sspa_review_native_icons = static function() {
+    remove_action('wp_head', 'print_emoji_detection_script', 7);
+    remove_action('admin_print_scripts', 'print_emoji_detection_script');
+    remove_action('embed_head', 'print_emoji_detection_script');
+};
+add_action('init', $sspa_review_native_icons, 0);
+add_action('admin_init', $sspa_review_native_icons, 0);
 PHP
 cli plugin activate "$PLUGIN_SLUG" || exit 1
 cli eval '$active=SSPA_Traffic_Collection::active(); if($active && !SSPA_Traffic_Collection::stop($active["id"],true)) WP_CLI::error("Could not stop previous fixture collection");' || exit 1

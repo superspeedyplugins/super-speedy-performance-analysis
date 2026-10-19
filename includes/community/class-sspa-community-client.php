@@ -248,6 +248,7 @@ class SSPA_Community_Client {
         $required = isset($remote['required_headers']) && is_array($remote['required_headers']) ? $remote['required_headers'] : array();
         if (!wp_http_validate_url($url)
             || 'https' !== wp_parse_url($url, PHP_URL_SCHEME)
+            || !preg_match('/\A(?:[a-z0-9][a-z0-9-]{0,62}\.)?[a-f0-9]{32}\.r2\.cloudflarestorage\.com\z/D', (string) wp_parse_url($url, PHP_URL_HOST))
             || 1 !== count($required)
             || !isset($required['Content-Type'])
             || 'application/gzip' !== strtolower($required['Content-Type'])) {

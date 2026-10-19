@@ -67,6 +67,7 @@ add_action('save_post', function ($post_id) {
 add_filter('pre_wp_mail', function ($return, $atts) {
     if ('Measured admin save' === $atts['subject']) {
         update_option('sspa_admin_save_fixture_mail', 1, false);
+        update_option('sspa_admin_save_fixture_recipients', $atts['to'], false);
         return true;
     }
     return $return;
@@ -220,6 +221,8 @@ if (is_wp_error($prepared)) {
         wp_cache_delete('notoptions', 'options');
         wp_cache_delete('alloptions', 'options');
         $fixture_mail = (int) get_option('sspa_admin_save_fixture_mail');
+        wp_cache_delete('sspa_admin_save_fixture_recipients', 'options');
+        sspa_admin_save_t(array('sspa-save@blackhole.invalid') === (array) get_option('sspa_admin_save_fixture_recipients'), 'Analyse update/save preserves the real save recipient');
         sspa_admin_save_t((int) $profile['mail_count'] >= 1 && 1 === $fixture_mail, 'mail ran normally and was measured (measured ' . (int) $profile['mail_count'] . ', fixture flag ' . $fixture_mail . ')');
 
         $page_evidence = sspa_admin_save_evidence($prepared['run_id'], 'sspa/page-profile');

@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.43.18
+Stable tag: 0.43.21
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -23,7 +23,9 @@ Super Speedy Performance Analysis diagnoses your site's performance the way an e
 * History can also opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
 * Optionally share anonymised results with the community at superspeedy.org to help build an open database of plugin performance. You see the exact payload before anything is sent.
 
-Performance tests require test objects. Customer-session measurements create a restricted test customer account that cannot be logged into and is replaced on the next run. Administrator measurements use your existing account. Opt-in write profiles create temporary post/product copies and a temporary order with its own test product; these objects are deleted after measurement. The separate checkout flow retains its hidden test product and its refunded orders in Trash for inspection, without contacting a payment provider.
+Performance tests require test objects. Customer-session measurements create a restricted test customer account that cannot be logged into and is replaced on the next run. Administrator measurements use your existing account. Opt-in write profiles create private temporary post/product objects and a temporary order with its own test product; these objects are deleted after measurement. The separate checkout flow retains its hidden test product and its refunded orders in Trash for inspection, without contacting a payment provider.
+
+Analyses send real emails to the site administrator: three mail probes with the default three baseline samples, plus any messages triggered by write and checkout measurements; extensions and deferred queues can add messages. Profiling a real save with Analyse update/save preserves its normal recipients.
 
 This plugin is free. The build downloaded from https://www.superspeedyplugins.com/ includes automatic updates from superspeedyplugins.com; the WordPress.org build does not include this updater.
 
@@ -47,11 +49,15 @@ No. Traffic recording stores its observations in this site's own database. Commu
 
 Saved analysis data is retained by default. Before deleting the plugin, enable "Delete all SSPA data when the plugin is deleted" in History if you want its profiling tables, settings and managed test objects removed. Deleting local data does not delete evidence you previously submitted to the community service.
 
+= Do analyses send emails? =
+
+Yes, synthetic measurements send real emails to the administrator and measure send or queue time; a baseline with the default three samples sends three probes, with additional mail from optional writes and checkout. The real Analyse update/save action preserves normal recipients.
+
 == External services ==
 
 The optional community service at https://superspeedy.org/ collects profiling evidence to build public performance comparisons. Automatic sharing is disabled by default. An administrator can enable it or submit selected analyses individually; the Share tab previews the exact evidence before submission. No purchased account is required.
 
-Registration sends a random installation identifier, a generated authentication secret, and the plugin, WordPress and PHP versions. Each submission sends the installation identifier, run and submission identifiers, archive checksums and compressed/uncompressed sizes, protocol/schema/anonymisation versions, the run type and archive creation time, and a compressed archive containing timings and counts, plugin and theme identifiers and versions, page classifications and sanitised profiling details. These include size bands, normalised query fingerprints, component-published performance settings, external HTTP call aggregates and bounded boot, hook, render and asset summaries where available and covered by consent. Registration and submission metadata go to collector.superspeedy.org; the archive goes to the HTTPS storage upload URL it supplies, followed by receipt confirmation using the reservation identifier and archive checksum. Submission requests carry the installation identifier and cryptographic authentication signatures. Queued submissions may retry after temporary failures. Passive traffic and AJAX observation windows remain local.
+Registration sends a random installation identifier, a generated authentication secret, and the plugin, WordPress and PHP versions. Each submission sends the installation identifier, run and submission identifiers, archive checksums and compressed/uncompressed sizes, protocol/schema/anonymisation versions, the run type and archive creation time, and a compressed archive containing timings and counts, plugin and theme identifiers and versions, page classifications and sanitised profiling details. These include size bands, normalised query fingerprints, component-published performance settings, external HTTP call aggregates and bounded boot, hook, render and asset summaries where available and covered by consent. Registration and submission metadata go to collector.superspeedy.org; the archive goes only to the Cloudflare R2 HTTPS storage upload host it supplies, ACCOUNT_ID.r2.cloudflarestorage.com (optionally prefixed by its bucket name), followed by receipt confirmation using the reservation identifier and archive checksum. Submission requests carry the installation identifier and cryptographic authentication signatures. Queued submissions may retry after temporary failures. Passive traffic and AJAX observation windows remain local.
 
 Before queueing or sending evidence, privacy validation rejects site addresses and file paths, distinctive database names, email and IP addresses, user/order/product identifiers, sessions, cookies and request or response bodies. Calls to the site's own host are excluded. This anonymisation does not make the connection anonymous: the receiving servers and Cloudflare see its source IP address. The collector does not record IP addresses.
 
@@ -59,6 +65,8 @@ WP Intense OÜ operates the service, stores submitted archives with Cloudflare R
 
 Privacy policy: https://superspeedy.org/privacy-and-terms/
 Terms of service: https://superspeedy.org/privacy-and-terms/
+Cloudflare privacy policy: https://www.cloudflare.com/privacypolicy/
+Cloudflare service terms (including R2): https://www.cloudflare.com/service-specific-terms-developer-platform/
 
 == Source code and third-party libraries ==
 
@@ -75,11 +83,11 @@ The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/ssp
 Traffic recording installs the fixed `wp-content/mu-plugins/sspa-traffic-observer.php` only while recording is enabled.
 Network-wide profiler changes require a network administrator on multisite; Traffic recording is unavailable on multisite.
 
-Non-PHP files live in `uploads/super-speedy-performance-analysis/`: `traffic-config.json`, `sspa-traffic-authority.json` and `sspa-traffic-observer.stopped`, plus temporary traffic-config publication files.
-The authority file uses a locked stable inode to prevent recording after deactivation and is removed on uninstall.
+Non-PHP files live in `uploads/super-speedy-performance-analysis/`: `traffic-config.json` and `sspa-traffic-observer.stopped`, plus temporary traffic-config publication files.
+The non-public `sspa-traffic-authority.php` starts with an exit guard and stores JSON after it; it uses a locked stable inode to prevent recording after deactivation and is removed on uninstall.
 Upgrades migrate the old authority from mu-plugins; uninstall also removes legacy authority and stop-marker data there.
 Recovery can restore `db.php.sspa-hold` and `object-cache.php.sspa-hold` left by older versions; this version never creates those holds.
-WP-CLI exports write only to an output path explicitly supplied by the administrator.
+WP-CLI exports print to stdout; redirect output in your shell to save it.
 
 == Traffic privacy ==
 
@@ -94,6 +102,24 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.43.21 =
+* Added Clear all caches to the admin bar, with separate outcomes for the object cache, whole page cache and OPcache.
+* Fixed SG Optimizer page-cache clearing through its public purge API.
+* Removed the obsolete `--output` option from Traffic command help.
+
+= 0.43.20 =
+* Reactivation migrates the old Traffic authority before enabling it, and fresh legacy workflow objects keep their launch window.
+
+= 0.43.19 =
+* Upgrade failures appear on Performance Analysis screens and retry in wp-admin without interrupting visitor requests.
+* Analyse update/save preserves real recipients, while private test objects and deferred order emails use administrator recipients.
+* Interrupted workflows and write measurements clean up their owned objects, and stale profiler files are flagged in Health.
+* Browser evidence uses sanitised form arrays, and community uploads are restricted to Cloudflare R2 storage hosts.
+* WP-CLI exports use stdout; existing agent configurations must use the `sspa/` ability names.
+* Traffic events use individual inserts and stop at the actual event ID limit.
+* Traffic collections spanning older releases may split keyed URL or visitor joins where input normalisation changed.
+
 
 = 0.43.18 =
 * Removed the incomplete "Super Speedy caches" admin-bar action in both editions.

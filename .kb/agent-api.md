@@ -1,5 +1,7 @@
 # Agent API - report schema and surfaces
 
+Abilities use only the `sspa/` namespace; update existing agent configurations to these names. WP-CLI output is written to stdout and can be redirected by the shell.
+
 Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 ## Surfaces (identical data)
@@ -15,7 +17,7 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
-  `super-speedy-performance-get-report`). The plugin registers no dedicated MCP server.
+  `sspa-get-report`). The plugin registers no dedicated MCP server.
 
 Runs started via abilities are asynchronous: poll `get-status` until `active` is false.
 `wp sspa run` is synchronous and drives the batches itself.

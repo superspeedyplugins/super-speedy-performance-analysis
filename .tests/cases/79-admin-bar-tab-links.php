@@ -54,4 +54,12 @@ sspa_79_t(!$mentions, 'no admin-bar node mentions digests, fingerprints or rows-
 $excimer = $bar->get_node('sspa-state-excimer');
 sspa_79_t($excimer && '' !== wp_strip_all_tags((string) $excimer->title), 'the Excimer node remains, as the capability worth surfacing');
 
+$all = $bar->get_node('sspa-clear-all-caches');
+sspa_79_t($all && 'Clear all caches' === $all->title, 'Clear all caches admin-bar node exists');
+if ($all) {
+    parse_str(wp_parse_url(html_entity_decode($all->href), PHP_URL_QUERY), $args);
+    sspa_79_t('clear_all_caches' === $args['do'] && wp_verify_nonce($args['_wpnonce'], 'sspa_bar_clear_all_caches'), 'combined action uses the existing signed admin-post handler');
+}
+sspa_79_t(null === $bar->get_node('sspa-clear-ours'), 'Super Speedy caches stays removed');
+
 if ($GLOBALS['sspa_79_failures']) { exit(1); }

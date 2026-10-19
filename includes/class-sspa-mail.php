@@ -7,12 +7,48 @@ class SSPA_Mail {
 
     public static function register() {
         add_filter('wp_mail', array(__CLASS__, 'recipients'), PHP_INT_MAX);
+        add_action('phpmailer_init', array(__CLASS__, 'mailer_recipients'), PHP_INT_MAX);
+        add_filter('woocommerce_email_classes', array(__CLASS__, 'email_classes'), PHP_INT_MAX);
+        add_filter('woocommerce_email_headers', array(__CLASS__, 'email_headers'), PHP_INT_MAX, 4);
+    }
+
+    public static function email_classes($emails) {
+        foreach ($emails as $email) {
+            if (!empty($email->id)) {
+                add_filter('woocommerce_email_recipient_' . $email->id, array(__CLASS__, 'order_recipient'), PHP_INT_MAX, 3);
+            }
+        }
+        return $emails;
+    }
+
+    private static function marked($object) {
+        return is_object($object) && method_exists($object, 'get_meta') && $object->get_meta('_sspa_temp');
+    }
+
+    public static function order_recipient($recipient, $object = null, $email = null) {
+        if (!self::marked($object)) { return $recipient; }
+        $billing = method_exists($object, 'get_billing_email') ? $object->get_billing_email() : '';
+        return self::safe_recipient(array($billing));
+    }
+
+    public static function email_headers($headers, $id, $object = null, $email = null) {
+        if (!self::marked($object)) { return $headers; }
+        $atts = self::with_admin(static function() use ($headers) {
+            return self::recipients(array('to' => array(), 'headers' => $headers));
+        });
+        return implode("\r\n", $atts['headers']);
     }
 
     public static function owner_id() {
         $id = get_current_user_id();
         if ($id && user_can($id, 'manage_options')) {
             return $id;
+        }
+        if (is_multisite()) {
+            foreach (get_super_admins() as $login) {
+                $admin = get_user_by('login', $login);
+                if ($admin) { return (int) $admin->ID; }
+            }
         }
         $admins = get_users(array('role' => 'administrator', 'number' => 1, 'fields' => 'ID'));
         if (!$admins) {
@@ -36,7 +72,8 @@ class SSPA_Mail {
             throw new RuntimeException('Performance Analysis requires a valid site administrator email address.');
         }
         $at = strrpos($admin, '@');
-        return substr($admin, 0, $at) . '+sspa-perf-' . sanitize_key((string) $tag) . substr($admin, $at);
+        $address = substr($admin, 0, $at) . '+sspa-perf-' . sanitize_key((string) $tag) . substr($admin, $at);
+        return strlen(strstr($address, '@', true)) <= 64 && is_email($address) ? $address : $admin;
     }
 
     /** Cover creation/deletion callbacks outside the signed measurement request too. */
@@ -49,11 +86,33 @@ class SSPA_Mail {
         }
     }
 
+    private static function rewrites() {
+        $flags = $GLOBALS['sspa_flags'] ?? array();
+        return self::$depth || (empty($flags['real_save']) && (!empty($flags['mp']) || (!empty($flags['wp']) && !empty($flags['tid'])) || !empty($flags['ck']) || !empty($flags['wf'])));
+    }
+
+    public static function mailer_recipients($mailer) {
+        if (!self::rewrites()) { return; }
+        $to = self::safe_recipient(array_column($mailer->getToAddresses(), 0));
+        $mailer->clearAllRecipients();
+        $mailer->addAddress($to);
+    }
+
+    private static function safe_recipient($recipients) {
+        $admin = (string) get_option('admin_email');
+        $at = strrpos($admin, '@');
+        $prefix = substr($admin, 0, $at) . '+sspa-perf-';
+        foreach ((array) $recipients as $recipient) {
+            if (is_string($recipient) && is_email($recipient) && 0 === strpos($recipient, $prefix) && substr($recipient, strrpos($recipient, '@')) === substr($admin, $at)) { return $recipient; }
+        }
+        return self::address('analysis');
+    }
+
     public static function recipients($atts) {
-        if (!self::$depth && empty($GLOBALS['sspa_capture'])) {
+        if (!self::rewrites()) {
             return $atts;
         }
-        $atts['to'] = array(self::address('analysis'));
+        $atts['to'] = array(self::safe_recipient($atts['to']));
         $headers = is_array($atts['headers']) ? $atts['headers'] : explode("\n", str_replace("\r\n", "\n", (string) $atts['headers']));
         $safe = array();
         foreach ($headers as $header) {
@@ -95,8 +154,13 @@ class SSPA_Mail {
         );
     }
 
+    public static function is_pa_screen() {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        return $screen && preg_match('/(?:^|_page_)sspa$/', $screen->id);
+    }
+
     public static function notice() {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_options') || !self::is_pa_screen()) {
             return;
         }
         $warning = self::warning();

@@ -78,7 +78,7 @@ class SSPA_Run_Queue {
 
     public static function discard_legacy_options() {
         global $wpdb;
-        $names = $wpdb->get_col("SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'sspa_queue_%'");
+        $names = $wpdb->get_col($wpdb->prepare("SELECT option_name FROM %i WHERE option_name LIKE %s", $wpdb->options, 'sspa_queue_%'));
         foreach ($names as $name) {
             $run_id = (int) substr($name, strlen('sspa_queue_'));
             if ($run_id) {
