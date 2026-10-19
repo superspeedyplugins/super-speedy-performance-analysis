@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.43.21
+Stable tag: 0.44.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -103,15 +103,11 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.43.21 =
+= 0.44.0 (19th October 2026) =
 * Added Clear all caches to the admin bar, with separate outcomes for the object cache, whole page cache and OPcache.
 * Fixed SG Optimizer page-cache clearing through its public purge API.
 * Removed the obsolete `--output` option from Traffic command help.
-
-= 0.43.20 =
 * Reactivation migrates the old Traffic authority before enabling it, and fresh legacy workflow objects keep their launch window.
-
-= 0.43.19 =
 * Upgrade failures appear on Performance Analysis screens and retry in wp-admin without interrupting visitor requests.
 * Analyse update/save preserves real recipients, while private test objects and deferred order emails use administrator recipients.
 * Interrupted workflows and write measurements clean up their owned objects, and stale profiler files are flagged in Health.
@@ -119,12 +115,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 * WP-CLI exports use stdout; existing agent configurations must use the `sspa/` ability names.
 * Traffic events use individual inserts and stop at the actual event ID limit.
 * Traffic collections spanning older releases may split keyed URL or visitor joins where input normalisation changed.
-
-
-= 0.43.18 =
 * Removed the incomplete "Super Speedy caches" admin-bar action in both editions.
-
-= 0.43.17 =
 * Escaped admin report fragments and moved History data and admin-bar styles to WordPress asset APIs.
 * Restricted ad-hoc profiling assets to measurement screens and controls.
 * Sanitised request fields and replaced browser response uploads with derived diagnostic evidence.
@@ -132,41 +123,19 @@ The chart bundle includes the licence and notice files; its reproducible source 
 * Renamed agent abilities to `sspa/` and included traffic comparisons in discovery.
 * The wp.org cache shortcut clears only Performance Analysis transients.
 * Added Traffic privacy-policy guidance, JavaScript translations and complete chart library notices.
-
-= 0.43.15 =
 * Traffic event batches name their table through a prepared identifier placeholder.
-
-= 0.43.14 =
 * Analysis emails go to the site administrator and report measured send/queue time.
 * Edit/save workflows create and remove their own administrator-owned objects, using a separate zero-price stock product for orders.
 * Replacement mailers show an owner-naming warning when administrator recipient rewriting cannot be confirmed.
-
-= 0.43.13 =
 * Prepared analysis and traffic SQL identifiers and values without changing query selection or ordering.
 * Limited query-plan index lookups to this site's prefixed tables.
-
-= 0.43.12 =
 * Updated profiler Health guidance to use the explicit Tools controls.
-
-= 0.43.11 =
 * Removed obsolete settings for the community rules service.
-
-= 0.43.10 =
 * Updated the community sharing notice, privacy policy and terms links.
-
-= 0.43.9 =
 * Removed UTM tracking parameters and an unsupported query-time claim from recommendations.
-
-= 0.43.8 =
 * Traffic collection now stores its observer configuration as JSON.
-
-= 0.43.7 =
 * Added explicit Enable profiler and Disable controls to Tools.
-
-= 0.43.6 =
 * Analysis rules now come only from the bundled snapshot.
-
-= 0.43.5 =
 * Aligned the stable tag and translation template with the plugin version.
 
 = 0.43.4 (16th October 2026) =
