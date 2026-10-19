@@ -25,3 +25,5 @@ node_modules/
 
 # wp-cli machine-local config: points wp at the local WordPress install
 wp-cli.local.yml
+/.tests/node_modules
+/.tests/observatory/node_modules
