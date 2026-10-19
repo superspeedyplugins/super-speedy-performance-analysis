@@ -247,7 +247,7 @@ class SSPA_Probes {
         $args = array(
             'post_type' => array_keys(get_post_types()), 'post_status' => array_keys(get_post_stati()),
             'posts_per_page' => -1, 'fields' => 'ids',
-            'meta_query' => array(array('key' => '_sspa_temp', 'value' => array('1', 'write_product'), 'compare' => 'IN')),
+            'meta_query' => array(array('key' => '_sspa_temp', 'value' => array('1', 'write_product'), 'compare' => 'IN')), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- cleanup-only lookup of this plugin's own marked test objects; never runs on visitor requests.
         );
         if (!$all) { $args['date_query'] = array(array('column' => 'post_date_gmt', 'before' => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS))); }
         foreach (get_posts($args) as $id) { self::delete_temp((int) $id, 'shop_order' === get_post_type($id)); }

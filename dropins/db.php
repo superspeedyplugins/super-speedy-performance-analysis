@@ -21,8 +21,8 @@ if (!function_exists('sspa_sanitize_early_token')) {
     }
 }
 $sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
-    ? sspa_sanitize_early_token(wp_unslash($_SERVER['HTTP_X_SSPA_TOKEN']))
-    : sspa_sanitize_early_token(wp_unslash($_POST['_sspa_profile_token'] ?? ''));
+    ? sspa_sanitize_early_token(wp_unslash($_SERVER['HTTP_X_SSPA_TOKEN'])) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_text_field() reads get_option() and cannot run before the database layer this drop-in creates; sspa_sanitize_early_token() accepts only [A-Za-z0-9_.:;-] and returns '' for anything else.
+    : sspa_sanitize_early_token(wp_unslash($_POST['_sspa_profile_token'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_text_field() cannot run before the database layer this drop-in creates (sspa_sanitize_early_token() accepts only [A-Za-z0-9_.:;-]); an expiring, URL-bound, single-use HMAC profiling token authorises this unauthenticated loopback request; a nonce cannot.
 if (!$sspa_token_value || !defined('DB_USER')) {
     return;
 }

@@ -130,7 +130,7 @@ class SSPA_Traffic_Helper {
             if (!SSPA_Filesystem::put_contents($temporary, $content, $mode)) {
                 return new WP_Error('sspa_traffic_write', __('Could not write the traffic file with safe permissions.', 'super-speedy-performance-analysis'));
             }
-            if (!rename($temporary, $path)) {
+            if (!rename($temporary, $path)) { // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic publish of a fully written file, so the observer never reads a partial configuration; WP_Filesystem::move() is not atomic.
                 return new WP_Error('sspa_traffic_rename', __('Could not activate the traffic file atomically.', 'super-speedy-performance-analysis'));
             }
             return true;

@@ -17,7 +17,7 @@ if (!function_exists('sspa_sanitize_early_token')) {
 }
 $sspa_token_value = !empty($_SERVER['HTTP_X_SSPA_TOKEN'])
     ? sspa_sanitize_early_token(sanitize_text_field(wp_unslash($_SERVER['HTTP_X_SSPA_TOKEN'])))
-    : sspa_sanitize_early_token(sanitize_text_field(wp_unslash($_POST['_sspa_profile_token'] ?? '')));
+    : sspa_sanitize_early_token(sanitize_text_field(wp_unslash($_POST['_sspa_profile_token'] ?? ''))); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- an expiring, URL-bound, single-use HMAC profiling token authorises this unauthenticated loopback request; a nonce cannot.
 if (!$sspa_token_value) {
     return;
 }

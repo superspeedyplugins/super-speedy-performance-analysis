@@ -24,7 +24,7 @@ class SSPA_Traffic_Authority {
             // The uploads authority supersedes the legacy MU authority after activation.
             foreach (array_reverse($files) as $legacy) {
                 if (!is_file($legacy)) { continue; }
-                $handle = fopen($legacy, 'r');
+                $handle = fopen($legacy, 'r'); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- flock() needs a PHP stream handle to serialise the one-time legacy authority migration; WP_Filesystem has no locking.
                 if (!$handle) { throw new RuntimeException('Cannot open legacy traffic authority.'); }
                 try {
                     if (!flock($handle, LOCK_EX)) { throw new RuntimeException('Cannot lock legacy traffic authority.'); }
@@ -36,7 +36,7 @@ class SSPA_Traffic_Authority {
                         self::write($state);
                     }
                     if (!SSPA_Filesystem::direct()->delete($legacy)) { throw new RuntimeException('Cannot remove legacy traffic authority.'); }
-                } finally { flock($handle, LOCK_UN); fclose($handle); }
+                } finally { flock($handle, LOCK_UN); fclose($handle); } // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- closes the flock() stream opened above.
             }
         });
     }

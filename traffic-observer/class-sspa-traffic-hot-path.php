@@ -227,7 +227,7 @@ class SSPA_Traffic_Hot_Path {
 	}
 
 	private static function request_scalar($key) {
-        $value = filter_var(wp_unslash($_REQUEST[$key] ?? ''), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: '';
+        $value = filter_var(wp_unslash($_REQUEST[$key] ?? ''), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only observation of another plugin's request action name for opt-in Traffic statistics; validated against a strict pattern and never used to change state.
         return is_string($value) ? $value : '';
     }
 
