@@ -6,6 +6,12 @@ if (realpath(WPMU_PLUGIN_DIR . '/sspa-w5b-faults.php') !== realpath(__DIR__ . '/
     && !copy(__DIR__ . '/../fixtures/w5b-faults.php', WPMU_PLUGIN_DIR . '/sspa-w5b-faults.php')) { throw new RuntimeException('Cannot install the isolated failure fixture.'); }
 require_once WPMU_PLUGIN_DIR . '/sspa-w5b-faults.php';
 wp_set_current_user(1);
+// Clear on the way in: case 80 leaves a deliberately unsupported checkout page behind, and this
+// case must reach the setup failure rather than the unsupported-checkout refusal. Same restore as case 19.
+$sspa_w5b_checkout_page = (int) get_option('woocommerce_checkout_page_id');
+if ($sspa_w5b_checkout_page) {
+    wp_update_post(array('ID' => $sspa_w5b_checkout_page, 'post_content' => '<!-- wp:woocommerce/checkout /-->'));
+}
 $admin_email = get_option('admin_email');
 $expiry = time() + 300;
 $token = WP_Session_Tokens::get_instance(1)->create($expiry);
