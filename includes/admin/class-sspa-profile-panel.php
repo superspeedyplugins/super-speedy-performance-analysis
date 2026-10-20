@@ -1047,7 +1047,7 @@ class SSPA_Profile_Panel {
 
         // Two scopes, one picker. With a profile id it plans "measure plugins on this page";
         // without one it plans the site-wide sweep - which is now reached the same way, by
-        // choosing plugins one by one, rather than by a button that swept everything. Nothing
+        // choosing plugins one by one, rather than by a button that swept everything. The
         // page picker preselects the three highest measured suspects; the administrator
         // reviews the exclusions and starts the run explicitly.
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
