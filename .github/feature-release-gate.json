@@ -4,7 +4,7 @@
   "plan": {
     "repository_environment": "SSPA_GATE_METADATA_REPOSITORY",
     "ref": "main",
-    "path": "super-speedy-performance-analysis/.docs/2026-10-16-wporg-remediation-plan.md"
+    "path": "super-speedy-performance-analysis/.docs/2026-10-16-actionable-page-summary-without-excimer.md"
   },
   "release": {
     "core_bugs": [],
@@ -351,13 +351,63 @@
         ]
       },
       {
+        "id": "120-actionable-summary",
+        "command": "bash .tests/run-tests.sh 120-actionable-summary",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "121-summary-export-consistency",
+        "command": "bash .tests/run-tests.sh 121-summary-export-consistency",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "122-summary-first-sample",
+        "command": "bash .tests/run-tests.sh 122-summary-first-sample",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "123-summary-reference-semantics",
+        "command": "bash .tests/run-tests.sh 123-summary-reference-semantics",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
+        "id": "124-summary-raw-streams",
+        "command": "bash .tests/run-tests.sh 124-summary-raw-streams",
+        "covers": [
+          "focused"
+        ],
+        "required_output": [
+          "1 case file(s) run, 0 failed"
+        ]
+      },
+      {
         "id": "complete-suite",
         "command": "bash .tests/run-tests.sh",
         "covers": [
           "focused"
         ],
         "required_output": [
-          "125 case file(s) run, 0 failed"
+          "130 case file(s) run, 0 failed"
         ]
       }
     ]

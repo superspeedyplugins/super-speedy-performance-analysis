@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.44.2
+Stable tag: 0.45.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -103,7 +103,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.44.2 (20th October 2026) =
+= 0.45.0 (20th October 2026) =
 * Page reports now lead with the dominant time, the measured culprits, attribution coverage and a next action, with PHP phases and sample ranges in the Markdown export.
 * Signed profiling requests measure process CPU against elapsed wall time.
 * Signed page measurements time bounded template loads and record header, footer, sidebar, template-part and loop boundaries.
