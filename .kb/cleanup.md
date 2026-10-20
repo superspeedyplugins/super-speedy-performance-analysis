@@ -29,8 +29,10 @@ classifier, so Dave publishes them.
 
 The Quick Start Guide (1695043) already exists on the parent term and was left unchanged.
 
-**14 October 2026, Dave: hold both drafts for edits.** They stay drafts; do not publish or delete
-the sources until he has edited them.
+**20 October 2026: published at Dave's request.** FAQ 1695505 and Troubleshooting 1695504 are live. Term 4655
+(`troubleshooting`) was deleted with wp-cli on the live server because its archive shadowed the guide's URL; the merged
+article 1695041 was set to draft (the kb type has no trash), and its old URL 301-redirects to
+`/kb/super-speedy-performance-analysis/troubleshooting/#security-plugins-block-profiling` (redirection 581).
 
 ## Order of operations for Dave
 
