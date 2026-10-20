@@ -227,6 +227,11 @@ class SSPA_Demographics {
      * at disk, which is the part a cohort needs. Reads the head of the file only, and returns
      * a word from a closed list - never a path, a host or a line of the file.
      */
+    /** The object-cache drop-in's technology now, as one word from the closed list. */
+    public static function object_cache_technology() {
+        return self::dropin_category(SSPA_CONTENT_DIR . '/object-cache.php');
+    }
+
     private static function dropin_category($path) {
         if (!is_readable($path)) {
             return null;

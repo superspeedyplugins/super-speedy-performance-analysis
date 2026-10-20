@@ -42,6 +42,43 @@ class SSPA_Rules {
     }
 
     /**
+     * Plugins that purge or front a page cache without being one (nginx-helper, the
+     * Cloudflare plugin). Kept out of categories() so two of them never read as duplicate
+     * page caches in the overlap rule.
+     */
+    public static function page_cache_integrations() {
+        $data = self::load();
+        return isset($data['page_cache_integrations']) ? (array) $data['page_cache_integrations'] : array();
+    }
+
+    /**
+     * Plugin basename fragments that commonly change a product's price per visitor, copied
+     * from Super Speedy Ajax Prices. Fragments, not slugs, so they are not a category.
+     *
+     * @return array {patterns[], exclude[]}
+     */
+    public static function price_affecting() {
+        $data = self::load();
+        $rules = isset($data['price_affecting']) ? (array) $data['price_affecting'] : array();
+        return array(
+            'patterns' => isset($rules['patterns']) ? (array) $rules['patterns'] : array(),
+            'exclude' => isset($rules['exclude']) ? (array) $rules['exclude'] : array(),
+        );
+    }
+
+    /** Bundled offers, keyed by offer id. They change only with plugin releases. */
+    public static function offers() {
+        $data = self::load();
+        return isset($data['offers']) ? (array) $data['offers'] : array();
+    }
+
+    /** Verbatim published quotations for the Cache performance tab, each with its source. */
+    public static function cache_education() {
+        $data = self::load();
+        return isset($data['cache_education']) ? (array) $data['cache_education'] : array();
+    }
+
+    /**
      * Meta keys that belong to WordPress core, WooCommerce or a widely-installed plugin, and
      * so identify software rather than a site.
      *

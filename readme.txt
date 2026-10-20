@@ -53,6 +53,10 @@ Saved analysis data is retained by default. Before deleting the plugin, enable "
 
 Yes, synthetic measurements send real emails to the administrator and measure send or queue time; a baseline with the default three samples sends three probes, with additional mail from optional writes and checkout. The real Analyse update/save action preserves normal recipients.
 
+= Which requests does the Cache performance check send? =
+
+Only requests to this site's own pages, after an administrator presses "Check cache performance". It requests up to four fixed public pages (home and, with WooCommerce, the shop, one product category and one product): two requests per page from the administrator's browser without cookies, then seven per page from the server - two anonymous, two carrying WooCommerce's basket cookies with no basket behind them, two as the plugin's synthetic logged-in test customer, and one final anonymous request that checks no logged-in content reached the anonymous cache. That is 36 requests for four pages. Nothing is sent to any other host, and no cache is purged or changed.
+
 == External services ==
 
 The optional community service at https://superspeedy.org/ collects profiling evidence to build public performance comparisons. Automatic sharing is disabled by default. An administrator can enable it or submit selected analyses individually; the Share tab previews the exact evidence before submission. No purchased account is required.
@@ -102,6 +106,10 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.45.1 (21st October 2026) =
+* Added a cache check that measures anonymous visitors, visitors with a basket and logged-in customers separately and checks that no logged-in page reaches anonymous visitors.
+* Agents and WP-CLI receive the per-audience cache check, the cache system inventory and the leak check in the version 3 cache document.
 
 = 0.45.0 (20th October 2026) =
 * Page reports now lead with the dominant time, the measured culprits, attribution coverage and a next action, with PHP phases and sample ranges in the Markdown export.

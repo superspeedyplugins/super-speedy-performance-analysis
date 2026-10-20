@@ -88,6 +88,7 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
   "insights": [ /* first 10 findings, most severe first */ ],
   "findings": [ /* all findings, shape below */ ],
   "cache_safety": {"headline": "...", "detail": "...", "assessment": {"shared_cache_status": "visitor_specific_content_review_recommended", "difficulty": "moderate", "hazards": [], "candidate_components": []}},
+  "cache_delivery": null,
   "pages": [ /* per-page medians, shape below */ ],
   "impacts": [ /* measured isolation deltas, shape below */ ]
 }
@@ -129,6 +130,45 @@ Repeated site-wide signals are scored once, while their affected page count rema
 The `source_scan` block states component coverage and every component limited by the fair
 per-component scan ceiling. A controlled
 guest/customer/basket comparison is still required before enabling shared caching.
+
+### Cache performance check
+
+The administrator runs the check from the Cache performance tab. It needs no completed analysis;
+when one exists, its origin generation is shown beside the check. It tests only up to four
+generated public routes: home and, with WooCommerce, the shop, the largest populated product
+category and the latest published product. It accepts no arbitrary URL. Per route it sends two
+sequential anonymous browser GETs (same origin, cookies omitted) and seven sequential
+server-loopback GETs in a fixed order the server enforces: two anonymous, two carrying
+WooCommerce's `woocommerce_items_in_cart` and `woocommerce_cart_hash` cookies with no session or
+basket behind them, two as the synthetic logged-in test customer, and one final anonymous
+request. With four routes that is 36 requests. The probe keeps TLS verification enabled and
+does not purge or change a cache. WooCommerce may save a session row for the test account.
+
+After completion, `get-cache-optimisation-analysis`, `wp sspa cache-optimisation-report` and the JSON
+download return `sspa/cache-optimisation-analysis@3`. The `get-cache-safety-report` ability and
+`wp sspa cache-scan` compatibility alias remain frozen at `sspa/shared-cache-safety-report@2`.
+The version 3 `assessment` member retains that version 2 anonymous reconnaissance for the run the
+check was shown with. Members: `audiences` (per audience `headline` cached / partly_cached /
+not_cached / unknown, page counts and median server time to first byte), `audience_verdicts`
+(per audience and page: `verdict`, `cache_state`, `reason`, `layer`, `server_ttfb_ms`,
+`server_total_ms`, `logged_in_markers_seen`), `leak_check` (`status` no_leak_observed /
+logged_in_content_found / anonymous_page_changed / inconclusive, per page result),
+`cache_system` (page-cache plugins, `advanced-cache.php` drop-in, web server family, object
+cache, OPcache, Ajax Prices, WooCommerce customer-location setting), `origin_profiles`,
+`delivery_path_observations`, `cache_layers`, `representative_pages`, `page_verdicts` (browser
+leg), `software_inventory`, `scale_inventory`, `source_coverage`, `route_failures`,
+`opportunity`, `difficulty`, `evidence_sufficiency` and `limitations`.
+
+Browser Resource Timing supplies anonymous visitor-path TTFB. A zero transfer size with a decoded
+body is labelled as a browser HTTP-cache read rather than a CDN or WordPress page-cache HIT.
+Server-loopback TTFB is cURL's `starttransfer_time` (`ttfb_source`), or completion time only on
+other transports. A private audience's page is "reuse not observed" when the cache layer that
+served the anonymous request on that page gave it no cached response. The leak check reports a
+WordPress `logged-in` body class or the test account's display name in an anonymous response,
+or an anonymous body that was identical twice and changed after the private requests; markers
+are checked in memory and stored only as booleans. No response HTML, cookie value or name is
+stored. Origin generation, browser TTFB and server timings remain separate boundaries.
+Consumers must not subtract them or invent a combined total.
 
 ### Experimental traffic observations
 

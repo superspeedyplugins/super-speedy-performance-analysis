@@ -21,7 +21,9 @@
     "autoload_option_floor_bytes": 1024,
     "autoload_missing_page_ratio": 0.8,
     "autoload_missing_max_bytes": 20480,
-    "autoload_min_pages": 5
+    "autoload_min_pages": 5,
+    "cache_private_state_daily_requests": 10,
+    "cache_uncached_generation_ms": 500
   },
   "recommendations": {
     "slow_query_postmeta": {
@@ -192,7 +194,10 @@
       "wp-super-cache",
       "wp-fastest-cache",
       "cache-enabler",
-      "hummingbird-performance"
+      "hummingbird-performance",
+      "breeze",
+      "wp-optimize",
+      "sg-cachepress"
     ],
     "backup": [
       "updraftplus",
@@ -426,5 +431,164 @@
     "onsale",
     "rating_count",
     "average_rating"
+  ],
+  "page_cache_integrations": [
+    "nginx-helper",
+    "cloudflare"
+  ],
+  "price_affecting": {
+    "source": "Super Speedy Ajax Prices ssap_known_price_plugin_patterns(), copied 21 October 2026",
+    "patterns": [
+      "dynamic-pricing",
+      "advanced-dynamic-pricing",
+      "memberships",
+      "b2b",
+      "wholesale",
+      "role-based-pric",
+      "role-pricing",
+      "currency",
+      "woocs",
+      "aelia",
+      "price-based-on-country",
+      "name-your-price",
+      "tiered-pric",
+      "quantity-discount",
+      "bulk-discount",
+      "points-and-rewards",
+      "product-bundles",
+      "composite-products",
+      "woocommerce-subscriptions"
+    ],
+    "exclude": [
+      "ssap-addon-",
+      "country-based-prices"
+    ]
+  },
+  "offers": {
+    "cache_service": {
+      "id": "cache_service",
+      "product": "woocommerce-full-page-caching-implementation",
+      "kind": "service",
+      "name": "Cache Everything for Everyone",
+      "url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "campaigns": {
+        "tab": "cache_tab_service",
+        "export": "cache_export_service"
+      },
+      "triggers": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "gate": "C4",
+      "suppress_if_active": [],
+      "free_fix_first": null,
+      "priority": 1,
+      "quotes": [
+        {
+          "text": "Dave sets up full-page caching so eligible shop and content pages come from cache for anonymous visitors, logged-in customers and shoppers with a basket. Each visitor still sees their own prices, stock and basket.",
+          "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+          "source_checked": "2026-10-21"
+        }
+      ],
+      "figures": [
+        {
+          "text": "On Dave’s own store, a shopper with an item in their basket got cached pages with an 80 ms median time to first byte (3 requests, measured 13 August 2026). All three were verified cache HITs. That’s Dave’s own site measured from Athens. A cached page’s time to first byte depends mainly on the speed of the cache service and where the visitor’s computer is, so Dave measures your store before and after rather than quoting you his.",
+          "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+          "source_checked": "2026-10-21"
+        }
+      ],
+      "supported_systems": {
+        "text": "Supported systems include WP Rocket, W3 Total Cache, LiteSpeed Cache, Nginx FastCGI cache, Varnish, Cloudflare APO and Cloudflare Cache Rules.",
+        "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+        "source_checked": "2026-10-21"
+      }
+    },
+    "ajax_prices": {
+      "id": "ajax_prices",
+      "product": "super-speedy-ajax-prices",
+      "kind": "plugin",
+      "name": "Super Speedy Ajax Prices",
+      "url": "https://www.superspeedyplugins.com/product/super-speedy-ajax-prices/",
+      "campaigns": {
+        "tab": "cache_tab_ajax_prices"
+      },
+      "triggers": [
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "gate": "woocommerce",
+      "suppress_if_active": [
+        "super-speedy-ajax-prices"
+      ],
+      "free_fix_first": null,
+      "priority": 2,
+      "quotes": [
+        {
+          "text": "Cache WooCommerce shop, category and product pages without serving the wrong personalised price. Super Speedy Ajax Prices replaces prices, stock and Add to Cart state for each visitor in one batched request after the cached page loads.",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-ajax-prices/",
+          "source_checked": "2026-10-21"
+        }
+      ],
+      "figures": []
+    }
+  },
+  "cache_education": [
+    {
+      "topic": "what_usually_happens",
+      "text": "Most WordPress caching tools bypass a page as soon as they see a logged-in cookie or an active basket. That protects correctness, but it also leaves some of the store’s most valuable visitors waiting for PHP, WordPress and WooCommerce on every page view.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "what_is_possible",
+      "text": "Eligible home, shop, product category, product, article and other shared pages. Logging in or adding an item to the basket does not make those pages uncached.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "how_it_works",
+      "text": "Eligible catalogue and content pages can remain fully cached while each visitor’s prices, stock and basket state are loaded through a per-visitor AJAX request.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "how_it_works",
+      "text": "This implementation uses cross-user caching. Every visitor can receive the same safe, non-personal cached HTML while their own prices, country or tax prices, stock, basket state, account indicator and other agreed personal regions are loaded separately.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "what_stays_private",
+      "text": "The separate Cart/Basket, Checkout, My Account and any other page that shows private information stay outside the shared cache.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "why_not_a_setting",
+      "text": "Every WooCommerce store has a different personalisation surface, and getting it wrong can expose one visitor’s information to another.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "where_ajax_prices_fits",
+      "text": "The plugin itself is built for ordinary visitors: your caching plugin serves guests from cache, while visitors with a basket or a login bypass the cache as normal and see live pages. Serving fully cached pages to basket holders and even logged-in customers is possible as well, but most themes and plugin stacks need compatibility work first.",
+      "source_url": "https://www.superspeedyplugins.com/product/super-speedy-ajax-prices/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "object_cache_is_different",
+      "text": "Page caching and object caching solve different problems, so object caching is not used as a substitute for full-page cache.",
+      "source_url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
+      "source_checked": "2026-10-21"
+    },
+    {
+      "topic": "reading_the_numbers",
+      "text": "A TTFB number only means something on a confirmed cache HIT.",
+      "source_url": "https://www.superspeedyplugins.com/kb/super-speedy-ajax-prices/features/measuring-the-performance-win/",
+      "source_checked": "2026-10-21"
+    }
   ]
 }

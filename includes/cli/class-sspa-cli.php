@@ -278,7 +278,7 @@ class SSPA_CLI {
      * @subcommand cache-scan
      */
     public function cache_scan($args, $assoc_args) {
-        $assessment = SSPA_Cache_Recon::export_data(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
+        $assessment = SSPA_Cache_Recon::export_v2(!empty($assoc_args['run']) ? (int) $assoc_args['run'] : 0);
         if (is_wp_error($assessment)) {
             WP_CLI::error($assessment->get_error_message());
         }
@@ -318,16 +318,24 @@ class SSPA_CLI {
             WP_CLI::line(wp_json_encode($report));
             return;
         }
-        $a = $report['assessment'];
+        $a = (array) $report['assessment'];
         WP_CLI::log($report['headline']);
         WP_CLI::log($report['detail']);
-        WP_CLI::log(sprintf(
-            'Shared-cache status: %s | Review difficulty: %s | Hazards: %d | Candidate components: %d',
-            $a['shared_cache_status'],
-            $a['difficulty'],
-            count((array) $a['hazards']),
-            count((array) $a['candidate_components'])
-        ));
+        if (!empty($report['audiences'])) {
+            foreach ($report['audiences'] as $audience => $row) {
+                WP_CLI::log(sprintf('%s: %s (%d of %d pages cached)', $audience, $row['headline'], $row['cached_pages'], $row['pages']));
+            }
+            WP_CLI::log('Leak check: ' . $report['leak_check']['status']);
+        }
+        if ($a) {
+            WP_CLI::log(sprintf(
+                'Shared-cache status: %s | Review difficulty: %s | Hazards: %d | Candidate components: %d',
+                isset($a['shared_cache_status']) ? $a['shared_cache_status'] : 'unknown',
+                isset($a['difficulty']) ? $a['difficulty'] : 'unknown',
+                count((array) ($a['hazards'] ?? array())),
+                count((array) ($a['candidate_components'] ?? array()))
+            ));
+        }
     }
 
     /**

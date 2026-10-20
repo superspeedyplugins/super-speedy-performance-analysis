@@ -424,6 +424,249 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 	});
 });
 
+// Cache performance check. The browser requests omit credentials and keep normal browser
+// cache semantics. Resource Timing supplies response-start timing; transferSize lets the
+// report distinguish a browser HTTP-cache read from a network delivery. The server then
+// requests each page as three audiences in a fixed order, one request per AJAX call.
+(function () {
+	'use strict';
+
+	var MAX_BROWSER_BODY = 5242880;
+	var CACHE_HEADERS = [
+		'age', 'cache-control', 'vary', 'via', 'cf-cache-status', 'cf-ray', 'x-cache',
+		'x-cache-status', 'x-breeze-cache', 'x-breeze-cache-write', 'x-litespeed-cache',
+		'x-runcloud-cache', 'x-fastcgi-cache', 'x-proxy-cache', 'x-srcache-fetch-status',
+		'x-varnish', 'x-vercel-cache', 'x-qc-cache', 'x-cache-handler'
+	];
+	// The same stamp comments the server strips, so a stored copy hashes like its original.
+	var MARKERS = {
+		breeze: /<!--[^>]*\bBreeze\b[^>]*-->/i,
+		wp_rocket: /<!--[^>]*\bWP Rocket\b[^>]*-->/i,
+		wp_optimize: /<!--[^>]*\bWP-Optimize\b[^>]*-->/i,
+		w3_total_cache: /<!--[^>]*\bW3 Total Cache\b[^>]*-->/i,
+		cache_enabler: /<!--[^>]*\bCache Enabler\b[^>]*-->/i
+	};
+
+	function postCache(data) {
+		return new Promise(function (resolve, reject) {
+			jQuery.post(ajaxurl, data, function (resp) {
+				if (!resp || !resp.success) {
+					var detail = resp && resp.data ? resp.data : {};
+					reject(new Error(detail.message || (typeof detail === 'string' ? detail : '') || wp.i18n.__('The request failed.', "super-speedy-performance-analysis")));
+					return;
+				}
+				resolve(resp.data);
+			}).fail(function (xhr) {
+				reject(new Error('HTTP ' + (xhr.status || 0)));
+			});
+		});
+	}
+
+	function safeHeaders(response) {
+		var headers = {};
+		CACHE_HEADERS.forEach(function (name) {
+			var value = response.headers.get(name);
+			if (value !== null) {
+				headers[name] = name === 'cf-ray' ? 'present' : value.substring(0, 300);
+			}
+		});
+		return headers;
+	}
+
+	function decode(bytes) {
+		try {
+			return new TextDecoder().decode(bytes);
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function markersFromText(text) {
+		return Object.keys(MARKERS).filter(function (name) { return MARKERS[name].test(text); });
+	}
+
+	function normaliseText(text) {
+		Object.keys(MARKERS).forEach(function (name) {
+			text = text.replace(new RegExp(MARKERS[name].source, 'gi'), '');
+		});
+		return text;
+	}
+
+	// Form encoding sends booleans as strings, so features travel as 1 or 0.
+	function featuresFromText(text) {
+		var head = text.substring(0, 1048576);
+		return {
+			product_loop: /(?:woocommerce-loop-product|wc-block-product-template|class=["'][^"']*products\b)/i.test(head) ? 1 : 0,
+			product_options: /(?:tm-extra-product-options|wc-pao-addon|\bwapf\b)/i.test(head) ? 1 : 0,
+			product_personalisation: /(?:fancy-product-designer|product-designer|\bmspc\b)/i.test(head) ? 1 : 0,
+			express_payment: /(?:express-payment|payment-request-button|ppc-button-wrapper|wc-stripe-payment-request)/i.test(head) ? 1 : 0
+		};
+	}
+
+	function hex(buffer) {
+		return Array.prototype.map.call(new Uint8Array(buffer), function (byte) {
+			return byte.toString(16).padStart(2, '0');
+		}).join('');
+	}
+
+	async function readBounded(response) {
+		if (!response.body || !response.body.getReader) {
+			var fallback = await response.arrayBuffer();
+			return { bytes: fallback, truncated: fallback.byteLength > MAX_BROWSER_BODY };
+		}
+		var reader = response.body.getReader();
+		var chunks = [];
+		var total = 0;
+		while (true) {
+			var part = await reader.read();
+			if (part.done) { break; }
+			total += part.value.byteLength;
+			if (total > MAX_BROWSER_BODY) {
+				await reader.cancel();
+				return { bytes: new ArrayBuffer(0), truncated: true };
+			}
+			chunks.push(part.value);
+		}
+		var joined = new Uint8Array(total);
+		var offset = 0;
+		chunks.forEach(function (chunk) { joined.set(chunk, offset); offset += chunk.byteLength; });
+		return { bytes: joined.buffer, truncated: false };
+	}
+
+	async function browserRequest(target, requestNumber) {
+		var targetUrl = new URL(target.url, window.location.href);
+		if (targetUrl.origin !== window.location.origin) {
+			throw new Error(wp.i18n.__('The generated cache check address is not on this site.', "super-speedy-performance-analysis"));
+		}
+		if (window.performance && performance.clearResourceTimings) {
+			performance.clearResourceTimings();
+		}
+		var started = performance.now();
+		var response;
+		try {
+			response = await fetch(targetUrl.href, {
+				method: 'GET',
+				credentials: 'omit',
+				cache: 'default',
+				redirect: 'follow',
+				headers: { 'Accept': 'text/html,application/xhtml+xml' }
+			});
+			var body = await readBounded(response);
+			var totalMs = performance.now() - started;
+			var entries = performance.getEntriesByName(response.url);
+			var timing = entries.length ? entries[entries.length - 1] : null;
+			var ttfb = timing && timing.responseStart > 0 && timing.requestStart > 0 ? timing.responseStart - timing.requestStart : null;
+			var transferBytes = timing && isFinite(timing.transferSize) ? timing.transferSize : 0;
+			var responseBytes = timing && isFinite(timing.decodedBodySize) && timing.decodedBodySize > 0 ? timing.decodedBodySize : body.bytes.byteLength;
+			var source = timing && transferBytes === 0 && responseBytes > 0 ? 'browser_http_cache' : (timing ? 'network' : 'unknown');
+			var text = body.truncated ? null : decode(body.bytes);
+			var digest = '';
+			if (text !== null && window.crypto && crypto.subtle) {
+				digest = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normaliseText(text))));
+			}
+			return {
+				page_key: target.page_key,
+				request_number: requestNumber,
+				url: target.url,
+				http_status: response.status,
+				ttfb_ms: ttfb === null ? '' : Math.round(ttfb * 10) / 10,
+				total_ms: Math.round(totalMs * 10) / 10,
+				response_bytes: responseBytes,
+				transfer_bytes: transferBytes,
+				delivery_source: source,
+				body_sha256: digest,
+				headers: safeHeaders(response),
+				markers: text === null ? [] : markersFromText(text),
+				features: text === null ? {} : featuresFromText(text),
+				error: body.truncated ? 'browser_body_limit' : ''
+			};
+		} catch (e) {
+			return {
+				page_key: target.page_key,
+				request_number: requestNumber,
+				url: target.url,
+				http_status: response ? response.status : 0,
+				ttfb_ms: '',
+				total_ms: Math.round((performance.now() - started) * 10) / 10,
+				response_bytes: 0,
+				transfer_bytes: 0,
+				delivery_source: 'unknown',
+				body_sha256: '',
+				headers: response ? safeHeaders(response) : {},
+				markers: [],
+				features: {},
+				error: 'browser_fetch_failed'
+			};
+		}
+	}
+
+	function updateProgress(shell, complete, total, message) {
+		shell.find('.sspa-cache-delivery-progress').prop('hidden', false)
+			.find('.sspa-progress-fill').css('width', Math.round((complete / total) * 100) + '%');
+		shell.find('.sspa-cache-delivery-status').text(' ' + message + ' (' + complete + '/' + total + ')');
+	}
+
+	function audienceMessage(audience) {
+		if (audience === 'basket') {
+			return wp.i18n.__('Requesting pages with WooCommerce basket cookies', "super-speedy-performance-analysis");
+		}
+		if (audience === 'customer') {
+			return wp.i18n.__('Requesting pages as the logged-in test customer', "super-speedy-performance-analysis");
+		}
+		if (audience === 'final_anonymous') {
+			return wp.i18n.__('Checking that no logged-in content reached anonymous visitors', "super-speedy-performance-analysis");
+		}
+		return wp.i18n.__('Requesting pages from the server as an anonymous visitor', "super-speedy-performance-analysis");
+	}
+
+	jQuery(document).on('click', '.sspa-cache-delivery-start', async function () {
+		var button = jQuery(this);
+		var shell = button.closest('.sspa-cache-delivery');
+		var spinner = shell.find('.sspa-cache-delivery-spinner').addClass('is-active');
+		var completed = 0;
+		button.prop('disabled', true);
+		try {
+			var prepared = await postCache({
+				action: 'sspa_cache_delivery_prepare',
+				nonce: sspa_admin.nonce
+			});
+			var browserResults = [];
+			for (var t = 0; t < prepared.targets.length; t++) {
+				var target = prepared.targets[t];
+				for (var request = 1; request <= 2; request++) {
+					browserResults.push(await browserRequest(target, request));
+					completed++;
+					updateProgress(shell, completed, prepared.request_count, wp.i18n.__('Measuring your browser as an anonymous visitor', "super-speedy-performance-analysis"));
+				}
+				for (var leg = 0; leg < prepared.server_legs.length; leg++) {
+					await postCache({
+						action: 'sspa_cache_delivery_server_probe',
+						nonce: sspa_admin.nonce,
+						assessment_id: prepared.assessment_id,
+						page_key: target.page_key,
+						audience: prepared.server_legs[leg].audience,
+						request_number: prepared.server_legs[leg].request_number
+					});
+					completed++;
+					updateProgress(shell, completed, prepared.request_count, audienceMessage(prepared.server_legs[leg].audience));
+				}
+			}
+			await postCache({
+				action: 'sspa_cache_delivery_complete',
+				nonce: sspa_admin.nonce,
+				assessment_id: prepared.assessment_id,
+				browser_results: browserResults
+			});
+			shell.find('.sspa-cache-delivery-status').text(' ' + wp.i18n.__('Complete. Showing the results…', "super-speedy-performance-analysis"));
+			sspa_refresh_tabs(['cache', 'overview']);
+		} catch (e) {
+			shell.find('.sspa-cache-delivery-status').text(' ' + (e && e.message ? e.message : wp.i18n.__('The cache check failed.', "super-speedy-performance-analysis")));
+			button.prop('disabled', false);
+			spinner.removeClass('is-active');
+		}
+	});
+})();
+
 // ---- Experimental traffic collector -----------------------------------
 
 var sspaTrafficPoll = null;
