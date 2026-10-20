@@ -1,6 +1,28 @@
 <?php
 require SSPA_PLUGIN_DIR . '.tests/lib/fleet.php';
 wp_set_current_user(1);
+// The fixture's page template is a classic theme template (get_header/get_footer). A block
+// fleet theme has no header.php or footer.php, so core falls back to theme-compat and emits a
+// deprecation that this case rightly reports as a PHP diagnostic. Measure on a classic theme
+// for this process only and restore the entry theme when it ends, as case 83 does. Cases
+// 121, 122 and 124 require this file, so the restore waits for process shutdown.
+$summary_entry_theme = get_stylesheet();
+// locate_template() falls back to wp-includes/theme-compat, so check the theme directories.
+$summary_theme_has = static function ($file) { return is_file(get_stylesheet_directory() . '/' . $file) || is_file(get_template_directory() . '/' . $file); };
+if (!$summary_theme_has('header.php') || !$summary_theme_has('footer.php')) {
+    if (!wp_get_theme('twentytwentyone')->exists()) {
+        $library = dirname(rtrim(ABSPATH, '/'), 2) . '/.themes/twentytwentyone';
+        if (!is_file($library . '/header.php')) {
+            throw new RuntimeException('Case 120 needs a classic theme; the parallel-dev theme library has no Twenty Twenty-One at ' . $library);
+        }
+        exec('cp -R ' . escapeshellarg($library) . ' ' . escapeshellarg(get_theme_root() . '/twentytwentyone'), $copy_output, $copy_exit);
+        if (0 !== $copy_exit) throw new RuntimeException('Could not install Twenty Twenty-One from the parallel-dev theme library');
+        wp_clean_themes_cache();
+    }
+    switch_theme('twentytwentyone');
+    register_shutdown_function(static function () use ($summary_entry_theme) { switch_theme($summary_entry_theme); });
+}
+sspa_fleet_assert($summary_theme_has('header.php') && $summary_theme_has('footer.php'), 'classic fixture theme provides header.php and footer.php (measured: ' . get_stylesheet() . ', entry: ' . $summary_entry_theme . ')');
 // Match the original five-plugin fixture on entry, retaining every other source.
 $fixture_plugins_before = get_option('active_plugins', array());
 $fixture_plugins = array('woocommerce/woocommerce.php', 'redis-cache/redis-cache.php', 'super-speedy-performance-analysis/super-speedy-performance-analysis.php', 'wordpress-importer/wordpress-importer.php', 'sspa-render-fixture/plugin.php');
@@ -40,7 +62,7 @@ $html = SSPA_Profile_Panel::render((int) $profile['id']);
 $out = SSPA_PLUGIN_DIR . '.data/summary/';
 wp_mkdir_p($out);
 $tag = getenv('SSPA_SUMMARY_STAGE') ?: SSPA_VERSION;
-file_put_contents($out . $tag . '-environment.json', wp_json_encode(array('plugins_before' => $fixture_plugins_before, 'measured_plugins' => get_option('active_plugins'), 'theme' => get_stylesheet(), 'wp' => get_bloginfo('version'), 'php' => PHP_VERSION), JSON_PRETTY_PRINT));
+file_put_contents($out . $tag . '-environment.json', wp_json_encode(array('plugins_before' => $fixture_plugins_before, 'measured_plugins' => get_option('active_plugins'), 'theme' => get_stylesheet(), 'entry_theme' => $summary_entry_theme, 'wp' => get_bloginfo('version'), 'php' => PHP_VERSION), JSON_PRETTY_PRINT));
 file_put_contents($out . $tag . '.json', wp_json_encode(array('profile' => array_diff_key($profile, array('profile_blob' => true)), 'capture' => $capture), JSON_PRETTY_PRINT));
 file_put_contents($out . $tag . '.md', $built['markdown']);
 file_put_contents($out . $tag . '.html', $html);
