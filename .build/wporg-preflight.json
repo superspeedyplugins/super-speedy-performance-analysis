@@ -318,6 +318,36 @@
       "reason": "The profiler needs an argument-free, depth-bounded backtrace to attribute measured work to its plugin or theme. No stack arguments are retained."
     },
     {
+      "check": "WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace",
+      "file": "profiler/class-sspa-stream-timer.php",
+      "reason": "The opt-in raw-stream diagnostic needs an argument-free, depth-bounded backtrace to name the code that opened a remote URL. No stack arguments are retained."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fopen",
+      "file": "profiler/class-sspa-stream-timer.php",
+      "reason": "The opt-in raw-stream diagnostic is a userland http/https stream wrapper, installed only for an administrator's explicitly requested signed measurement. It must reopen the caller's own URL on PHP's native transport and delegate each read, write and close to that stream; WP_Filesystem cannot supply or operate a stream resource."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fread",
+      "file": "profiler/class-sspa-stream-timer.php",
+      "reason": "The opt-in raw-stream diagnostic is a userland http/https stream wrapper, installed only for an administrator's explicitly requested signed measurement. It must reopen the caller's own URL on PHP's native transport and delegate each read, write and close to that stream; WP_Filesystem cannot supply or operate a stream resource."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fwrite",
+      "file": "profiler/class-sspa-stream-timer.php",
+      "reason": "The opt-in raw-stream diagnostic is a userland http/https stream wrapper, installed only for an administrator's explicitly requested signed measurement. It must reopen the caller's own URL on PHP's native transport and delegate each read, write and close to that stream; WP_Filesystem cannot supply or operate a stream resource."
+    },
+    {
+      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fclose",
+      "file": "profiler/class-sspa-stream-timer.php",
+      "reason": "The opt-in raw-stream diagnostic is a userland http/https stream wrapper, installed only for an administrator's explicitly requested signed measurement. It must reopen the caller's own URL on PHP's native transport and delegate each read, write and close to that stream; WP_Filesystem cannot supply or operate a stream resource."
+    },
+    {
+      "check": "file-writes",
+      "file": "profiler/class-sspa-stream-timer.php",
+      "reason": "The only fwrite() delegates a caller's write to the remote http/https stream that caller opened, inside the opt-in raw-stream diagnostic wrapper. It writes no local file."
+    },
+    {
       "check": "WordPress.Security.ValidatedSanitizedInput.MissingUnslash",
       "file": "dropins/db.php",
       "reason": "The HMAC signature covers the exact request URI, so wp_unslash would change signed bytes. Inline filter_var validation rejects control characters without normalising the path."
