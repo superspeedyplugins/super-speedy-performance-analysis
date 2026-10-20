@@ -14,7 +14,7 @@ class SSPA_Stream_Timer {
         self::$timer = $timer;
         foreach (array('http', 'https') as $scheme) {
             if (!stream_wrapper_unregister($scheme) || !stream_wrapper_register($scheme, __CLASS__)) {
-                throw new RuntimeException('Could not install the explicitly requested ' . $scheme . ' stream diagnostic.');
+                throw new RuntimeException('Could not install the explicitly requested ' . esc_html($scheme) . ' stream diagnostic.');
             }
         }
         self::$enabled = true;
@@ -27,11 +27,12 @@ class SSPA_Stream_Timer {
 
     public function stream_open($path, $mode, $options, &$opened_path) {
         $source = array('file' => '', 'line' => 0);
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- bounded argument-free frames name the caller of a raw stream read during the explicitly requested diagnostic; nothing is logged.
         foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 16) as $frame) {
             if (!empty($frame['file']) && $frame['file'] !== __FILE__) { $source = $frame; break; }
         }
         // Keep URL values, credentials and fragments out of the diagnostic evidence.
-        $url = parse_url($path);
+        $url = wp_parse_url($path);
         $safe_url = ($url['scheme'] ?? 'http') . '://' . ($url['host'] ?? '') . (isset($url['port']) ? ':' . $url['port'] : '') . ($url['path'] ?? '/');
         $this->index = count(self::$calls);
         self::$calls[] = array('url' => $safe_url, 'file' => $source['file'], 'line' => (int) $source['line'], 'ms' => 0, 'bytes' => 0, 'opened' => false);
@@ -40,7 +41,9 @@ class SSPA_Stream_Timer {
             if (!stream_wrapper_restore($scheme)) throw new RuntimeException('Could not restore native stream transport.');
             try {
                 $this->resource = is_resource($this->context)
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- a userland stream wrapper must reopen the caller's URL on PHP's native transport; WP_Filesystem cannot supply a stream resource.
                     ? fopen($path, $mode, (bool) ($options & STREAM_USE_PATH), $this->context)
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- as above, without a caller-supplied context.
                     : fopen($path, $mode, (bool) ($options & STREAM_USE_PATH));
             } finally {
                 if (!stream_wrapper_unregister($scheme) || !stream_wrapper_register($scheme, __CLASS__)) throw new RuntimeException('Could not resume requested stream diagnostic.');
@@ -61,6 +64,7 @@ class SSPA_Stream_Timer {
     }
 
     public function stream_read($count) {
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- delegates the caller's read to the native stream opened above.
         $data = $this->measure(function () use ($count) { return fread($this->resource, $count); });
         if (false !== $data) self::$calls[$this->index]['bytes'] += strlen($data);
         return $data;
@@ -71,7 +75,9 @@ class SSPA_Stream_Timer {
     public function stream_seek($offset, $whence) { return 0 === fseek($this->resource, $offset, $whence); }
     public function stream_flush() { return fflush($this->resource); }
     public function stream_cast($cast_as) { return $this->resource; }
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- delegates the caller's write to the native stream opened above.
     public function stream_write($data) { return $this->measure(function () use ($data) { return fwrite($this->resource, $data); }); }
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- closes the native stream opened above.
     public function stream_close() { $this->measure(function () { fclose($this->resource); }); }
     public function stream_set_option($option, $arg1, $arg2) {
         if (STREAM_OPTION_BLOCKING === $option) return stream_set_blocking($this->resource, $arg1);
@@ -80,7 +86,7 @@ class SSPA_Stream_Timer {
         return false;
     }
     public function url_stat($path, $flags) {
-        $scheme = parse_url($path, PHP_URL_SCHEME);
+        $scheme = wp_parse_url($path, PHP_URL_SCHEME);
         if (!stream_wrapper_restore($scheme)) throw new RuntimeException('Could not restore native stream stat.');
         try { return ($flags & STREAM_URL_STAT_LINK) ? lstat($path) : stat($path); }
         finally {
