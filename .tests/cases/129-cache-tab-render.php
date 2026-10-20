@@ -46,6 +46,8 @@ foreach ($quoted as $item) {
 }
 sspa_ct_t(true, 'every bundled quotation is rendered verbatim');
 
+$traffic = SSPA_Offers::traffic_private_state();
+sspa_ct_t($traffic ? false !== strpos($html, 'catalogue page views from visitors with a basket or logged-in customers reached WordPress') : false !== strpos($html, 'data-tab="traffic"'), $traffic ? 'the completed Traffic collection is summarised for basket and logged-in visitors' : 'without a completed Traffic collection the tab links to Traffic');
 sspa_ct_t(false !== strpos($overview, 'sspa-cache-overview') && false !== strpos($overview, 'data-tab="cache"'), 'Overview keeps a short cache summary that opens the tab');
 sspa_ct_t(false === strpos($overview, 'Potential hazards') && false === strpos($overview, 'sspa-cache-safety-download') && false === strpos($overview, 'woocommerce-full-page-caching-implementation'), 'Overview no longer carries the long cache block or the service link');
 

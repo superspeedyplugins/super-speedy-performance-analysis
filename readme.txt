@@ -107,6 +107,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.45.3 (21st October 2026) =
+* The Cache performance tab summarises how many visitors with a basket and logged-in customers reached WordPress in the latest completed Traffic collection, or links to Traffic.
+
 = 0.45.2 (21st October 2026) =
 * Added a Cache performance tab showing your cache system, the measured result for each audience and what published Super Speedy Plugins pages say about caching basket users and customers.
 * The Cache performance tab presents the caching implementation service and, where prices vary per visitor, Super Speedy Ajax Prices, with links tagged only by placement.

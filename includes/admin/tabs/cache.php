@@ -106,6 +106,24 @@ $sspa_cache_quote = static function ($quote) {
         <?php else : ?>
             <p><strong><?php esc_html_e('Not checked yet.', 'super-speedy-performance-analysis'); ?></strong> <?php esc_html_e('Run the check below to see whether visitors, visitors with a basket and logged-in customers get cached pages.', 'super-speedy-performance-analysis'); ?></p>
         <?php endif; ?>
+        <?php $sspa_cache_traffic = SSPA_Offers::traffic_private_state(); ?>
+        <p class="description sspa-cache-traffic">
+            <?php if ($sspa_cache_traffic) : ?>
+                <?php
+                echo esc_html(sprintf(
+                    /* translators: 1: collection start date, 2: page views, 3: seconds, 4: projected page views per day */
+                    __('In the Traffic collection from %1$s, %2$s catalogue page views from visitors with a basket or logged-in customers reached WordPress, costing %3$s seconds of page generation (about %4$s a day).', 'super-speedy-performance-analysis'),
+                    mysql2date(get_option('date_format'), $sspa_cache_traffic['started_at']),
+                    number_format_i18n($sspa_cache_traffic['requests']),
+                    number_format_i18n(((float) $sspa_cache_traffic['wall_ms']) / 1000, 1),
+                    number_format_i18n((int) $sspa_cache_traffic['projected_daily_requests'])
+                ));
+                ?>
+            <?php else : ?>
+                <?php esc_html_e('How many visitors with a basket and logged-in customers reach WordPress is measured by a Traffic collection.', 'super-speedy-performance-analysis'); ?>
+                <a href="#traffic" class="sspa-goto-tab" data-tab="traffic"><?php esc_html_e('Open Traffic', 'super-speedy-performance-analysis'); ?></a>
+            <?php endif; ?>
+        </p>
     </div>
 
     <?php if ($sspa_cache_report && in_array($sspa_cache_report['leak_check']['status'], array('logged_in_content_found', 'anonymous_page_changed'), true)) : ?>

@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.45.2\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.45.3\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--feature-cache-performance-tab\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-20T21:31:58+00:00\n"
+"POT-Creation-Date: 2026-10-20T21:32:36+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -766,8 +766,8 @@ msgstr ""
 #: includes/admin/class-sspa-history-run-view.php:65
 #: includes/admin/class-sspa-history-run-view.php:78
 #: includes/admin/partials/cache-safety-scan.php:79
-#: includes/admin/tabs/cache.php:177
-#: includes/admin/tabs/cache.php:188
+#: includes/admin/tabs/cache.php:195
+#: includes/admin/tabs/cache.php:206
 #: includes/admin/tabs/pages.php:68
 #: includes/admin/js/sspa-admin.js:823
 msgid "Page"
@@ -1862,7 +1862,7 @@ msgid "Existing coverage"
 msgstr ""
 
 #: includes/admin/partials/cache-safety-scan.php:101
-#: includes/admin/tabs/cache.php:190
+#: includes/admin/tabs/cache.php:208
 msgid "Open page"
 msgstr ""
 
@@ -2147,244 +2147,258 @@ msgstr ""
 msgid "Run the check below to see whether visitors, visitors with a basket and logged-in customers get cached pages."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:113
+#. translators: 1: collection start date, 2: page views, 3: seconds, 4: projected page views per day
+#: includes/admin/tabs/cache.php:115
+#, php-format
+msgid "In the Traffic collection from %1$s, %2$s catalogue page views from visitors with a basket or logged-in customers reached WordPress, costing %3$s seconds of page generation (about %4$s a day)."
+msgstr ""
+
+#: includes/admin/tabs/cache.php:123
+msgid "How many visitors with a basket and logged-in customers reach WordPress is measured by a Traffic collection."
+msgstr ""
+
+#: includes/admin/tabs/cache.php:124
+msgid "Open Traffic"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:131
 msgid "Logged-in content may reach anonymous visitors."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:117
+#: includes/admin/tabs/cache.php:135
 msgid "After the check requested these pages as the logged-in test customer, an anonymous request received a page marked as logged in or showing the test account's name. Real customers on this site can cause the same effect."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:119
+#: includes/admin/tabs/cache.php:137
 msgid "An anonymous page that was identical on two requests changed after the check requested it as the logged-in test customer. The cache may have stored a logged-in response for anonymous visitors."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:135
-#: includes/admin/tabs/cache.php:155
+#: includes/admin/tabs/cache.php:153
+#: includes/admin/tabs/cache.php:173
 msgid "Check cache performance"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:137
+#: includes/admin/tabs/cache.php:155
 msgid "The check requests these fixed public pages of this site. It accepts no other address."
 msgstr ""
 
 #. translators: 1: total request count, 2: browser request count, 3: server request count
-#: includes/admin/tabs/cache.php:147
+#: includes/admin/tabs/cache.php:165
 #, php-format
 msgid "It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor, as a visitor carrying WooCommerce's basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:161
+#: includes/admin/tabs/cache.php:179
 msgid "This check needs a public home page."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:174
+#: includes/admin/tabs/cache.php:192
 msgid "Results by page"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:181
-#: includes/admin/tabs/cache.php:233
+#: includes/admin/tabs/cache.php:199
+#: includes/admin/tabs/cache.php:251
 msgid "Page generation without cache"
 msgstr ""
 
 #. translators: %s: cache name, e.g. "Cloudflare"
-#: includes/admin/tabs/cache.php:201
+#: includes/admin/tabs/cache.php:219
 #, php-format
 msgid "by %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:209
+#: includes/admin/tabs/cache.php:227
 #, php-format
 msgid "First byte %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:216
+#: includes/admin/tabs/cache.php:234
 #, php-format
 msgid "Complete %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:224
+#: includes/admin/tabs/cache.php:242
 #, php-format
 msgid "Your browser: first byte %s"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:237
+#: includes/admin/tabs/cache.php:255
 msgid "No analysis yet"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:240
+#: includes/admin/tabs/cache.php:258
 #, php-format
 msgid "Visitor %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:244
+#: includes/admin/tabs/cache.php:262
 #, php-format
 msgid "Logged-in customer %s"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:247
+#: includes/admin/tabs/cache.php:265
 #: includes/admin/js/sspa-ajax-profile.js:18
 #: includes/admin/js/sspa-history-chart.js:31
 #: includes/admin/js/sspa-measurement-chart.js:8
 msgid "Not measured"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:259
+#: includes/admin/tabs/cache.php:277
 msgid "\"First byte\" and \"Complete\" are measured by a request from this server to the page, the same boundary for all three audiences. \"Your browser\" is your own browser's anonymous request. \"Page generation without cache\" comes from the latest analysis; visitors with a basket are generated like visitors. These are separate measurements and are never subtracted from each other."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:265
+#: includes/admin/tabs/cache.php:283
 msgid "Your cache system"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:269
+#: includes/admin/tabs/cache.php:287
 msgid "Page cache plugins"
 msgstr ""
 
 #. translators: %s: plugin name
-#: includes/admin/tabs/cache.php:275
+#: includes/admin/tabs/cache.php:293
 #, php-format
 msgid "%s (cache integration)"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:279
+#: includes/admin/tabs/cache.php:297
 msgid "None active"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:284
+#: includes/admin/tabs/cache.php:302
 msgid "advanced-cache.php drop-in"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:290
+#: includes/admin/tabs/cache.php:308
 msgid "Present, without a plugin header naming its owner"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:292
+#: includes/admin/tabs/cache.php:310
 #: includes/admin/js/sspa-checkout.js:268
 msgid "None"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:298
+#: includes/admin/tabs/cache.php:316
 msgid "Cache seen in responses"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:310
+#: includes/admin/tabs/cache.php:328
 msgid "Run the check to see which cache answered."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:314
+#: includes/admin/tabs/cache.php:332
 msgid "No cache identified itself in the checked responses."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:320
+#: includes/admin/tabs/cache.php:338
 msgid "Web server"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:321
+#: includes/admin/tabs/cache.php:339
 msgid "Not reported"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:321
+#: includes/admin/tabs/cache.php:339
 msgid "Other"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:324
+#: includes/admin/tabs/cache.php:342
 msgid "Persistent object cache"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:329
-#: includes/admin/tabs/cache.php:375
+#: includes/admin/tabs/cache.php:347
+#: includes/admin/tabs/cache.php:393
 msgid "Not active"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:331
-#: includes/admin/tabs/cache.php:375
+#: includes/admin/tabs/cache.php:349
+#: includes/admin/tabs/cache.php:393
 #: includes/admin/tabs/tools.php:9
 msgid "Active"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:336
+#: includes/admin/tabs/cache.php:354
 msgid "managed by the host"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:344
+#: includes/admin/tabs/cache.php:362
 msgid "PHP OPcache"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:350
+#: includes/admin/tabs/cache.php:368
 #: includes/admin/tabs/tools.php:12
 msgid "Not installed"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:351
-#: includes/admin/tabs/cache.php:357
+#: includes/admin/tabs/cache.php:369
+#: includes/admin/tabs/cache.php:375
 msgid "Disabled"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:352
+#: includes/admin/tabs/cache.php:370
 msgid "Not readable: the host restricts the OPcache status to another path"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:353
-#: includes/admin/tabs/cache.php:355
+#: includes/admin/tabs/cache.php:371
+#: includes/admin/tabs/cache.php:373
 msgid "Not readable"
 msgstr ""
 
 #. translators: 1: memory used, 2: memory free, 3: hit rate percentage, 4: cached script count, 5: restart count
-#: includes/admin/tabs/cache.php:361
+#: includes/admin/tabs/cache.php:379
 #, php-format
 msgid "Enabled: %1$s used, %2$s free, %3$s%% hit rate, %4$s cached scripts, %5$s restarts"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:374
+#: includes/admin/tabs/cache.php:392
 msgid "Super Speedy Ajax Prices"
 msgstr ""
 
 #. translators: %d: number of pages
-#: includes/admin/tabs/cache.php:388
+#: includes/admin/tabs/cache.php:406
 #, php-format
 msgid "In the latest analysis, %d page was answered by a cache before WordPress ran, even with a unique query string. Your cache serves those addresses regardless of query strings."
 msgid_plural "In the latest analysis, %d pages were answered by a cache before WordPress ran, even with a unique query string. Your cache serves those addresses regardless of query strings."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/tabs/cache.php:393
+#: includes/admin/tabs/cache.php:411
 msgid "Systems the caching service supports:"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:399
+#: includes/admin/tabs/cache.php:417
 msgid "You can cache visitors with a basket and logged-in customers"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:400
+#: includes/admin/tabs/cache.php:418
 msgid "In the words of the published Super Speedy Plugins pages:"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:427
+#: includes/admin/tabs/cache.php:445
 msgid "Have it implemented for you"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:441
+#: includes/admin/tabs/cache.php:459
 msgid "Want me to implement this for you?"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:443
+#: includes/admin/tabs/cache.php:461
 msgid "Cache pages whose prices vary per visitor"
 msgstr ""
 
 #. translators: %s: service name
-#: includes/admin/tabs/cache.php:454
+#: includes/admin/tabs/cache.php:472
 #, php-format
 msgid "View the %s service"
 msgstr ""
 
 #. translators: %s: plugin name
-#: includes/admin/tabs/cache.php:457
+#: includes/admin/tabs/cache.php:475
 #, php-format
 msgid "View %s"
 msgstr ""

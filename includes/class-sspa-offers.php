@@ -48,8 +48,8 @@ class SSPA_Offers {
         ), $offer['url']);
     }
 
-    /** Shared Traffic numbers for C2 and P4, or null without a completed collection. */
-    private static function traffic_private_state() {
+    /** Shared Traffic numbers for C2, P4 and the tab, or null without a completed collection. */
+    public static function traffic_private_state() {
         static $cached = false;
         if (false !== $cached) {
             return $cached;
