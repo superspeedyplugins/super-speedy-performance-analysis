@@ -111,7 +111,7 @@ class SSPA_Markdown_Export {
         if ($minor_sql) { $lines[] = '</details>'; $lines[] = ''; }
         self::raw_http($lines, isset($capture['http']['calls']) ? $capture['http']['calls'] : array());
         self::impacts($lines, isset($data['measured_plugin_impacts']) ? $data['measured_plugin_impacts'] : array());
-        self::help($lines);
+        self::help($lines, isset($profile['run_id']) ? (int) $profile['run_id'] : 0);
 
         return self::result('sspa-page-' . sanitize_file_name($page_key), $lines);
     }
@@ -148,12 +148,13 @@ class SSPA_Markdown_Export {
         self::pages($lines, $report['pages']);
         self::impacts($lines, $report['impacts']);
         self::cache_safety($lines, $report['cache_safety']);
+        self::cache_delivery($lines, isset($report['cache_delivery']) ? $report['cache_delivery'] : null);
 
         $http = SSPA_Report::http_calls($run_id);
         if (!is_wp_error($http)) {
             self::http_inventory($lines, $http);
         }
-        self::help($lines);
+        self::help($lines, $run_id);
         return self::result('sspa-site-analysis-run-' . $run_id, $lines);
     }
 
@@ -459,6 +460,49 @@ class SSPA_Markdown_Export {
         $lines[] = '';
     }
 
+    private static function cache_delivery(&$lines, $report) {
+        if (!$report || empty($report['audiences'])) {
+            return;
+        }
+        $words = array('cached' => 'Cached', 'partly_cached' => 'Partly cached', 'not_cached' => 'Not cached', 'unknown' => 'Unknown');
+        $audiences = array('anonymous' => 'Visitors', 'basket' => 'Visitors with a basket', 'customer' => 'Logged-in customers');
+        $lines[] = '## Cache performance';
+        $lines[] = '';
+        $lines[] = '- Checked: ' . self::plain(isset($report['generated_at']) ? $report['generated_at'] : 'unknown');
+        $lines[] = '- Result: **' . self::plain(isset($report['headline']) ? $report['headline'] : 'Unknown') . '**';
+        foreach ($audiences as $key => $label) {
+            $row = isset($report['audiences'][$key]) ? $report['audiences'][$key] : null;
+            if ($row) {
+                $lines[] = '- ' . $label . ': **' . $words[$row['headline']] . '** (' . (int) $row['cached_pages'] . ' of ' . (int) $row['pages'] . ' pages cached; median server-side time to first byte ' . self::ms($row['median_server_ttfb_ms']) . ')';
+            }
+        }
+        $lines[] = '- Visitors with a basket: a request carrying WooCommerce\'s basket cookies, with no basket or session behind them. Logged-in customers: the synthetic test account, which has no orders.';
+        $lines[] = '- Leak check (final anonymous request after the logged-in requests): `' . self::code(isset($report['leak_check']['status']) ? $report['leak_check']['status'] : 'unknown') . '`';
+        $lines[] = '- Boundaries: the three audiences are measured by the same server-side request; your browser\'s anonymous time to first byte and origin generation are separate measurements. No subtraction or combined total is used.';
+        $lines[] = '';
+        $lines[] = '| Page | Visitors | Visitors with a basket | Logged-in customers | Browser TTFB (visitors) | Origin generation |';
+        $lines[] = '|---|---|---|---|---:|---:|';
+        $origin = array();
+        foreach ((array) (isset($report['origin_profiles']) ? $report['origin_profiles'] : array()) as $row) {
+            $origin[$row['page_key']] = $row;
+        }
+        $browser = array();
+        foreach ((array) (isset($report['opportunity']) ? $report['opportunity'] : array()) as $row) {
+            $browser[$row['page_key']] = $row;
+        }
+        foreach ((array) $report['audience_verdicts']['anonymous'] as $index => $page) {
+            $cells = array();
+            foreach (array_keys($audiences) as $key) {
+                $cell = $report['audience_verdicts'][$key][$index];
+                $cells[] = (isset($words[$cell['cache_state']]) ? $words[$cell['cache_state']] : 'Unknown') . ' `' . self::code($cell['verdict']) . '`, TTFB ' . self::ms($cell['server_ttfb_ms']);
+            }
+            $lines[] = '| `' . self::code($page['page_key']) . '` | ' . implode(' | ', $cells) . ' | '
+                . self::ms(isset($browser[$page['page_key']]) ? $browser[$page['page_key']]['anonymous_browser_ttfb_ms'] : null) . ' | '
+                . self::ms(isset($origin[$page['page_key']]) ? $origin[$page['page_key']]['generation_ms'] : null) . ' |';
+        }
+        $lines[] = '';
+    }
+
     private static function checkout_components(&$lines, $profile) {
         if (empty($profile['components'])) {
             return;
@@ -471,13 +515,20 @@ class SSPA_Markdown_Export {
         $lines[] = '';
     }
 
-    private static function help(&$lines) {
+    /**
+     * The caching-service pitch appears only when the cache evidence fires for this export
+     * (Dave, 20 October 2026). The checkout export keeps no cache pitch.
+     */
+    private static function help(&$lines, $run_id = null) {
         $lines[] = '## Optional implementation help';
         $lines[] = '';
         $lines[] = 'Use the evidence-sufficiency statement above where one is present. Confirm missing origin, plan and index evidence before changing query code or database schema.';
         $lines[] = '';
-        $lines[] = 'If you would rather have the cache work implemented and tested for you, Dave offers a [WooCommerce full-page caching implementation service](' . self::CACHE_SERVICE_URL . ').';
-        $lines[] = '';
+        if (null !== $run_id) {
+            foreach (SSPA_Offers::export_pitch((int) $run_id) as $line) {
+                $lines[] = $line;
+            }
+        }
     }
 
     private static function page_summary(&$lines, $profile, $capture) {

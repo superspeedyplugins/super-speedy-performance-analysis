@@ -107,6 +107,12 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.45.2 (21st October 2026) =
+* Added a Cache performance tab showing your cache system, the measured result for each audience and what published Super Speedy Plugins pages say about caching basket users and customers.
+* The Cache performance tab presents the caching implementation service and, where prices vary per visitor, Super Speedy Ajax Prices, with links tagged only by placement.
+* Overview now shows a two-line cache summary that opens the Cache performance tab.
+* Markdown exports mention the caching implementation service only when the cache evidence for that export supports it.
+
 = 0.45.1 (21st October 2026) =
 * Added a cache check that measures anonymous visitors, visitors with a basket and logged-in customers separately and checks that no logged-in page reaches anonymous visitors.
 * Agents and WP-CLI receive the per-audience cache check, the cache system inventory and the leak check in the version 3 cache document.

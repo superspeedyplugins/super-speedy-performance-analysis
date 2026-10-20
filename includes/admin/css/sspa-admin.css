@@ -179,6 +179,134 @@
 	color: #fff;
 }
 
+/* Cache performance tab. */
+#sspa_main .sspa-cache-tab .sspa-placeholder {
+	max-width: 1100px;
+	box-sizing: border-box;
+}
+
+#sspa_main .sspa-cache-audiences {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+	gap: 12px;
+	margin: 16px 0;
+	padding: 0;
+	list-style: none;
+}
+
+#sspa_main .sspa-cache-audience {
+	border: 1px solid #c3c4c7;
+	border-left: 5px solid #8c8f94;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin: 0;
+	background: #fff;
+}
+
+#sspa_main .sspa-cache-audience.sspa-cache-state-cached { border-left-color: #00a32a; }
+#sspa_main .sspa-cache-audience.sspa-cache-state-partly_cached { border-left-color: #dba617; }
+#sspa_main .sspa-cache-audience.sspa-cache-state-not_cached { border-left-color: #d63638; }
+
+#sspa_main .sspa-cache-audience-name,
+#sspa_main .sspa-cache-audience-word,
+#sspa_main .sspa-cache-audience-detail {
+	display: block;
+}
+
+#sspa_main .sspa-cache-audience-word {
+	font-size: 22px;
+	line-height: 1.4;
+	color: #1d2327;
+}
+
+#sspa_main .sspa-cache-audience-detail {
+	color: #50575e;
+	font-size: 12px;
+}
+
+#sspa_main .sspa-cache-word.sspa-cache-state-cached { color: #007017; }
+#sspa_main .sspa-cache-word.sspa-cache-state-not_cached { color: #b32d2e; }
+
+#sspa_main .sspa-cache-delivery-targets {
+	margin-left: 20px;
+}
+
+#sspa_main .sspa-cache-delivery-targets code,
+#sspa_main .sspa-cache-leak code {
+	font-size: 11px;
+	overflow-wrap: anywhere;
+}
+
+#sspa_main .sspa-cache-results {
+	margin: 12px 0;
+}
+
+#sspa_main .sspa-cache-delivery-progress {
+	margin: 8px 0 14px;
+}
+
+#sspa_main .sspa-cache-leak {
+	max-width: 1100px;
+	box-sizing: border-box;
+	margin: 0 0 1em;
+}
+
+#sspa_main .sspa-cache-quote {
+	margin: 8px 0 14px;
+	padding: 8px 14px;
+	border-left: 4px solid #2271b1;
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+#sspa_main .sspa-cache-quote p {
+	margin: 0 0 4px;
+}
+
+#sspa_main .sspa-cache-quote cite {
+	font-size: 12px;
+	font-style: normal;
+	color: #50575e;
+	overflow-wrap: anywhere;
+}
+
+#sspa_main .sspa-cache-offer-primary {
+	border-color: #2271b1;
+	border-width: 2px;
+}
+
+#sspa_main .sspa-cache-evidence p {
+	color: #1d2327;
+}
+
+/* Tables that become one card per row on a phone instead of scrolling sideways. */
+@media (max-width: 782px) {
+	#sspa_main .sspa-stack-table thead {
+		display: none;
+	}
+	#sspa_main .sspa-stack-table,
+	#sspa_main .sspa-stack-table tbody,
+	#sspa_main .sspa-stack-table tr,
+	#sspa_main .sspa-stack-table th,
+	#sspa_main .sspa-stack-table td {
+		display: block;
+		width: auto;
+		box-sizing: border-box;
+	}
+	#sspa_main .sspa-stack-table tr {
+		border-bottom: 1px solid #c3c4c7;
+	}
+	#sspa_main .sspa-stack-table td[data-label]::before {
+		content: attr(data-label);
+		display: block;
+		font-weight: 600;
+		color: #1d2327;
+	}
+	#sspa_main .sspa-cache-tab .sspa-placeholder {
+		padding: 1em;
+	}
+}
+
 #sspa_main .sspa-impact-adds {
 	color: #d63638;
 }
