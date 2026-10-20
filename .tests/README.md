@@ -424,6 +424,27 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   loopback passing does not hide a product-path 403, Plugin Impact Analysis refuses the
   blocked target before queueing work, and checkout refuses the exact blocked entry point
   without creating an order.
+- `125-cache-delivery-validator.php` - the cache check resolves only home, shop, one populated
+  product category and one ordinary product; real server legs; the browser-result VALIDATOR with
+  a labelled hand-written browser payload (the real browser leg is cases 126 and 127); version 3
+  storage, export and Markdown; Code Snippets use/counts without names or source.
+- `126-cache-audiences-real-cache.php` - `.tests/cache-performance/run.sh enabler`: the real
+  Cache Enabler from wordpress.org on the retained `tests-cache-enabler` site; the browser journey
+  presses "Check cache performance"; visitors and visitors with a basket are served from the
+  cache (Cache Enabler's default cookie rules do not exclude WooCommerce's basket cookies),
+  logged-in customers are not; leak check, cURL TTFB, stored-privacy and C3 assertions.
+- `127-cache-no-page-cache.php` - `.tests/cache-performance/run.sh nocache`: no page cache and a
+  shop page that really waits 600 ms (`.tests/fixtures/slow-shop.php`) on the retained
+  `tests-cache-nocache` site; a real spot analysis, the browser journey, all three audiences Not
+  cached, C3 from generation time, then Ajax Prices detection from real WooCommerce geolocation
+  and the real Advanced Dynamic Pricing plugin, suppressed once Super Speedy Ajax Prices is active.
+- `128-cache-basket-cookies.php` - the basket requests carry exactly WooCommerce's two basket
+  cookies and create no WooCommerce session row; the server enforces the request order.
+- `129-cache-tab-render.php` - the tab through the real lazy loader: always-present service pitch,
+  evidence sentences exactly when C1 to C4 fire, every quotation with its source link and check
+  date, no price or slot count, the Overview summary, and the export pitch only with evidence.
+- `.tests/browser/run-regressions.sh cache-performance` - the same browser journey on the suite
+  site: same-origin requests only, the declared request count, wp.i18n progress text, 390px fit.
 
 - `32-loopback-timeout.php` - measurement requests impose no response timeout, proven with a
   real page that sleeps 12s while the obsolete stored timeout is 10s. It also forces a real
@@ -459,7 +480,8 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
 - `40-traffic-contracts.php` - freezes the cache optimisation, provisional/final traffic and
   optional Cloudflare JSON contracts; every fixture passes the shared forbidden-property
   validator, while planted customer identity fields fail closed. Also pins the clearer immediate
-  analysis GUI name and keeps the existing `sspa/shared-cache-safety-report@2` machine schema.
+  analysis GUI name, keeps `sspa/shared-cache-safety-report@2` frozen for compatibility and
+  records the additive `sspa/cache-optimisation-analysis@3` contract.
 - `41-traffic-schema-lifecycle.php` - all five additive traffic tables, database insert
   pre-flight that permits deliberately delayed successful inserts, collection HMAC key
   separation, generated active-only MU observer, one/two/four-hour

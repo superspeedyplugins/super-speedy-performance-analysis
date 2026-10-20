@@ -16,7 +16,7 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
     });
     expect(contrast, 'Overview site score label contrast').toBeGreaterThanOrEqual(4.5);
     const tabs = await page.locator('#sspa_main .nav-tab').evaluateAll(nodes => nodes.map(n => n.dataset.tab));
-    expect(tabs).toHaveLength(9);
+    expect(tabs).toHaveLength(10);
     for (const direction of ['ltr', 'rtl']) {
       for (const width of [320, 390, 1280]) {
         await page.setViewportSize({width, height:900});
@@ -50,6 +50,6 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
     await page.screenshot({path:output + '/tools-320.png'});
     const failures = results.filter(r => r.document > r.viewport + 1);
     expect(failures, JSON.stringify(failures)).toEqual([]);
-    console.log('PASS all nine tabs fit 320/390/1280px in LTR and RTL without document overflow');
+    console.log('PASS all ten tabs fit 320/390/1280px in LTR and RTL without document overflow');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode=1;});

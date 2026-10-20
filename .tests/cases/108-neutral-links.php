@@ -16,6 +16,28 @@ $html = $document['data']['tabs']['overview'] ?? '';
 w1_links_t(!is_wp_error($response) && !empty($document['success']) && $html !== '', 'existing overview tab renders through authenticated admin-ajax');
 
 w1_links_t(strpos($html, 'https://www.superspeedyplugins.com/product/scalability-pro/') !== false, 'Overview retains the contextual Scalability Pro link');
-w1_links_t(strpos($html, 'utm_') === false, 'rendered Overview contains no UTM parameters');
+// Dave, 20 October 2026 (Q9): offer links carry a static placement tag and nothing that
+// identifies the site or the user.
+$response = wp_remote_post(admin_url('admin-ajax.php'), array('cookies' => $cookies, 'timeout' => 30, 'body' => array('action' => 'sspa_render_tab', 'tabs' => 'cache', 'nonce' => wp_create_nonce('sspa_admin'))));
+$cache_document = json_decode(wp_remote_retrieve_body($response), true);
+$cache_html = $cache_document['data']['tabs']['cache'] ?? '';
+w1_links_t($cache_html !== '', 'Cache performance tab renders through authenticated admin-ajax');
+preg_match_all('#href="(https?://[^"]*superspeedyplugins\.com[^"]*)"#', $html . $cache_html, $w1_links);
+$w1_host = (string) wp_parse_url(home_url(), PHP_URL_HOST);
+$w1_identifying = array();
+$w1_tagged = 0;
+foreach (array_map('html_entity_decode', $w1_links[1]) as $w1_link) {
+    parse_str((string) wp_parse_url($w1_link, PHP_URL_QUERY), $w1_query);
+    if ($w1_query) {
+        $w1_tagged++;
+    }
+    $w1_ok = !array_diff(array_keys($w1_query), array('utm_source', 'utm_medium', 'utm_campaign'))
+        && (!$w1_query || ('performance-analysis' === ($w1_query['utm_source'] ?? '') && 'plugin' === ($w1_query['utm_medium'] ?? '') && preg_match('/^[a-z_]+$/', $w1_query['utm_campaign'] ?? '')))
+        && false === stripos($w1_link, $w1_host);
+    if (!$w1_ok) {
+        $w1_identifying[] = $w1_link;
+    }
+}
+w1_links_t($w1_tagged > 0 && !$w1_identifying, 'rendered Overview and Cache performance links carry only the static placement tag, no identifying parameters (' . $w1_tagged . ' tagged' . ($w1_identifying ? '; ' . implode(' ', $w1_identifying) : '') . ')');
 $rec = SSPA_Rules::recommendation('slow_query_found_rows');
 w1_links_t(!empty($rec['body']) && stripos(wp_json_encode($rec), 'halve query time') === false, 'bundled recommendation makes no unsupported query-time claim');

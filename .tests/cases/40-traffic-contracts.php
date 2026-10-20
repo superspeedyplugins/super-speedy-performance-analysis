@@ -9,6 +9,7 @@ function sspa_tc_t($ok, $label) {
 $fixture_dir = SSPA_PLUGIN_DIR . '.tests/fixtures/';
 $fixtures = array(
     'cache-optimisation-analysis-v2.json' => 'sspa/shared-cache-safety-report@2',
+    'cache-optimisation-analysis-v3.json' => 'sspa/cache-optimisation-analysis@3',
     'traffic-performance-analysis-provisional-v1.json' => 'sspa/traffic-performance-analysis@1',
     'traffic-performance-analysis-final-v1.json' => 'sspa/traffic-performance-analysis@1',
     'cloudflare-traffic-evidence-v1.json' => 'sspa/cloudflare-traffic-evidence@1',
@@ -23,7 +24,8 @@ $planted = array('summary' => array('email' => 'planted@example.test', 'order_id
 $problems = SSPA_Traffic_Privacy::validate_export($planted);
 sspa_tc_t(in_array('summary.email', $problems, true) && in_array('summary.order_id', $problems, true), 'forbidden properties fail closed with their exact paths');
 
-$overview = (string) file_get_contents(SSPA_PLUGIN_DIR . 'includes/admin/tabs/overview.php');
+// The cache optimisation analysis moved from Overview to the Cache performance tab.
+$overview = (string) file_get_contents(SSPA_PLUGIN_DIR . 'includes/admin/partials/cache-safety-scan.php');
 $ajax = (string) file_get_contents(SSPA_PLUGIN_DIR . 'includes/class-sspa-cache-recon.php');
 sspa_tc_t(false !== strpos($overview, 'Cache optimisation analysis') && false !== strpos($overview, 'Download cache optimisation analysis'), 'GUI uses the cache optimisation analysis name');
 sspa_tc_t(false !== strpos($overview, 'No traffic collector was used'), 'immediate report states that no collector was run');

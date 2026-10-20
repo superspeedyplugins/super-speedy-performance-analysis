@@ -1,0 +1,103 @@
+{
+  "schema": "sspa/cache-optimisation-analysis@3",
+  "generated_at": "2026-10-21T00:00:00Z",
+  "run_id": 1,
+  "headline": "Cache performance check fixture",
+  "detail": "Browser visitor-path timing, server-loopback timing for each audience and profiled origin generation are reported as separate measured boundaries.",
+  "assessment": {
+    "schema": 2,
+    "shared_cache_status": "visitor_specific_content_review_recommended",
+    "difficulty": "moderate",
+    "hazards": [],
+    "candidate_components": []
+  },
+  "page_cache_status": "partially_confirmed",
+  "audiences": {
+    "anonymous": {
+      "headline": "unknown",
+      "pages": 0,
+      "cached_pages": 0,
+      "not_cached_pages": 0,
+      "unknown_pages": 0,
+      "median_server_ttfb_ms": null,
+      "boundary": "server_loopback"
+    },
+    "basket": {
+      "headline": "unknown",
+      "pages": 0,
+      "cached_pages": 0,
+      "not_cached_pages": 0,
+      "unknown_pages": 0,
+      "median_server_ttfb_ms": null,
+      "boundary": "server_loopback"
+    },
+    "customer": {
+      "headline": "unknown",
+      "pages": 0,
+      "cached_pages": 0,
+      "not_cached_pages": 0,
+      "unknown_pages": 0,
+      "median_server_ttfb_ms": null,
+      "boundary": "server_loopback"
+    }
+  },
+  "audience_verdicts": {
+    "anonymous": [],
+    "basket": [],
+    "customer": []
+  },
+  "leak_check": {
+    "status": "inconclusive",
+    "pages": []
+  },
+  "cache_system": {
+    "woocommerce": true,
+    "multisite": false,
+    "page_cache_plugins": [],
+    "advanced_cache_dropin": null,
+    "server_software": "nginx",
+    "object_cache": {
+      "persistent": false,
+      "management": "none",
+      "technology": null
+    },
+    "opcache": {
+      "readable": false,
+      "enabled": null,
+      "reason": "restricted_by_opcache_restrict_api"
+    },
+    "ajax_prices_active": false,
+    "customer_location": "base"
+  },
+  "origin_profiles": [],
+  "delivery_path_observations": {
+    "browser": {
+      "visitor_state": "anonymous_browser",
+      "requests": []
+    },
+    "server": {
+      "visitor_state": "per_audience_server_loopback",
+      "requests": []
+    }
+  },
+  "cache_layers": [],
+  "representative_pages": [],
+  "page_verdicts": [],
+  "software_inventory": {},
+  "scale_inventory": {},
+  "source_coverage": {},
+  "route_failures": [],
+  "opportunity": [],
+  "difficulty": {
+    "rating": "moderate",
+    "points": 4
+  },
+  "evidence_sufficiency": "staging_design_requires_identity_comparison",
+  "limitations": [
+    "basket_audience_carries_basket_cookies_without_a_basket",
+    "customer_audience_is_a_synthetic_account_without_orders",
+    "audience_comparison_uses_the_server_loopback_boundary",
+    "browser_server_and_origin_boundaries_are_not_interchangeable",
+    "anonymous_cache_proof_does_not_approve_live_customer_caching"
+  ]
+}

@@ -184,7 +184,11 @@ if (!is_wp_error($page) && !is_wp_error($site)) {
     sspa_markdown_t(false !== strpos($site['markdown'], 'licence.vendor.example/orders/{id}/check'), 'HTTP endpoint path identifiers are normalised');
     $combined = $page['markdown'] . $site['markdown'];
     sspa_markdown_t(false === strpos($combined, $secret) && false === strpos($combined, 'private@example.test') && false === strpos($combined, '987654321'), 'SQL literals, query values and variable path IDs do not reach an LLM document');
-    sspa_markdown_t(false !== strpos($combined, SSPA_Markdown_Export::CACHE_SERVICE_URL), 'the optional implementation-help section is present');
+    // Dave, 20 October 2026: the caching-service pitch appears only when C1 to C4 fire for
+    // that export. These synthetic runs carry no cache evidence of their own.
+    $page_fires = SSPA_Offers::cache_evidence($baseline_run)['fires'];
+    sspa_markdown_t(false !== strpos($combined, '## Optional implementation help'), 'the optional implementation-help section is present');
+    sspa_markdown_t((false !== strpos($page['markdown'], 'utm_campaign=cache_export_service')) === (bool) $page_fires, 'the page export carries the caching-service pitch only when the cache evidence fires (fires: ' . var_export($page_fires, true) . ')');
 }
 
 // Checkout uses its actual waterfall but must never export fulfilment identifiers.
@@ -258,7 +262,7 @@ $analysis_end = false === $analysis_start ? false : strpos($overview, '</div>', 
 $analysis_html = (false !== $analysis_start && false !== $analysis_end) ? substr($overview, $analysis_start, $analysis_end - $analysis_start) : '';
 sspa_markdown_t(false !== strpos($analysis_html, 'data-kind="run"') && false !== strpos($analysis_html, 'Download Markdown') && false !== strpos($analysis_html, 'Copy Markdown'), 'the Analysis panel itself offers both Markdown actions');
 sspa_markdown_t(false !== $analysis_start && $analysis_start < strpos($overview, 'sspa-score-row') && $analysis_start < strpos($overview, '>Health<'), 'the Analysis panel is the first Overview panel');
-sspa_markdown_t(false !== strpos($overview, SSPA_Markdown_Export::CACHE_SERVICE_URL), 'cache optimisation shows the implementation-service link');
+sspa_markdown_t(false === strpos($overview, SSPA_Markdown_Export::CACHE_SERVICE_URL) && false !== strpos($overview, 'data-tab="cache"'), 'Overview links to the Cache performance tab instead of the implementation service');
 
 ob_start();
 include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
