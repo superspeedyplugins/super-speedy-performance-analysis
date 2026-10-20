@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.45.6
+Stable tag: 0.46.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -107,26 +107,16 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.45.6 (21st October 2026) =
+= 0.46.0 (21st October 2026) =
 * The Cache performance tab warns when visitors with a basket are served the anonymous cached page and nothing on it loads their own basket, so a mini-basket can show empty.
 * Without WooCommerce the cache check states and sends no basket requests.
-
-= 0.45.5 (21st October 2026) =
 * Overview shows the cache summary and its link to Cache performance before any analysis has been completed.
-
-= 0.45.4 (21st October 2026) =
 * Renamed an internal price-plugin list key so WordPress.org Plugin Check reports no warning for it.
-
-= 0.45.3 (21st October 2026) =
 * The Cache performance tab summarises how many visitors with a basket and logged-in customers reached WordPress in the latest completed Traffic collection, or links to Traffic.
-
-= 0.45.2 (21st October 2026) =
 * Added a Cache performance tab showing your cache system, the measured result for each audience and what published Super Speedy Plugins pages say about caching basket users and customers.
 * The Cache performance tab presents the caching implementation service and, where prices vary per visitor, Super Speedy Ajax Prices, with links tagged only by placement.
 * Overview now shows a two-line cache summary that opens the Cache performance tab.
 * Markdown exports mention the caching implementation service only when the cache evidence for that export supports it.
-
-= 0.45.1 (21st October 2026) =
 * Added a cache check that measures anonymous visitors, visitors with a basket and logged-in customers separately and checks that no logged-in page reaches anonymous visitors.
 * Agents and WP-CLI receive the per-audience cache check, the cache system inventory and the leak check in the version 3 cache document.
 
