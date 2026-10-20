@@ -55,14 +55,14 @@ class SSPA_Rules {
      * Plugin basename fragments that commonly change a product's price per visitor, copied
      * from Super Speedy Ajax Prices. Fragments, not slugs, so they are not a category.
      *
-     * @return array {patterns[], exclude[]}
+     * @return array {patterns[], ours[]}
      */
     public static function price_affecting() {
         $data = self::load();
         $rules = isset($data['price_affecting']) ? (array) $data['price_affecting'] : array();
         return array(
             'patterns' => isset($rules['patterns']) ? (array) $rules['patterns'] : array(),
-            'exclude' => isset($rules['exclude']) ? (array) $rules['exclude'] : array(),
+            'ours' => isset($rules['ours']) ? (array) $rules['ours'] : array(),
         );
     }
 

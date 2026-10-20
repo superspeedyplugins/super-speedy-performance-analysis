@@ -107,6 +107,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.45.4 (21st October 2026) =
+* Renamed an internal price-plugin list key so WordPress.org Plugin Check reports no warning for it.
+
 = 0.45.3 (21st October 2026) =
 * The Cache performance tab summarises how many visitors with a basket and logged-in customers reached WordPress in the latest completed Traffic collection, or links to Traffic.
 

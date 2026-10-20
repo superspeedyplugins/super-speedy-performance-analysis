@@ -188,7 +188,7 @@ class SSPA_Cache_System {
         $found = array();
         foreach (self::active_files() as $file) {
             $excluded = false;
-            foreach ($rules['exclude'] as $fragment) {
+            foreach ($rules['ours'] as $fragment) {
                 if (false !== strpos($file, strtolower($fragment))) {
                     $excluded = true;
                     break;

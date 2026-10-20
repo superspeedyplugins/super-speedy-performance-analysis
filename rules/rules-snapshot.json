@@ -459,7 +459,7 @@
       "composite-products",
       "woocommerce-subscriptions"
     ],
-    "exclude": [
+    "ours": [
       "ssap-addon-",
       "country-based-prices"
     ]
