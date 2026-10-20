@@ -57,3 +57,11 @@ sspa_ce_t(false !== strpos($html, 'class="sspa-cache-evidence"') && false !== st
 $system_start = strpos($html, 'sspa-cache-system');
 $system = false === $system_start ? '' : substr($html, $system_start, strpos($html, 'sspa-cache-education') - $system_start);
 sspa_ce_t(substr_count($system, 'Cache Enabler') >= 2 && false !== strpos($system, 'Present, without a plugin header'), 'Your cache system names Cache Enabler as the active plugin and the cache seen in responses, and reports its header-less drop-in as present');
+
+// Visitors with a basket get the anonymous cached page. With no basket refresh mechanism on
+// the checked pages (this theme prints none), the tab must say that the basket shows the
+// anonymous state, and point at the service that solves it.
+sspa_ce_t(isset($report['basket_state']) && true === $report['basket_state']['warning'] && array() === $report['basket_state']['mechanisms'], 'the check records that visitors with a basket were served the cached page with no basket refresh mechanism');
+$warning_start = strpos($html, 'sspa-cache-basket-warning');
+$warning = false === $warning_start ? '' : substr($html, $warning_start, 1600);
+sspa_ce_t('' !== $warning && false !== strpos($warning, 'empty basket') && false !== strpos($warning, 'utm_campaign=cache_tab_basket_warning'), 'the tab warns that the mini-basket can show empty and links the caching service');

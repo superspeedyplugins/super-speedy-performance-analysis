@@ -1,4 +1,4 @@
-const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
+const {session, admin, expect, fs, output, wp} = require('./fleet-context.cjs');
 (async () => {
   const {browser, page} = await session();
   const results = [];
@@ -17,18 +17,24 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
     expect(contrast, 'Overview site score label contrast').toBeGreaterThanOrEqual(4.5);
     const tabs = await page.locator('#sspa_main .nav-tab').evaluateAll(nodes => nodes.map(n => n.dataset.tab));
     expect(tabs).toHaveLength(10);
+    // Each direction is the admin a real user gets: RTL is the administrator's own Hebrew
+    // admin locale (WordPress's rtl stylesheets, body.rtl), set on the way in and switched
+    // back to the site default for the LTR pass and the final checks.
+    const user = process.env.SSPA_E2E_USER;
+    const useLocale = async direction => {
+      // An empty user locale means the site default (English on the suite site).
+      wp('user', 'meta', 'update', user, 'locale', direction === 'rtl' ? 'he_IL' : '');
+      await admin(page, 'overview');
+      await page.reload();
+      const state = await page.evaluate(() => ({dir: document.documentElement.dir || 'ltr', bodyRtl: document.body.classList.contains('rtl')}));
+      expect(state, 'the admin really renders ' + direction).toEqual({dir: direction, bodyRtl: direction === 'rtl'});
+    };
     for (const direction of ['ltr', 'rtl']) {
+      await useLocale(direction);
       for (const width of [320, 390, 1280]) {
         await page.setViewportSize({width, height:900});
-        await page.evaluate(dir => {document.documentElement.dir = dir;}, direction);
         for (const tab of tabs) {
-          // Setting dir="rtl" here does not load WordPress's RTL admin stylesheet, so the
-          // admin menu moves to the right while #wpcontent keeps its left margin and covers
-          // the right edge of the content. With ten tabs the second tab row starts under it.
-          // A real RTL admin reserves that margin on the right. In RTL the tab's own click
-          // handler is therefore driven directly; every width assertion below is unchanged.
-          const navTab = page.locator(`#sspa_main .nav-tab[data-tab="${tab}"]`);
-          if (direction === 'rtl') { await navTab.dispatchEvent('click'); } else { await navTab.click(); }
+          await page.locator(`#sspa_main .nav-tab[data-tab="${tab}"]`).click();
           const content = page.locator(`#sspa_main .tab-contents[data-tab="${tab}"]`);
           await expect(content).toBeVisible();
           await expect(content).toHaveAttribute('data-sspa-tab-loaded', '1');
@@ -44,8 +50,8 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
     }
     fs.writeFileSync(output + '/admin-widths.json', JSON.stringify(results,null,2));
     // Check actual internal scrolling, not just a clipped document.
+    await useLocale('ltr');
     await page.setViewportSize({width:320, height:900});
-    await page.evaluate(() => {document.documentElement.dir = 'ltr';});
     await page.locator('#sspa_main .nav-tab[data-tab="tools"]').click();
     const scrolling = await page.locator('.sspa-tools').evaluate(table => {
       const wrapper = table.parentElement;

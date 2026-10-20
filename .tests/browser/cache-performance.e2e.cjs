@@ -30,7 +30,7 @@ const {session, admin, expect, fs, output, site, json} = require('./fleet-contex
     const plan = await panel.locator('.sspa-cache-request-plan').innerText();
     const declared = Number((plan.match(/(\d+) sequential GET requests/) || [])[1]);
     const targets = await panel.locator('.sspa-cache-delivery-targets li').count();
-    expect(declared, 'the request count shown before the button').toBe(targets * 9);
+    expect([targets * 7, targets * 9], 'the request count shown before the button').toContain(declared);
     await page.screenshot({path: output + '/cache-before-1280.png', fullPage: true});
 
     // A locale entry for one progress message. If the script used a hard-coded English
@@ -60,7 +60,11 @@ const {session, admin, expect, fs, output, site, json} = require('./fleet-contex
     const probes = sent.filter(r => r.url.includes('admin-ajax.php') && r.post.includes('action=sspa_cache_delivery_server_probe'));
     expect(pageFetches.length, 'two browser requests per page').toBe(targets * 2);
     expect(probes.length, 'seven server requests per page').toBe(targets * 7);
-    expect(pageFetches.length + probes.length).toBe(declared);
+    // Each probe call sends one GET to the page, except the basket calls on a site without
+    // WooCommerce, which the server answers without a request.
+    const savedServer = json('echo wp_json_encode(SSPA_Cache_Delivery::latest()["delivery_path_observations"]["server"]["requests"]);');
+    const serverGets = savedServer.filter(r => r.error_class !== 'woocommerce_not_active').length;
+    expect(pageFetches.length + serverGets, 'browser and server GETs equal the declared count').toBe(declared);
     const statusTexts = await page.evaluate(() => window.sspaCacheStatusTexts);
     expect(statusTexts.some(text => text.includes('XX customer leg XX')), 'progress text comes from wp.i18n').toBe(true);
 

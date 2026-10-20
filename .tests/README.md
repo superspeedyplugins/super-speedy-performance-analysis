@@ -42,7 +42,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 89-traffic-window # two real traffic windows with a controlled slowdown: normalised deltas, unavailable states, CLI and Abilities agree
 .tests/observatory: npm test # 19 node tests, including sites-root discovery from parallel-dev and the preparation prerequisite checks
 .tests/browser/run-regressions.sh translations # cookie-scoped PHP/JS translation catalogue, real AJAX controls and History loading/error states
-.tests/browser/run-regressions.sh admin-mobile # all nine tabs at phone/desktop widths and both document directions
+.tests/browser/run-regressions.sh admin-mobile # all ten tabs at phone/desktop widths, LTR and a real Hebrew (RTL) admin locale
 .tests/browser/run-regressions.sh tab-retry # network/server tab errors and explicit recovery
 .tests/browser/run-regressions.sh shared-link # real shared Plugin Impact link, reload and bookmark
 .tests/browser/run-regressions.sh admin-journey # admin-bar Analyse this page and cache control, attribution switching, Re-run, Escape and focus restoration
@@ -432,12 +432,18 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   Cache Enabler from wordpress.org on the retained `tests-cache-enabler` site; the browser journey
   presses "Check cache performance"; visitors and visitors with a basket are served from the
   cache (Cache Enabler's default cookie rules do not exclude WooCommerce's basket cookies),
-  logged-in customers are not; leak check, cURL TTFB, stored-privacy and C3 assertions.
+  logged-in customers are not; leak check, cURL TTFB, stored-privacy and C3 assertions; the basket
+  warning (no cart fragments, Mini-Cart block or Ajax Prices on the page), then a second pass with
+  WooCommerce's cart-fragments script enqueued (`.tests/fixtures/cart-fragments.php`) and no warning.
 - `127-cache-no-page-cache.php` - `.tests/cache-performance/run.sh nocache`: no page cache and a
   shop page that really waits 600 ms (`.tests/fixtures/slow-shop.php`) on the retained
   `tests-cache-nocache` site; a real spot analysis, the browser journey, all three audiences Not
   cached, C3 from generation time, then Ajax Prices detection from real WooCommerce geolocation
   and the real Advanced Dynamic Pricing plugin, suppressed once Super Speedy Ajax Prices is active.
+- `130-cache-no-woocommerce.php` - `.tests/cache-performance/run.sh nowoo`: a plain WordPress site
+  (`tests-cache-nowoo`, parallel-dev's own, no WooCommerce); the browser journey checks the home
+  page with no basket requests; the tab and the caching-service pitch render, without evidence
+  sentences or Ajax Prices.
 - `128-cache-basket-cookies.php` - the basket requests carry exactly WooCommerce's two basket
   cookies and create no WooCommerce session row; the server enforces the request order.
 - `129-cache-tab-render.php` - the tab through the real lazy loader: always-present service pitch,

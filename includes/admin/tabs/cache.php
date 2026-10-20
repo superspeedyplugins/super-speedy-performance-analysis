@@ -126,6 +126,25 @@ $sspa_cache_quote = static function ($quote) {
         </p>
     </div>
 
+    <?php if ($sspa_cache_report && !empty($sspa_cache_report['basket_state']['warning'])) : ?>
+        <div class="notice notice-warning inline sspa-cache-basket-warning" role="status">
+            <p><strong><?php esc_html_e('Visitors with a basket were served the anonymous cached page.', 'super-speedy-performance-analysis'); ?></strong></p>
+            <p>
+                <?php
+                printf(
+                    /* translators: %s: comma-separated page names */
+                    esc_html__('On %s, a request carrying WooCommerce\'s basket cookies received the same cached page as an anonymous visitor, and the page has no way to load that visitor\'s own basket afterwards: no WooCommerce cart fragments, Mini-Cart block or Ajax Prices markers were found. A mini-basket or basket count on these pages can therefore show an empty basket to a shopper who has items in it.', 'super-speedy-performance-analysis'),
+                    esc_html(implode(', ', array_map(array('SSPA_Cache_Delivery', 'page_label'), $sspa_cache_report['basket_state']['cached_pages'])))
+                );
+                ?>
+            </p>
+            <p>
+                <?php esc_html_e('Loading each visitor\'s basket separately while the page stays cached is what the caching implementation service sets up.', 'super-speedy-performance-analysis'); ?>
+                <a href="<?php echo esc_url(SSPA_Offers::url('cache_service', 'basket_warning')); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('View the caching implementation service', 'super-speedy-performance-analysis'); ?></a>
+            </p>
+        </div>
+    <?php endif; ?>
+
     <?php if ($sspa_cache_report && in_array($sspa_cache_report['leak_check']['status'], array('logged_in_content_found', 'anonymous_page_changed'), true)) : ?>
         <div class="notice notice-error inline sspa-cache-leak" role="alert">
             <p><strong><?php esc_html_e('Logged-in content may reach anonymous visitors.', 'super-speedy-performance-analysis'); ?></strong></p>
@@ -160,13 +179,23 @@ $sspa_cache_quote = static function ($quote) {
             </ul>
             <p class="description sspa-cache-request-plan">
                 <?php
-                printf(
-                    /* translators: 1: total request count, 2: browser request count, 3: server request count */
-                    esc_html__('It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor, as a visitor carrying WooCommerce\'s basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer.', 'super-speedy-performance-analysis'),
-                    (int) $sspa_cache_plan['request_count'],
-                    (int) $sspa_cache_plan['browser_requests'],
-                    (int) $sspa_cache_plan['server_requests']
-                );
+                if ($sspa_cache_plan['basket_requests']) {
+                    printf(
+                        /* translators: 1: total request count, 2: browser request count, 3: server request count */
+                        esc_html__('It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor, as a visitor carrying WooCommerce\'s basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer.', 'super-speedy-performance-analysis'),
+                        (int) $sspa_cache_plan['request_count'],
+                        (int) $sspa_cache_plan['browser_requests'],
+                        (int) $sspa_cache_plan['server_requests']
+                    );
+                } else {
+                    printf(
+                        /* translators: 1: total request count, 2: browser request count, 3: server request count */
+                        esc_html__('It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor and as the logged-in test account, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. WooCommerce is not active, so no basket requests are sent. It does not purge or change any cache.', 'super-speedy-performance-analysis'),
+                        (int) $sspa_cache_plan['request_count'],
+                        (int) $sspa_cache_plan['browser_requests'],
+                        (int) $sspa_cache_plan['server_requests']
+                    );
+                }
                 ?>
             </p>
             <p>

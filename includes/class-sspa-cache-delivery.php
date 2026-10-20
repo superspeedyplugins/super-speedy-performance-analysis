@@ -156,13 +156,18 @@ class SSPA_Cache_Delivery {
         return array();
     }
 
-    /** Requests the check will send, for the explanation shown before the button. */
+    /**
+     * Requests the check will send, for the explanation shown before the button. Without
+     * WooCommerce there is no basket to represent, so the two basket requests per page are
+     * not sent.
+     */
     public static function request_plan($target_count) {
-        $server_per_page = count(self::server_legs());
+        $server_per_page = count(self::server_legs()) - (self::woocommerce_active() ? 0 : 2);
         return array(
             'browser_requests' => $target_count * self::REQUESTS_PER_URL,
             'server_requests' => $target_count * $server_per_page,
             'request_count' => $target_count * (self::REQUESTS_PER_URL + $server_per_page),
+            'basket_requests' => self::woocommerce_active(),
         );
     }
 
@@ -329,6 +334,7 @@ class SSPA_Cache_Delivery {
             'audiences' => $audiences,
             'audience_verdicts' => $audience_verdicts,
             'leak_check' => $leak_check,
+            'basket_state' => self::basket_state($audience_verdicts, $server),
             'cache_system' => $cache_system,
             'origin_profiles' => $origin_profiles,
             'delivery_path_observations' => array(
@@ -463,6 +469,7 @@ class SSPA_Cache_Delivery {
             'markers' => array(),
             'application_cookie_names' => array(),
             'private_markers' => array('logged_in_body_class' => false, 'test_account_name' => false),
+            'basket_refresh' => array(),
         );
     }
 
@@ -572,6 +579,7 @@ class SSPA_Cache_Delivery {
             'application_cookie_names' => array_keys($cookie_names),
             // Checked in memory and kept only as booleans. No HTML, name or cookie is stored.
             'private_markers' => self::private_markers($body),
+            'basket_refresh' => self::basket_refresh($body),
         );
     }
 
@@ -589,6 +597,56 @@ class SSPA_Cache_Delivery {
         return array(
             'logged_in_body_class' => (bool) preg_match('/<body\b[^>]*\bclass\s*=\s*(["\'])(?:(?!\1).)*\blogged-in\b/is', $body),
             'test_account_name' => '' !== $name && false !== strpos($body, $name),
+        );
+    }
+
+    /**
+     * Ways a page brings the visitor's own basket state into a page that may come from a
+     * shared cache, found in the response itself:
+     *   cart_fragments  - WooCommerce's wc-cart-fragments script, which refreshes classic
+     *                     mini-baskets over AJAX after the page loads;
+     *   mini_cart_block - the Mini-Cart block, whose script reads the basket cookies and loads
+     *                     the basket from the Store API (wc-blocks-data.js);
+     *   ajax_prices     - Super Speedy Ajax Prices markers, filled per visitor after load.
+     */
+    private static function basket_refresh($body) {
+        $found = array();
+        if (preg_match('/\bid\s*=\s*["\']wc-cart-fragments-js["\']/i', $body)) {
+            $found[] = 'cart_fragments';
+        }
+        if (false !== strpos($body, 'wp-block-woocommerce-mini-cart')) {
+            $found[] = 'mini_cart_block';
+        }
+        if (preg_match('/\bdata-ssap-[a-z-]+\s*=/i', $body)) {
+            $found[] = 'ajax_prices';
+        }
+        return $found;
+    }
+
+    /**
+     * Visitors with a basket served the anonymous cached page see the anonymous basket state
+     * unless the page refreshes it. The warning is raised only when the basket audience was
+     * cached on at least one page and none of those cached pages carried a refresh mechanism.
+     */
+    private static function basket_state($audience_verdicts, $server) {
+        $cached_pages = array();
+        foreach ((array) $audience_verdicts['basket'] as $row) {
+            if ('cached' === $row['cache_state']) {
+                $cached_pages[] = $row['page_key'];
+            }
+        }
+        $mechanisms = array();
+        foreach ($server as $row) {
+            if ('basket' === $row['audience'] && in_array($row['page_key'], $cached_pages, true)) {
+                foreach ((array) ($row['basket_refresh'] ?? array()) as $mechanism) {
+                    $mechanisms[$mechanism] = true;
+                }
+            }
+        }
+        return array(
+            'cached_pages' => $cached_pages,
+            'mechanisms' => array_keys($mechanisms),
+            'warning' => $cached_pages && !$mechanisms,
         );
     }
 

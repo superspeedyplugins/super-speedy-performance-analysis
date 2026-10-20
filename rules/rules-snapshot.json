@@ -473,7 +473,8 @@
       "url": "https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/",
       "campaigns": {
         "tab": "cache_tab_service",
-        "export": "cache_export_service"
+        "export": "cache_export_service",
+        "basket_warning": "cache_tab_basket_warning"
       },
       "triggers": [
         "C1",
