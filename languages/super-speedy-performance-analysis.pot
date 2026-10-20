@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.45.4\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.45.5\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--feature-cache-performance-tab\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-20T21:35:32+00:00\n"
+"POT-Creation-Date: 2026-10-20T22:20:23+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -337,7 +337,7 @@ msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:218
 #: includes/admin/tabs/cache.php:67
-#: includes/admin/tabs/overview.php:64
+#: includes/admin/tabs/overview.php:249
 msgid "Cache performance"
 msgstr ""
 
@@ -1046,7 +1046,7 @@ msgstr ""
 #: includes/admin/class-sspa-insights.php:294
 #: includes/admin/partials/cache-safety-scan.php:30
 #: includes/admin/partials/cache-safety-scan.php:119
-#: includes/admin/tabs/overview.php:72
+#: includes/admin/tabs/overview.php:257
 #: includes/class-sspa-history-view.php:87
 #: includes/admin/js/sspa-checkout.js:258
 msgid "unknown"
@@ -1414,7 +1414,7 @@ msgid "Object cache hits"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:475
-#: includes/admin/tabs/overview.php:104
+#: includes/admin/tabs/overview.php:67
 msgid "Autoloaded options"
 msgstr ""
 
@@ -2574,189 +2574,189 @@ msgstr ""
 msgid "No performance problems found - nice site."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:69
-msgid "cached"
-msgstr ""
-
-#: includes/admin/tabs/overview.php:70
-msgid "partly cached"
-msgstr ""
-
-#: includes/admin/tabs/overview.php:71
-msgid "not cached"
-msgstr ""
-
-#. translators: 1: cache state for anonymous visitors, 2: cache state for visitors with a basket, 3: cache state for logged-in customers
-#: includes/admin/tabs/overview.php:76
-#, php-format
-msgid "Visitors: %1$s. Visitors with a basket: %2$s. Logged-in customers: %3$s."
-msgstr ""
-
-#: includes/admin/tabs/overview.php:82
-msgid "Not checked yet: see whether visitors, visitors with a basket and logged-in customers get cached pages."
-msgstr ""
-
-#: includes/admin/tabs/overview.php:91
-msgid "Open Cache performance"
-msgstr ""
-
 #. translators: %s: link to the Scalability Pro product page.
-#: includes/admin/tabs/overview.php:123
+#: includes/admin/tabs/overview.php:86
 #, php-format
 msgid "Prefer not to run this by hand every time the site changes? %s includes an options manager that loads what your site actually uses and unloads what it does not, keeping this list under control as plugins come and go."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:124
+#: includes/admin/tabs/overview.php:87
 msgid "Scalability Pro"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:141
+#: includes/admin/tabs/overview.php:104
 msgid "Plugins that reacted to being measured"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:162
+#: includes/admin/tabs/overview.php:125
 msgid "Incomplete run:"
 msgstr ""
 
 #. translators: %d: number of pages
-#: includes/admin/tabs/overview.php:166
+#: includes/admin/tabs/overview.php:129
 #, php-format
 msgid "%d page(s) could not be measured - a page cache or CDN answered before PHP ran, so they have no data and the score above ignores them. See the Pages tab for which ones. If this persists after updating the plugin, exclude requests carrying the X-SSPA-Token header (or the sspa_nc query argument) from your cache."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:182
+#: includes/admin/tabs/overview.php:145
 msgid "Latest Plugin Impact Analysis"
 msgstr ""
 
 #. translators: 1: date, 2: plugins, 3: pages, 4: measurable impacts
-#: includes/admin/tabs/overview.php:187
+#: includes/admin/tabs/overview.php:150
 #, php-format
 msgid "%1$s: swept %2$d plugin(s) across %3$d page(s) - %4$d measurable impact(s) found."
 msgstr ""
 
 #. translators: 1: number of plugins, 2: optional extra clause about cache modes
-#: includes/admin/tabs/overview.php:196
+#: includes/admin/tabs/overview.php:159
 #, php-format
 msgid "%1$d plugin(s) showed impact in the screening pass and got the full page-by-page treatment%2$s."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:198
+#: includes/admin/tabs/overview.php:161
 msgid " including object-cache-disabled and priming measurements"
 msgstr ""
 
 #. translators: %d: number of plugin/page cells that could not be measured
-#: includes/admin/tabs/overview.php:205
+#: includes/admin/tabs/overview.php:168
 #, php-format
 msgid "%d cell(s) could not be measured (page failed without the plugin - usually a dependency)."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:208
+#: includes/admin/tabs/overview.php:171
 msgid "Results are in the Plugins tab, \"Measured impact\" column."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:213
+#: includes/admin/tabs/overview.php:176
 msgid "Hard dependencies discovered:"
 msgstr ""
 
 #. translators: 1: plugin slug, 2: page key
-#: includes/admin/tabs/overview.php:219
+#: includes/admin/tabs/overview.php:182
 #, php-format
 msgid "%1$s (page: %2$s)"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:225
+#: includes/admin/tabs/overview.php:188
 msgid "These pages fatally error when that plugin is disabled, so its cost there cannot be measured - other code depends on it at runtime. This only ever happens inside the analysis's own test requests: no visitor saw an error, and the plugin was never actually deactivated. If WordPress emailed you a \"technical issue\" warning during the run, it was reacting to one of these test requests and usually blames the plugin whose file threw (often WooCommerce) rather than the excluded one."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:236
+#: includes/admin/tabs/overview.php:199
 msgid "Site profile"
 msgstr ""
 
 #. translators: %s: the site sector, e.g. "retail"
-#: includes/admin/tabs/overview.php:241
+#: includes/admin/tabs/overview.php:204
 #, php-format
 msgid "Sector: %s"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:253
+#: includes/admin/tabs/overview.php:216
 msgid "persistent object cache"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:253
+#: includes/admin/tabs/overview.php:216
 msgid "no persistent object cache"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:266
+#: includes/admin/tabs/overview.php:229
 msgid "Stored data"
 msgstr ""
 
 #. translators: 1: total size of stored profile data, 2: number of runs
-#: includes/admin/tabs/overview.php:268
+#: includes/admin/tabs/overview.php:231
 #, php-format
 msgid "Detailed profile data: %1$s across %2$d runs. Summary metrics and findings are kept forever; only the detailed per-query data below is prunable."
 msgstr ""
 
 #. translators: %d: number of runs of detailed data kept
-#: includes/admin/tabs/overview.php:272
+#: includes/admin/tabs/overview.php:235
 #, php-format
 msgid "Delete detailed data older than the last %d runs"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:274
+#: includes/admin/tabs/overview.php:237
 msgid "When sharing is enabled, affected runs are saved to the durable local submission queue before their detailed source data is deleted."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:280
+#: includes/admin/tabs/overview.php:254
+msgid "cached"
+msgstr ""
+
+#: includes/admin/tabs/overview.php:255
+msgid "partly cached"
+msgstr ""
+
+#: includes/admin/tabs/overview.php:256
+msgid "not cached"
+msgstr ""
+
+#. translators: 1: cache state for anonymous visitors, 2: cache state for visitors with a basket, 3: cache state for logged-in customers
+#: includes/admin/tabs/overview.php:261
+#, php-format
+msgid "Visitors: %1$s. Visitors with a basket: %2$s. Logged-in customers: %3$s."
+msgstr ""
+
+#: includes/admin/tabs/overview.php:267
+msgid "Not checked yet: see whether visitors, visitors with a basket and logged-in customers get cached pages."
+msgstr ""
+
+#: includes/admin/tabs/overview.php:276
+msgid "Open Cache performance"
+msgstr ""
+
+#: includes/admin/tabs/overview.php:281
 msgid "Health"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:284
+#: includes/admin/tabs/overview.php:285
 msgid "Profiler loader (mu-plugin)"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:287
+#: includes/admin/tabs/overview.php:288
 msgid "installed"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:291
+#: includes/admin/tabs/overview.php:292
 msgid "not installed - this site sets DISALLOW_FILE_MODS, which forbids plugins from writing files"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:295
+#: includes/admin/tabs/overview.php:296
 msgid "out of date - use Enable profiler in Tools to update the loader"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:297
+#: includes/admin/tabs/overview.php:298
 msgid "not enabled - use Enable profiler in Tools"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:299
+#: includes/admin/tabs/overview.php:300
 msgid "not installed - wp-content/mu-plugins is not writable"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:308
+#: includes/admin/tabs/overview.php:309
 msgid "Query capture (db.php) is stale. Use Enable profiler in Tools to refresh it."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:311
+#: includes/admin/tabs/overview.php:312
 msgid "Query capture (db.php): full detail - row counts and errors per query"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:315
+#: includes/admin/tabs/overview.php:316
 msgid "Query capture: Query Monitor's db.php is still installed but Query Monitor is DEACTIVATED. Runs use degraded capture. Remove the leftover file manually if you want SSPA to install its own drop-in."
 msgstr ""
 
-#: includes/admin/tabs/overview.php:318
+#: includes/admin/tabs/overview.php:319
 msgid "Query capture: riding Query Monitor's db.php. Logged-in page profiles get full detail, but Query Monitor collects nothing for anonymous (logged-out) requests, so front-end profiles will have no per-query data - and its per-query backtraces inflate every timing. The existing drop-in is never replaced."
 msgstr ""
 
 #. translators: %s: plugin name owning db.php
-#: includes/admin/tabs/overview.php:324
+#: includes/admin/tabs/overview.php:325
 #, php-format
 msgid "Query capture: db.php is owned by %s - runs use degraded capture without per-query row counts; the existing drop-in is never replaced"
 msgstr ""
 
-#: includes/admin/tabs/overview.php:329
+#: includes/admin/tabs/overview.php:330
 msgid "Query capture (db.php): not installed - wp-content is not writable; runs will use degraded capture"
 msgstr ""
 

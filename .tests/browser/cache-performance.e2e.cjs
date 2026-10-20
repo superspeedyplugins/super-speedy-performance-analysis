@@ -43,8 +43,16 @@ const {session, admin, expect, fs, output, site, json} = require('./fleet-contex
     });
 
     const started = requests.length;
+    // A retained site may already show an earlier result, so wait for THIS check to finish
+    // and for the tab to be re-rendered from it.
+    const completed = page.waitForResponse(r => r.url().includes('admin-ajax.php') && (r.request().postData() || '').includes('action=sspa_cache_delivery_complete'), {timeout: 300000});
+    const rerendered = page.waitForResponse(r => r.url().includes('admin-ajax.php') && /action=sspa_render_tab.*tabs=cache/.test(decodeURIComponent(r.request().postData() || '')), {timeout: 300000});
     await button.click();
-    await expect(panel.locator('.sspa-cache-audiences')).toBeVisible({timeout: 300000});
+    const completion = await (await completed).json();
+    expect(completion.success, 'the check completed: ' + JSON.stringify(completion.data)).toBe(true);
+    await rerendered;
+    await expect(panel.locator('.sspa-cache-delivery-start')).toBeEnabled({timeout: 30000});
+    await expect(panel.locator('.sspa-cache-audiences')).toBeVisible({timeout: 30000});
     const sent = requests.slice(started);
     const offOrigin = sent.filter(r => new URL(r.url).origin !== origin);
     expect(offOrigin, 'no request leaves this site').toEqual([]);

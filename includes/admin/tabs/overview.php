@@ -56,43 +56,6 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     </div>
 
     <?php
-    // The full cache analysis lives on the Cache performance tab. Overview keeps two lines.
-    $sspa_cache_check = SSPA_Cache_Delivery::latest();
-    $sspa_cache_recon = SSPA_Insights::standalone($sspa_last_run['id'], 'cache_safety');
-    ?>
-    <div class="sspa-placeholder sspa-cache-overview">
-        <h2><?php esc_html_e('Cache performance', 'super-speedy-performance-analysis'); ?></h2>
-        <p>
-            <?php
-            if ($sspa_cache_check) {
-                $sspa_cache_words = array(
-                    'cached' => __('cached', 'super-speedy-performance-analysis'),
-                    'partly_cached' => __('partly cached', 'super-speedy-performance-analysis'),
-                    'not_cached' => __('not cached', 'super-speedy-performance-analysis'),
-                    'unknown' => __('unknown', 'super-speedy-performance-analysis'),
-                );
-                printf(
-                    /* translators: 1: cache state for anonymous visitors, 2: cache state for visitors with a basket, 3: cache state for logged-in customers */
-                    esc_html__('Visitors: %1$s. Visitors with a basket: %2$s. Logged-in customers: %3$s.', 'super-speedy-performance-analysis'),
-                    '<strong>' . esc_html($sspa_cache_words[$sspa_cache_check['audiences']['anonymous']['headline']]) . '</strong>',
-                    '<strong>' . esc_html($sspa_cache_words[$sspa_cache_check['audiences']['basket']['headline']]) . '</strong>',
-                    '<strong>' . esc_html($sspa_cache_words[$sspa_cache_check['audiences']['customer']['headline']]) . '</strong>'
-                );
-            } else {
-                esc_html_e('Not checked yet: see whether visitors, visitors with a basket and logged-in customers get cached pages.', 'super-speedy-performance-analysis');
-            }
-            ?>
-        </p>
-        <p>
-            <?php if ($sspa_cache_recon) :
-                $sspa_cache_rendered = SSPA_Insights::render($sspa_cache_recon); ?>
-                <?php echo esc_html($sspa_cache_rendered['headline']); ?>
-            <?php endif; ?>
-            <a href="#cache" class="sspa-goto-tab" data-tab="cache"><?php esc_html_e('Open Cache performance', 'super-speedy-performance-analysis'); ?> &rarr;</a>
-        </p>
-    </div>
-
-    <?php
     // Autoload sits in its own block, not the top-5 list. It is one site-wide setting rather
     // than a per-page problem, it competes badly against critical query findings, and its
     // copy-and-paste SQL needs more room than a list item.
@@ -275,6 +238,44 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
         </p>
     </div>
 <?php endif; ?>
+
+<?php
+// The full cache analysis lives on the Cache performance tab. Overview keeps two lines.
+$sspa_cache_check = SSPA_Cache_Delivery::latest();
+// Shown with or without a completed analysis: the check itself needs none.
+$sspa_cache_recon = $sspa_last_run ? SSPA_Insights::standalone($sspa_last_run['id'], 'cache_safety') : null;
+?>
+<div class="sspa-placeholder sspa-cache-overview">
+    <h2><?php esc_html_e('Cache performance', 'super-speedy-performance-analysis'); ?></h2>
+    <p>
+        <?php
+        if ($sspa_cache_check) {
+            $sspa_cache_words = array(
+                'cached' => __('cached', 'super-speedy-performance-analysis'),
+                'partly_cached' => __('partly cached', 'super-speedy-performance-analysis'),
+                'not_cached' => __('not cached', 'super-speedy-performance-analysis'),
+                'unknown' => __('unknown', 'super-speedy-performance-analysis'),
+            );
+            printf(
+                /* translators: 1: cache state for anonymous visitors, 2: cache state for visitors with a basket, 3: cache state for logged-in customers */
+                esc_html__('Visitors: %1$s. Visitors with a basket: %2$s. Logged-in customers: %3$s.', 'super-speedy-performance-analysis'),
+                '<strong>' . esc_html($sspa_cache_words[$sspa_cache_check['audiences']['anonymous']['headline']]) . '</strong>',
+                '<strong>' . esc_html($sspa_cache_words[$sspa_cache_check['audiences']['basket']['headline']]) . '</strong>',
+                '<strong>' . esc_html($sspa_cache_words[$sspa_cache_check['audiences']['customer']['headline']]) . '</strong>'
+            );
+        } else {
+            esc_html_e('Not checked yet: see whether visitors, visitors with a basket and logged-in customers get cached pages.', 'super-speedy-performance-analysis');
+        }
+        ?>
+    </p>
+    <p>
+        <?php if ($sspa_cache_recon) :
+            $sspa_cache_rendered = SSPA_Insights::render($sspa_cache_recon); ?>
+            <?php echo esc_html($sspa_cache_rendered['headline']); ?>
+        <?php endif; ?>
+        <a href="#cache" class="sspa-goto-tab" data-tab="cache"><?php esc_html_e('Open Cache performance', 'super-speedy-performance-analysis'); ?> &rarr;</a>
+    </p>
+</div>
 
 <div class="sspa-placeholder">
     <h2><?php esc_html_e('Health', 'super-speedy-performance-analysis'); ?></h2>

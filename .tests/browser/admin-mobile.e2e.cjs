@@ -22,7 +22,13 @@ const {session, admin, expect, fs, output} = require('./fleet-context.cjs');
         await page.setViewportSize({width, height:900});
         await page.evaluate(dir => {document.documentElement.dir = dir;}, direction);
         for (const tab of tabs) {
-          await page.locator(`#sspa_main .nav-tab[data-tab="${tab}"]`).click();
+          // Setting dir="rtl" here does not load WordPress's RTL admin stylesheet, so the
+          // admin menu moves to the right while #wpcontent keeps its left margin and covers
+          // the right edge of the content. With ten tabs the second tab row starts under it.
+          // A real RTL admin reserves that margin on the right. In RTL the tab's own click
+          // handler is therefore driven directly; every width assertion below is unchanged.
+          const navTab = page.locator(`#sspa_main .nav-tab[data-tab="${tab}"]`);
+          if (direction === 'rtl') { await navTab.dispatchEvent('click'); } else { await navTab.click(); }
           const content = page.locator(`#sspa_main .tab-contents[data-tab="${tab}"]`);
           await expect(content).toBeVisible();
           await expect(content).toHaveAttribute('data-sspa-tab-loaded', '1');

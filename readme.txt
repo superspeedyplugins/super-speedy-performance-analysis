@@ -107,6 +107,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.45.5 (21st October 2026) =
+* Overview shows the cache summary and its link to Cache performance before any analysis has been completed.
+
 = 0.45.4 (21st October 2026) =
 * Renamed an internal price-plugin list key so WordPress.org Plugin Check reports no warning for it.
 
