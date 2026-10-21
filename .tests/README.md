@@ -516,7 +516,8 @@ with evidence under `.data/lead-gen/<kind>/`.
   wordpress.org (Pro link only); Super Speedy Imports Pro from its repository (no offer).
 - `134-checkout-offers.php` - S6 on the checkout panel and export from a real checkout analysis the
   case runs itself (fixture `sspa-case134-purge` fetches the order permalink in payment_complete), so
-  it does not depend on case 19, which runs after it; suppressed with Scalability Pro active; no
+  it does not depend on case 19, which runs after it; it starts from the block cart and checkout
+  pages, because case 80 and the checkout browser journey leave other checkout pages behind; suppressed with Scalability Pro active; no
   offer outside PA screens.
 - `.tests/lead-gen/journey.e2e.cjs full` - the administrator's browser journey on `tests-lead-gen`
   from the admin menu: Run Analysis, finding then free fix then offer, dismiss, reload, copied

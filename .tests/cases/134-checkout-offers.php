@@ -11,6 +11,14 @@ lg_reset_dismissals();
 global $wpdb;
 // Clear only this case's previous checkout run on the way in; the new one is retained.
 sspa_retained_reset('134-checkout');
+// Start from the block cart and checkout pages, as case 19 does: an earlier case or browser journey
+// can leave a classic or deliberately unsupported checkout page (case 80, checkout-flow.e2e.cjs),
+// and an unsupported page makes the analysis fail before it buys anything.
+foreach (array('woocommerce_cart_page_id' => '<!-- wp:woocommerce/cart /-->', 'woocommerce_checkout_page_id' => '<!-- wp:woocommerce/checkout /-->') as $option => $content) {
+    $page = (int) get_option($option);
+    if ($page) { wp_update_post(array('ID' => $page, 'post_content' => $content)); clean_post_cache($page); }
+}
+wp_cache_flush();
 $fixture_slug = 'sspa-case134-purge';
 $fixture_dir = WP_PLUGIN_DIR . '/' . $fixture_slug;
 if (!is_dir($fixture_dir)) { mkdir($fixture_dir); }
