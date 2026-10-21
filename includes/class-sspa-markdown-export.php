@@ -553,7 +553,7 @@ class SSPA_Markdown_Export {
             $lines[] = '';
             $lines[] = '| Raw URL read | Wall time | Bytes | Opened | Caller |';
             $lines[] = '|---|---:|---:|---|---|';
-            foreach ($capture['raw_streams']['calls'] as $call) $lines[] = '| ' . self::plain($call['url']) . ' | ' . self::ms($call['ms']) . ' | ' . (int) $call['bytes'] . ' | ' . ($call['opened'] ? 'yes' : 'no') . ' | ' . self::plain(SSPA_Page_Summary::file($call['file']) . ':' . $call['line']) . ' |';
+            foreach ($capture['raw_streams']['calls'] as $call) $lines[] = '| ' . self::plain(self::safe_url($call['url'])) . ' | ' . self::ms($call['ms']) . ' | ' . (int) $call['bytes'] . ' | ' . ($call['opened'] ? 'yes' : 'no') . ' | ' . self::plain(SSPA_Page_Summary::file($call['file']) . ':' . $call['line']) . ' |';
         }
         $lines[] = '';
         $lines[] = 'One retained representative sample. Callback self wall time can contain SQL and HTTP; do not add these instruments together.';
@@ -762,7 +762,12 @@ class SSPA_Markdown_Export {
         );
     }
 
-    private static function safe_url($url) {
+    /**
+     * Scheme, host and path only, with private-looking path segments (numbers, UUIDs, encoded
+     * values, email addresses, long mixed tokens) replaced by {value} and query values dropped.
+     * Public so every view of a report URL uses the same rule.
+     */
+    public static function safe_url($url) {
         $parts = wp_parse_url((string) $url);
         if (!$parts) {
             return '';

@@ -49,6 +49,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh 135-compare # History renamed Compare, the share panel on PA screens only, community figures fetched only on click
+.tests/run-tests.sh 137-markdown # a real opt-in raw-stream read of a URL with a query token, an email and a number in its path; none reaches the page Markdown
 bash .tests/compare/run.sh   # case 135 and the Compare/share-panel browser journey from the admin menu, on tests-compare
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23

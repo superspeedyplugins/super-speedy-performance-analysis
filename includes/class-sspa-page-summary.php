@@ -113,8 +113,8 @@ class SSPA_Page_Summary {
             $reads = $capture['raw_streams']['calls'];
             usort($reads, function ($a, $b) { return $b['ms'] <=> $a['ms']; });
             foreach (array_slice($reads, 0, 3) as $read) {
-                /* translators: 1: URL without credentials or query values, 2: milliseconds, 3: calling PHP file. */
-                $coverage .= ' ' . sprintf(__('Raw stream %1$s: %2$s ms, caller %3$s.', 'super-speedy-performance-analysis'), $read['url'], number_format($read['ms'], 1), self::file($read['file']) . ':' . $read['line']);
+                /* translators: 1: URL without credentials, query values or private path segments, 2: milliseconds, 3: calling PHP file. */
+                $coverage .= ' ' . sprintf(__('Raw stream %1$s: %2$s ms, caller %3$s.', 'super-speedy-performance-analysis'), SSPA_Markdown_Export::safe_url($read['url']), number_format($read['ms'], 1), self::file($read['file']) . ':' . $read['line']);
             }
         }
         if (!empty($boot['unreflected_callbacks_untimed'])) {
