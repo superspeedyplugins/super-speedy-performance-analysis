@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.48.3\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.48.4\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--feature-quote-request\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-21T15:59:01+00:00\n"
+"POT-Creation-Date: 2026-10-21T15:59:20+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -307,7 +307,7 @@ msgid "The quote request could not be opened."
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:206
-#: includes/class-sspa-quote-request.php:156
+#: includes/class-sspa-quote-request.php:157
 msgid "Tick the consent box to send the request. Nothing has been sent."
 msgstr ""
 
@@ -5601,7 +5601,7 @@ msgstr ""
 msgid "Request a fix quote"
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:67
+#: includes/class-sspa-quote-request.php:66
 msgid "You are not allowed to request a quote from this site."
 msgstr ""
 
@@ -5667,72 +5667,72 @@ msgstr ""
 msgid "I agree to send this report, my name and email address, the site address if given, my message and the choices above to Super Speedy Plugins (WP Intense OÜ) at superspeedyplugins.com, so that they can reply and prepare a fixed-price quote. The request also records my consent, the time, this web server's IP address and the plugin version. It is never joined to anything shared with superspeedy.org."
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:153
+#: includes/class-sspa-quote-request.php:154
 msgid "This request has expired. Close it and open Request a fix quote again."
 msgstr ""
 
 #. translators: %s: the transport error, e.g. a connection timeout
-#: includes/class-sspa-quote-request.php:200
+#: includes/class-sspa-quote-request.php:201
 #, php-format
 msgid "The request could not reach superspeedyplugins.com (%s). Press Send to try again; a repeat is never stored twice."
 msgstr ""
 
 #. translators: %s: request reference, e.g. SSPQ-AB12CD34
-#: includes/class-sspa-quote-request.php:214
+#: includes/class-sspa-quote-request.php:215
 #, php-format
 msgid "Sent. Your reference is %s. Super Speedy Plugins will reply by email."
 msgstr ""
 
 #. translators: %d: minutes to wait
-#: includes/class-sspa-quote-request.php:228
+#: includes/class-sspa-quote-request.php:229
 #, php-format
 msgid "Too many requests have been sent from this site recently. Try again in %d minute."
 msgid_plural "Too many requests have been sent from this site recently. Try again in %d minutes."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-sspa-quote-request.php:233
+#: includes/class-sspa-quote-request.php:234
 msgid "The report is larger than superspeedyplugins.com accepts (200 KB), so nothing was stored."
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:236
+#: includes/class-sspa-quote-request.php:237
 msgid "superspeedyplugins.com did not accept the request format. Update Performance Analysis and try again."
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:239
+#: includes/class-sspa-quote-request.php:240
 msgid "superspeedyplugins.com could not store the request just now. Press Send to try again later; a repeat is never stored twice."
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:243
+#: includes/class-sspa-quote-request.php:244
 msgid "your name"
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:244
+#: includes/class-sspa-quote-request.php:245
 msgid "your email address"
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:245
+#: includes/class-sspa-quote-request.php:246
 msgid "the site address"
 msgstr ""
 
-#: includes/class-sspa-quote-request.php:246
+#: includes/class-sspa-quote-request.php:247
 msgid "the message"
 msgstr ""
 
 #. translators: %s: the field that was refused, e.g. "your email address"
-#: includes/class-sspa-quote-request.php:252
+#: includes/class-sspa-quote-request.php:253
 #, php-format
 msgid "superspeedyplugins.com refused the request: check %s. Nothing was stored."
 msgstr ""
 
 #. translators: %s: the receiver's error code
-#: includes/class-sspa-quote-request.php:258
+#: includes/class-sspa-quote-request.php:259
 #, php-format
 msgid "superspeedyplugins.com refused the request (%s). Nothing was stored."
 msgstr ""
 
 #. translators: %d: HTTP status code
-#: includes/class-sspa-quote-request.php:264
+#: includes/class-sspa-quote-request.php:265
 #, php-format
 msgid "superspeedyplugins.com answered with an unexpected HTTP status (%d). The request may not have been stored."
 msgstr ""

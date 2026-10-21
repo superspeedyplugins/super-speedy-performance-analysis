@@ -3,12 +3,15 @@
 require __DIR__ . '/../lib/fleet.php';
 wp_update_post(array('ID' => (int) get_option('woocommerce_checkout_page_id'), 'post_content' => '<!-- wp:woocommerce/checkout /-->'));
 wp_cache_flush();
-$inventory = json_decode(sspa_fleet_cli(array('eval', '$root=WP_CLI::get_root_command()->get_subcommands();$pa=$root["sspa"]->get_subcommands();$out=array_keys($pa);$traffic=array_keys($pa["traffic"]->get_subcommands());echo wp_json_encode(array($out,$traffic));')), true);
-$expected = array('run', 'checkout-flow', 'status', 'findings', 'cache-scan', 'cache-optimisation-report', 'impacts', 'http-calls', 'page-plugin-usage', 'history-compare', 'report', 'traffic');
+$inventory = json_decode(sspa_fleet_cli(array('eval', '$root=WP_CLI::get_root_command()->get_subcommands();$pa=$root["sspa"]->get_subcommands();$out=array_keys($pa);$traffic=array_keys($pa["traffic"]->get_subcommands());$profiler=array_keys($pa["profiler"]->get_subcommands());echo wp_json_encode(array($out,$traffic,$profiler));')), true);
+// `profiler enable|disable` (0.48.2) is invoked against the Tools buttons by case 138.
+$expected = array('run', 'checkout-flow', 'status', 'findings', 'cache-scan', 'cache-optimisation-report', 'impacts', 'http-calls', 'page-plugin-usage', 'history-compare', 'report', 'traffic', 'profiler');
 sort($expected); sort($inventory[0]);
 sspa_fleet_assert($inventory[0] === $expected, 'registered PA command inventory equals the invoked matrix');
 $traffic_expected = array('start', 'status', 'stop', 'observations', 'compare', 'delete'); sort($traffic_expected); sort($inventory[1]);
 sspa_fleet_assert($inventory[1] === $traffic_expected, 'registered traffic command inventory equals the invoked matrix');
+$profiler_expected = array('disable', 'enable'); sort($inventory[2]);
+sspa_fleet_assert($inventory[2] === $profiler_expected, 'registered profiler command inventory is enable and disable');
 $ids = array();
 for ($i = 0; $i < 2; $i++) {
     $id = (int) sspa_fleet_cli(array('sspa', 'run', '--type=spot', '--pages=home', '--porcelain'));

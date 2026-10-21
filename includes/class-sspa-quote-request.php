@@ -61,8 +61,7 @@ class SSPA_Quote_Request {
         return 'sspa_quote_' . md5((string) $request_uuid);
     }
 
-    private static function guard() {
-        check_ajax_referer('sspa_admin', 'nonce');
+    private static function require_admin() {
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('You are not allowed to request a quote from this site.', 'super-speedy-performance-analysis')), 403);
         }
@@ -74,7 +73,8 @@ class SSPA_Quote_Request {
      * Nothing leaves the site here.
      */
     public static function ajax_preview() {
-        self::guard();
+        check_ajax_referer('sspa_admin', 'nonce');
+        self::require_admin();
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
         $source = isset($_POST['source']) ? sanitize_key(wp_unslash($_POST['source'])) : '';
         if (!in_array($source, self::SOURCES, true)) {
@@ -146,7 +146,8 @@ class SSPA_Quote_Request {
      * original reference and stores nothing new.
      */
     public static function ajax_send() {
-        self::guard();
+        check_ajax_referer('sspa_admin', 'nonce');
+        self::require_admin();
         $request_uuid = isset($_POST['request_uuid']) ? sanitize_text_field(wp_unslash($_POST['request_uuid'])) : '';
         $draft = $request_uuid ? get_transient(self::draft_key($request_uuid)) : false;
         if (!is_array($draft) || (int) $draft['user_id'] !== get_current_user_id()) {
