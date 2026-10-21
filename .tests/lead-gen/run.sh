@@ -123,11 +123,15 @@ PY
     cli eval '$r = SSPA_Report::start_endpoint_evidence(); if (is_wp_error($r)) { WP_CLI::error($r->get_error_message()); } echo "collection " . $r["collection"]["id"] . "\n";' || exit 1
     node "$HERE/woocommerce-import.cjs" "$OUT/woocommerce-products.csv" 2>&1 | tee "$OUT/woocommerce-import.log"
     [ "${PIPESTATUS[0]}" -eq 0 ] || { echo "FAIL: WooCommerce import journey"; exit 1; }
+    # Wait on these requests only: a bare `wait` also waits on the mail sink that
+    # local-services.sh starts in the background of this shell, and never returns.
+    requests=()
     for i in $(seq 1 60); do
         curl -s -o /dev/null --max-time 30 -d 'action=lead_gen_fixture_slow_endpoint' "$SSPA_SITE_URL/wp-admin/admin-ajax.php" &
-        if [ $((i % 6)) -eq 0 ]; then wait; fi
+        requests+=("$!")
+        if [ $((i % 6)) -eq 0 ]; then wait "${requests[@]}"; requests=(); fi
     done
-    wait
+    [ "${#requests[@]}" -eq 0 ] || wait "${requests[@]}"
     cli eval '$a = SSPA_Traffic_Collection::active(); if ($a) { SSPA_Traffic_Collection::stop((int) $a["id"], true); }' || exit 1
     assert imports traffic
 

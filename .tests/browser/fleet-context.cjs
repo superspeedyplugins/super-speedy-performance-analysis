@@ -123,7 +123,25 @@ const response = (page, action) =>
       r.url().includes("admin-ajax.php") &&
       (r.request().postData() || "").includes("action=" + action),
   );
+// Close the browser without letting a stuck close keep the run alive: Playwright's close is
+// given 30 seconds (it has hung after WooCommerce's importer left wc-admin requests in flight),
+// then the Chromium process is killed so the harness always reaches its exit.
+async function closeBrowser(browser, ms = 30000) {
+  let timer;
+  const closed = await Promise.race([
+    browser.close().then(() => true),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(false), ms); }),
+  ]);
+  clearTimeout(timer);
+  if (!closed) {
+    console.error("browser.close() did not finish in " + ms + " ms; killing Chromium");
+    const proc = browser.process && browser.process();
+    if (proc) proc.kill("SIGKILL");
+  }
+}
+
 module.exports = {
+  closeBrowser,
   fs,
   path,
   root,

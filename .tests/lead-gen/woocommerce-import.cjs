@@ -1,7 +1,7 @@
 // A real WooCommerce product CSV import through WooCommerce's own importer screens. The
 // importer processes the file in admin-ajax batches (woocommerce_do_ajax_product_import),
 // which a running Traffic collection records. Closes the browser on every path.
-const { session, site, output } = require("../browser/fleet-context.cjs");
+const { session, site, output, closeBrowser } = require("../browser/fleet-context.cjs");
 const csv = process.argv[2];
 if (!csv) throw Error("usage: node woocommerce-import.cjs <csv>");
 (async () => {
@@ -17,6 +17,6 @@ if (!csv) throw Error("usage: node woocommerce-import.cjs <csv>");
     if (!/imported/i.test(text)) throw Error("WooCommerce did not report imported products: " + text);
     console.log("PASS: WooCommerce imported the CSV through its own importer: " + text.replace(/\s+/g, " "));
   } finally {
-    await browser.close();
+    await closeBrowser(browser);
   }
-})().catch((error) => { console.error("FAIL: " + error.message); process.exit(1); });
+})().then(() => process.exit(0), (error) => { console.error("FAIL: " + error.message); process.exit(1); });

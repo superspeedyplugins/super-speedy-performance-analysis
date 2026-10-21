@@ -1,7 +1,7 @@
 // A real WP All Import run through its own wp-admin wizard: upload the CSV, map title and
 // content, choose the unique identifier, confirm and run. Waits for WP All Import to record
 // the finished run in its own history. Closes the browser on every path.
-const { session, site, wp, output } = require("../browser/fleet-context.cjs");
+const { session, site, wp, output, closeBrowser } = require("../browser/fleet-context.cjs");
 const csv = process.argv[2];
 if (!csv) throw Error("usage: node wpai-import.cjs <csv>");
 (async () => {
@@ -32,6 +32,6 @@ if (!csv) throw Error("usage: node wpai-import.cjs <csv>");
     await page.screenshot({ path: output + "/wpai-import-finished.png", timeout: 10000 }).catch(() => {});
     console.log("PASS: WP All Import finished a real import through its own wizard");
   } finally {
-    await browser.close();
+    await closeBrowser(browser);
   }
-})().catch((error) => { console.error("FAIL: " + error.message); process.exit(1); });
+})().then(() => process.exit(0), (error) => { console.error("FAIL: " + error.message); process.exit(1); });

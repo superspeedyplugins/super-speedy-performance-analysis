@@ -6,7 +6,7 @@
 //   node journey.e2e.cjs imports <tag> # open the Imports tab and keep a screenshot
 //
 // Screenshots go to SSPA_FLEET_OUTPUT. The browser is closed on every path.
-const { session, site, output, expect, fs, wp } = require("../browser/fleet-context.cjs");
+const { session, site, output, expect, fs, wp, closeBrowser } = require("../browser/fleet-context.cjs");
 const mode = process.argv[2] || "full";
 const tag = process.argv[3] || "imports";
 const shot = (page, name) => page.screenshot({ path: output + "/" + name + ".png", fullPage: true, timeout: 30000 });
@@ -92,6 +92,6 @@ async function imports(page, name) {
     await imports(page, "imports-tab-slow-store");
     console.log("PASS: the Imports tab opens from the PA navigation");
   } finally {
-    await browser.close();
+    await closeBrowser(browser);
   }
-})().catch((error) => { console.error("FAIL: " + error.message); process.exit(1); });
+})().then(() => process.exit(0), (error) => { console.error("FAIL: " + error.message); process.exit(1); });
