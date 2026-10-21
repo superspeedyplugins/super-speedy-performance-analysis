@@ -31,6 +31,25 @@ async function selected(page, slug) {
   const { browser, page } = await session();
   try {
     await openFromMenu(page);
+    if (process.argv[2] === "live") {
+      // Against what superspeedy.org really publishes (the observer's live mode).
+      await page.locator('#sspa_main .nav-tab[data-tab="compare"]').click();
+      const compare = tab(page, "compare");
+      await Promise.all([ajax(page, "sspa_community_figures"), compare.locator("#sspa-community-figures-load").click()]);
+      const result = compare.locator("#sspa-community-figures-result");
+      await expect(result).toHaveAttribute("data-state", /available|not_published/, { timeout: 60000 });
+      const state = await result.getAttribute("data-state");
+      if (state === "available") {
+        const rows = compare.locator("tr[data-page-class][data-rung]");
+        if ((await rows.count()) < 1) throw Error("live figures rendered no page rows");
+        await expect(rows.first().locator(".sspa-figure-n")).toHaveText(/installation/);
+        await expect(rows.first().locator(".sspa-figure-confidence")).not.toBeEmpty();
+      }
+      await result.scrollIntoViewIfNeeded();
+      await shot(page, "08-compare-live-figures");
+      pass("Compare loaded the live superspeedy.org documents: " + state);
+      return;
+    }
     await expect(page.locator('#sspa_main .nav-tab[data-tab="compare"]')).toHaveText("Compare");
     await expect(page.locator('#sspa_main .nav-tab[data-tab="history"]')).toHaveCount(0);
     pass("the PA screen opened from the admin menu has a Compare tab and no History tab");

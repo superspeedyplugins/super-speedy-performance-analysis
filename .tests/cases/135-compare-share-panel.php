@@ -211,7 +211,15 @@ if (array(404, 404) === $sspa_135_codes) {
     sspa_135_t('not_published' === ($sspa_135_live['data']['state'] ?? '') && false !== stripos($sspa_135_live_html, 'not published') && false !== strpos($sspa_135_live_html, 'href="https://superspeedy.org/"'), 'superspeedy.org returns 404 today, shown as not published yet with a link to superspeedy.org');
     sspa_135_t(false === strpos($sspa_135_live_html, 'sspa-community-figures-table'), 'no figures are invented for the 404');
 } elseif (array(200, 200) === $sspa_135_codes) {
+    $sspa_135_live_html = isset($sspa_135_live['data']['html']) ? $sspa_135_live['data']['html'] : '';
     sspa_135_t('available' === ($sspa_135_live['data']['state'] ?? ''), 'superspeedy.org now publishes both documents and they render');
+    preg_match_all('/<tr data-page-class="[^"]+" data-rung="[0-5]"[^>]*>(.*?)<\/tr>/s', $sspa_135_live_html, $sspa_135_live_rows);
+    $sspa_135_live_ok = array_filter($sspa_135_live_rows[1], function ($row) {
+        $cells = sspa_135_cells($row);
+        return preg_match('/^[0-9,]+ installations?$/', $cells['n'] ?? '') && '' !== ($cells['confidence'] ?? '') && '' !== ($cells['median'] ?? '');
+    });
+    echo 'INFO: live figures show ' . count($sspa_135_live_rows[1]) . " page rows\n";
+    sspa_135_t(count($sspa_135_live_rows[1]) > 0 && count($sspa_135_live_ok) === count($sspa_135_live_rows[1]), 'every live page row shows its median, installation count and confidence label');
 } else {
     sspa_135_t(2 === count($sspa_135_codes) && 'error' === ($sspa_135_live['data']['state'] ?? '') && '' !== ($sspa_135_live['data']['html'] ?? ''), 'an unexpected answer is reported as an error with its detail');
 }

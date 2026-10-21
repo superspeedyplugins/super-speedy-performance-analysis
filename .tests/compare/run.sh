@@ -5,6 +5,7 @@
 #   bash .tests/compare/run.sh          # case 135, then the browser journey
 #   bash .tests/compare/run.sh case     # case 135 only
 #   bash .tests/compare/run.sh journey  # the browser journey only
+#   bash .tests/compare/run.sh live     # load the real superspeedy.org documents in the browser
 #
 # Site: tests-compare (override with SSPA_COMPARE_SCENARIO). State is cleared on the way IN and
 # left behind for inspection; evidence goes to .data/compare/.
@@ -49,5 +50,12 @@ if [ "$PART" = all ] || [ "$PART" = journey ]; then
     status=$?
     cat "$OUT/journey.log"
     [ "$status" -eq 0 ] || { echo "FAIL: browser journey exited $status"; FAILED=1; }
+fi
+if [ "$PART" = live ]; then
+    cli eval 'update_option("sspa_test_ssorg_mode", "live", false); delete_option("sspa_test_ssorg_log");' || exit 1
+    timeout 900 node "$HERE/journey.e2e.cjs" live > "$OUT/journey-live.log" 2>&1
+    status=$?
+    cat "$OUT/journey-live.log"
+    [ "$status" -eq 0 ] || { echo "FAIL: live browser check exited $status"; FAILED=1; }
 fi
 exit $FAILED
