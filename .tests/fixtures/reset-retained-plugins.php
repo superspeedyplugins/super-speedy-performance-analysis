@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../lib/native-guard.php';
 // A new PHP case starts from ordinary plugins. Finished-case sources/results remain.
-$slugs = array('sspa-w1-mail-boundary','sspa-turnstile-fixture','sspa-bad-plugin','sspa-caller-fixture','sspa-explain-fixture','sspa-digest-fixture','sspa-option-fixture','sspa-scoped-fixture','sspa-panel-fixture','sspa-dep-fixture','sspa-dependant-fixture','sspa-grp-free','sspa-grp-pro','sspa-guard-dep','sspa-guard-reactor','sspa-admin-save-fixture','sspa-workflow-fixture','sspa-blind-plugin','sspa-friendly-plugin','sspa-slow-integration','sspa-mail-observer','sspa-mail-api-mimic','sspa-renamed-session-cookie');
+$slugs = array('sspa-w1-mail-boundary','sspa-turnstile-fixture','sspa-bad-plugin','sspa-caller-fixture','sspa-explain-fixture','sspa-digest-fixture','sspa-option-fixture','sspa-scoped-fixture','sspa-panel-fixture','sspa-dep-fixture','sspa-dependant-fixture','sspa-grp-free','sspa-grp-pro','sspa-guard-dep','sspa-guard-reactor','sspa-admin-save-fixture','sspa-workflow-fixture','sspa-blind-plugin','sspa-friendly-plugin','sspa-slow-integration','sspa-mail-observer','sspa-mail-api-mimic','sspa-renamed-session-cookie','sspa-case134-purge');
 foreach ((array)get_option('active_plugins', array()) as $file) {
     if (in_array(dirname($file), $slugs, true)) {
         // No fixture deactivation hooks: those are exercised explicitly by their own cases.

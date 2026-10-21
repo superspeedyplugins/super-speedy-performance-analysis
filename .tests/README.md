@@ -514,8 +514,10 @@ with evidence under `.data/lead-gen/<kind>/`.
   (`woocommerce-import.cjs`) and 60 requests to a 350 ms admin-ajax endpoint
   (`.tests/fixtures/lead-gen-slow-endpoint.php`) for I3 and S8; Super Speedy Imports Lite from
   wordpress.org (Pro link only); Super Speedy Imports Pro from its repository (no offer).
-- `134-checkout-offers.php` - S6 on the checkout panel and export from the checkout run case 19
-  retains on the suite site; suppressed with Scalability Pro active; no offer outside PA screens.
+- `134-checkout-offers.php` - S6 on the checkout panel and export from a real checkout analysis the
+  case runs itself (fixture `sspa-case134-purge` fetches the order permalink in payment_complete), so
+  it does not depend on case 19, which runs after it; suppressed with Scalability Pro active; no
+  offer outside PA screens.
 - `.tests/lead-gen/journey.e2e.cjs full` - the administrator's browser journey on `tests-lead-gen`
   from the admin menu: Run Analysis, finding then free fix then offer, dismiss, reload, copied
   export, Imports tab. Screenshots in `.data/lead-gen/journey/`.
