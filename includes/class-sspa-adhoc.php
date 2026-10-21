@@ -307,7 +307,7 @@ class SSPA_Adhoc {
         if (!$profile_id) {
             wp_send_json_success(array('found' => false));
         }
-        $html = SSPA_Profile_Panel::render($profile_id, array('cached' => !$fresh));
+        $html = SSPA_Profile_Panel::render($profile_id, array('cached' => !$fresh, 'offers' => !empty($_POST['pa_screen'])));
         if (is_wp_error($html)) {
             wp_send_json_error($html->get_error_message());
         }

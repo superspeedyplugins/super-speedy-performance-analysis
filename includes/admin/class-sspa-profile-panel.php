@@ -78,7 +78,9 @@ class SSPA_Profile_Panel {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
-        $html = self::render($profile_id, array('cached' => true));
+        // Offers belong to the PA screens only; the same panel opened from the admin bar
+        // elsewhere carries none.
+        $html = self::render($profile_id, array('cached' => true, 'offers' => !empty($_POST['pa_screen'])));
         if (is_wp_error($html)) {
             wp_send_json_error($html->get_error_message());
         }
@@ -247,7 +249,7 @@ class SSPA_Profile_Panel {
         $right = self::boot_components_html($capture) . self::render_breakdown_html($capture) . self::callbacks_html($capture);
 
         $html = '<div class="sspa-adhoc-grid">';
-        $html .= self::summary_html($row, $capture);
+        $html .= self::summary_html($row, $capture, !empty($args['offers']));
         $html .= self::topbar_html($row, $cached);
         $html .= self::notes_html($row, $capture);
         $html .= '<div>' . $left . '</div><div>' . $right . '</div>';
@@ -269,7 +271,7 @@ class SSPA_Profile_Panel {
         return $html;
     }
 
-    private static function summary_html($row, $capture) {
+    private static function summary_html($row, $capture, $offers = false) {
         $summary = SSPA_Page_Summary::build($row, $capture);
         $html = '<section class="sspa-adhoc-span sspa-page-summary"><h3>' . esc_html($summary['verdict']) . '</h3>';
         if ($summary['culprits']) {
@@ -279,6 +281,10 @@ class SSPA_Profile_Panel {
         }
         $html .= '<p class="sspa-summary-coverage">' . esc_html($summary['coverage_headline']) . '</p>';
         $html .= '<p>' . esc_html($summary['next_action']) . '</p>';
+        $offer = $offers ? SSPA_Offers::page($row, $summary) : null;
+        if ($offer) {
+            $html .= SSPA_Offers::render($offer, 'summary', true);
+        }
         if (self::is_reprofilable($row)) {
             $html .= '<p><button type="button" class="sspa-adhoc-btn sspa-adhoc-measure" data-profile-id="' . (int) $row['id'] . '">'
                 . esc_html__('Measure plugin impact on this page', 'super-speedy-performance-analysis') . '</button></p><div class="sspa-adhoc-plan"></div>';

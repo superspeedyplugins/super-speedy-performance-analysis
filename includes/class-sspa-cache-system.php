@@ -73,7 +73,8 @@ class SSPA_Cache_System {
         return $out;
     }
 
-    private static function plugin_names() {
+    /** Installed plugin names keyed by slug. */
+    public static function plugin_names() {
         if (!function_exists('get_plugins')) {
             require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php';
         }

@@ -182,6 +182,13 @@ class SSPA_Checkout_Flow {
             $finding['evidence'] = json_decode((string) $finding['evidence'], true);
         }
         unset($finding);
+        // Offers belong to the PA screens only (S6, R4).
+        $waterfall['offers_html'] = '';
+        if (!empty($_POST['pa_screen'])) {
+            foreach (SSPA_Offers::checkout($run_id) as $offer) {
+                $waterfall['offers_html'] .= SSPA_Offers::render($offer, 'checkout');
+            }
+        }
         wp_send_json_success($waterfall);
     }
 

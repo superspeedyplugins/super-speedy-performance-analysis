@@ -19,6 +19,12 @@ class SSPA_Report {
         ));
     }
 
+    /** The latest completed Plugin Impact Analysis run row, or null. */
+    public static function latest_deep_run() {
+        global $wpdb;
+        return $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE status = 'done' AND run_type = 'deep' ORDER BY id DESC LIMIT 1", SSPA_Schema::table('runs')), ARRAY_A);
+    }
+
     /** Stable outbound WordPress HTTP API inventory for cross-plugin consumers. */
     public static function http_calls($run_id = 0) {
         return SSPA_HTTP_API_Report::build($run_id);
@@ -154,31 +160,7 @@ class SSPA_Report {
         $cache_delivery = SSPA_Cache_Delivery::report($run_id);
         $cache_delivery = is_wp_error($cache_delivery) ? null : $cache_delivery;
 
-        $pages = array();
-        foreach ($wpdb->get_results($wpdb->prepare(
-            'SELECT page_key, variant, page_gen_ms, ttfb_ms, sql_ms, sql_count, rows_returned_total,
-                    http_ms, php_ms, peak_mem_bytes, dupe_query_count, mail_count, response_code, blocked_by
-             FROM %i WHERE run_id = %d ORDER BY page_gen_ms DESC',
-            SSPA_Schema::table('profiles'),
-            $run_id
-        ), ARRAY_A) as $p) {
-            $pages[] = array(
-                'page_key' => $p['page_key'],
-                'variant' => $p['variant'],
-                'generation_ms' => $p['page_gen_ms'] !== null ? round((float) $p['page_gen_ms'], 1) : null,
-                'ttfb_ms' => $p['ttfb_ms'] !== null ? round((float) $p['ttfb_ms'], 1) : null,
-                'sql_ms' => $p['sql_ms'] !== null ? round((float) $p['sql_ms'], 1) : null,
-                'sql_count' => $p['sql_count'] !== null ? (int) $p['sql_count'] : null,
-                'rows_fetched' => $p['rows_returned_total'] !== null ? (int) $p['rows_returned_total'] : null,
-                'http_ms' => $p['http_ms'] !== null ? round((float) $p['http_ms'], 1) : null,
-                'php_ms' => $p['php_ms'] !== null ? round((float) $p['php_ms'], 1) : null,
-                'peak_mem_bytes' => $p['peak_mem_bytes'] !== null ? (int) $p['peak_mem_bytes'] : null,
-                'duplicate_queries' => $p['dupe_query_count'] !== null ? (int) $p['dupe_query_count'] : null,
-                'mail_count' => $p['mail_count'] !== null ? (int) $p['mail_count'] : null,
-                'response_code' => $p['response_code'] !== null ? (int) $p['response_code'] : null,
-                'blocked_by' => $p['blocked_by'],
-            );
-        }
+        $pages = self::pages($run_id);
 
         return array(
             'schema' => self::SCHEMA,
@@ -210,6 +192,38 @@ class SSPA_Report {
             'pages' => $pages,
             'impacts' => self::impacts(),
         );
+    }
+
+    /** Measured page rows of one run, slowest first. */
+    public static function pages($run_id) {
+        global $wpdb;
+        $pages = array();
+        foreach ($wpdb->get_results($wpdb->prepare(
+            'SELECT page_key, variant, page_gen_ms, ttfb_ms, sql_ms, sql_count, rows_returned_total,
+                    http_ms, php_ms, peak_mem_bytes, dupe_query_count, mail_count, response_code, blocked_by
+             FROM %i WHERE run_id = %d ORDER BY page_gen_ms DESC',
+            SSPA_Schema::table('profiles'),
+            $run_id
+        ), ARRAY_A) as $p) {
+            $pages[] = array(
+                'page_key' => $p['page_key'],
+                'variant' => $p['variant'],
+                'generation_ms' => $p['page_gen_ms'] !== null ? round((float) $p['page_gen_ms'], 1) : null,
+                'ttfb_ms' => $p['ttfb_ms'] !== null ? round((float) $p['ttfb_ms'], 1) : null,
+                'sql_ms' => $p['sql_ms'] !== null ? round((float) $p['sql_ms'], 1) : null,
+                'sql_count' => $p['sql_count'] !== null ? (int) $p['sql_count'] : null,
+                'rows_fetched' => $p['rows_returned_total'] !== null ? (int) $p['rows_returned_total'] : null,
+                'http_ms' => $p['http_ms'] !== null ? round((float) $p['http_ms'], 1) : null,
+                'php_ms' => $p['php_ms'] !== null ? round((float) $p['php_ms'], 1) : null,
+                'peak_mem_bytes' => $p['peak_mem_bytes'] !== null ? (int) $p['peak_mem_bytes'] : null,
+                'duplicate_queries' => $p['dupe_query_count'] !== null ? (int) $p['dupe_query_count'] : null,
+                'mail_count' => $p['mail_count'] !== null ? (int) $p['mail_count'] : null,
+                'response_code' => $p['response_code'] !== null ? (int) $p['response_code'] : null,
+                'blocked_by' => $p['blocked_by'],
+            );
+        }
+
+        return $pages;
     }
 
     /**

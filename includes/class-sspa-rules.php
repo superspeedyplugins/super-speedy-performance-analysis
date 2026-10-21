@@ -72,6 +72,22 @@ class SSPA_Rules {
         return isset($data['offers']) ? (array) $data['offers'] : array();
     }
 
+    /**
+     * Plugin slugs that pick and word offers (search, product-filter, importer). Kept apart
+     * from categories() so they never create overlap findings or change the unload-safety
+     * and dependency rules.
+     */
+    public static function offer_categories() {
+        $data = self::load();
+        return isset($data['offer_categories']) ? (array) $data['offer_categories'] : array();
+    }
+
+    /** admin-ajax actions that are an importer processing a file, keyed by action. */
+    public static function offer_importer_endpoints() {
+        $data = self::load();
+        return isset($data['offer_importer_endpoints']) ? (array) $data['offer_importer_endpoints'] : array();
+    }
+
     /** Verbatim published quotations for the Cache performance tab, each with its source. */
     public static function cache_education() {
         $data = self::load();

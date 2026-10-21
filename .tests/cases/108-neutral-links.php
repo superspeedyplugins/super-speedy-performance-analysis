@@ -22,22 +22,42 @@ $response = wp_remote_post(admin_url('admin-ajax.php'), array('cookies' => $cook
 $cache_document = json_decode(wp_remote_retrieve_body($response), true);
 $cache_html = $cache_document['data']['tabs']['cache'] ?? '';
 w1_links_t($cache_html !== '', 'Cache performance tab renders through authenticated admin-ajax');
-preg_match_all('#href="(https?://[^"]*superspeedyplugins\.com[^"]*)"#', $html . $cache_html, $w1_links);
+// The Imports tab and the run export are offer placements too.
+$imports_document = json_decode(wp_remote_retrieve_body(wp_remote_post(admin_url('admin-ajax.php'), array('cookies' => $cookies, 'timeout' => 30, 'body' => array('action' => 'sspa_render_tab', 'tabs' => 'imports', 'nonce' => wp_create_nonce('sspa_admin'))))), true);
+$imports_html = $imports_document['data']['tabs']['imports'] ?? '';
+w1_links_t($imports_html !== '', 'Imports tab renders through authenticated admin-ajax');
+$export_document = json_decode(wp_remote_retrieve_body(wp_remote_post(admin_url('admin-ajax.php'), array('cookies' => $cookies, 'timeout' => 60, 'body' => array('action' => 'sspa_markdown_export', 'kind' => 'run', 'id' => (int) $run['id'], 'nonce' => wp_create_nonce('sspa_admin'))))), true);
+$export_md = $export_document['data']['markdown'] ?? '';
+w1_links_t($export_md !== '', 'run Markdown export builds through authenticated admin-ajax');
 $w1_host = (string) wp_parse_url(home_url(), PHP_URL_HOST);
-$w1_identifying = array();
+// No identifying parameters: only the static placement tag, never a host name, user, site
+// or run value.
+$w1_identifying = static function ($link) use ($w1_host) {
+    parse_str((string) wp_parse_url($link, PHP_URL_QUERY), $query);
+    $ok = !array_diff(array_keys($query), array('utm_source', 'utm_medium', 'utm_campaign'))
+        && (!$query || ('performance-analysis' === ($query['utm_source'] ?? '') && 'plugin' === ($query['utm_medium'] ?? '') && preg_match('/^[a-z_]+$/', $query['utm_campaign'] ?? '')))
+        && false === stripos($link, $w1_host);
+    return !$ok;
+};
+// The check itself must reject identifying links, or a pass proves nothing.
+foreach (array(
+    'https://www.superspeedyplugins.com/product/scalability-pro/?utm_source=' . rawurlencode($w1_host) . '&utm_medium=plugin&utm_campaign=scalability_pro_overview',
+    'https://www.superspeedyplugins.com/product/scalability-pro/?utm_source=performance-analysis&utm_medium=plugin&utm_campaign=scalability_pro_overview&user=1',
+    'https://www.superspeedyplugins.com/product/scalability-pro/?utm_source=performance-analysis&utm_medium=plugin&utm_campaign=run_42',
+) as $w1_control) {
+    w1_links_t($w1_identifying($w1_control), 'the no-identifying-parameters check rejects ' . $w1_control);
+}
+preg_match_all('#https?://[^\s"\')<>]*superspeedyplugins\.com[^\s"\')<>]*#', html_entity_decode($html . $cache_html . $imports_html . $export_md), $w1_links);
+$w1_bad = array();
 $w1_tagged = 0;
-foreach (array_map('html_entity_decode', $w1_links[1]) as $w1_link) {
-    parse_str((string) wp_parse_url($w1_link, PHP_URL_QUERY), $w1_query);
-    if ($w1_query) {
+foreach (array_unique($w1_links[0]) as $w1_link) {
+    if (false !== strpos($w1_link, 'utm_')) {
         $w1_tagged++;
     }
-    $w1_ok = !array_diff(array_keys($w1_query), array('utm_source', 'utm_medium', 'utm_campaign'))
-        && (!$w1_query || ('performance-analysis' === ($w1_query['utm_source'] ?? '') && 'plugin' === ($w1_query['utm_medium'] ?? '') && preg_match('/^[a-z_]+$/', $w1_query['utm_campaign'] ?? '')))
-        && false === stripos($w1_link, $w1_host);
-    if (!$w1_ok) {
-        $w1_identifying[] = $w1_link;
+    if ($w1_identifying($w1_link)) {
+        $w1_bad[] = $w1_link;
     }
 }
-w1_links_t($w1_tagged > 0 && !$w1_identifying, 'rendered Overview and Cache performance links carry only the static placement tag, no identifying parameters (' . $w1_tagged . ' tagged' . ($w1_identifying ? '; ' . implode(' ', $w1_identifying) : '') . ')');
+w1_links_t($w1_tagged > 0 && !$w1_bad, 'rendered Overview, Cache performance, Imports and export links carry only the static placement tag, no identifying parameters (' . $w1_tagged . ' tagged' . ($w1_bad ? '; ' . implode(' ', $w1_bad) : '') . ')');
 $rec = SSPA_Rules::recommendation('slow_query_found_rows');
 w1_links_t(!empty($rec['body']) && stripos(wp_json_encode($rec), 'halve query time') === false, 'bundled recommendation makes no unsupported query-time claim');

@@ -333,6 +333,10 @@
 					'<div class="sspa-adhoc-note">' + esc(f.recommendation.body) + '</div></div>';
 			});
 		}
+		// Offers come pre-escaped from the server, only on the Performance Analysis screens.
+		if (d.offers_html) {
+			html += '<div class="sspa-ck-offers">' + d.offers_html + '</div>';
+		}
 
 		if (d.mail && d.mail.count) {
 			var deferred = d.notes && d.notes.inventory && d.notes.inventory.emails_deferred;
@@ -474,7 +478,7 @@
 	}
 
 	function showResult(runId) {
-		post('sspa_checkout_result', { run_id: runId || 0 }, function (resp) {
+		post('sspa_checkout_result', { run_id: runId || 0, pa_screen: document.getElementById('sspa_main') ? 1 : 0 }, function (resp) {
 			if (!resp.success) {
 				error(resp.data || wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
 				return;

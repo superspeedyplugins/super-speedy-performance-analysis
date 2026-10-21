@@ -29,6 +29,21 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             if (!$sspa_top) {
                 echo '<p>' . esc_html__('No performance problems found - nice site.', 'super-speedy-performance-analysis') . '</p>';
             }
+            // At most one primary and one secondary offer on this screen, each placed inside
+            // the finding or block whose measured evidence triggered it.
+            $sspa_offers = SSPA_Offers::overview($sspa_last_run['id']);
+            $sspa_offer_at = array();
+            $sspa_offer_loose = array();
+            $sspa_top_ids = array_map('intval', array_column($sspa_top, 'id'));
+            foreach ($sspa_offers as $sspa_offer) {
+                if ($sspa_offer['finding_id'] && in_array((int) $sspa_offer['finding_id'], $sspa_top_ids, true)) {
+                    $sspa_offer_at[(int) $sspa_offer['finding_id']] = $sspa_offer;
+                } elseif (in_array($sspa_offer['anchor'], array('autoload', 'deep'), true)) {
+                    $sspa_offer_at[$sspa_offer['anchor']] = $sspa_offer;
+                } else {
+                    $sspa_offer_loose[] = $sspa_offer;
+                }
+            }
             ?>
             <ol class="sspa-insights">
             <?php foreach ($sspa_top as $sspa_f) :
@@ -43,15 +58,38 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
                         <pre class="sspa-insight-sql"><?php echo esc_html($sspa_r['sql']); ?></pre>
                     <?php endif; ?>
                     <?php if ($sspa_r['rec_body']) : ?>
-                        <p class="sspa-insight-rec"><?php echo esc_html($sspa_r['rec_body']); ?>
-                        <?php if ($sspa_r['rec_link']) : ?>
-                            <a href="<?php echo esc_url($sspa_r['rec_link']); ?>" target="_blank"><?php echo esc_html($sspa_r['rec_title']); ?> &rarr;</a>
-                        <?php endif; ?>
-                        </p>
+                        <p class="sspa-insight-rec"><?php echo esc_html($sspa_r['rec_body']); ?></p>
                     <?php endif; ?>
+                    <?php
+                    if (isset($sspa_offer_at[(int) $sspa_f['id']])) {
+                        echo wp_kses(SSPA_Offers::render($sspa_offer_at[(int) $sspa_f['id']], 'overview'), SSPA_Offers::allowed_html());
+                    }
+                    ?>
                 </li>
             <?php endforeach; ?>
             </ol>
+            <?php foreach ($sspa_offer_loose as $sspa_offer) : ?>
+                <div class="sspa-offer-next">
+                    <h3><?php esc_html_e('Suggested next step', 'super-speedy-performance-analysis'); ?></h3>
+                    <?php
+                    if ($sspa_offer['finding_id']) {
+                        // A measured finding outside the top five: show it with its free fix.
+                        $sspa_loose_finding = null;
+                        foreach (SSPA_Insights::top($sspa_last_run['id'], 1000) as $sspa_candidate) {
+                            if ((int) $sspa_candidate['id'] === (int) $sspa_offer['finding_id']) {
+                                $sspa_loose_finding = SSPA_Insights::render($sspa_candidate);
+                                break;
+                            }
+                        }
+                        if ($sspa_loose_finding) {
+                            $sspa_offer['evidence'] = $sspa_loose_finding['headline'];
+                            $sspa_offer['free_fix'] = $sspa_loose_finding['rec_body'];
+                        }
+                    }
+                    echo wp_kses(SSPA_Offers::render($sspa_offer, 'overview', true), SSPA_Offers::allowed_html());
+                    ?>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 
@@ -74,21 +112,12 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             <?php endif; ?>
             <?php
             // The SQL above is the manual fix. Scalability Pro manages autoloading for you,
-            // which is the same job done continuously rather than once - so it belongs here,
-            // next to the finding, rather than as a banner somewhere. Only shown when the
-            // plugin is not already doing it.
-            if (!function_exists('wpi_getIndexes')) :
-                ?>
-                <p class="description">
-                    <?php
-                    printf(
-                        /* translators: %s: link to the Scalability Pro product page. */
-                        esc_html__('Prefer not to run this by hand every time the site changes? %s includes an options manager that loads what your site actually uses and unloads what it does not, keeping this list under control as plugins come and go.', 'super-speedy-performance-analysis'),
-                        '<a href="' . esc_url('https://www.superspeedyplugins.com/product/scalability-pro/') . '" target="_blank" rel="noopener">' . esc_html__('Scalability Pro', 'super-speedy-performance-analysis') . '</a>'
-                    );
-                    ?>
-                </p>
-            <?php endif; ?>
+            // which is the same job done continuously, so its offer belongs here, next to the
+            // finding, when the screen's offer selection chose it for this finding.
+            if (isset($sspa_offer_at['autoload'])) {
+                echo wp_kses(SSPA_Offers::render($sspa_offer_at['autoload'], 'overview'), SSPA_Offers::allowed_html());
+            }
+            ?>
         </div>
     <?php endif; ?>
 
@@ -137,7 +166,7 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
     <?php
     // Deep runs land back on this tab when they finish - surface their outcome here
     // instead of leaving the results buried in the Plugins tab.
-    $sspa_deep_run = $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE status = 'done' AND run_type = 'deep' ORDER BY id DESC LIMIT 1", $sspa_runs_table), ARRAY_A);
+    $sspa_deep_run = SSPA_Report::latest_deep_run();
     if ($sspa_deep_run) :
         $sspa_deep_notes = json_decode((string) $sspa_deep_run['notes'], true);
         $sspa_deep_notes = is_array($sspa_deep_notes) ? $sspa_deep_notes : array(); ?>
@@ -170,6 +199,11 @@ $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
             ?>
             <?php esc_html_e('Results are in the Plugins tab, "Measured impact" column.', 'super-speedy-performance-analysis'); ?>
         </p>
+        <?php
+        if (isset($sspa_offer_at['deep'])) {
+            echo wp_kses(SSPA_Offers::render($sspa_offer_at['deep'], 'overview', true), SSPA_Offers::allowed_html());
+        }
+        ?>
         <?php if (!empty($sspa_deep_notes['fatal_cells'])) : ?>
         <div class="notice notice-info inline">
             <p>

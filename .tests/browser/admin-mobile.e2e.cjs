@@ -16,7 +16,7 @@ const {session, admin, expect, fs, output, wp} = require('./fleet-context.cjs');
     });
     expect(contrast, 'Overview site score label contrast').toBeGreaterThanOrEqual(4.5);
     const tabs = await page.locator('#sspa_main .nav-tab').evaluateAll(nodes => nodes.map(n => n.dataset.tab));
-    expect(tabs).toHaveLength(10);
+    expect(tabs).toHaveLength(11);
     // Each direction is the admin a real user gets: RTL is the administrator's own Hebrew
     // admin locale (WordPress's rtl stylesheets, body.rtl), set on the way in and switched
     // back to the site default for the LTR pass and the final checks.
@@ -62,6 +62,6 @@ const {session, admin, expect, fs, output, wp} = require('./fleet-context.cjs');
     await page.screenshot({path:output + '/tools-320.png'});
     const failures = results.filter(r => r.document > r.viewport + 1);
     expect(failures, JSON.stringify(failures)).toEqual([]);
-    console.log('PASS all ten tabs fit 320/390/1280px in LTR and RTL without document overflow');
+    console.log('PASS all eleven tabs fit 320/390/1280px in LTR and RTL without document overflow');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode=1;});

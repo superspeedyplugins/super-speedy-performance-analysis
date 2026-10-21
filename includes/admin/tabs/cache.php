@@ -469,14 +469,15 @@ $sspa_cache_quote = static function ($quote) {
         }
         $sspa_cache_is_primary = $sspa_cache_offer_id === $sspa_cache_offers['primary'];
         ?>
-        <div class="sspa-placeholder sspa-cache-offer sspa-cache-offer-<?php echo esc_attr($sspa_cache_offer_id); ?><?php echo $sspa_cache_is_primary ? ' sspa-cache-offer-primary' : ''; ?>" data-offer="<?php echo esc_attr($sspa_cache_offer_id); ?>">
+        <div class="sspa-placeholder sspa-cache-offer sspa-cache-offer-<?php echo esc_attr($sspa_cache_offer_id); ?><?php echo $sspa_cache_is_primary ? ' sspa-cache-offer-primary' : ''; ?>" data-offer="<?php echo esc_attr($sspa_cache_offer_id); ?>"<?php echo 'ajax_prices' === $sspa_cache_offer_id ? ' data-offer-evidence="ajax_prices"' : ''; ?>>
             <?php if ('cache_service' === $sspa_cache_offer_id) : ?>
                 <h2><?php esc_html_e('Have it implemented for you', 'super-speedy-performance-analysis'); ?></h2>
                 <?php if ($sspa_cache_offer['evidence']) : ?>
-                    <div class="sspa-cache-evidence">
+                    <div class="sspa-cache-evidence" data-offer-evidence="cache_service">
                         <?php foreach ($sspa_cache_offer['evidence'] as $sspa_cache_sentence) : ?>
                             <p><strong><?php echo esc_html($sspa_cache_sentence); ?></strong></p>
                         <?php endforeach; ?>
+                        <p><button type="button" class="button-link sspa-offer-dismiss" data-offer="cache_service"><?php esc_html_e('Don\'t show this again', 'super-speedy-performance-analysis'); ?></button></p>
                     </div>
                 <?php endif; ?>
                 <?php foreach ($sspa_cache_offer['quotes'] as $sspa_cache_item) {
@@ -505,6 +506,9 @@ $sspa_cache_quote = static function ($quote) {
                     }
                     ?>
                 </a>
+                <?php if ('ajax_prices' === $sspa_cache_offer_id) : ?>
+                    <button type="button" class="button-link sspa-offer-dismiss" data-offer="ajax_prices"><?php esc_html_e('Don\'t show this again', 'super-speedy-performance-analysis'); ?></button>
+                <?php endif; ?>
             </p>
         </div>
     <?php endforeach; ?>

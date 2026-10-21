@@ -216,6 +216,7 @@ class SSPA_Admin_Page {
         return array(
             'overview' => __('Overview', 'super-speedy-performance-analysis'),
             'cache' => __('Cache performance', 'super-speedy-performance-analysis'),
+            'imports' => __('Imports', 'super-speedy-performance-analysis'),
             'workflows' => __('Workflows', 'super-speedy-performance-analysis'),
             'pages' => __('Pages', 'super-speedy-performance-analysis'),
             'plugins' => __('Plugins', 'super-speedy-performance-analysis'),

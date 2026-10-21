@@ -815,3 +815,46 @@
 #sspa-ajax-profile select,
 #sspa-ajax-profile input:not([type="checkbox"]) { min-width: 0; max-width: 100%; box-sizing: border-box; }
 #sspa-ajax-profile select[multiple] { width: 100%; min-height: 120px; }
+
+/* Offers: under a finding and its free fix, never louder than the finding itself. */
+.sspa-offer {
+	margin: 10px 0 4px;
+	padding: 8px 12px;
+	border-left: 3px solid #c3c4c7;
+	background: #f6f7f7;
+}
+.sspa-offer-primary {
+	border-left-color: #2271b1;
+}
+.sspa-offer .sspa-offer-lead {
+	margin: 0 0 4px;
+	font-weight: 600;
+}
+.sspa-offer .sspa-offer-quote {
+	margin: 4px 0 8px;
+	padding: 0 0 0 10px;
+	border-left: 2px solid #dcdcde;
+}
+.sspa-offer .sspa-offer-quote p {
+	margin: 0 0 2px;
+}
+.sspa-offer .sspa-offer-quote cite {
+	display: block;
+	font-size: 12px;
+	font-style: normal;
+	color: #50575e;
+	overflow-wrap: anywhere;
+}
+.sspa-offer .sspa-offer-actions {
+	margin: 6px 0 0;
+}
+.sspa-offer .sspa-offer-dismiss {
+	margin-left: 8px;
+	font-size: 12px;
+}
+.sspa-offer-next {
+	margin-top: 12px;
+}
+#sspa_main .sspa-imports-history td {
+	overflow-wrap: anywhere;
+}

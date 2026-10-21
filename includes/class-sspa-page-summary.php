@@ -173,7 +173,8 @@ class SSPA_Page_Summary {
         } else {
             $cpu_line = __('CPU time was not captured.', 'super-speedy-performance-analysis');
         }
-        return array('verdict' => $verdict, 'culprits' => $culprits, 'coverage' => $coverage, 'coverage_headline' => $coverage_headline, 'gap' => $gap, 'next_action' => $action, 'cpu' => $cpu_line, 'samples' => self::samples($row));
+        return array('verdict' => $verdict, 'culprits' => $culprits, 'coverage' => $coverage, 'coverage_headline' => $coverage_headline, 'gap' => $gap, 'next_action' => $action, 'cpu' => $cpu_line, 'samples' => self::samples($row),
+            'generation_ms' => $gen, 'unattributed_ms' => $untimed);
     }
 
     /** Relative evidence paths keep private absolute server paths out of Markdown. */

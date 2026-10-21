@@ -24,8 +24,8 @@ foreach ($old_runs as $old_run_id) {
 ob_start();
 SSPA_Admin_Page::show();
 $admin_html = ob_get_clean();
-sspa_53_t(10 === substr_count($admin_html, 'class="tab-contents"'), 'all ten tab containers remain in the page');
-sspa_53_t(9 === substr_count($admin_html, 'data-sspa-tab-loaded="0"'), 'nine initially hidden tabs are deferred');
+sspa_53_t(11 === substr_count($admin_html, 'class="tab-contents"'), 'all eleven tab containers remain in the page (Imports added in 0.46.1)');
+sspa_53_t(10 === substr_count($admin_html, 'data-sspa-tab-loaded="0"'), 'ten initially hidden tabs are deferred');
 sspa_53_t(false === strpos($admin_html, 'sspa-outbox-table'), 'hidden Share history does not render on initial load');
 
 $wpdb->insert(SSPA_Schema::table('runs'), array(

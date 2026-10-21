@@ -111,7 +111,8 @@ class SSPA_Markdown_Export {
         if ($minor_sql) { $lines[] = '</details>'; $lines[] = ''; }
         self::raw_http($lines, isset($capture['http']['calls']) ? $capture['http']['calls'] : array());
         self::impacts($lines, isset($data['measured_plugin_impacts']) ? $data['measured_plugin_impacts'] : array());
-        self::help($lines, isset($profile['run_id']) ? (int) $profile['run_id'] : 0);
+        $page_offer = isset($profile['run_id']) ? SSPA_Offers::page($profile, SSPA_Page_Summary::build($profile, $capture)) : null;
+        self::help($lines, SSPA_Offers::export_lines('page', isset($profile['run_id']) ? (int) $profile['run_id'] : 0, $page_offer));
 
         return self::result('sspa-page-' . sanitize_file_name($page_key), $lines);
     }
@@ -154,7 +155,7 @@ class SSPA_Markdown_Export {
         if (!is_wp_error($http)) {
             self::http_inventory($lines, $http);
         }
-        self::help($lines, $run_id);
+        self::help($lines, SSPA_Offers::export_lines('run', $run_id));
         return self::result('sspa-site-analysis-run-' . $run_id, $lines);
     }
 
@@ -211,7 +212,7 @@ class SSPA_Markdown_Export {
             $lines[] = '- Synthetic users deleted: ' . (int) (isset($safety['users_deleted']) ? $safety['users_deleted'] : 0);
             $lines[] = '- Synthetic users left: ' . (int) (isset($safety['users_left']) ? $safety['users_left'] : 0);
         }
-        self::help($lines);
+        self::help($lines, SSPA_Offers::export_lines('checkout', $run_id));
         return self::result('sspa-checkout-analysis-run-' . $run_id, $lines);
     }
 
@@ -519,15 +520,17 @@ class SSPA_Markdown_Export {
      * The caching-service pitch appears only when the cache evidence fires for this export
      * (Dave, 20 October 2026). The checkout export keeps no cache pitch.
      */
-    private static function help(&$lines, $run_id = null) {
+    /**
+     * @param string[] $offer_lines At most two offers whose triggers fired for this export
+     *                              (SSPA_Offers::export_lines()), already respecting dismissals.
+     */
+    private static function help(&$lines, $offer_lines = array()) {
         $lines[] = '## Optional implementation help';
         $lines[] = '';
         $lines[] = 'Use the evidence-sufficiency statement above where one is present. Confirm missing origin, plan and index evidence before changing query code or database schema.';
         $lines[] = '';
-        if (null !== $run_id) {
-            foreach (SSPA_Offers::export_pitch((int) $run_id) as $line) {
-                $lines[] = $line;
-            }
+        foreach ($offer_lines as $line) {
+            $lines[] = $line;
         }
     }
 

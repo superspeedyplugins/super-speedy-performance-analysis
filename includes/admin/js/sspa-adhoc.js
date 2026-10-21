@@ -117,7 +117,9 @@
 		$.post(sspa_adhoc.ajaxurl, {
 			action: 'sspa_profile_panel',
 			nonce: sspa_adhoc.nonce,
-			profile_id: profileId
+			profile_id: profileId,
+			// Offers belong to the Performance Analysis screens only.
+			pa_screen: document.getElementById('sspa_main') ? 1 : 0
 		}, function (resp) {
 			if (!resp.success) {
 				renderError(resp.data || wp.i18n.__('Could not load that page profile.', 'super-speedy-performance-analysis'));
@@ -134,7 +136,8 @@
 			action: 'sspa_adhoc_result',
 			nonce: sspa_adhoc.nonce,
 			url: current.url || pageUrl(),
-			fresh: fresh ? 1 : 0
+			fresh: fresh ? 1 : 0,
+			pa_screen: document.getElementById('sspa_main') ? 1 : 0
 		}, cb).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
 	}
 

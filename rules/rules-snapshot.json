@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-11",
+  "updated": "2026-10-21",
   "thresholds": {
     "slow_query_ms": 50,
     "big_result_rows": 200,
@@ -23,18 +23,23 @@
     "autoload_missing_max_bytes": 20480,
     "autoload_min_pages": 5,
     "cache_private_state_daily_requests": 10,
-    "cache_uncached_generation_ms": 500
+    "cache_uncached_generation_ms": 500,
+    "offer_sql_share_pct": 15,
+    "offer_sql_ms": 100,
+    "offer_order_search_ms": 500,
+    "offer_endpoint_p95_ms": 300,
+    "offer_endpoint_calls": 50,
+    "offer_impact_ms": 100,
+    "summary_unattributed_pct": 35
   },
   "recommendations": {
     "slow_query_postmeta": {
       "title": "Slow postmeta query",
-      "body": "This query scans or joins wp_postmeta, which grows with every product/post and has no useful index for this access pattern. This is the exact query shape Scalability Pro fixes with covering indexes and query rewrites.",
-      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+      "body": "This query scans or joins wp_postmeta, which grows with every product and post and has no useful index for this access pattern. Check whether the component needs this lookup on every page load, cache its result, or add a covering index for the meta keys it reads."
     },
     "slow_query_found_rows": {
       "title": "SQL_CALC_FOUND_ROWS",
-      "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. Scalability Pro removes it from key queries.",
-      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+      "body": "SQL_CALC_FOUND_ROWS forces MySQL to count every matching row just to show pagination totals. If the page does not need an exact total, ask the component's author to drop the count (WP_Query's no_found_rows argument) or to paginate with next and previous links."
     },
     "slow_query_rand": {
       "title": "ORDER BY rand()",
@@ -42,13 +47,11 @@
     },
     "slow_query_like": {
       "title": "Leading-wildcard LIKE",
-      "body": "LIKE '%term%' cannot use an index and scans the whole table. If this powers your search, a dedicated search plugin such as Super Speedy Search replaces it with indexed lookups.",
-      "link": "https://www.superspeedyplugins.com/product/super-speedy-search/"
+      "body": "LIKE '%term%' cannot use an index, so the database reads every row and checks the text of each. If this powers your site search, a search engine with its own index avoids the scan; otherwise ask the component's author whether a prefix match or an indexed column can answer it."
     },
     "slow_query_tax": {
       "title": "Nested taxonomy query",
-      "body": "Deeply nested term_relationships joins slow down as your catalogue grows. Scalability Pro's taxonomy query optimisation and Super Speedy Filters both target this pattern.",
-      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+      "body": "Deeply nested term_relationships joins slow down as your catalogue grows. Check whether every taxonomy condition is needed, and whether the archive can be filtered and sorted from one indexed table."
     },
     "slow_query_generic": {
       "title": "Slow query",
@@ -80,7 +83,7 @@
     },
     "old_php": {
       "title": "Outdated PHP",
-      "body": "PHP 8+ is significantly faster than PHP 7.x for WordPress workloads. Upgrading PHP is usually the cheapest speed win available."
+      "body": "This site runs a PHP version older than 8.0, which no longer receives security fixes from the PHP project. Ask your host to move the site to a supported PHP 8 release, and test the change on a staging copy first."
     },
     "duplicate_functionality": {
       "title": "Overlapping plugins",
@@ -112,13 +115,11 @@
     },
     "unindexed_query": {
       "title": "Query with no usable index",
-      "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape.",
-      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+      "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape."
     },
     "over_examining_query": {
       "title": "Query reads far more rows than it returns",
-      "body": "MySQL read a very large number of rows to produce a small answer. That is wasted disk and CPU on every single request, and it is the shape that turns a fast site slow as your content grows. It usually means a missing or unusable index, a join in the wrong order, or a filter MySQL cannot push down into the index. This figure is what the database actually did, not an estimate.",
-      "link": "https://www.superspeedyplugins.com/product/scalability-pro/"
+      "body": "MySQL read a very large number of rows to produce a small answer. That is wasted disk and CPU on every single request, and it is the shape that turns a fast site slow as your content grows. It usually means a missing or unusable index, a join in the wrong order, or a filter MySQL cannot push down into the index. This figure is what the database actually did, not an estimate."
     },
     "checkout_slow_step": {
       "title": "A checkout step is making your customer wait",
@@ -150,11 +151,11 @@
     },
     "checkout_purge_order_pages": {
       "title": "Your cache plugin purges the order itself on every checkout",
-      "body": "A cache-purge plugin treated the new order as a page and fetched its permalink to purge it. Orders are not public pages: with WooCommerce's High-Performance Order Storage that URL is a placeholder draft at /?p=<order id>, so each purge is a slow request to a page that does not exist, often running to the HTTP timeout - and it fires again on every order note and status change. The placeholder post cannot be removed; it is how HPOS stays compatible with older code. The fix is to stop the purge plugin reacting to order post types: with nginx-helper the trigger is its comment hook (order notes are comments), which can be unhooked for order notes, or every such request short-circuited via pre_http_request. Scalability Pro's checkout purge shield does this automatically."
+      "body": "A cache-purge plugin treated the new order as a page and fetched its permalink to purge it. Orders are not public pages: with WooCommerce's High-Performance Order Storage that URL is a placeholder draft at /?p=<order id>, so each purge is a slow request to a page that does not exist, often running to the HTTP timeout - and it fires again on every order note and status change. The placeholder post cannot be removed; it is how HPOS stays compatible with older code. The fix is to stop the purge plugin reacting to order post types: with nginx-helper the trigger is its comment hook (order notes are comments), which can be unhooked for order notes, or every such request short-circuited via pre_http_request."
     },
     "checkout_amp_purge_missing": {
       "title": "Your cache plugin purges AMP pages this site does not have",
-      "body": "The purge plugin fetches the /amp/ variant of each purged URL as a plain request, and with no AMP plugin installed every one of those renders a full 404 page while your customer waits. In nginx-helper this is the Purge AMP URL setting - turn it off, or let Scalability Pro's checkout purge shield drop these requests. If you later add AMP, turn it back on."
+      "body": "The purge plugin fetches the /amp/ variant of each purged URL as a plain request, and with no AMP plugin installed every one of those renders a full 404 page while your customer waits. In nginx-helper this is the Purge AMP URL setting - turn it off. If you later add AMP, turn it back on."
     },
     "checkout_self_fetch_failed": {
       "title": "Your site calls itself during checkout and the call fails",
@@ -534,6 +535,381 @@
         }
       ],
       "figures": []
+    },
+    "scalability_pro": {
+      "id": "scalability_pro",
+      "product": "scalability-pro",
+      "kind": "plugin",
+      "name": "Scalability Pro",
+      "url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+      "campaigns": {
+        "overview": "scalability_pro_overview",
+        "summary": "scalability_pro_summary",
+        "export": "scalability_pro_export",
+        "checkout": "scalability_pro_checkout",
+        "imports_tab": "scalability_pro_imports_tab"
+      },
+      "suppress_if_active": [
+        "scalability-pro"
+      ],
+      "suppress_if_function": [
+        "wpi_getIndexes"
+      ],
+      "priority": 1,
+      "copy": {
+        "pitch": {
+          "text": "Scalability Pro adds the indexes WordPress leaves out, stops it counting rows nobody reads, and defers the work that turns an import into an overnight job.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "found_rows": {
+          "text": "To print “page 1 of 5,000” WordPress counts every matching row first, which on a large catalogue is usually the most expensive thing the page does. Scalability Pro fetches one extra row instead.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "indexes": {
+          "text": "Adds the indexes your queries need and tracks the ones it owns, so it can validate them later or take them all back out.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "admin": {
+          "text": "The author and status counts above the Posts and Products lists are a query each. Scalability Pro caches them, and switches off the months, categories and formats dropdowns that run their own query on every list screen.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "autoload": {
+          "text": "Every autoloaded option is fetched and unserialised on every request your site serves, object cache or not. Scalability Pro fetches your key pages with a recorder armed for that one request, so it knows which options each page really read rather than guessing from their names, then stops autoloading the big unused ones and starts autoloading the hot ones.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "purge": {
+          "text": "Cache-purge plugins treat every WooCommerce order note as a page edit. On a test store that meant 30 outbound HTTP requests inside a single checkout. The shield takes it to none.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "http": {
+          "text": "Rules you write can stop a third-party licence, update or telemetry call while an admin page renders. They can never apply to the front end, REST, cron, commerce screens or 22 named payment gateway hosts.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "fast_ajax": {
+          "text": "Added a default-off Fast Ajax endpoint-unloading beta with exact registered-route rules, safe keep-list defaults, automatic failure shutoff and optional Performance Analysis evidence",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21",
+          "context": "Scalability Pro 6.36, What’s new on the product page"
+        },
+        "imports": {
+          "text": "Scalability Pro indexes the columns those lookups actually use: the WooCommerce SKU table, post titles, guids, custom fields, and seven indexes on WP All Import’s own bookkeeping tables.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        }
+      },
+      "figures": {
+        "postmeta_index": {
+          "text": "Measured on a 2.03 million row postmeta table, that query examined 2,040,368 rows in 950ms. With the index it examines 205 rows in 1.4ms.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21"
+        },
+        "review_350k": {
+          "text": "I was managing a WooCommerce store with 350k products, and the load times were painfully long. But after adding Scalability Pro, the speed boost was incredible! What used to take forever now loads in a fraction of the time.",
+          "source_url": "https://www.superspeedyplugins.com/product/scalability-pro/",
+          "source_checked": "2026-10-21",
+          "attribution": "Fernando, customer review of 21 October 2024"
+        },
+        "wpai_update": {
+          "text": "with SPRO applied, a 50,000-product update drops from 20h 11m to 2h 23m — about 8× faster.",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-wp-all-import-pro/",
+          "source_checked": "2026-10-21",
+          "conditions": {
+            "text": "Hetzner CPX32 (4 vCPU, 8 GB), WooCommerce 10.3 / PHP 8.2 / MariaDB 10.6 / WordPress 7.0. SSI 2.55.7 (8 workers); WP All Import Pro 5.0.6 + WooCommerce add-on 4.0.6; Scalability Pro with indexes + options.",
+            "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-wp-all-import-pro/",
+            "source_checked": "2026-10-21"
+          }
+        }
+      },
+      "triggers": {
+        "S1": {
+          "copy": "pitch",
+          "figure": "review_350k"
+        },
+        "S1_found_rows": {
+          "copy": "found_rows",
+          "figure": "review_350k"
+        },
+        "S2": {
+          "copy": "indexes",
+          "figure": "postmeta_index"
+        },
+        "S3": {
+          "copy": "found_rows",
+          "figure": "review_350k"
+        },
+        "S4": {
+          "copy": "autoload",
+          "figure": null
+        },
+        "S5": {
+          "copy": "admin",
+          "figure": "postmeta_index"
+        },
+        "S6": {
+          "copy": "purge",
+          "figure": null
+        },
+        "S7": {
+          "copy": "http",
+          "figure": null
+        },
+        "S8": {
+          "copy": "fast_ajax",
+          "figure": null
+        },
+        "imports_tab": {
+          "copy": "imports",
+          "figure": "wpai_update"
+        }
+      }
+    },
+    "search": {
+      "id": "search",
+      "product": "super-speedy-search",
+      "kind": "plugin",
+      "name": "Super Speedy Search",
+      "url": "https://www.superspeedyplugins.com/product/super-speedy-search/",
+      "campaigns": {
+        "overview": "search_overview",
+        "summary": "search_summary",
+        "export": "search_export"
+      },
+      "suppress_if_active": [
+        "super-speedy-search"
+      ],
+      "priority": 1,
+      "copy": {
+        "pitch": {
+          "text": "Super Speedy Search replaces WordPress's table-scanning search with a dedicated index, then lets you control what matches and what ranks first.",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-search/",
+          "source_checked": "2026-10-21"
+        },
+        "orders": {
+          "text": "The HPOS order index covers customer details, addresses, line items, product and variation SKUs, VAT numbers and order numbers.",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-search/",
+          "source_checked": "2026-10-21"
+        }
+      },
+      "figures": {
+        "review_300k": {
+          "text": "After testing many pro search plugin, we found that SuperSpeedSearch was the only that could handle the amount of our products (300k+)!",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-search/",
+          "source_checked": "2026-10-21",
+          "attribution": "marinblu0000, customer review quoted on the product page"
+        }
+      },
+      "triggers": {
+        "Q1": {
+          "copy": "pitch",
+          "figure": "review_300k"
+        },
+        "Q2": {
+          "copy": "pitch",
+          "figure": "review_300k"
+        },
+        "Q3": {
+          "copy": "orders",
+          "figure": null
+        }
+      }
+    },
+    "filters": {
+      "id": "filters",
+      "product": "super-speedy-filters",
+      "kind": "plugin",
+      "name": "Super Speedy Filters",
+      "url": "https://www.superspeedyplugins.com/product/super-speedy-filters/",
+      "campaigns": {
+        "overview": "filters_overview",
+        "summary": "filters_summary",
+        "export": "filters_export"
+      },
+      "suppress_if_active": [
+        "super-speedy-filters"
+      ],
+      "priority": 1,
+      "copy": {
+        "joins": {
+          "text": "Avoid slow taxonomy joins on the hot path. Optimised ancestor mirror tables support filter queries and term counts on large datasets.",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-filters/",
+          "source_checked": "2026-10-21"
+        },
+        "queries": {
+          "text": "On a large catalogue, one selection can trigger product queries, filter counts and another round of filter requests. Shoppers see the delay. Crawlers can multiply it across thousands of combinations.",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-filters/",
+          "source_checked": "2026-10-21"
+        }
+      },
+      "figures": {
+        "benchmark_100k": {
+          "text": "At 100,000 simple products, Super Speedy Filters recorded the lowest uncached first-pass TTFB and PHP render time. With Redis warm, WooCommerce core recorded the lowest second-pass TTFB, with Super Speedy Filters next and HUSKY third.",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/woocommerce-filter-plugin-comparison-100000-products/",
+          "source_checked": "2026-10-21",
+          "conditions": {
+            "text": "Super Speedy Filters, WooCommerce core filters and HUSKY were tested on the same 100,000 simple products, with the same four filters and ten semantic request cases.",
+            "source_url": "https://www.superspeedyplugins.com/benchmarks/woocommerce-filter-plugin-comparison-100000-products/",
+            "source_checked": "2026-10-21"
+          }
+        }
+      },
+      "triggers": {
+        "F1": {
+          "copy": "joins",
+          "figure": "benchmark_100k"
+        },
+        "F2": {
+          "copy": "queries",
+          "figure": "benchmark_100k"
+        }
+      }
+    },
+    "imports": {
+      "id": "imports",
+      "product": "super-speedy-imports",
+      "kind": "plugin",
+      "name": "Super Speedy Imports Pro",
+      "url": "https://www.superspeedyplugins.com/product/super-speedy-imports/",
+      "campaigns": {
+        "overview": "imports_overview",
+        "export": "imports_export",
+        "imports_tab": "imports_imports_tab"
+      },
+      "suppress_if_active": [
+        "super-speedy-imports"
+      ],
+      "priority": 3,
+      "lite": {
+        "name": "Super Speedy Imports Lite",
+        "slug": "super-speedy-imports-lite"
+      },
+      "copy": {
+        "pitch": {
+          "text": "Import CSV and XML files with automatic field mapping, visual previews and fast imports inside WordPress. Bring your existing WP All Import jobs across with the built-in migrator.",
+          "source_url": "https://www.superspeedyplugins.com/product/super-speedy-imports/",
+          "source_checked": "2026-10-21"
+        }
+      },
+      "figures": {
+        "lite": {
+          "text": "Super Speedy Imports Lite 2.99.21, the free edition on WordPress.org, imported 100,000 WooCommerce products in 89.8 seconds, and 1,000 products with their images downloaded from a remote image host in 74.0 seconds, on a four-vCPU cloud server.",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports/results/lite-2-99-21-import-speed/",
+          "source_checked": "2026-10-21",
+          "conditions": {
+            "text": "Measured on 2 and 5 October 2026. Time runs from the Start Import click to the “Import complete” screen. Each figure is a single run.",
+            "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports/results/lite-2-99-21-import-speed/",
+            "source_checked": "2026-10-21"
+          }
+        },
+        "lite_update": {
+          "text": "A dedicated price and stock import took 10.2 seconds.",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports/results/lite-2-99-21-import-speed/",
+          "source_checked": "2026-10-21",
+          "conditions": {
+            "text": "Hetzner cloud server: 4 vCPU AMD EPYC-Genoa, 7.6 GB RAM, Ubuntu 24.04, PHP 8.2, MariaDB 10.11, nginx.",
+            "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports/results/lite-2-99-21-import-speed/",
+            "source_checked": "2026-10-21"
+          }
+        },
+        "wp_all_import": {
+          "text": "The result that matters most is the everyday one: a full update of a 50,000-product catalogue — keeping stock and prices current from a supplier feed — took WP All Import Pro over 20 hours; Super Speedy Imports does it in about 60 seconds (~1,100–1,200× faster).",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-wp-all-import-pro/",
+          "source_checked": "2026-10-21",
+          "conditions": {
+            "text": "Hetzner CPX32 (4 vCPU, 8 GB), WooCommerce 10.3 / PHP 8.2 / MariaDB 10.6 / WordPress 7.0. SSI 2.55.7 (8 workers); WP All Import Pro 5.0.6 + WooCommerce add-on 4.0.6; Scalability Pro with indexes + options.",
+            "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-wp-all-import-pro/",
+            "source_checked": "2026-10-21"
+          }
+        },
+        "webtoffee": {
+          "text": "In the deterministic repeat, Super Speedy Imports Pro 2.86.0 imported the same 10,000-row WebToffee-format CSV 68.487 times faster than WebToffee Free 2.6.5.",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-webtoffee-free/",
+          "source_checked": "2026-10-21"
+        },
+        "woocommerce": {
+          "text": "Super Speedy Imports completed this variable-product import in 11m 57s. WooCommerce’s built-in importer completed it in 27m 30s. Both created the checked catalogue of 5,000 variable products and 50,000 variations.",
+          "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-woocommerce-built-in-importer/",
+          "source_checked": "2026-10-21",
+          "conditions": {
+            "text": "These are historical runs from 18 August 2026 on the same four-vCPU Hetzner server, with a separate restore of the same clean baseline before each run.",
+            "source_url": "https://www.superspeedyplugins.com/benchmarks/super-speedy-imports-vs-woocommerce-built-in-importer/",
+            "source_checked": "2026-10-21"
+          }
+        }
+      },
+      "importer_figures": {
+        "wp-all-import": "wp_all_import",
+        "wp-all-import-pro": "wp_all_import",
+        "product-import-export-for-woo": "webtoffee",
+        "wt-import-export-for-woo": "webtoffee",
+        "woocommerce": "woocommerce"
+      },
+      "triggers": {
+        "I1": {
+          "copy": "pitch",
+          "figure": "lite"
+        },
+        "I3": {
+          "copy": "pitch",
+          "figure": "lite"
+        },
+        "imports_tab": {
+          "copy": "pitch",
+          "figure": null
+        }
+      }
+    },
+    "fix_quote": {
+      "id": "fix_quote",
+      "product": "performance-review",
+      "kind": "service",
+      "name": "WordPress Speed Optimisation Service",
+      "url": "https://www.superspeedyplugins.com/wordpress-speed-optimisation-service/",
+      "campaigns": {
+        "overview": "fix_quote_overview",
+        "summary": "fix_quote_summary",
+        "export": "fix_quote_export",
+        "checkout": "fix_quote_checkout"
+      },
+      "suppress_if_active": [],
+      "priority": 2,
+      "copy": {
+        "pitch": {
+          "text": "Give me your slowest URL and I will find out what your server is actually doing to build that page: which queries are slow and why, which plugins or theme functions are responsible, how much memory it burns and where the time goes.",
+          "source_url": "https://www.superspeedyplugins.com/wordpress-speed-optimisation-service/",
+          "source_checked": "2026-10-21"
+        },
+        "quote": {
+          "text": "You get a written summary of what I find and a fixed-price quote to fix it. No obligation, and no sales call unless you want one.",
+          "source_url": "https://www.superspeedyplugins.com/wordpress-speed-optimisation-service/",
+          "source_checked": "2026-10-21"
+        }
+      },
+      "figures": {},
+      "triggers": {
+        "R1": {
+          "copy": "quote",
+          "figure": null
+        },
+        "R2": {
+          "copy": "pitch",
+          "figure": null
+        },
+        "R3": {
+          "copy": "quote",
+          "figure": null
+        },
+        "R4": {
+          "copy": "quote",
+          "figure": null
+        }
+      }
     }
   },
   "cache_education": [
@@ -591,5 +967,55 @@
       "source_url": "https://www.superspeedyplugins.com/kb/super-speedy-ajax-prices/features/measuring-the-performance-win/",
       "source_checked": "2026-10-21"
     }
-  ]
+  ],
+  "offer_categories": {
+    "search": [
+      "relevanssi",
+      "relevanssi-premium",
+      "searchwp",
+      "ajax-search-for-woocommerce",
+      "ajax-search-for-woocommerce-premium",
+      "ajax-search-lite",
+      "ajax-search-pro",
+      "ivory-search",
+      "elasticpress",
+      "wp-extended-search",
+      "yith-woocommerce-ajax-search",
+      "woocommerce-product-search",
+      "advanced-woo-search",
+      "searchiq"
+    ],
+    "product-filter": [
+      "woocommerce-products-filter",
+      "facetwp",
+      "yith-woocommerce-ajax-navigation",
+      "yith-woocommerce-ajax-product-filter-premium",
+      "filter-everything",
+      "filter-everything-pro",
+      "woocommerce-ajax-filters",
+      "search-filter",
+      "search-filter-pro",
+      "premmerce-woocommerce-product-filter",
+      "wpc-smart-product-filter",
+      "annasta-woocommerce-product-filters",
+      "jet-smart-filters",
+      "woo-product-filter",
+      "br-filters"
+    ],
+    "importer": [
+      "wp-all-import",
+      "wp-all-import-pro",
+      "product-import-export-for-woo",
+      "wt-import-export-for-woo",
+      "dropshipping-xml-for-woocommerce",
+      "woo-import-export-lite",
+      "woocommerce-xml-csv-product-import",
+      "import-products-from-any-xml-or-csv-to-woocommerce",
+      "wp-ultimate-csv-importer",
+      "woocommerce-product-csv-import-suite"
+    ]
+  },
+  "offer_importer_endpoints": {
+    "woocommerce_do_ajax_product_import": "woocommerce"
+  }
 }

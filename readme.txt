@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.46.1
+Stable tag: 0.46.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -106,6 +106,16 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.46.2 (21st October 2026) =
+* Findings now offer Scalability Pro, Super Speedy Search, Super Speedy Filters, Super Speedy Imports or a fixed-price fix quote only when this site's measured evidence triggers them, after the finding and its free fix.
+* Each screen shows at most one primary and one secondary offer, and never offers a product the site already runs.
+* Every offer has a Don't show this again link, and a dismissed offer is left out of Markdown exports too.
+* Added an Imports tab showing your importer's measured run speed beside the published Super Speedy Imports benchmarks, with a button to install the free Super Speedy Imports Lite.
+* Offer descriptions and figures are quoted word for word from published Super Speedy Plugins pages, with the source link and the date they were checked.
+* Recommendations no longer link to a product, and their text now describes the free fix only.
+* The outdated PHP recommendation no longer claims PHP 8 is significantly faster.
+* Offer links carry only a fixed placement tag, never the site address, the user or the analysis.
 
 = 0.46.1 (21st October 2026) =
 * Plugin Check now completes its escaping check on the cache check code instead of stopping with an internal error.

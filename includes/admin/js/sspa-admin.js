@@ -222,6 +222,22 @@ jQuery(document).on('click', '#sspa_main .sspa-tab-retry', function () {
 
 // In-page links between tabs. These used to be hrefs to ?tab=<slug>, which reloaded the page
 // AND landed on Overview anyway, because tab selection is driven by the hash.
+// "Don't show this again" on an offer: stored per user, respected in exports too.
+jQuery(document).on('click', '.sspa-offer-dismiss', function (e) {
+	e.preventDefault();
+	var button = jQuery(this);
+	var offer = String(button.data('offer') || '');
+	button.prop('disabled', true);
+	jQuery.post(ajaxurl, { action: 'sspa_dismiss_offer', nonce: sspa_admin.nonce, offer: offer }, function (resp) {
+		if (resp && resp.success) {
+			jQuery('.sspa-offer').filter(function () { return jQuery(this).data('offer') === offer; }).remove();
+			jQuery('[data-offer-evidence]').filter(function () { return jQuery(this).data('offer-evidence') === offer; }).remove();
+		} else {
+			button.prop('disabled', false);
+		}
+	}).fail(function () { button.prop('disabled', false); });
+});
+
 jQuery(document).on('click', '#sspa_main .sspa-goto-tab', function (e) {
 	e.preventDefault();
 	var slug = jQuery(this).data('tab');

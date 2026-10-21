@@ -42,7 +42,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 89-traffic-window # two real traffic windows with a controlled slowdown: normalised deltas, unavailable states, CLI and Abilities agree
 .tests/observatory: npm test # 19 node tests, including sites-root discovery from parallel-dev and the preparation prerequisite checks
 .tests/browser/run-regressions.sh translations # cookie-scoped PHP/JS translation catalogue, real AJAX controls and History loading/error states
-.tests/browser/run-regressions.sh admin-mobile # all ten tabs at phone/desktop widths, LTR and a real Hebrew (RTL) admin locale
+.tests/browser/run-regressions.sh admin-mobile # all eleven tabs at phone/desktop widths, LTR and a real Hebrew (RTL) admin locale
 .tests/browser/run-regressions.sh tab-retry # network/server tab errors and explicit recovery
 .tests/browser/run-regressions.sh shared-link # real shared Plugin Impact link, reload and bookmark
 .tests/browser/run-regressions.sh admin-journey # admin-bar Analyse this page and cache control, attribution switching, Re-run, Escape and focus restoration
@@ -451,6 +451,37 @@ FAILS rather than quietly passing, because a skip that looks like a pass is how 
   date, no price or slot count, the Overview summary, and the export pitch only with evidence.
 - `.tests/browser/run-regressions.sh cache-performance` - the same browser journey on the suite
   site: same-origin requests only, the declared request count, wp.i18n progress text, 390px fit.
+
+### Lead-generation offers (phase 3)
+
+Each kind owns a retained site, clears its own state on the way in and leaves everything behind,
+with evidence under `.data/lead-gen/<kind>/`.
+
+- `131-lead-gen-slow-store.php` - `.tests/lead-gen/run.sh slow` on `tests-lead-gen`:
+  `seed-volume.php` tops the store up to 120,000 published products and 250,000 HPOS orders in the
+  ordinary WordPress and WooCommerce tables; the persistent object cache is switched off (with it,
+  WordPress answers the catalogue queries from memory); a real spot analysis of eleven pages. Then
+  the rendered Overview (two offers, primary Search for the 700+ ms search query, secondary
+  Scalability Pro, each after its finding's free fix), page summaries (S1, S5, Q1/Q2, Q3), exports,
+  dismissal, suppression with the retained Scalability Pro active, no offer on other admin screens;
+  then HUSKY from wordpress.org and a fresh analysis for F1/F3.
+- `132-lead-gen-wpai.php` - `.tests/lead-gen/run.sh wpai` on `tests-lead-gen-wpai`: WP All Import
+  from wordpress.org and a real 300-row import through its own wizard (`wpai-import.cjs`); a fast
+  store, so no product offer fires; I1 on the Overview; the Imports tab's run history checked
+  against WP All Import's own History screen, the published figures and the Lite button.
+- `133-lead-gen-imports.php` - `.tests/lead-gen/run.sh imports` on `tests-lead-gen-imports`: the
+  Imports tab with no importer; a Traffic collection over a real WooCommerce product CSV import
+  (`woocommerce-import.cjs`) and 60 requests to a 350 ms admin-ajax endpoint
+  (`.tests/fixtures/lead-gen-slow-endpoint.php`) for I3 and S8; Super Speedy Imports Lite from
+  wordpress.org (Pro link only); Super Speedy Imports Pro from its repository (no offer).
+- `134-checkout-offers.php` - S6 on the checkout panel and export from the checkout run case 19
+  retains on the suite site; suppressed with Scalability Pro active; no offer outside PA screens.
+- `.tests/lead-gen/journey.e2e.cjs full` - the administrator's browser journey on `tests-lead-gen`
+  from the admin menu: Run Analysis, finding then free fix then offer, dismiss, reload, copied
+  export, Imports tab. Screenshots in `.data/lead-gen/journey/`.
+- `python3 -I .tests/lead-gen/verify-published-quotes.py` - fetches every `source_url` in the rules
+  snapshot and checks each offer quotation verbatim on the live page. Needs network access, so it
+  is not part of the suite.
 
 - `32-loopback-timeout.php` - measurement requests impose no response timeout, proven with a
   real page that sleeps 12s while the obsolete stored timeout is 10s. It also forces a real
