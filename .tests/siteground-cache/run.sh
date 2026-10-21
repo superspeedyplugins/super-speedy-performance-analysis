@@ -5,7 +5,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     bash "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" || exit 1
 fi
-"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" 'SSPA SiteGround cache (sg-cachepress) regression' || exit 1
+# Keep only this runner's own default site; a branch suite's override copy stays temporary.
+case "$SSPA_SCENARIO" in
+    tests-siteground-cache) "$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" 'SSPA SiteGround cache (sg-cachepress) regression' || exit 1 ;;
+esac
 link="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
 [ -L "$link" ] || { echo 'FAIL: expected isolated source symlink'; exit 1; }
 ln -sfn "$PLUGIN_DIR" "$link" || exit 1

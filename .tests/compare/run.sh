@@ -19,7 +19,10 @@ mkdir -p "$OUT/journey"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     bash "$PLUGIN_DIR/.tests/setup-site.sh" > "$OUT/setup.log" 2>&1 || { echo "FAIL: could not create $SSPA_SCENARIO"; exit 1; }
 fi
-"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" "SSPA Compare and share panel regression (case 135, browser journey)" || exit 1
+# Keep only this runner's own default site; a branch suite's override copy stays temporary.
+case "$SSPA_SCENARIO" in
+    tests-compare) "$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" "SSPA Compare and share panel regression (case 135, browser journey)" || exit 1 ;;
+esac
 link="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
 [ -L "$link" ] || { echo 'FAIL: expected an isolated source symlink'; exit 1; }
 ln -sfn "$PLUGIN_DIR" "$link" || exit 1

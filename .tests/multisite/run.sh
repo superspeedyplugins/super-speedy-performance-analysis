@@ -7,7 +7,10 @@ set -e
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     bash "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO"
 fi
-"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" 'SSPA Multisite regression (case 111)' || exit 1
+# Keep only this runner's own default site; a branch suite's override copy stays temporary.
+case "$SSPA_SCENARIO" in
+    tests-multisite|tests-w3-multisite) "$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" 'SSPA Multisite regression (case 111)' || exit 1 ;;
+esac
 plugin_path="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
 if [ -n "${SSPA_MULTISITE_ZIP:-}" ]; then
     if [ -L "$plugin_path" ]; then rm "$plugin_path"; fi

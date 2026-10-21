@@ -28,7 +28,10 @@ if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
         bash "$PLUGIN_DIR/.tests/setup-site.sh" > "$PLUGIN_DIR/.data/setup-$SSPA_SCENARIO.log" 2>&1 || { echo "FAIL: could not create $SSPA_SCENARIO"; exit 1; }
     fi
 fi
-"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" "SSPA cache performance regression ($KIND, cases 126 to 130)" || exit 1
+# Keep only this runner's own default site; a branch suite's override copy stays temporary.
+case "$SSPA_SCENARIO" in
+    tests-cache-enabler|tests-cache-nocache|tests-cache-nowoo) "$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" "SSPA cache performance regression ($KIND, cases 126 to 130)" || exit 1 ;;
+esac
 link="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
 [ -L "$link" ] || { echo 'FAIL: expected an isolated source symlink'; exit 1; }
 ln -sfn "$PLUGIN_DIR" "$link" || exit 1
