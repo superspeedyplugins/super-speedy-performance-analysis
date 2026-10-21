@@ -82,8 +82,39 @@ if ($sspa_comparable_runs) : ?>
     </section>
 <?php elseif ($sspa_comparable_runs) : ?>
     <div class="sspa-placeholder"><p><?php esc_html_e('This is your first saved point in time. Run another full scan or quick comparison to see what changed.', 'super-speedy-performance-analysis'); ?></p></div>
-<?php endif;
-
+<?php endif; ?>
+<?php
+// Compared with other sites. Nothing is requested from superspeedy.org until the button is pressed
+// (WordPress.org guideline 7); the request and what it sends are described beside the button and
+// in the readme's External services section.
+$sspa_compare_site = SSPA_Community_Figures::site();
+?>
+<section class="sspa-placeholder sspa-community-figures">
+    <h3><?php esc_html_e('Compared with other sites', 'super-speedy-performance-analysis'); ?></h3>
+    <p>
+        <?php esc_html_e('superspeedy.org publishes performance figures from the sites that share their results, grouped into cohorts of similar sites. This plugin can download them and place this site among them.', 'super-speedy-performance-analysis'); ?>
+        <?php if ($sspa_compare_site['cohort']) : ?>
+            <?php
+            printf(
+                /* translators: %s: this site's cohort, for example "site type: ecommerce, product count: <100" */
+                esc_html__('This site\'s cohort, from its latest analysis: %s.', 'super-speedy-performance-analysis'),
+                esc_html(SSPA_Community_Figures::describe_cohort($sspa_compare_site['cohort']))
+            );
+            ?>
+        <?php endif; ?>
+    </p>
+    <p class="description">
+        <?php esc_html_e('Loading them downloads two public documents from superspeedy.org (/api/v1/cohorts and /api/v1/plugin-impact). Nothing about this site is sent: the cohort and plugins are matched here. Like any server, Cloudflare and superspeedy.org see the IP address of this web server, but superspeedy.org does not log it.', 'super-speedy-performance-analysis'); ?>
+        <?php esc_html_e('superspeedy.org is operated by WP Intense OÜ, which also runs superspeedyplugins.com.', 'super-speedy-performance-analysis'); ?>
+        <a href="https://superspeedy.org/privacy-and-terms/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Privacy policy and terms', 'super-speedy-performance-analysis'); ?></a>
+    </p>
+    <p>
+        <button type="button" class="button" id="sspa-community-figures-load"><?php esc_html_e('Load community figures', 'super-speedy-performance-analysis'); ?></button>
+        <span class="spinner"></span>
+    </p>
+    <div id="sspa-community-figures-result" aria-live="polite"></div>
+</section>
+<?php
 if (!$sspa_runs) : ?>
     <div class="sspa-placeholder">
         <p><?php esc_html_e('Trends across analysis runs will appear here, so you can see whether your site is getting slower as it grows.', 'super-speedy-performance-analysis'); ?></p>
@@ -193,35 +224,4 @@ if (!$sspa_runs) : ?>
     <div class="sspa-payload-summary" style="display:none"></div>
     <pre class="sspa-payload-preview" style="display:none;max-height:420px;overflow:auto;background:#fff;padding:12px;border:1px solid #dcdcde;"></pre>
 <?php endif; ?>
-<?php
-// Compared with other sites. Nothing is requested from superspeedy.org until the button is pressed
-// (WordPress.org guideline 7); the request and what it sends are described beside the button and
-// in the readme's External services section.
-$sspa_compare_site = SSPA_Community_Figures::site();
-?>
-<section class="sspa-placeholder sspa-community-figures">
-    <h3><?php esc_html_e('Compared with other sites', 'super-speedy-performance-analysis'); ?></h3>
-    <p>
-        <?php esc_html_e('superspeedy.org publishes performance figures from the sites that share their results, grouped into cohorts of similar sites. This plugin can download them and place this site among them.', 'super-speedy-performance-analysis'); ?>
-        <?php if ($sspa_compare_site['cohort']) : ?>
-            <?php
-            printf(
-                /* translators: %s: this site's cohort, for example "site type: ecommerce, product count: <100" */
-                esc_html__('This site\'s cohort, from its latest analysis: %s.', 'super-speedy-performance-analysis'),
-                esc_html(SSPA_Community_Figures::describe_cohort($sspa_compare_site['cohort']))
-            );
-            ?>
-        <?php endif; ?>
-    </p>
-    <p class="description">
-        <?php esc_html_e('Loading them downloads two public documents from superspeedy.org (/api/v1/cohorts and /api/v1/plugin-impact). Nothing about this site is sent: the cohort and plugins are matched here. Like any server, Cloudflare and superspeedy.org see the IP address of this web server, but superspeedy.org does not log it.', 'super-speedy-performance-analysis'); ?>
-        <?php esc_html_e('superspeedy.org is operated by WP Intense OÜ, which also runs superspeedyplugins.com.', 'super-speedy-performance-analysis'); ?>
-        <a href="https://superspeedy.org/privacy-and-terms/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Privacy policy and terms', 'super-speedy-performance-analysis'); ?></a>
-    </p>
-    <p>
-        <button type="button" class="button" id="sspa-community-figures-load"><?php esc_html_e('Load community figures', 'super-speedy-performance-analysis'); ?></button>
-        <span class="spinner"></span>
-    </p>
-    <div id="sspa-community-figures-result" aria-live="polite"></div>
-</section>
 </div>

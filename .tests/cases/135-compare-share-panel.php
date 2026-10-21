@@ -149,6 +149,9 @@ sspa_135_t(isset($sspa_135_panel_doc['data']['html']) && sspa_135_prompted($sspa
 sspa_135_t(array() === sspa_135_ssorg_api_requests(), 'opening PA and rendering every tab made no request to superspeedy.org');
 sspa_135_t(false !== strpos($sspa_135_compare, 'id="sspa-community-figures-load"'), 'Compare offers Load community figures');
 sspa_135_t(false === strpos($sspa_135_compare, 'sspa-community-figures-table'), 'no figures are shown before the click');
+$sspa_135_figures_at = strpos($sspa_135_compare, 'sspa-community-figures');
+$sspa_135_runs_at = strpos($sspa_135_compare, 'sspa-pages-table');
+sspa_135_t(false !== $sspa_135_figures_at && false !== $sspa_135_runs_at && $sspa_135_figures_at < $sspa_135_runs_at, 'Compared with other sites comes before the run table, not below it');
 
 // The click, against the documents the superspeedy.org build emits.
 update_option('sspa_test_ssorg_mode', 'fixture', false);

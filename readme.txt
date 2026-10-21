@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.47.3
+Stable tag: 0.47.4
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -109,6 +109,9 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.47.4 (21st October 2026) =
+* Compared with other sites now sits directly under Compare points in time instead of below the list of every analysis run.
 
 = 0.47.3 (21st October 2026) =
 * The share panel no longer adds a second status announcement inside the page analysis pop-up.
