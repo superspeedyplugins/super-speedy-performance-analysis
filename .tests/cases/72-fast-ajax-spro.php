@@ -6,7 +6,10 @@ if(!is_file(WP_PLUGIN_DIR.'/zz-ajax-owner/fixture.php')){echo "FAIL: Run case71 
 $active=SSPA_Traffic_Collection::active();if($active)SSPA_Traffic_Collection::stop($active['id'],true);
 activate_plugin('zz-ajax-owner/fixture.php');activate_plugin('zz-ajax-slow/fixture.php');
 $o=(array)get_option('wpiperf_settings',array());$o['unload_feature_enabled']=1;$o['ajax_unloads_beta_enabled']=1;$o['ajax_unloads_enabled']=1;update_option('wpiperf_settings',$o,false);
-function sspa_spro_rule($keep){$r=SPRO_Fast_Ajax::save_choices(array(array('transport'=>'admin_ajax','endpoint'=>'zz_ajax_workflow_fixture','method'=>'POST','context'=>'anon','enabled'=>true,'keep_plugins'=>$keep,'review_selection'=>true,'acknowledge_write'=>true)));if(is_wp_error($r))throw new RuntimeException($r->get_error_message());SPRO_Unload::write_policy();}
+function sspa_spro_rule($keep){$r=SPRO_Fast_Ajax::save_choices(array(array('transport'=>'admin_ajax','endpoint'=>'zz_ajax_workflow_fixture','method'=>'POST','context'=>'anon','enabled'=>true,'keep_plugins'=>$keep,'review_selection'=>true,'acknowledge_write'=>true)));if(is_wp_error($r))throw new RuntimeException($r->get_error_message());SPRO_Unload::write_policy();
+    // This CLI process writes the policy file; PHP-FPM keeps serving its cached copy until opcache
+    // revalidates the file (revalidate_freq, 2 s here). Wait so the next request sees the new policy.
+    sleep(3);}
 $owner='zz-ajax-owner/fixture.php';$slow='zz-ajax-slow/fixture.php';
 sspa_spro_rule(array($owner,$slow));
 $before=SSPA_Ajax_Profile::start(array('scenario'=>'SPro repeated fixture','label'=>'SPro before','detail'=>false));
