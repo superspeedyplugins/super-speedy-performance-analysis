@@ -28,8 +28,9 @@ delete_user_meta(1, 'sspa_share_prompt_never');
 delete_option('sspa_test_ssorg_log');
 delete_option('sspa_test_ssorg_mode');
 
-// A completed spot check of the three page classes the fixture documents describe.
-$sspa_135_run = SSPA_Run_Controller::start(array('type' => 'spot', 'trigger' => 'manual', 'user_id' => 1, 'page_keys' => array('home', 'shop', 'product-single')));
+// A completed spot check of the page classes the fixture documents describe: five key pages and
+// three that Compare keeps behind "Show all".
+$sspa_135_run = SSPA_Run_Controller::start(array('type' => 'spot', 'trigger' => 'manual', 'user_id' => 1, 'page_keys' => array('admin-dashboard', 'home', 'post-cat', 'post-single', 'product-cat', 'product-single', 'shop', 'wc-checkout')));
 if (is_wp_error($sspa_135_run)) {
     sspa_135_t(false, 'spot analysis started: ' . $sspa_135_run->get_error_message());
     return;
@@ -191,6 +192,16 @@ sspa_135_t(false !== strpos($sspa_135_shop_cells['cohort'] ?? '', 'active plugin
 $sspa_135_product = sspa_135_page_row($sspa_135_html, 'product-single');
 $sspa_135_product_cells = $sspa_135_product ? sspa_135_cells($sspa_135_product[0]) : array();
 sspa_135_t(1 === count($sspa_135_product) && array('700.0', '910.0', '1,330.0', '21 installations') === array($sspa_135_product_cells['median'] ?? '', $sspa_135_product_cells['p75'] ?? '', $sspa_135_product_cells['p95'] ?? '', $sspa_135_product_cells['n'] ?? '') && 0 === strpos($sspa_135_product_cells['confidence'] ?? '', 'Ranking') && 'All sites' === ($sspa_135_product_cells['cohort'] ?? ''), 'Product page shows all sites: median 700.0, p75 910.0, p95 1,330.0 ms, 21 installations, Ranking: ' . wp_json_encode($sspa_135_product_cells));
+// Coordinator, 21 October 2026: key pages first, in a fixed order; the rest behind an expander.
+$sspa_135_key = preg_match('/<tbody class="sspa-figures-key">(.*?)<\/tbody>/s', $sspa_135_html, $sspa_135_m) ? $sspa_135_m[1] : '';
+$sspa_135_more = preg_match('/<tbody class="sspa-figures-more" hidden>(.*?)<\/tbody>/s', $sspa_135_html, $sspa_135_m) ? $sspa_135_m[1] : '';
+preg_match_all('/<tr data-page-class="([^"]+)" data-rung/', $sspa_135_key, $sspa_135_key_classes);
+preg_match_all('/<tr data-page-class="([^"]+)" data-rung/', $sspa_135_more, $sspa_135_more_classes);
+sspa_135_t(array('home', 'shop', 'product-cat', 'product-single', 'wc-checkout') === $sspa_135_key_classes[1], 'key pages are shown first, in order: ' . implode(', ', $sspa_135_key_classes[1]));
+$sspa_135_rest = $sspa_135_more_classes[1];
+sort($sspa_135_rest);
+sspa_135_t(array('admin-dashboard', 'post-cat', 'post-single') === $sspa_135_rest, 'the other page types are hidden until expanded: ' . implode(', ', $sspa_135_more_classes[1]));
+sspa_135_t(1 === preg_match('/<button type="button" class="button-link sspa-figures-show-all"[^>]*>Show all 8 page types<\/button>/', $sspa_135_html), 'an expander offers Show all 8 page types');
 // Plugin isolation evidence, only for plugins active here.
 $sspa_135_woo = sspa_135_row($sspa_135_html, array('data-plugin' => 'woocommerce'));
 sspa_135_t(2 === count($sspa_135_woo) && false !== strpos(implode('', $sspa_135_woo), '85.3') && false !== strpos(implode('', $sspa_135_woo), '142.6') && false !== strpos(implode('', $sspa_135_woo), '4 installations'), 'WooCommerce isolation deltas are shown for Home and Shop with their n');

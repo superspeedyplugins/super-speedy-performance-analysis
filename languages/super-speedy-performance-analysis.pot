@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.47.1\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.47.2\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--feature-compare\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-21T09:11:48+00:00\n"
+"POT-Creation-Date: 2026-10-21T11:26:34+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -522,7 +522,7 @@ msgstr ""
 #: includes/class-sspa-run-controller.php:2693
 #: includes/class-sspa-workflow-analysis.php:260
 #: includes/class-sspa-workflow-analysis.php:284
-#: includes/community/class-sspa-community-figures.php:27
+#: includes/community/class-sspa-community-figures.php:30
 #: includes/traffic/class-sspa-traffic-ajax.php:23
 #: includes/traffic/class-sspa-traffic-ajax.php:34
 #: includes/traffic/class-sspa-traffic-ajax.php:41
@@ -777,7 +777,7 @@ msgstr ""
 #: includes/admin/class-sspa-history-run-view.php:78
 #: includes/admin/partials/cache-safety-scan.php:79
 #: includes/admin/partials/community-figures.php:61
-#: includes/admin/partials/community-figures.php:111
+#: includes/admin/partials/community-figures.php:130
 #: includes/admin/tabs/cache.php:227
 #: includes/admin/tabs/cache.php:238
 #: includes/admin/tabs/pages.php:68
@@ -1522,7 +1522,7 @@ msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:655
 #: includes/admin/class-sspa-profile-panel.php:974
-#: includes/admin/partials/community-figures.php:110
+#: includes/admin/partials/community-figures.php:129
 msgid "Plugin"
 msgstr ""
 
@@ -1980,12 +1980,12 @@ msgid "p95 (ms)"
 msgstr ""
 
 #: includes/admin/partials/community-figures.php:66
-#: includes/admin/partials/community-figures.php:114
+#: includes/admin/partials/community-figures.php:133
 msgid "Installations"
 msgstr ""
 
 #: includes/admin/partials/community-figures.php:67
-#: includes/admin/partials/community-figures.php:115
+#: includes/admin/partials/community-figures.php:134
 msgid "Confidence"
 msgstr ""
 
@@ -1993,45 +1993,53 @@ msgstr ""
 msgid "Compared with"
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:78
+#: includes/admin/partials/community-figures.php:90
 msgid "All sites"
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:80
+#: includes/admin/partials/community-figures.php:92
 msgid "Sites like this one"
 msgstr ""
 
 #. translators: %s: comma-separated cohort dimensions that were not matched
-#: includes/admin/partials/community-figures.php:83
+#: includes/admin/partials/community-figures.php:95
 #, php-format
 msgid "Similar sites, not matched on %s"
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:99
+#. translators: %s: number of page types with published figures
+#: includes/admin/partials/community-figures.php:115
+#, php-format
+msgid "Show all %s page type"
+msgid_plural "Show all %s page types"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/partials/community-figures.php:118
 msgid "p75 is published from 4 installations and p95 from 20; below that it is shown as -. This site's figure is the median from its latest full scan or spot check."
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:102
+#: includes/admin/partials/community-figures.php:121
 msgid "Your active plugins, measured in isolation on other sites"
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:104
+#: includes/admin/partials/community-figures.php:123
 msgid "superspeedy.org has not published plugin-impact figures yet."
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:106
+#: includes/admin/partials/community-figures.php:125
 msgid "superspeedy.org has no published isolation measurements yet for the plugins active here."
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:112
+#: includes/admin/partials/community-figures.php:131
 msgid "Time added (ms, median)"
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:113
+#: includes/admin/partials/community-figures.php:132
 msgid "SQL time added (ms, median)"
 msgstr ""
 
-#: includes/admin/partials/community-figures.php:135
+#: includes/admin/partials/community-figures.php:154
 msgid "Isolation evidence: each installation measured the page with and without the plugin for its own test requests. A positive number is time the plugin added; a negative one is time it saved."
 msgstr ""
 
@@ -6289,84 +6297,84 @@ msgid "The community payload identity is invalid."
 msgstr ""
 
 #. translators: 1: URL, 2: error message
-#: includes/community/class-sspa-community-figures.php:76
+#: includes/community/class-sspa-community-figures.php:79
 #, php-format
 msgid "%1$s could not be reached: %2$s"
 msgstr ""
 
 #. translators: 1: URL, 2: HTTP status code
-#: includes/community/class-sspa-community-figures.php:85
+#: includes/community/class-sspa-community-figures.php:88
 #, php-format
 msgid "%1$s answered HTTP %2$d."
 msgstr ""
 
 #. translators: %s: URL
-#: includes/community/class-sspa-community-figures.php:89
+#: includes/community/class-sspa-community-figures.php:92
 #, php-format
 msgid "%s did not return a figures document this version understands."
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:242
+#: includes/community/class-sspa-community-figures.php:258
 msgid "Early data"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:243
+#: includes/community/class-sspa-community-figures.php:259
 msgid "Small cohort"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:244
+#: includes/community/class-sspa-community-figures.php:260
 msgid "Descriptive"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:245
+#: includes/community/class-sspa-community-figures.php:261
 msgid "Comparison"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:246
+#: includes/community/class-sspa-community-figures.php:262
 msgid "Ranking"
 msgstr ""
 
 #. translators: 1: confidence label, 2: lowest installation count, 3: highest installation count
-#: includes/community/class-sspa-community-figures.php:256
+#: includes/community/class-sspa-community-figures.php:272
 #, php-format
 msgid "%1$s (%2$d-%3$d installations)"
 msgstr ""
 
 #. translators: 1: confidence label, 2: lowest installation count
-#: includes/community/class-sspa-community-figures.php:259
+#: includes/community/class-sspa-community-figures.php:275
 #, php-format
 msgid "%1$s (%2$d+ installations)"
 msgstr ""
 
 #. translators: %s: number of installations
-#: includes/community/class-sspa-community-figures.php:266
+#: includes/community/class-sspa-community-figures.php:282
 #, php-format
 msgid "%s installation"
 msgid_plural "%s installations"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/community/class-sspa-community-figures.php:275
+#: includes/community/class-sspa-community-figures.php:291
 msgid "site type"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:276
+#: includes/community/class-sspa-community-figures.php:292
 msgid "product count"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:277
+#: includes/community/class-sspa-community-figures.php:293
 msgid "active plugins"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:278
+#: includes/community/class-sspa-community-figures.php:294
 msgid "object cache"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:279
+#: includes/community/class-sspa-community-figures.php:295
 msgid "database"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:287
+#: includes/community/class-sspa-community-figures.php:303
 msgid "all sites"
 msgstr ""
 

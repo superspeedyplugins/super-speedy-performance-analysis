@@ -22,6 +22,9 @@ class SSPA_Community_Figures {
     const LADDER = array('primary_purpose', 'products_band', 'active_plugins_band', 'object_cache', 'database_family');
     const LADDER_VERSION = 1;
 
+    /** Shown first, in this order; every other page type sits behind "Show all". */
+    const KEY_PAGES = array('home', 'shop', 'product-cat', 'product-single', 'wc-checkout', 'search-many');
+
     public static function ajax_load() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
@@ -174,10 +177,22 @@ class SSPA_Community_Figures {
                 }
             }
             if ($best) {
-                $rows[] = array('cell' => $best, 'own' => $own);
+                $rows[] = array('cell' => $best, 'own' => $own, 'key' => in_array($best['page_class'], self::KEY_PAGES, true));
             }
         }
-        return $rows;
+        // Key pages first, in KEY_PAGES order; the rest keep the order the site measured them in.
+        $position = array_flip(self::KEY_PAGES);
+        $order = array_keys($rows);
+        usort($order, static function ($a, $b) use ($rows, $position) {
+            $rank_a = isset($position[$rows[$a]['cell']['page_class']]) ? $position[$rows[$a]['cell']['page_class']] : count($position);
+            $rank_b = isset($position[$rows[$b]['cell']['page_class']]) ? $position[$rows[$b]['cell']['page_class']] : count($position);
+            return $rank_a === $rank_b ? $a - $b : $rank_a - $rank_b;
+        });
+        $sorted = array();
+        foreach ($order as $index) {
+            $sorted[] = $rows[$index];
+        }
+        return $sorted;
     }
 
     private static function in_cohort($cell, $rung, $site) {
@@ -230,7 +245,8 @@ class SSPA_Community_Figures {
             'span' => array('class' => true),
             'ul' => array(), 'li' => array(),
             'table' => array('class' => true),
-            'thead' => array(), 'tbody' => array(),
+            'thead' => array(), 'tbody' => array('class' => true, 'hidden' => true),
+            'button' => array('type' => true, 'class' => true, 'aria-expanded' => true),
             'tr' => array('data-page-class' => true, 'data-rung' => true, 'data-n' => true, 'data-confidence' => true, 'data-plugin' => true),
             'th' => $cell, 'td' => $cell,
         );

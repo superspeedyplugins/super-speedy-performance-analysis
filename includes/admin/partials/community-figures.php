@@ -67,8 +67,20 @@ $sspa_build = $sspa_cohorts ? $sspa_cohorts['build'] : ($sspa_impact ? $sspa_imp
                 <th scope="col"><?php esc_html_e('Confidence', 'super-speedy-performance-analysis'); ?></th>
                 <th scope="col"><?php esc_html_e('Compared with', 'super-speedy-performance-analysis'); ?></th>
             </tr></thead>
-            <tbody>
-            <?php foreach ($sspa_figures['pages'] as $sspa_row) :
+            <?php
+            // Key pages first; with none measured, every row is shown.
+            $sspa_key_rows = array_values(array_filter($sspa_figures['pages'], static function ($row) { return $row['key']; }));
+            $sspa_more_rows = array_values(array_filter($sspa_figures['pages'], static function ($row) { return !$row['key']; }));
+            if (!$sspa_key_rows) {
+                $sspa_key_rows = $sspa_more_rows;
+                $sspa_more_rows = array();
+            }
+            foreach (array('sspa-figures-key' => $sspa_key_rows, 'sspa-figures-more' => $sspa_more_rows) as $sspa_group => $sspa_rows) :
+                if (!$sspa_rows) {
+                    continue;
+                }
+                echo 'sspa-figures-more' === $sspa_group ? '<tbody class="sspa-figures-more" hidden>' : '<tbody class="sspa-figures-key">';
+            foreach ($sspa_rows as $sspa_row) :
                 $sspa_cell = $sspa_row['cell'];
                 $sspa_metric = isset($sspa_cell['metrics']['page_gen_ms']) && is_array($sspa_cell['metrics']['page_gen_ms']) ? $sspa_cell['metrics']['page_gen_ms'] : null;
                 $sspa_n = $sspa_metric ? (int) $sspa_metric['distinct_installations'] : (int) $sspa_cell['distinct_installations'];
@@ -95,7 +107,14 @@ $sspa_build = $sspa_cohorts ? $sspa_cohorts['build'] : ($sspa_impact ? $sspa_imp
                 </tr>
             <?php endforeach; ?>
             </tbody>
+            <?php endforeach; ?>
         </table></div>
+        <?php if ($sspa_more_rows) : ?>
+            <p><button type="button" class="button-link sspa-figures-show-all" aria-expanded="false"><?php
+                /* translators: %s: number of page types with published figures */
+                echo esc_html(sprintf(_n('Show all %s page type', 'Show all %s page types', count($sspa_figures['pages']), 'super-speedy-performance-analysis'), number_format_i18n(count($sspa_figures['pages']))));
+            ?></button></p>
+        <?php endif; ?>
         <p class="description"><?php esc_html_e('p75 is published from 4 installations and p95 from 20; below that it is shown as -. This site\'s figure is the median from its latest full scan or spot check.', 'super-speedy-performance-analysis'); ?></p>
     <?php endif; ?>
 

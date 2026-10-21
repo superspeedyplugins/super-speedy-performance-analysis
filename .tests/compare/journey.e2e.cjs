@@ -97,6 +97,23 @@ async function selected(page, slug) {
     await expect(compare.locator('tr[data-page-class="product-single"][data-rung]')).toContainText("Ranking");
     await expect(compare.locator('tr[data-plugin="woocommerce"]').first()).toBeVisible();
     await expect(compare.locator('tr[data-plugin="akismet"]')).toHaveCount(0);
+    // Key pages first, the other page types behind "Show all" (coordinator, 21 October 2026).
+    const keyRows = compare.locator("tbody.sspa-figures-key tr[data-rung]");
+    const keyOrder = await keyRows.evaluateAll((rows) => rows.map((row) => row.dataset.pageClass));
+    if (JSON.stringify(keyOrder) !== JSON.stringify(["home", "shop", "product-cat", "product-single", "wc-checkout"])) throw Error("key rows after a full scan: " + JSON.stringify(keyOrder));
+    const moreRows = compare.locator("tbody.sspa-figures-more tr[data-rung]");
+    const moreCount = await moreRows.count();
+    if (moreCount < 1) throw Error("a full scan should leave page types behind Show all");
+    await expect(moreRows.first()).toBeHidden();
+    const expander = compare.locator(".sspa-figures-show-all");
+    await expect(expander).toHaveText("Show all " + (keyOrder.length + moreCount) + " page types");
+    await figures.scrollIntoViewIfNeeded();
+    await shot(page, "03a-compare-key-pages");
+    await expander.click();
+    await expect(moreRows.first()).toBeVisible();
+    await expect(moreRows.last()).toBeVisible();
+    await expect(expander).toBeHidden();
+    pass("after a full scan the key pages show first (" + keyOrder.join(", ") + ") and " + moreCount + " more page types appear on Show all");
     requests = apiRequests().map((r) => r.method + " " + r.url);
     if (JSON.stringify(requests) !== JSON.stringify(["GET https://superspeedy.org/api/v1/cohorts", "GET https://superspeedy.org/api/v1/plugin-impact"])) throw Error("unexpected requests: " + JSON.stringify(requests));
     await figures.scrollIntoViewIfNeeded();

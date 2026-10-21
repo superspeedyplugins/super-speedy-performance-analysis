@@ -1589,3 +1589,10 @@ jQuery(document).on('click', '#sspa-community-figures-load', function () {
 		button.prop('disabled', false);
 	});
 });
+
+// "Show all N page types" under the community figures: reveals the page types after the key pages.
+jQuery(document).on('click', '.sspa-figures-show-all', function () {
+	var button = jQuery(this);
+	button.closest('.sspa-community-figures-result').find('tbody.sspa-figures-more').prop('hidden', false);
+	button.attr('aria-expanded', 'true').prop('hidden', true);
+});
