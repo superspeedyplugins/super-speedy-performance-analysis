@@ -28,6 +28,7 @@ mkdir -p "$OUT"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     bash "$PLUGIN_DIR/.tests/setup-site.sh" > "$OUT/setup.log" 2>&1 || { echo "FAIL: could not create $SSPA_SCENARIO"; exit 1; }
 fi
+"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" "SSPA lead-gen offers regression ($KIND, cases 131 to 133)" || exit 1
 link="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
 [ -L "$link" ] || { echo 'FAIL: expected an isolated source symlink'; exit 1; }
 ln -sfn "$PLUGIN_DIR" "$link" || exit 1

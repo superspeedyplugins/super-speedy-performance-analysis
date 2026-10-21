@@ -5,6 +5,7 @@ export SSPA_SCENARIO="${SSPA_LEGACY_SCENARIO:-tests-legacy-workflows}"
 source "$root/.tests/env.sh"
 set -euo pipefail
 bash "$root/.tests/setup-site.sh"
+"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" 'SSPA case 117 legacy (non-HPOS) workflows regression'
 sspa_require_site
 sync_plugin
 cli wc hpos sync --batch-size=100
