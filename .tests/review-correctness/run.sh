@@ -5,6 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 if [ ! -f "$SSPA_SITE_DIR/wp-config.php" ]; then
     "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" || exit 1
 fi
+"$WORKSPACE/tools/parallel-dev/bin/keep-site.sh" "$PLUGIN_SLUG" "$SSPA_SCENARIO" 'SSPA review-correctness regression' || exit 1
 # A newly created site links the canonical repository. Bind this dedicated harness
 # to its invoking checkout before the realpath guard permits any fixture mutation.
 review_plugin="$SSPA_SITE_DIR/wp-content/plugins/$PLUGIN_SLUG"
