@@ -61,6 +61,9 @@ $sspa_cache_quote = static function ($quote) {
     echo esc_html(sprintf(__('(checked %s)', 'super-speedy-performance-analysis'), $checked));
     echo '</cite></blockquote>';
 };
+if ($sspa_cache_run_id || $sspa_cache_report) {
+    SSPA_Share_Prompt::render();
+}
 ?>
 <div class="sspa-cache-tab">
     <div class="sspa-placeholder sspa-cache-summary">

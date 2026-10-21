@@ -169,7 +169,7 @@ class SSPA_Admin_Page {
         wp_localize_script('sspa-history-run-view', 'sspa_history_run', array(
             'loading' => __('Loading saved report…', 'super-speedy-performance-analysis'),
             'failed' => __('The saved report could not be loaded.', 'super-speedy-performance-analysis'),
-            'back' => __('Back to History', 'super-speedy-performance-analysis'),
+            'back' => __('Back to Compare', 'super-speedy-performance-analysis'),
             'retry' => __('Try again', 'super-speedy-performance-analysis'),
             'profile_unavailable' => __('The profile panel is unavailable. Reload this page to open the retained diagnostics.', 'super-speedy-performance-analysis'),
         ));
@@ -221,7 +221,7 @@ class SSPA_Admin_Page {
             'pages' => __('Pages', 'super-speedy-performance-analysis'),
             'plugins' => __('Plugins', 'super-speedy-performance-analysis'),
             'ajax' => __('AJAX', 'super-speedy-performance-analysis'),
-            'history' => __('History', 'super-speedy-performance-analysis'),
+            'compare' => __('Compare', 'super-speedy-performance-analysis'),
             'tools' => __('Tools', 'super-speedy-performance-analysis'),
             'traffic' => __('Traffic', 'super-speedy-performance-analysis'),
             'share' => __('Share', 'super-speedy-performance-analysis'),

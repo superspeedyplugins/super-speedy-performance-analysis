@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.47.0
+Stable tag: 0.47.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -19,8 +19,9 @@ Super Speedy Performance Analysis diagnoses your site's performance the way an e
 * Presents plain-English insights: the slowest queries and who ran them, queries fetching hundreds of rows (the usual RAM culprits), plugins running queries in loops, blocking HTTP calls and more.
 * Plugin Impact Analysis isolates the real culprits by virtually disabling plugins for test requests only - your live visitors are never affected - and measures each suspect's true cost.
 * Checkout analysis uses its own hidden SSPA product; write-order profiles create a separate zero-price product with its own managed stock, so neither orders real catalogue products.
-* The History tab compares saved points in time, leads with response-time changes, highlights new faults and changed output, and can offer a quick comparison after plugin updates.
-* History can also opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
+* The Compare tab compares saved points in time, leads with response-time changes, highlights new faults and changed output, and can offer a quick comparison after plugin updates.
+* When you ask it to, Compare downloads superspeedy.org's public figures and shows how sites like yours, and your active plugins, measure there.
+* Compare can also opt into complete data removal on plugin deletion, dropping the profiling tables and removing SSPA options, transients, scheduled events and test objects.
 * Optionally share anonymised results with the community at superspeedy.org to help build an open database of plugin performance. You see the exact payload before anything is sent.
 
 Performance tests require test objects. Customer-session measurements create a restricted test customer account that cannot be logged into and is replaced on the next run. Administrator measurements use your existing account. Opt-in write profiles create private temporary post/product objects and a temporary order with its own test product; these objects are deleted after measurement. The separate checkout flow retains its hidden test product and its refunded orders in Trash for inspection, without contacting a payment provider.
@@ -47,7 +48,7 @@ No. Traffic recording stores its observations in this site's own database. Commu
 
 = What happens when I delete the plugin? =
 
-Saved analysis data is retained by default. Before deleting the plugin, enable "Delete all SSPA data when the plugin is deleted" in History if you want its profiling tables, settings and managed test objects removed. Deleting local data does not delete evidence you previously submitted to the community service.
+Saved analysis data is retained by default. Before deleting the plugin, enable "Delete all SSPA data when the plugin is deleted" on the Compare tab if you want its profiling tables, settings and managed test objects removed. Deleting local data does not delete evidence you previously submitted to the community service.
 
 = Do analyses send emails? =
 
@@ -65,7 +66,9 @@ Registration sends a random installation identifier, a generated authentication 
 
 Before queueing or sending evidence, privacy validation rejects site addresses and file paths, distinctive database names, email and IP addresses, user/order/product identifiers, sessions, cookies and request or response bodies. Calls to the site's own host are excluded. This anonymisation does not make the connection anonymous: the receiving servers and Cloudflare see its source IP address. The collector does not record IP addresses.
 
-WP Intense OÜ operates the service, stores submitted archives with Cloudflare R2 indefinitely, and may publish aggregates and anonymised individual results. Email support@superspeedyplugins.com with the installation identifier shown in Share to request deletion and recalculation of affected comparisons; uninstalling the plugin does not delete previous submissions. Submission grants WP Intense OÜ a permanent, royalty-free licence to store, process and publish that evidence in aggregated or anonymised form.
+superspeedy.org is operated by WP Intense OÜ, which also runs superspeedyplugins.com. superspeedy.org data is never joined to leads, quote requests or customer records, and is never used for sales targeting. WP Intense OÜ stores submitted archives with Cloudflare R2 indefinitely, and may publish aggregates and anonymised individual results. Email support@superspeedyplugins.com with the installation identifier shown in Share to request deletion and recalculation of affected comparisons; uninstalling the plugin does not delete previous submissions. Submission grants WP Intense OÜ a permanent, royalty-free licence to store, process and publish that evidence in aggregated or anonymised form.
+
+Community figures on the Compare tab: only when an administrator presses "Load community figures", the plugin downloads two public, read-only documents from superspeedy.org, https://superspeedy.org/api/v1/cohorts and https://superspeedy.org/api/v1/plugin-impact, one request each. These downloads send nothing about the site: no query string, cohort, plugin list, identifier or site address, and a plugin User-Agent instead of WordPress's default, which contains the site address. The site's cohort and active plugins are matched locally. Like any server, Cloudflare and superspeedy.org see the IP address of the web server making the request, but superspeedy.org does not log it. Nothing is downloaded until the button is pressed, and sharing is not needed to load the figures.
 
 Privacy policy: https://superspeedy.org/privacy-and-terms/
 Terms of service: https://superspeedy.org/privacy-and-terms/
@@ -106,6 +109,13 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.47.1 (21st October 2026) =
+* The History tab is now called Compare, and old History links and bookmarks still open it.
+* After an analysis and on the Compare tab, a panel asks whether to share this site's anonymised results automatically, with a button to be asked again in 24 hours.
+* The Share tab has a Don't ask me again option that stops that panel, and can be unticked to bring it back.
+* The Compare tab can load superspeedy.org's public figures for similar sites and for your active plugins, showing how many installations each figure comes from and how far it can be relied on.
+* Community figures are downloaded only when you press Load community figures, and the download sends nothing about your site.
 
 = 0.47.0 (21st October 2026) =
 * The fixed-price fix quote for a page whose time is mostly unattributed now appears only when that page takes 1,000 ms or more to generate.

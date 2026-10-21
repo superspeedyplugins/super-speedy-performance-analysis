@@ -2,6 +2,9 @@
 defined('ABSPATH') || exit;
 
 $sspa_last_run_id = SSPA_Plugins_Table::latest_run_id();
+if ($sspa_last_run_id) {
+    SSPA_Share_Prompt::render();
+}
 
 if (!$sspa_last_run_id) : ?>
     <div class="sspa-placeholder">

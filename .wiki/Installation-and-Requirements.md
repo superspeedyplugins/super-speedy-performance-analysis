@@ -43,7 +43,7 @@ Both only wake for requests carrying a signed profiling token, both are removed 
 
 Deactivating removes the mu-plugin loader and the drop-in, and stops all scheduled work.
 
-Deleting leaves your stored analyses in place unless you say otherwise. The History tab has an opt-in **Delete all SSPA data when the plugin is deleted** switch. With it on, uninstall drops the profiling tables and removes the plugin's options, transients, scheduled events, the hidden checkout product and the low-privilege test customer.
+Deleting leaves your stored analyses in place unless you say otherwise. The Compare tab has an opt-in **Delete all SSPA data when the plugin is deleted** switch. With it on, uninstall drops the profiling tables and removes the plugin's options, transients, scheduled events, the hidden checkout product and the low-privilege test customer.
 
 ## Editions
 

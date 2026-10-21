@@ -48,6 +48,8 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/browser/run-regressions.sh admin-journey # admin-bar Analyse this page and cache control, attribution switching, Re-run, Escape and focus restoration
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
+.tests/run-tests.sh 135-compare # History renamed Compare, the share panel on PA screens only, community figures fetched only on click
+bash .tests/compare/run.sh   # case 135 and the Compare/share-panel browser journey from the admin menu, on tests-compare
 .tests/run-tests.sh share-preview-browser # preview ownership and refresh persistence
 SSPA_START_AT=23 .tests/run-tests.sh # resume at the first case whose name sorts at/after 23
 .tests/browser/run-history-chart.sh  # real wp-admin History chart journey in Chromium
@@ -142,6 +144,18 @@ export SSPA_SCENARIO=mybranch
 
 A test case file passes when it prints at least one `PASS` line and no `FAIL` lines.
 `run-tests.sh` exits non-zero if any case fails.
+
+### Compare and the share panel
+
+`bash .tests/compare/run.sh` (site `tests-compare`, override with `SSPA_COMPARE_SCENARIO`) runs case 135 and then
+`.tests/compare/journey.e2e.cjs`; `case` or `journey` runs one of them. Both clear sharing, the snooze and
+"Don't ask me again" on the way in and leave the site as they finished. The `compare-http-observer.php` MU fixture
+logs every WordPress HTTP API request to superspeedy.org in the `sspa_test_ssorg_log` option. With option
+`sspa_test_ssorg_mode` set to `fixture` it answers `/api/v1/cohorts` and `/api/v1/plugin-impact` from
+`.tests/fixtures/superspeedy-org/`, which hold the exact bodies superspeedy.org's own publication build emits
+(see `provenance.json` there; regenerate them, never hand-edit them). With `live` it fetches the real documents and
+hands back their real status and body, so case 135 checks the plugin against what superspeedy.org serves today.
+Without a mode the regression boundary refuses the request, as for any external host.
 
 ### WordPress.org behaviour regressions
 

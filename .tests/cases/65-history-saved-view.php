@@ -73,7 +73,7 @@ for ($i = 0; $i < 2; $i++) {
 }
 
 ob_start();
-include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
+include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $list = ob_get_clean();
 sspa_65_t((bool) preg_match('/<a[^>]+class="sspa-history-run-link"[^>]+data-run-id="' . $ids[0] . '"/', $list), 'the older retained run has a genuine saved-report link');
 sspa_65_t(strpos($list, 'id="sspa-history-before"') < strpos($list, 'data-sspa-history-chart'), 'Before and After choices appear before the chart');

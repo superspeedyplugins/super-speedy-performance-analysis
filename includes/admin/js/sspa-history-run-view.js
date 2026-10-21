@@ -14,7 +14,7 @@
 		var url = new URL(window.location.href);
 		if (id) { url.searchParams.set('sspa_history_run', id); }
 		else { url.searchParams.delete('sspa_history_run'); }
-		url.hash = 'history';
+		url.hash = 'compare';
 		window.history.pushState(null, '', url.href);
 	}
 
@@ -84,17 +84,17 @@
 		}
 	});
 	$(document).on('sspa:tab-rendered', function (event, slug) {
-		if (slug === 'history' && selectedId()) { openReport(selectedId()); }
+		if (slug === 'compare' && selectedId()) { openReport(selectedId()); }
 	});
 	$(window).on('popstate', function () {
 		if (selectedId()) {
-			sspa_click_tab('history');
+			sspa_click_tab('compare');
 			openReport(selectedId());
 		} else { closeReport(); }
 	});
 	$(function () {
 		if (selectedId()) {
-			sspa_click_tab('history');
+			sspa_click_tab('compare');
 			openReport(selectedId());
 		}
 	});

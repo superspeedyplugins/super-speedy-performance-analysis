@@ -18,7 +18,7 @@ It's off until you switch it on, and an update never switches it on. Turning it 
 
 ## Two ways to share
 
-Share every analysis automatically, or pick individual analyses from the History tab and share only those. That includes a single full scan, plugin impact analysis, page analysis, cache analysis, spot check or checkout analysis, without switching sharing on for everything else.
+Share every analysis automatically, or pick individual analyses from the Compare tab and share only those. That includes a single full scan, plugin impact analysis, page analysis, cache analysis, spot check or checkout analysis, without switching sharing on for everything else.
 
 ## What travels
 

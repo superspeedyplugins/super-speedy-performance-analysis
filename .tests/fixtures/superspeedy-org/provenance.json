@@ -1,0 +1,8 @@
+{
+  "what": "The exact response bodies of GET https://superspeedy.org/api/v1/cohorts (cohorts.json) and GET https://superspeedy.org/api/v1/plugin-impact (plugin-impact.json), as emitted by the superspeedy.org public build. Not hand-written: regenerate them rather than editing them.",
+  "superspeedy_org_branch": "feature/public-figures-all-sample-sizes",
+  "superspeedy_org_commit": "b2e783576beda7c1c134db360952efbee88617b0",
+  "built": "2026-10-21, Go 1.24.9, the branch's own publication build with its default options",
+  "source_rows": "Synthetic installations (n = 1 to 24) for this plugin's regression-site cohort ecommerce / <100 products / <10 plugins / object cache enabled / mariadb, plus cohorts it is not in, and plugin-isolation rows for woocommerce, redis-cache and akismet.",
+  "generator": "Kept in the private plugin metadata (.docs/compare-fixtures/), because it imports the superspeedy.org build."
+}

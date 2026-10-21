@@ -22,19 +22,22 @@ const { chromium } = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observato
             }, slug, { timeout: 5000 }).catch(() => assert.fail('URL navigation must select and display ' + slug));
             console.log('PASS URL selects ' + slug);
         };
+        // History was renamed Compare; an old #history bookmark opens Compare and the
+        // address bar is rewritten to the new name.
         await page.goto(site + '/wp-admin/admin.php?page=sspa#history');
-        await selected('history');
+        await selected('compare');
+        assert.equal(new URL(page.url()).hash, '#compare', 'an old #history link is rewritten to #compare');
         await page.locator('.nav-tab[data-tab="overview"]').click();
         await selected('overview');
-        await page.evaluate(() => { location.hash = 'history'; });
-        await selected('history');
+        await page.evaluate(() => { location.hash = 'compare'; });
+        await selected('compare');
         await page.goBack();
         await selected('overview');
         await page.goForward();
-        await selected('history');
+        await selected('compare');
         await page.reload();
-        await selected('history');
-        for (const fragment of ['', 'not-a-tab', '"] , div [data-tab="history']) {
+        await selected('compare');
+        for (const fragment of ['', 'not-a-tab', '"] , div [data-tab="compare']) {
             await page.evaluate(value => { location.hash = value; }, fragment);
             await selected('overview');
         }

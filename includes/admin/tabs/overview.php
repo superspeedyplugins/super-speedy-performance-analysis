@@ -13,7 +13,12 @@ $sspa_foreign_dropin = in_array($sspa_health['dropin'], array('foreign', 'qm'), 
 $sspa_run_notes = $sspa_last_run ? json_decode((string) $sspa_last_run['notes'], true) : null;
 $sspa_demo = $sspa_last_run ? SSPA_Demographics::latest() : null;
 ?>
-
+<?php
+// After a completed analysis its result view opens with the share panel while sharing is off.
+if ($sspa_last_run) {
+    SSPA_Share_Prompt::render();
+}
+?>
 <?php include SSPA_PLUGIN_DIR . 'includes/admin/partials/analysis-panel.php'; ?>
 
 <?php if ($sspa_last_run) : ?>

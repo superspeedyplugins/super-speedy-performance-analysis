@@ -28,9 +28,9 @@ The score tells you whether there's a problem. These tell you what it is:
 
 ## The seven tabs
 
-Overview, Pages, Plugins, History, Tools, Traffic and Share.
+Overview, Pages, Plugins, Compare, Tools, Traffic and Share.
 
-Pages drills into a per-plugin breakdown, the slowest queries with their callers, and the HTTP calls. Plugins shows per-plugin SQL time, query counts, rows fetched and slowest query across the analysis, plus the measured impact column that [[Plugin-Impact-Analysis]] fills. History tracks the score, findings and median generation time across runs, so you can see whether the site is getting slower as it grows. Tools is [[Server-Capabilities]]. Share is [[The-Community-Plugin-Database]].
+Pages drills into a per-plugin breakdown, the slowest queries with their callers, and the HTTP calls. Plugins shows per-plugin SQL time, query counts, rows fetched and slowest query across the analysis, plus the measured impact column that [[Plugin-Impact-Analysis]] fills. Compare tracks the score, findings and median generation time across runs, so you can see whether the site is getting slower as it grows, and can load superspeedy.org's public figures for similar sites when you ask it to. Tools is [[Server-Capabilities]]. Share is [[The-Community-Plugin-Database]].
 
 ## What the numbers mean
 

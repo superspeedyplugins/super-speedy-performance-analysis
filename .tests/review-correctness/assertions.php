@@ -18,7 +18,7 @@ foreach (array(100, 300, 500, 900) as $i => $ms) {
     if (!$saved || $wpdb->last_error) throw new RuntimeException('Profile fixture failed: ' . $wpdb->last_error);
 }
 ob_start();
-include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
+include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $history = ob_get_clean();
 sspa_fleet_assert(strpos($history, 'Mean generation (ms)') !== false && strpos($history, 'Median generation (ms)') === false, 'History labels arithmetic mean accurately');
 preg_match('/<tr>\s*<td><a[^>]*data-run-id="' . $sspa_93_run . '".*?<\/tr>/s', $history, $row);

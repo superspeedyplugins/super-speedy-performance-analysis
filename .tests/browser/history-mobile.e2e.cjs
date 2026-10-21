@@ -11,10 +11,10 @@ const { session, admin, expect, output, fs } = require("./fleet-context.cjs");
         return (
           response.url().includes("admin-ajax.php") &&
           data.get("action") === "sspa_render_tab" &&
-          data.get("tabs") === "history"
+          data.get("tabs") === "compare"
         );
       });
-      await admin(page, "history");
+      await admin(page, "compare");
       const response = await historyResponse;
       expect(response.ok(), "History HTTP " + response.status()).toBe(true);
       const payload = await response.json();

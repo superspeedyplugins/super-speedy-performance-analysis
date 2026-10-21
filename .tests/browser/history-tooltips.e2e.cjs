@@ -11,7 +11,7 @@ const {chromium} = require(process.env.SSPA_PLAYWRIGHT_MODULE || path.resolve(__
 	await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);
   await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);
   await Promise.all([page.waitForURL(/wp-admin/),page.locator('#wp-submit').click()]);
-  await page.goto(process.env.SSPA_E2E_URL + '/wp-admin/admin.php?page=sspa#history');
+  await page.goto(process.env.SSPA_E2E_URL + '/wp-admin/admin.php?page=sspa#compare');
   const mount=page.locator('.sspa-history-chart');
   await page.locator('.sspa-history-chart-status').filter({hasText:'chart loaded'}).waitFor();
   const state=await mount.evaluate(el=>{

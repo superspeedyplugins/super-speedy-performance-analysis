@@ -66,7 +66,7 @@ try {
     $page = array_values(array_filter($doc['pages'], function ($p) { return $p['page_key'] === 'error-page'; }))[0];
     sspa_78_check(array(450.0, 0.0) === array_column($page['current']['points'], 'value'), 'HTTP error timing and valid zero are retained');
     sspa_78_check('http_error' === $page['current']['points'][0]['state'] && count($page['current']['faults']) === 1, 'error stays labelled and missing sample stays missing');
-    ob_start(); include dirname(__DIR__, 2) . '/includes/admin/tabs/history.php'; $html = ob_get_clean();
+    ob_start(); include dirname(__DIR__, 2) . '/includes/admin/tabs/compare.php'; $html = ob_get_clean();
     sspa_78_check(strpos($html, 'value="' . $before . '"') !== false, 'picker includes old retained run');
 } catch (Throwable $error) { sspa_78_check(false, $error->getMessage()); }
 if ($GLOBALS['sspa_78_failures']) { exit(1); }

@@ -10,7 +10,7 @@ const {session, admin, expect, wp, output} = require('./fleet-context.cjs');
     const ajax = page.locator('#sspa-ajax-profile');
     await expect(ajax.locator('label').filter({has:page.locator('input[name="label"]')})).toContainText('Nom de la fenêtre');
     await expect(ajax.getByRole('button', {name:'Comparer', exact:true})).toBeVisible();
-    await page.locator('#sspa_main .nav-tab[data-tab="history"]').click();
+    await page.locator('#sspa_main .nav-tab[data-tab="compare"]').click();
     await expect(page.locator('#sspa-history-compare')).toBeVisible();
     await expect(page.locator('.sspa-history-chart canvas')).toBeVisible();
     await expect.poll(() => page.locator('.sspa-history-chart').evaluate(node => node.sspaChart.getOption().legend[0].data)).toEqual(['Mesures précédentes', 'Mesures récentes']);

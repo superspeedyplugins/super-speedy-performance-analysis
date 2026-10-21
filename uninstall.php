@@ -59,6 +59,11 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
         wp_clear_scheduled_hook($sspa_hook);
     }
 
+    // Per-user share panel choices.
+    foreach (array('sspa_share_prompt_snoozed_until', 'sspa_share_prompt_never') as $sspa_user_key) {
+        delete_metadata('user', 0, $sspa_user_key, '', true);
+    }
+
     global $wpdb;
     foreach (array('sspa\\_%', '\\_transient\\_sspa\\_%', '\\_transient\\_timeout\\_sspa\\_%') as $sspa_like) {
         $wpdb->query($wpdb->prepare(

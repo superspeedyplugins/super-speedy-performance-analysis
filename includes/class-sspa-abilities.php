@@ -139,7 +139,7 @@ class SSPA_Abilities {
 
         wp_register_ability(self::CATEGORY . '/compare-history', array(
             'label' => __('Compare performance history', 'super-speedy-performance-analysis'),
-            'description' => __('Return the same versioned privacy-safe Before/After evidence document available in History. It compares two completed full scans or spot checks without mutating either run or enabling community sharing.', 'super-speedy-performance-analysis'),
+            'description' => __('Return the same versioned privacy-safe Before/After evidence document available on the Compare tab. It compares two completed full scans or spot checks without mutating either run or enabling community sharing.', 'super-speedy-performance-analysis'),
             'category' => self::CATEGORY,
             'input_schema' => array(
                 'type' => 'object',

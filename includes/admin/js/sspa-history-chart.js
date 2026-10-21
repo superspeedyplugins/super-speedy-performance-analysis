@@ -312,7 +312,7 @@
 	}
 
 	$(document).on('sspa:tab-rendered', function (event, slug, panel) {
-		if (slug === 'history') {
+		if (slug === 'compare') {
 			boot(panel);
 		}
 	});

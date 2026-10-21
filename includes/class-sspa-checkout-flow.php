@@ -184,7 +184,9 @@ class SSPA_Checkout_Flow {
         unset($finding);
         // Offers belong to the PA screens only (S6, R4).
         $waterfall['offers_html'] = '';
+        $waterfall['share_prompt_html'] = '';
         if (!empty($_POST['pa_screen'])) {
+            $waterfall['share_prompt_html'] = wp_kses(SSPA_Share_Prompt::html(), SSPA_Share_Prompt::allowed_html());
             foreach (SSPA_Offers::checkout($run_id) as $offer) {
                 $waterfall['offers_html'] .= SSPA_Offers::render($offer, 'checkout');
             }

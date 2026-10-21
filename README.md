@@ -63,7 +63,7 @@ The whole plugin is drivable without the GUI:
 - A writable `wp-content/` for the conditional `db.php` drop-in and mu-plugin loader, both
   inert for normal traffic and removed cleanly on uninstall
 
-The History tab includes an opt-in **Delete all SSPA data when the plugin is deleted** switch.
+The Compare tab includes an opt-in **Delete all SSPA data when the plugin is deleted** switch.
 When enabled, uninstall drops the profiling tables and removes SSPA options, transients,
 scheduled events, the hidden checkout product and the low-privilege test customer.
 

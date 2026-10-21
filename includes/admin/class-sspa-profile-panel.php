@@ -273,7 +273,10 @@ class SSPA_Profile_Panel {
 
     private static function summary_html($row, $capture, $offers = false) {
         $summary = SSPA_Page_Summary::build($row, $capture);
-        $html = '<section class="sspa-adhoc-span sspa-page-summary"><h3>' . esc_html($summary['verdict']) . '</h3>';
+        // On PA's own screens (the same condition as its offers) the result opens with the share panel.
+        $html = $offers ? wp_kses(SSPA_Share_Prompt::html(), SSPA_Share_Prompt::allowed_html()) : '';
+        $html = $html ? '<div class="sspa-adhoc-span">' . $html . '</div>' : '';
+        $html .= '<section class="sspa-adhoc-span sspa-page-summary"><h3>' . esc_html($summary['verdict']) . '</h3>';
         if ($summary['culprits']) {
             $html .= '<ul>';
             foreach ($summary['culprits'] as $culprit) $html .= '<li>' . esc_html($culprit) . '</li>';

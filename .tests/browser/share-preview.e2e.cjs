@@ -14,14 +14,14 @@ const {chromium} = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../observatory
 	await page.locator('#user_login').fill(process.env.SSPA_E2E_USER);
   await page.locator('#user_pass').fill(process.env.SSPA_E2E_PASSWORD);
   await Promise.all([page.waitForURL(/\/wp-admin\//),page.locator('#wp-submit').click()]);
-  for (const order of [['history','share'],['share','history','share'],['share']]) {
+  for (const order of [['compare','share'],['share','compare','share'],['share']]) {
    await page.goto(site+'/wp-admin/admin.php?page=sspa');
    for (const tab of order) {
     await page.locator('.nav-tab[data-tab="'+tab+'"]').click();
     await page.locator('.tab-contents[data-tab="'+tab+'"] .sspa-payload-preview').waitFor({state:'attached'});
    }
    const share=page.locator('.tab-contents[data-tab="share"]');
-   const history=page.locator('.tab-contents[data-tab="history"]');
+   const history=page.locator('.tab-contents[data-tab="compare"]');
    const before=await history.locator('pre').allTextContents();
    await share.locator('.sspa-preview-outbox[data-outbox-id="0"]').click();
    await page.waitForFunction(()=>jQuery.active===0);

@@ -149,7 +149,7 @@ sspa_hardening_t(
 
 // History exposes the persisted uninstall choice in the requested location.
 ob_start();
-include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
+include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $history = ob_get_clean();
 sspa_hardening_t(false !== strpos($history, 'sspa-remove-data-on-uninstall'), 'History renders the delete-on-uninstall toggle');
 

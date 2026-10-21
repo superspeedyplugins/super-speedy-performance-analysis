@@ -68,8 +68,25 @@ jQuery(document).on('click', '#sspa_main .nav-tab-wrapper .nav-tab', function (e
 	e.stopPropagation();
 });
 
+// Tabs that were renamed. Old bookmarks and links keep working, and the address bar is
+// rewritten to the current name so a copied link uses it.
+var sspa_tab_aliases = { history: 'compare' };
+
 function sspa_select_url_tab() {
-	sspa_click_tab(window.location.hash.substring(1) || new URLSearchParams(window.location.search).get('tab') || 'overview');
+	var hash = window.location.hash.substring(1);
+	var slug = hash || new URLSearchParams(window.location.search).get('tab') || 'overview';
+	if (Object.prototype.hasOwnProperty.call(sspa_tab_aliases, slug)) {
+		slug = sspa_tab_aliases[slug];
+		if (window.history.replaceState) {
+			var url = new URL(window.location.href);
+			if (!hash) {
+				url.searchParams.delete('tab');
+			}
+			url.hash = slug;
+			window.history.replaceState(null, '', url.toString());
+		}
+	}
+	sspa_click_tab(slug);
 }
 
 function sspa_click_tab(slug) {
@@ -314,7 +331,7 @@ jQuery(document).on('click', '#sspa-history-compare', function () {
 			chartHost.find('.sspa-history-page-filter').val(filter);
 			jQuery('#sspa-history-after').val(resp.data.after_run_id);
 			if (resp.data.before_run_id) jQuery('#sspa-history-before').val(resp.data.before_run_id);
-			jQuery(document).trigger('sspa:tab-rendered', ['history', panel.get(0)]);
+			jQuery(document).trigger('sspa:tab-rendered', ['compare', panel.get(0)]);
 		} else {
 			jQuery('#sspa-history-comparison').text(resp.data || wp.i18n.__("The points in time could not be compared.", "super-speedy-performance-analysis"));
 		}
@@ -878,7 +895,7 @@ jQuery(document).on('click', '#sspa-prune-blobs', function () {
 	jQuery.post(ajaxurl, { action: 'sspa_prune_blobs', nonce: sspa_admin.nonce }, function (resp) {
 		if (resp.success) {
 			alert(wp.i18n.sprintf(/* translators: Formatted storage size. */ wp.i18n.__("Done. Detailed data now uses %s.", "super-speedy-performance-analysis"), resp.data.human));
-			sspa_refresh_tabs(['overview', 'tools', 'history', 'share']);
+			sspa_refresh_tabs(['overview', 'tools', 'compare', 'share']);
 		}
 	});
 });
@@ -894,7 +911,76 @@ jQuery(document).on('change', '#sspa-share-optin', function () {
 			return;
 		}
 		jQuery('.sspa-sharing-action').prop('disabled', !optin);
+		// The share panel follows this setting on the result and Compare screens.
+		sspa_refresh_share_prompt_tabs();
 	});
+});
+
+// ---- The share panel (result views and Compare) ----
+// Re-render the already loaded tabs that can carry the panel, so it appears or goes with the
+// setting that decides it, without a reload.
+function sspa_refresh_share_prompt_tabs() {
+	sspa_refresh_tabs(['overview', 'plugins', 'cache', 'compare']);
+}
+
+function sspa_share_prompt_failed(button, message) {
+	var panels = jQuery('.sspa-share-prompt');
+	panels.find('button').prop('disabled', false);
+	button.closest('.sspa-share-prompt').find('.sspa-share-prompt-status').text(message);
+}
+
+// "Share anonymised results automatically" is the Share tab checkbox's own action: the same
+// option, consent version and consent time.
+jQuery(document).on('click', '.sspa-share-prompt-share', function () {
+	var button = jQuery(this);
+	var failed = wp.i18n.__("Could not turn on sharing. Nothing was changed.", "super-speedy-performance-analysis");
+	jQuery('.sspa-share-prompt button').prop('disabled', true);
+	jQuery.post(ajaxurl, { action: 'sspa_share_optin', nonce: sspa_admin.nonce, optin: 1 }, function (resp) {
+		if (!resp || !resp.success || !resp.data || !resp.data.optin) {
+			sspa_share_prompt_failed(button, resp && typeof resp.data === 'string' ? resp.data : failed);
+			return;
+		}
+		jQuery('.sspa-share-prompt').remove();
+		jQuery('#sspa-share-optin').prop('checked', true);
+		jQuery('.sspa-sharing-action').prop('disabled', false);
+		sspa_refresh_tabs(['share']);
+		sspa_drive_submissions();
+	}).fail(function () { sspa_share_prompt_failed(button, failed); });
+});
+
+jQuery(document).on('click', '.sspa-share-prompt-snooze', function () {
+	var button = jQuery(this);
+	var failed = wp.i18n.__("Could not hide this panel. Please try again.", "super-speedy-performance-analysis");
+	jQuery('.sspa-share-prompt button').prop('disabled', true);
+	jQuery.post(ajaxurl, { action: 'sspa_share_prompt_snooze', nonce: sspa_admin.nonce }, function (resp) {
+		if (!resp || !resp.success) {
+			sspa_share_prompt_failed(button, resp && typeof resp.data === 'string' ? resp.data : failed);
+			return;
+		}
+		jQuery('.sspa-share-prompt').remove();
+	}).fail(function () { sspa_share_prompt_failed(button, failed); });
+});
+
+// The Share tab's quiet, undoable "Don't ask me again".
+jQuery(document).on('change', '#sspa-share-prompt-never', function () {
+	var box = jQuery(this);
+	var never = box.is(':checked') ? 1 : 0;
+	box.prop('disabled', true);
+	jQuery.post(ajaxurl, { action: 'sspa_share_prompt_never', nonce: sspa_admin.nonce, never: never }, function (resp) {
+		if (!resp || !resp.success) {
+			box.prop('checked', !never);
+			alert(resp && typeof resp.data === 'string' ? resp.data : wp.i18n.__("Could not save this choice.", "super-speedy-performance-analysis"));
+			return;
+		}
+		if (never) {
+			jQuery('.sspa-share-prompt').remove();
+		} else {
+			sspa_refresh_share_prompt_tabs();
+		}
+	}).fail(function () {
+		box.prop('checked', !never);
+		alert(wp.i18n.__("Could not save this choice.", "super-speedy-performance-analysis"));
+	}).always(function () { box.prop('disabled', false); });
 });
 
 // Per-plugin publishing. Independent of the site-wide setting above: a site owner can let one
@@ -1010,7 +1096,7 @@ jQuery(document).on('click', '#sspa-submit-now', function () {
 	var btn = jQuery(this).prop('disabled', true);
 	jQuery.post(ajaxurl, { action: 'sspa_submit_now', nonce: sspa_admin.nonce }, function (resp) {
 		alert(resp.success ? wp.i18n.__("Queued locally. Delivery runs in the background and retries automatically.", "super-speedy-performance-analysis") : (resp.data || wp.i18n.__("Could not queue the submission.", "super-speedy-performance-analysis")));
-		sspa_refresh_tabs(['share', 'history'], function () { btn.prop('disabled', false); });
+		sspa_refresh_tabs(['share', 'compare'], function () { btn.prop('disabled', false); });
 		sspa_drive_submissions();
 	}).fail(function () {
 		alert(wp.i18n.__("Could not queue the submission.", "super-speedy-performance-analysis"));
@@ -1045,7 +1131,7 @@ jQuery(document).on('click', '#sspa-backfill', function () {
 				return;
 			}
 			alert(wp.i18n.sprintf(/* translators: 1: number queued, 2: number needing review. */ wp.i18n.__("Historical queueing finished: %1$s queued, %2$s requiring review.", "super-speedy-performance-analysis"), totalQueued, totalFailed));
-			sspa_refresh_tabs(['share', 'history']);
+			sspa_refresh_tabs(['share', 'compare']);
 			sspa_drive_submissions();
 		}).fail(function () {
 			status.text(wp.i18n.__("Historical queueing request failed. Progress has been saved; press the button to resume.", "super-speedy-performance-analysis"));
@@ -1074,7 +1160,7 @@ jQuery(document).on('click', '.sspa-outbox-action', function () {
 			btn.prop('disabled', false);
 			return;
 		}
-		sspa_refresh_tabs(['share', 'history']);
+		sspa_refresh_tabs(['share', 'compare']);
 		sspa_drive_submissions();
 	}).fail(function () {
 		alert(wp.i18n.__("Could not update the submission.", "super-speedy-performance-analysis"));
@@ -1138,7 +1224,7 @@ jQuery(document).on('click', '#sspa-cancel-run, #sspa-runner-cancel', function (
 	}
 	jQuery.post(ajaxurl, { action: 'sspa_cancel_run', nonce: sspa_admin.nonce }, function () {
 		sspa_runner_dismiss();
-		sspa_refresh_tabs(['overview', 'history']);
+		sspa_refresh_tabs(['overview', 'compare']);
 	});
 });
 
@@ -1318,7 +1404,7 @@ function sspa_runner_finish(status) {
 	sspa_runner_backdrop(runner);
 	// Every tab a run can change. The results appear under whichever tab the user is already
 	// looking at, rather than throwing them back to Overview via a reload.
-	sspa_refresh_tabs(['overview', 'pages', 'plugins', 'history', 'share'], function () {
+	sspa_refresh_tabs(['overview', 'pages', 'plugins', 'compare', 'share'], function () {
 		sspa_runner_dismiss();
 		sspa_drive_submissions();
 	});
@@ -1479,4 +1565,27 @@ jQuery(document).on('click', '#sspa-profiler-toggle', function () {
         }).fail(function (xhr) {
             button.siblings('.sspa-profiler-status').text(xhr.statusText);
         }).always(function () { button.prop('disabled', false); });
+});
+
+// ---- Community figures on Compare ----
+// The only path that contacts superspeedy.org for figures, and only on this click.
+jQuery(document).on('click', '#sspa-community-figures-load', function () {
+	var button = jQuery(this).prop('disabled', true);
+	var section = button.closest('.sspa-community-figures');
+	var result = section.find('#sspa-community-figures-result');
+	var spinner = section.find('.spinner').addClass('is-active');
+	result.text(wp.i18n.__("Downloading the public figures from superspeedy.org…", "super-speedy-performance-analysis"));
+	jQuery.post(ajaxurl, { action: 'sspa_community_figures', nonce: sspa_admin.nonce }, function (resp) {
+		if (resp && resp.success && resp.data && typeof resp.data.html === 'string') {
+			// Escaped by the server's renderer (wp_kses with a fixed allow-list).
+			result.html(resp.data.html).attr('data-state', resp.data.state);
+		} else {
+			result.text(resp && typeof resp.data === 'string' ? resp.data : wp.i18n.__("The community figures could not be loaded.", "super-speedy-performance-analysis"));
+		}
+	}).fail(function (xhr, status, error) {
+		result.text(wp.i18n.sprintf(/* translators: %s: HTTP or network error detail. */ wp.i18n.__("The community figures could not be loaded: %s", "super-speedy-performance-analysis"), xhr.status ? 'HTTP ' + xhr.status + ' ' + (error || status) : sspa_admin.tab_network_error));
+	}).always(function () {
+		spinner.removeClass('is-active');
+		button.prop('disabled', false);
+	});
 });

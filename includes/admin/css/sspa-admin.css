@@ -775,7 +775,7 @@
 .sspa-history-data-table td { vertical-align: top; }
 .sspa-history-fault-text { color: #b32d2e; font-weight: 600; }
 .sspa-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; }
-#sspa_main div.tab-contents[data-tab="history"] { min-width: 0; max-width: 100%; }
+#sspa_main div.tab-contents[data-tab="compare"] { min-width: 0; max-width: 100%; }
 .sspa-history-compare-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
 .sspa-history-compare-controls label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; max-width: 100%; }
 .sspa-history-compare-controls select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
@@ -858,3 +858,16 @@
 #sspa_main .sspa-imports-history td {
 	overflow-wrap: anywhere;
 }
+
+/* The share panel: at the top of a result view or Compare, never a modal. */
+.sspa-share-prompt { background: #fff; border: 1px solid #c3c4c7; border-left: 4px solid #2271b1; padding: 12px 16px; margin: 0 0 16px; max-width: 960px; }
+.sspa-share-prompt h2 { margin: 0 0 8px; font-size: 1.15em; }
+.sspa-share-prompt p { margin: 6px 0; }
+.sspa-share-prompt-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sspa-share-prompt-status { color: #b32d2e; }
+.sspa-share-prompt-never { margin-inline-start: 16px; color: #50575e; }
+
+/* Community figures on Compare. */
+.sspa-community-figures-table td, .sspa-community-figures-table th { vertical-align: top; }
+.sspa-community-figures-table td.sspa-figure-own, .sspa-community-figures-table td.sspa-figure-median,
+.sspa-community-figures-table td.sspa-figure-p75, .sspa-community-figures-table td.sspa-figure-p95 { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }

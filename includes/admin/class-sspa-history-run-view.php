@@ -8,7 +8,7 @@ class SSPA_History_Run_View {
         if ($run_id > 0) {
             $args['sspa_history_run'] = (int) $run_id;
         }
-        return add_query_arg($args, admin_url('admin.php')) . '#history';
+        return add_query_arg($args, admin_url('admin.php')) . '#compare';
     }
 
     public static function ajax_run() {
@@ -43,7 +43,7 @@ class SSPA_History_Run_View {
         ob_start();
         ?>
         <section class="sspa-history-saved-report" data-saved-run-id="<?php echo esc_attr($run_id); ?>">
-            <p><a class="button sspa-history-back" href="<?php echo esc_url(self::url()); ?>"><?php esc_html_e('Back to History', 'super-speedy-performance-analysis'); ?></a></p>
+            <p><a class="button sspa-history-back" href="<?php echo esc_url(self::url()); ?>"><?php esc_html_e('Back to Compare', 'super-speedy-performance-analysis'); ?></a></p>
             <h2 tabindex="-1"><?php
                 /* translators: %d: saved analysis run ID. */
                 echo esc_html(sprintf(__('Saved analysis #%d', 'super-speedy-performance-analysis'), $run_id));

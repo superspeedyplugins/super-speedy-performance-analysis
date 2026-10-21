@@ -265,7 +265,7 @@ sspa_markdown_t(false !== $analysis_start && $analysis_start < strpos($overview,
 sspa_markdown_t(false === strpos($overview, SSPA_Markdown_Export::CACHE_SERVICE_URL) && false !== strpos($overview, 'data-tab="cache"'), 'Overview links to the Cache performance tab instead of the implementation service');
 
 ob_start();
-include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
+include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $history = ob_get_clean();
 sspa_markdown_t(false !== strpos($history, 'data-kind="checkout"') && false !== strpos($history, 'data-kind="run"'), 'history exposes Markdown reports for site and checkout runs');
 sspa_markdown_t(false !== strpos($history, 'Share this Plugin Impact Analysis'), 'history names deep runs Plugin Impact Analysis');

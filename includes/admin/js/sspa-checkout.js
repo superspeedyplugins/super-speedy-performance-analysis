@@ -245,7 +245,9 @@
 		var max = 0;
 		all.forEach(function (r) { if (r.gen_ms > max) { max = r.gen_ms; } });
 
-		var html = '<div class="sspa-adhoc-topbar sspa-adhoc-span">' +
+		// The share panel comes pre-escaped from the server, only on the Performance Analysis screens.
+		var html = d.share_prompt_html ? '<div class="sspa-adhoc-span">' + d.share_prompt_html + '</div>' : '';
+		html += '<div class="sspa-adhoc-topbar sspa-adhoc-span">' +
 			('<button type="button" class="sspa-adhoc-btn sspa-adhoc-btn-primary sspa-ck-preflight">' + wp.i18n.__('Run again', 'super-speedy-performance-analysis') + '</button>') +
 			'<button type="button" class="sspa-adhoc-btn sspa-markdown-download" data-kind="checkout" data-id="' + esc(d.run_id) + ('">' + wp.i18n.__('Download Markdown', 'super-speedy-performance-analysis') + '</button>') +
 			'<button type="button" class="sspa-adhoc-btn sspa-markdown-copy" data-kind="checkout" data-id="' + esc(d.run_id) + ('">' + wp.i18n.__('Copy Markdown', 'super-speedy-performance-analysis') + '</button>') +

@@ -437,7 +437,7 @@ sspa_history_t(
     'History renderer exposes the response headline, exact setup changes and preview-first export'
 );
 ob_start();
-include SSPA_PLUGIN_DIR . 'includes/admin/tabs/history.php';
+include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $history_html = ob_get_clean();
 sspa_history_t(false !== strpos($history_html, 'sspa-plugin-update-detection'), 'History exposes the default-enabled update comparison setting');
 sspa_history_t(false !== strpos($history_html, 'sspa-history-before') && false !== strpos($history_html, 'sspa-history-after'), 'History exposes explicit Before and After selectors');

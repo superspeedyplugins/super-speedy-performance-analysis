@@ -100,11 +100,11 @@ const FIXTURE = "sspa-history-update-fixture/sspa-history-update-fixture.php";
     // History's default comparison is the newest run against the one before it, which is
     // exactly the pair the quick comparison just produced.
     await page.goto(
-      json(`echo wp_json_encode(admin_url('admin.php?page=sspa'));`) + "#history",
+      json(`echo wp_json_encode(admin_url('admin.php?page=sspa'));`) + "#compare",
     );
     await page.waitForFunction(() => {
       const active = document.querySelector("#sspa_main .nav-tab-active");
-      return active && active.dataset.tab === "history";
+      return active && active.dataset.tab === "compare";
     });
     const comparison = page.locator(
       `#sspa_main section.sspa-history-comparison[data-before-run="${prepared.before}"][data-after-run="${id}"]`,

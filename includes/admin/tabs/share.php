@@ -32,6 +32,11 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
             <input type="checkbox" id="sspa-share-optin" value="1" <?php checked($sspa_optin); ?>>
             <strong><?php esc_html_e('Share every analysis I run with superspeedy.org', 'super-speedy-performance-analysis'); ?></strong>
         </label>
+        <?php // The only permanent opt-out from the share panel on the result and Compare screens. Per user, undoable here. ?>
+        <label class="sspa-share-prompt-never">
+            <input type="checkbox" id="sspa-share-prompt-never" value="1" <?php checked(SSPA_Share_Prompt::never_asked()); ?>>
+            <?php esc_html_e('Don\'t ask me again', 'super-speedy-performance-analysis'); ?>
+        </label>
     </p>
     <p class="description">
         <?php esc_html_e('Covers every full scan, spot check, plugin impact analysis, cache analysis, page analysis, checkout analysis and admin update/save workflow, now and in future, as soon as each one finishes.', 'super-speedy-performance-analysis'); ?>
@@ -130,7 +135,7 @@ $sspa_backfill_restart = $sspa_inventory['remaining'] > 0 && 0 === $sspa_invento
         <?php esc_html_e('You do not have to switch the setting above on. With it off, every analysis stays on your site until you choose one, and each Share this control sends that single run and nothing else - it never turns on sharing for anything else.', 'super-speedy-performance-analysis'); ?>
     </p>
     <p>
-        <a class="button sspa-goto-tab" href="#history" data-tab="history"><?php esc_html_e('Choose analyses to share', 'super-speedy-performance-analysis'); ?></a>
+        <a class="button sspa-goto-tab" href="#compare" data-tab="compare"><?php esc_html_e('Choose analyses to share', 'super-speedy-performance-analysis'); ?></a>
     </p>
 
     <p class="description">

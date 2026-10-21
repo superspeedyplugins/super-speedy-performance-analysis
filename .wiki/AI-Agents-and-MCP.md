@@ -26,7 +26,7 @@ Point your agent at the one that matches it rather than describing the plugin to
 2. `wp sspa findings --format=json` and act on the highest-severity finding.
 3. `wp sspa run --type=deep --suspects=<slug> --pages=<key>` to measure whether the suspect is really the cost, before changing anything.
 4. Make the change.
-5. Repeat step 1 and compare on the History tab.
+5. Repeat step 1 and compare on the Compare tab.
 
 Step 3 is the one agents skip and shouldn't. Attribution is inference; measured impact is the number that survives an argument.
 

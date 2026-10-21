@@ -39,7 +39,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			'ECharts must not load on the Overview tab'
 		);
 
-		await page.locator('.nav-tab[data-tab="history"]').click();
+		await page.locator('.nav-tab[data-tab="compare"]').click();
 		await page.locator('.sspa-history-chart canvas').waitFor();
 		await page.locator('.sspa-history-chart-status').filter({ hasText: 'chart loaded' }).waitFor();
 		assert.equal(
@@ -51,7 +51,7 @@ if (!siteUrl || !adminUser || !adminPassword) {
 			const probe = document.createElement('div');
 			probe.innerHTML = '<section data-sspa-history-chart><div class="sspa-history-chart-status"></div><div class="sspa-history-chart"></div><div class="sspa-history-chart-document" data-document="{broken"></div></section>';
 			document.body.appendChild(probe);
-			window.jQuery(document).trigger('sspa:tab-rendered', ['history', probe]);
+			window.jQuery(document).trigger('sspa:tab-rendered', ['compare', probe]);
 			await new Promise((resolve) => setTimeout(resolve, 50));
 			const status = probe.querySelector('.sspa-history-chart-status').textContent;
 			probe.remove();

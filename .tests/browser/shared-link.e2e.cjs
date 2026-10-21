@@ -14,9 +14,9 @@ const {session, expect, output} = require('./fleet-context.cjs');
     await expect(selected).toHaveAttribute('data-tab', 'plugins');
     await page.goto(bookmark);
     await expect(selected).toHaveAttribute('data-tab', 'plugins');
-    await page.locator('#sspa_main .nav-tab[data-tab="history"]').click();
+    await page.locator('#sspa_main .nav-tab[data-tab="compare"]').click();
     await page.reload();
-    await expect(selected).toHaveAttribute('data-tab', 'history');
+    await expect(selected).toHaveAttribute('data-tab', 'compare');
     await page.screenshot({path:output + '/shared-link.png'});
     console.log('PASS real shared Plugin Impact link, reload and bookmark select Plugins; explicit fragment takes precedence');
   } finally { await browser.close(); }
