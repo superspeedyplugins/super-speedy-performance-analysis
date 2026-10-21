@@ -30,7 +30,8 @@
     "offer_endpoint_p95_ms": 300,
     "offer_endpoint_calls": 50,
     "offer_impact_ms": 100,
-    "summary_unattributed_pct": 35
+    "summary_unattributed_pct": 35,
+    "summary_unattributed_min_ms": 1000
   },
   "recommendations": {
     "slow_query_postmeta": {

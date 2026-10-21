@@ -467,8 +467,12 @@ with evidence under `.data/lead-gen/<kind>/`.
   then HUSKY from wordpress.org and a fresh analysis for F1/F3.
 - `132-lead-gen-wpai.php` - `.tests/lead-gen/run.sh wpai` on `tests-lead-gen-wpai`: WP All Import
   from wordpress.org and a real 300-row import through its own wizard (`wpai-import.cjs`); a fast
-  store, so no product offer fires; I1 on the Overview; the Imports tab's run history checked
-  against WP All Import's own History screen, the published figures and the Lite button.
+  store, so no product offer fires, and no fix quote on the fast wp-admin screens even where 35% or
+  more of their generation is unattributed (R2 needs >= 1,000 ms); I1 on the Overview; the Imports
+  tab's run history checked against WP All Import's own History screen, the published figures and
+  the Lite button. Then R2's positive case: an ad hoc analysis of a page whose template does about
+  1,200 ms of real PHP work outside any callback (`.tests/fixtures/lead-gen-slow-render.php`) offers
+  the fix quote in its summary and export.
 - `133-lead-gen-imports.php` - `.tests/lead-gen/run.sh imports` on `tests-lead-gen-imports`: the
   Imports tab with no importer; a Traffic collection over a real WooCommerce product CSV import
   (`woocommerce-import.cjs`) and 60 requests to a 350 ms admin-ajax endpoint

@@ -71,6 +71,13 @@ function lg_profile_id($run_id, $page_key) {
     return (int) $wpdb->get_var($wpdb->prepare('SELECT id FROM %i WHERE run_id = %d AND page_key = %s ORDER BY id DESC LIMIT 1', SSPA_Schema::table('profiles'), $run_id, $page_key));
 }
 
+/** The page summary an administrator sees for one stored profile, built by the plugin itself. */
+function lg_summary($profile_id) {
+    global $wpdb;
+    $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM %i WHERE id = %d', SSPA_Schema::table('profiles'), $profile_id), ARRAY_A);
+    return SSPA_Page_Summary::build($row, SSPA_Profile_Panel::capture($row));
+}
+
 /**
  * Every superspeedyplugins.com link carries only the static placement tag: no host name,
  * user, site or run data. Returns the offending links.

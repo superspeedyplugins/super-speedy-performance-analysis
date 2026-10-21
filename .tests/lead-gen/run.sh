@@ -6,7 +6,8 @@
 #                                   # S1/S3/S5, Q1-Q3, volume, dismissal, suppression, exports,
 #                                   # then F1/F3 with HUSKY from wordpress.org
 #   .tests/lead-gen/run.sh wpai     # small fast store, WP All Import from wordpress.org with a
-#                                   # real import: silence below thresholds, I1, Imports tab I2
+#                                   # real import: silence below thresholds, I1, Imports tab I2,
+#                                   # then R2 on a genuinely slow, mostly unattributed page
 #   .tests/lead-gen/run.sh imports  # Imports tab states (none, traffic I3 + S8, Lite, Pro)
 #
 # Sites: tests-lead-gen, tests-lead-gen-wpai, tests-lead-gen-imports. State is cleared on the
@@ -98,6 +99,11 @@ PY
     cli eval-file "$HERE/analyse.php" $PAGES | tee "$OUT/analyse.log" || exit 1
     grep -q '^FAIL' "$OUT/analyse.log" && exit 1
     assert wpai
+    # R2's positive case: a genuinely slow page whose generation is mostly unattributed.
+    mkdir -p "$SSPA_SITE_DIR/wp-content/mu-plugins" || exit 1
+    ln -sfn "$PLUGIN_DIR/.tests/fixtures/lead-gen-slow-render.php" "$SSPA_SITE_DIR/wp-content/mu-plugins/sspa-lead-gen-slow-render.php" || exit 1
+    sleep 3 # php-fpm opcache revalidation
+    assert slow-render
 fi
 
 if [ "$KIND" = imports ]; then

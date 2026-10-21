@@ -836,8 +836,9 @@ class SSPA_Offers {
     }
 
     /**
-     * The one offer for a page summary: that page's own triggers in its run, or R2 when most of
-     * the page's generation could not be attributed.
+     * The one offer for a page summary: that page's own triggers in its run, or R2 when a slow
+     * page (generation at or above summary_unattributed_min_ms) spent summary_unattributed_pct
+     * or more of its generation unattributed.
      *
      * @param array $row     Profile row (page_key, run_id).
      * @param array $summary SSPA_Page_Summary::build() output.
@@ -851,7 +852,7 @@ class SSPA_Offers {
         }
         $gen = isset($summary['generation_ms']) ? (float) $summary['generation_ms'] : 0.0;
         $unattributed = isset($summary['unattributed_ms']) ? (float) $summary['unattributed_ms'] : 0.0;
-        if ($gen > 0 && $unattributed / $gen * 100 >= self::limit('summary_unattributed_pct', 35)) {
+        if ($gen > 0 && $gen >= self::limit('summary_unattributed_min_ms', 1000) && $unattributed / $gen * 100 >= self::limit('summary_unattributed_pct', 35)) {
             $matches[] = self::match('fix_quote', 'R2', array('page_key' => (string) $row['page_key'], 'weight' => $unattributed, 'evidence' => sprintf(
                 /* translators: 1: percentage, 2: milliseconds */
                 __('%1$s%% of this page\'s generation (%2$s ms) ran during render without being attributed to a plugin, hook or template.', 'super-speedy-performance-analysis'),
