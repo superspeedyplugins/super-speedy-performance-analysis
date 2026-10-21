@@ -32,7 +32,11 @@ RECEIVER_DIR=$(pd_site_dir "$PLUGIN_SLUG" "$RECEIVER_SCENARIO")
 RECEIVER_URL=$(pd_site_url "$PLUGIN_SLUG" "$RECEIVER_SCENARIO")
 case "$(realpath -m "$RECEIVER_DIR")" in "$(realpath -m "$SITES_ROOT")"/*) ;; *) echo "FAIL: refusing non-isolated receiver $RECEIVER_DIR"; exit 1 ;; esac
 if [ ! -f "$RECEIVER_DIR/wp-config.php" ]; then
-    "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$RECEIVER_SCENARIO" > "$OUT/receiver-setup.log" 2>&1 || { echo "FAIL: could not create $RECEIVER_SCENARIO"; exit 1; }
+    # Inside run-tests.sh, PATH carries the suite's wp shim, which forces --path to the PA site.
+    # create-site.sh must install the receiver with the real wp, or its `wp core install` lands on
+    # the PA site and the new receiver is never installed.
+    real_wp="${SSPA_TEST_REAL_WP:-$(type -P wp)}"
+    PATH="$(dirname "$real_wp"):$PATH" "$WORKSPACE/tools/parallel-dev/bin/create-site.sh" "$PLUGIN_SLUG" "$RECEIVER_SCENARIO" > "$OUT/receiver-setup.log" 2>&1 || { echo "FAIL: could not create $RECEIVER_SCENARIO"; exit 1; }
 fi
 # Keep only this runner's own default sites; a branch suite's override copy stays temporary.
 case "$SSPA_SCENARIO" in
@@ -77,6 +81,10 @@ cli config set SSPA_QUOTE_REQUEST_TEST_ENDPOINT "$SSPA_QUOTE_ENDPOINT" --type=co
 mkdir -p "$SSPA_SITE_DIR/wp-content/mu-plugins" || exit 1
 ln -sfn "$PLUGIN_DIR/.tests/fixtures/quote-http-observer.php" "$SSPA_SITE_DIR/wp-content/mu-plugins/sspa-quote-http-observer.php" || exit 1
 ln -sfn "$PLUGIN_DIR/.tests/fixtures/quote-raw-stream.php" "$SSPA_SITE_DIR/wp-content/mu-plugins/sspa-quote-raw-stream.php" || exit 1
+# The static file the raw-stream fixture reads. Without it every read is a WordPress 404 and the
+# 1,700-read page times out (504) instead of producing a report over the receiver's limit.
+raw_static="$SSPA_SITE_DIR/wp-content/uploads/quote-raw/customer@example.com/98765"
+mkdir -p "$raw_static" && printf 'raw stream fixture body' > "$raw_static/report.txt" || exit 1
 cli eval 'delete_option("sspa_test_quote_log"); delete_user_meta(1, "sspa_dismissed_offers");' || exit 1
 sleep 3 # php-fpm opcache revalidation after a wp-config or MU fixture change
 export SSPA_QUOTE_RECEIVER_DIR="$RECEIVER_DIR" SSPA_QUOTE_RECEIVER_URL="$RECEIVER_URL"
