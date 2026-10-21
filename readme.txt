@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.48.4
+Stable tag: 0.49.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -115,10 +115,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.48.4 (21st October 2026) =
-* Request a fix quote checks its security token directly in each of its two request handlers.
-
-= 0.48.3 (21st October 2026) =
+= 0.49.0 (21st October 2026) =
 * Request a fix quote: on Performance Analysis screens you can send a page's Markdown report to Super Speedy Plugins for a fixed-price quote, after reading exactly what will be sent and ticking a consent box.
 * New WP-CLI commands `wp sspa profiler enable` and `wp sspa profiler disable` do the same as the Enable profiler and Disable profiler buttons on the Tools tab.
 
