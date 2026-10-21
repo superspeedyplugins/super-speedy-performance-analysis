@@ -48,7 +48,7 @@ class SSPA_Cache_Delivery {
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('You are not allowed to run this check.', 'super-speedy-performance-analysis')), 403);
         }
-        $prepared = self::prepare();
+        $prepared = self::prepare_check();
         if (is_wp_error($prepared)) {
             wp_send_json_error(array('message' => $prepared->get_error_message(), 'code' => $prepared->get_error_code()));
         }
@@ -171,7 +171,7 @@ class SSPA_Cache_Delivery {
         );
     }
 
-    public static function prepare() {
+    public static function prepare_check() {
         $targets = self::targets(true);
         if (!$targets || 'home' !== $targets[0]['page_key']) {
             return new WP_Error('sspa_cache_delivery_targets', __('The check needs a public home page on this site.', 'super-speedy-performance-analysis'));

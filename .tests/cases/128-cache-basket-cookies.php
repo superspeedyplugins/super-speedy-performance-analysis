@@ -17,7 +17,7 @@ $count = function () use ($wpdb, $sessions) {
     return (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i', $sessions));
 };
 
-$prepared = SSPA_Cache_Delivery::prepare();
+$prepared = SSPA_Cache_Delivery::prepare_check();
 sspa_bc_t(!is_wp_error($prepared), 'a check can be prepared');
 if (is_wp_error($prepared)) {
     return;

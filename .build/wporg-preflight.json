@@ -85,6 +85,16 @@
       "reason": "This file loads the local WordPress definition immediately before calling wp_delete_user to replace the synthetic customer. The API is not guaranteed to be loaded in this entry context."
     },
     {
+      "check": "core-files",
+      "file": "includes/class-sspa-cache-delivery.php",
+      "reason": "This file loads the local WordPress definition immediately before calling get_plugins to record the active plugins and their versions with each cache check. The API is not guaranteed to be loaded in this entry context."
+    },
+    {
+      "check": "core-files",
+      "file": "includes/class-sspa-cache-system.php",
+      "reason": "This file loads the local WordPress definition immediately before calling get_plugins and get_dropins to describe the site's page cache system. The API is not guaranteed to be loaded in this entry context."
+    },
+    {
       "check": "enqueue",
       "file": "includes/class-sspa-cache-recon.php",
       "reason": "This regular expression recognises script tags in an already measured response; it neither prints tags nor loads assets. Plugin assets are bundled and enqueued through WordPress."

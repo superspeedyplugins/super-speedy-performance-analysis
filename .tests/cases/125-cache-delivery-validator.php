@@ -27,7 +27,7 @@ sspa_cd_t(!array_filter($targets, function ($target) {
 }), 'the target resolver cannot select private, checkout or basket routes');
 sspa_cd_t(!array_filter($targets, function ($target) { return isset($target['facts']); }), 'rendering the targets reads no product or category facts');
 
-$prepared = SSPA_Cache_Delivery::prepare();
+$prepared = SSPA_Cache_Delivery::prepare_check();
 sspa_cd_t(!is_wp_error($prepared) && 36 === $prepared['request_count'] && 8 === $prepared['browser_requests'] && 28 === $prepared['server_requests'], 'preparation declares 8 browser and 28 server requests');
 if (is_wp_error($prepared)) {
     return;

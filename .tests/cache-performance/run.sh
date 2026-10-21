@@ -61,6 +61,14 @@ cli option delete sspa_cache_delivery_report --quiet 2>/dev/null || true
 cli option delete sspa_cache_delivery_pending --quiet 2>/dev/null || true
 
 if [ "$KIND" = enabler ]; then
+    # The first pass needs a theme that prints no basket refresh mechanism: a new site's
+    # Twenty Twenty-Four puts the Mini-Cart block in its header, which correctly withholds
+    # the empty-basket warning that assert-enabler.php expects. Neve prints none.
+    theme_zip="$PLUGIN_DIR/.data/downloads/theme-neve.zip"
+    mkdir -p "$PLUGIN_DIR/.data/downloads"
+    [ -s "$theme_zip" ] || curl -sfL --max-time 120 -o "$theme_zip" "https://downloads.wordpress.org/theme/neve.latest-stable.zip" || { echo "FAIL: could not download neve from wordpress.org"; exit 1; }
+    cli theme is-installed neve || cli theme install "$theme_zip" --quiet || { echo "FAIL: could not install neve"; exit 1; }
+    cli theme activate neve --quiet || exit 1
     fetch_wporg cache-enabler
     cli plugin activate cache-enabler --quiet || exit 1
     cli config set WP_CACHE true --raw --anchor='if ( ! defined(' --placement=before --quiet || exit 1
