@@ -195,6 +195,20 @@ class SSPA_Admin_Page {
             'copied' => __('Copied', 'super-speedy-performance-analysis'),
         ));
         wp_enqueue_style('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-admin.css', array(), sspa_asset_version('includes/admin/css/sspa-admin.css'));
+        // "Request a fix quote": PA's own screen only. The dialog markup comes from the server.
+        wp_enqueue_script('sspa-quote-request', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-quote-request.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-quote-request.js'), true);
+        wp_localize_script('sspa-quote-request', 'sspa_quote', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('sspa_admin'),
+            'i18n' => array(
+                'opening' => __('Preparing the report…', 'super-speedy-performance-analysis'),
+                'open_failed' => __('The quote request could not be opened.', 'super-speedy-performance-analysis'),
+                'consent_needed' => __('Tick the consent box to send the request. Nothing has been sent.', 'super-speedy-performance-analysis'),
+                'sending' => __('Sending…', 'super-speedy-performance-analysis'),
+                'send_failed' => __('This site did not answer. Press Send to try again; a repeat is never stored twice.', 'super-speedy-performance-analysis'),
+                'close' => __('Close', 'super-speedy-performance-analysis'),
+            ),
+        ));
         wp_enqueue_script('sspa-workflows', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-workflows.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-workflows.js'), true);
         wp_localize_script('sspa-workflows', 'sspa_workflows', array(
             'ajaxurl' => admin_url('admin-ajax.php'),

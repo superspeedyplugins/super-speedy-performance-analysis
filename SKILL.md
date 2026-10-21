@@ -23,6 +23,12 @@ wp plugin install https://github.com/superspeedyplugins/super-speedy-performance
 Or download that zip and upload via Plugins -> Add New. Verify: `wp plugin is-active
 super-speedy-performance-analysis`.
 
+Analyses need the profiler, which the site owner turns on explicitly. With their agreement:
+
+```bash
+wp sspa profiler enable    # same as Tools > Enable profiler; `wp sspa profiler disable` removes it
+```
+
 ## 2. Run the analysis
 
 Preferred (wp-cli - synchronous, shows progress):

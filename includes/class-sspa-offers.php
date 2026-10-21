@@ -890,7 +890,7 @@ class SSPA_Offers {
             'blockquote' => array('class' => true),
             'cite' => array(),
             'a' => array('href' => true, 'class' => true, 'target' => true, 'rel' => true, 'data-tab' => true),
-            'button' => array('type' => true, 'class' => true, 'data-offer' => true),
+            'button' => array('type' => true, 'class' => true, 'data-offer' => true, 'data-profile-id' => true, 'data-source' => true, 'aria-haspopup' => true),
         );
     }
 
@@ -956,9 +956,28 @@ class SSPA_Offers {
             }
             $html .= '<a class="sspa-offer-link sspa-imports-pro" href="' . esc_url(self::url('imports', $placement)) . '" target="_blank" rel="noopener noreferrer">' . esc_html(self::link_text($offer)) . '</a>';
         } else {
-            $html .= '<a class="button' . ($primary ? ' button-primary' : '') . ' sspa-offer-link" href="' . esc_url(self::url($match['offer'], $placement)) . '" target="_blank" rel="noopener noreferrer">' . esc_html(self::link_text($offer)) . '</a>';
+            $quote = 'fix_quote' === $match['offer'] ? self::quote_button($match, $placement, $primary) : '';
+            $html .= $quote . '<a class="button' . ($primary && !$quote ? ' button-primary' : '') . ' sspa-offer-link" href="' . esc_url(self::url($match['offer'], $placement)) . '" target="_blank" rel="noopener noreferrer">' . esc_html(self::link_text($offer)) . '</a>';
         }
         return $html;
+    }
+
+    /**
+     * The fix quote's "Request a fix quote" button, which sends one page's Markdown. Only where
+     * that page has a stored profile: the summary's own page, or the newest profile of the
+     * Overview finding's page. A checkout run has no single page report, so R4 keeps the link.
+     */
+    private static function quote_button($match, $placement, $primary) {
+        $sources = array('summary' => 'summary', 'overview' => 'page-analysis');
+        if (!isset($sources[$placement])) {
+            return '';
+        }
+        $profile_id = !empty($match['profile_id']) ? (int) $match['profile_id'] : 0;
+        if (!$profile_id && '' !== (string) $match['page_key']) {
+            $profile_id = SSPA_Profile_Panel::newest_profile_id_for_page((string) $match['page_key']);
+        }
+        $button = SSPA_Quote_Request::button_html($profile_id, $sources[$placement], 'button' . ($primary ? ' button-primary' : ''));
+        return $button ? $button . ' ' : '';
     }
 
     /**

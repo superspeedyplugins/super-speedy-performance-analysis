@@ -46,7 +46,7 @@ slow, and proves it.
 
 The whole plugin is drivable without the GUI:
 
-- **WP-CLI**: `wp sspa run`, `wp sspa status`, `wp sspa findings`, `wp sspa impacts`,
+- **WP-CLI**: `wp sspa profiler enable|disable`, `wp sspa run`, `wp sspa status`, `wp sspa findings`, `wp sspa impacts`,
   `wp sspa report`, `wp sspa cache-optimisation-report` and the experimental
   `wp sspa traffic start|status|stop|observations|compare|delete` commands - JSON output throughout.
 - **WordPress Abilities API** (WP 6.9+) with the same surface, exposed through the one shared
@@ -99,6 +99,14 @@ evidence archive removes identifying site and customer details and uses a random
 identifier. Network requests still expose their source IP address and request headers to the
 receiving service. Traffic recording stays local. See [External services in readme.txt](readme.txt)
 for the service hosts, registration data, archive upload flow and privacy-policy link.
+
+## Request a fix quote
+
+On Performance Analysis screens an administrator can send one page's Markdown report, with their
+name and email, to superspeedyplugins.com for a fixed-price quote. The dialog shows the exact
+Markdown first, every box starts unticked, and nothing is sent until the consent box is ticked and
+Send is pressed. The request goes from the site's server, never to superspeedy.org, and the JSON
+export is never sent. See External services in readme.txt.
 
 ## Licence
 

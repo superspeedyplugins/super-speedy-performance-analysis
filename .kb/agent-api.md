@@ -8,7 +8,9 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 
 - **WP-CLI**: `wp sspa run|checkout-flow|status|findings|impacts|http-calls|cache-scan|cache-optimisation-report|history-compare|report`
   plus `wp sspa traffic start|status|stop|observations|compare|delete` (report/findings/impacts
-  take `--format=json` or emit JSON directly).
+  take `--format=json` or emit JSON directly), and `wp sspa profiler enable|disable`, which
+  installs or removes the profiling loader exactly as the Tools tab's buttons do (analyses
+  need it enabled).
 - **Abilities API** (WP 6.9+): category `sspa`, abilities
   `get-status`, `get-report`, `compare-history`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,

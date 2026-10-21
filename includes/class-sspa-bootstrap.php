@@ -128,6 +128,8 @@ class SSPA_Bootstrap {
             'sspa_impact_plan' => array('SSPA_Profile_Panel', 'ajax_impact_plan'),
             'sspa_markdown_export' => array('SSPA_Markdown_Export', 'ajax_export'),
             'sspa_dismiss_offer' => array('SSPA_Offers', 'ajax_dismiss'),
+            'sspa_quote_preview' => array('SSPA_Quote_Request', 'ajax_preview'),
+            'sspa_quote_send' => array('SSPA_Quote_Request', 'ajax_send'),
             'sspa_traffic_start' => array('SSPA_Traffic_Ajax', 'start'),
             'sspa_traffic_status' => array('SSPA_Traffic_Ajax', 'status'),
             'sspa_traffic_stop' => array('SSPA_Traffic_Ajax', 'stop'),

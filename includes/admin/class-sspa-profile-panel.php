@@ -250,7 +250,7 @@ class SSPA_Profile_Panel {
 
         $html = '<div class="sspa-adhoc-grid">';
         $html .= self::summary_html($row, $capture, !empty($args['offers']));
-        $html .= self::topbar_html($row, $cached);
+        $html .= self::topbar_html($row, $cached, !empty($args['offers']));
         $html .= self::notes_html($row, $capture);
         $html .= '<div>' . $left . '</div><div>' . $right . '</div>';
         $html .= self::impact_html($row);
@@ -283,9 +283,13 @@ class SSPA_Profile_Panel {
             $html .= '</ul>';
         }
         $html .= '<p class="sspa-summary-coverage">' . esc_html($summary['coverage_headline']) . '</p>';
-        $html .= '<p>' . esc_html($summary['next_action']) . '</p>';
         $offer = $offers ? SSPA_Offers::page($row, $summary) : null;
+        // On PA's own screens the next action can be handed to Super Speedy Plugins as a quote
+        // request; when the summary's offer is the fix quote, its button is in the offer.
+        $quote = $offers && !($offer && 'fix_quote' === $offer['offer']) ? SSPA_Quote_Request::button_html((int) $row['id'], 'summary', 'sspa-adhoc-btn') : '';
+        $html .= '<p class="sspa-summary-next">' . esc_html($summary['next_action']) . ($quote ? ' ' . $quote : '') . '</p>';
         if ($offer) {
+            $offer['profile_id'] = (int) $row['id'];
             $html .= SSPA_Offers::render($offer, 'summary', true);
         }
         if (self::is_reprofilable($row)) {
@@ -310,7 +314,7 @@ class SSPA_Profile_Panel {
      *
      * No "open in Performance Analysis" link any more - this IS that view now.
      */
-    private static function topbar_html($row, $cached) {
+    private static function topbar_html($row, $cached, $pa_screen = false) {
         $created_gmt = strtotime($row['created'] . ' UTC');
         $when = get_date_from_gmt($row['created'], get_option('date_format') . ' ' . get_option('time_format'));
         $age = max(0, time() - (int) $created_gmt);
@@ -337,6 +341,9 @@ class SSPA_Profile_Panel {
             . esc_html__('Download Markdown', 'super-speedy-performance-analysis') . '</button>';
         $html .= '<button type="button" class="sspa-adhoc-btn sspa-markdown-copy" data-kind="page" data-id="' . (int) $row['id'] . '">'
             . esc_html__('Copy Markdown', 'super-speedy-performance-analysis') . '</button>';
+        if ($pa_screen) {
+            $html .= SSPA_Quote_Request::button_html((int) $row['id'], 'page-analysis', 'sspa-adhoc-btn');
+        }
         $html .= '<span class="sspa-markdown-status" aria-live="polite"></span>';
         $html .= '<span class="sspa-adhoc-badge ' . ($cached ? 'is-cached' : 'is-fresh') . '">'
             . esc_html($cached ? __('Stored result', 'super-speedy-performance-analysis') : __('Fresh result', 'super-speedy-performance-analysis'))

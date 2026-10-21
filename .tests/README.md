@@ -158,6 +158,27 @@ logs every WordPress HTTP API request to superspeedy.org in the `sspa_test_ssorg
 hands back their real status and body, so case 135 checks the plugin against what superspeedy.org serves today.
 Without a mode the regression boundary refuses the request, as for any external host.
 
+### Request a fix quote
+
+`bash .tests/quote-request/run.sh` (case 136 wraps it; `case` or `journey` runs one part) runs
+`.tests/quote-request/assert-quote.php` and then `.tests/quote-request/journey.e2e.cjs` on `tests-quote`
+(override with `SSPA_QUOTE_SCENARIO`). The receiver is a second retained site, `tests-quote-receiver` (override with
+`SSPA_QUOTE_RECEIVER_SCENARIO`), running the real Super Speedy Contact code from
+`superspeedyplugins.com/super-speedy-contact`, frozen at its commit with `git archive` (the commit is in its
+`.regression-source-commit`). PA reaches it because the runner defines `SSPA_QUOTE_REQUEST_TEST_ENDPOINT` in
+`tests-quote`'s wp-config.php: a test-only constant read by `SSPA_Quote_Request::endpoint()`, not a setting. Without
+it PA posts to superspeedyplugins.com; tests never do, and the regression boundary refuses every external host
+anyway. `quote-http-observer.php` records (never answers) every request to `/ssp-contact/v1/quote-request` in
+`sspa_test_quote_log`. `quote-receiver.php` on the receiver records mail instead of sending it, applies
+`sspa_test_receiver_limits` through Contact's own `ssp_contact_rate_limits` filter (the 429 step) and, with
+`sspa_test_receiver_fail_storage`, makes WordPress refuse the lead insert (the real 503 path). The 413 step analyses a
+page that reads 1,700 raw streams (`quote-raw-stream.php`), giving a real report over 200 KB. Leads, rate-limit
+windows and knobs are cleared on the way in; evidence is under `.data/quote-request/`.
+
+Case 137 (`137-markdown-raw-stream-urls`) runs on the suite site: a real opt-in raw-stream analysis of a page reading a
+URL with a query token, an email address and a number in its path, checking none reaches the page Markdown. Case 138
+(`138-profiler-cli`) checks `wp sspa profiler enable|disable` leave Tools exactly as the buttons do.
+
 ### WordPress.org behaviour regressions
 
 Cases 103 to 109 cover build metadata, bundled-only rules, explicit profiler consent,

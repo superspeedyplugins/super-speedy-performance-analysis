@@ -2387,19 +2387,30 @@ class SSPA_Run_Controller {
     public static function ajax_profiler_toggle() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
-        if (self::active_run_id()) {
-            wp_send_json_error(__('Finish or cancel the active analysis before changing the profiler.', 'super-speedy-performance-analysis'));
-        }
         $requested = isset($_POST['enabled']) ? sanitize_text_field(wp_unslash($_POST['enabled'])) : '';
-        if (!in_array($requested, array('0', '1'), true)) {
+        if (!self::active_run_id() && !in_array($requested, array('0', '1'), true)) {
             wp_send_json_error(__('Choose Enable or Disable profiler.', 'super-speedy-performance-analysis'), 400);
         }
         $enabled = '1' === $requested;
-        $result = $enabled ? SSPA_Helper_Files::enable_profiler() : SSPA_Helper_Files::disable_profiler();
+        $result = self::set_profiler($enabled);
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
         }
         wp_send_json_success(array('enabled' => $enabled));
+    }
+
+    /**
+     * Enable or Disable profiler: the one path behind the Tools buttons and
+     * `wp sspa profiler enable|disable`. Installing or removing the loader also records the
+     * administrator's choice (sspa_profiler_enabled).
+     *
+     * @return true|WP_Error
+     */
+    public static function set_profiler($enabled) {
+        if (self::active_run_id()) {
+            return new WP_Error('sspa_run_active', __('Finish or cancel the active analysis before changing the profiler.', 'super-speedy-performance-analysis'));
+        }
+        return $enabled ? SSPA_Helper_Files::enable_profiler() : SSPA_Helper_Files::disable_profiler();
     }
 
     /**

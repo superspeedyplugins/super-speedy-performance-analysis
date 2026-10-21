@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.48.2
+Stable tag: 0.48.3
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -75,6 +75,11 @@ Terms of service: https://superspeedy.org/privacy-and-terms/
 Cloudflare privacy policy: https://www.cloudflare.com/privacypolicy/
 Cloudflare service terms (including R2): https://www.cloudflare.com/service-specific-terms-developer-platform/
 
+Fix quote requests to superspeedyplugins.com: on the plugin's own screens an administrator can press "Request a fix quote" beside a page analysis, in its summary or on the Cache performance tab. A dialog first shows, in full, the page Markdown report that would be sent. Only when the administrator ticks the consent box and presses Send does the site's server send one HTTPS request to https://www.superspeedyplugins.com/wp-json/ssp-contact/v1/quote-request, run by WP Intense OÜ. It contains the name and email address entered, the site address unless it was cleared, the optional message, the page Markdown report (timings, query shapes with values removed, plugins and settings; never the JSON export), which screen it came from, the "ongoing performance care" and "Email me performance tips and offers" choices (both unticked to start with), the consent wording version, the plugin version and a random request number so that a retry is not stored twice. It uses a plugin User-Agent instead of WordPress's default, which contains the site address. The receiving server records the web server's IP address with the consent. The request is used to reply and prepare a quote and is never joined to anything shared with superspeedy.org. Nothing is sent automatically.
+
+Quote request privacy: https://www.superspeedyplugins.com/privacy-policy/#performance-review-requests
+Terms and conditions: https://www.superspeedyplugins.com/terms-conditions/
+
 == Source code and third-party libraries ==
 
 The plugin's readable source and build tools are available at https://github.com/superspeedyplugins/super-speedy-performance-analysis .
@@ -109,6 +114,10 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.48.3 (21st October 2026) =
+* Request a fix quote: on Performance Analysis screens you can send a page's Markdown report to Super Speedy Plugins for a fixed-price quote, after reading exactly what will be sent and ticking a consent box.
+* New WP-CLI commands `wp sspa profiler enable` and `wp sspa profiler disable` do the same as the Enable profiler and Disable profiler buttons on the Tools tab.
 
 = 0.48.2 (21st October 2026) =
 * Raw stream URLs in page reports and summaries no longer show email addresses, numbers or other private-looking parts of the path.

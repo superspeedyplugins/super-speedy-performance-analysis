@@ -509,6 +509,12 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
                     }
                     ?>
                 </a>
+                <?php
+                if ('cache_service' === $sspa_cache_offer_id) {
+                    // The quote request sends one page's report: the newest analysis of the home page.
+                    echo wp_kses(SSPA_Quote_Request::button_html(SSPA_Profile_Panel::newest_profile_id_for_page('home'), 'cache-tab'), SSPA_Quote_Request::allowed_button_html());
+                }
+                ?>
                 <?php if ('ajax_prices' === $sspa_cache_offer_id) : ?>
                     <button type="button" class="button-link sspa-offer-dismiss" data-offer="ajax_prices"><?php esc_html_e('Don\'t show this again', 'super-speedy-performance-analysis'); ?></button>
                 <?php endif; ?>
