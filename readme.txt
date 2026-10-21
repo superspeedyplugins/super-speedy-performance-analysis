@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.47.4
+Stable tag: 0.48.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -110,16 +110,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.47.4 (21st October 2026) =
+= 0.48.0 (21st October 2026) =
 * Compared with other sites now sits directly under Compare points in time instead of below the list of every analysis run.
-
-= 0.47.3 (21st October 2026) =
-* The share panel no longer adds a second status announcement inside the page analysis pop-up.
-
-= 0.47.2 (21st October 2026) =
 * Community figures on the Compare tab list your key pages first (home, shop, product category, product, checkout and search), with a Show all link for the other page types.
-
-= 0.47.1 (21st October 2026) =
 * The History tab is now called Compare, and old History links and bookmarks still open it.
 * After an analysis and on the Compare tab, a panel asks whether to share this site's anonymised results automatically, with a button to be asked again in 24 hours.
 * The Share tab has a Don't ask me again option that stops that panel, and can be unticked to bring it back.
