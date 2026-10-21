@@ -16,7 +16,7 @@ defined('ABSPATH') || exit;
     <p class="sspa-share-prompt-actions">
         <button type="button" class="button button-primary sspa-share-prompt-share"><?php esc_html_e('Share anonymised results automatically', 'super-speedy-performance-analysis'); ?></button>
         <button type="button" class="button sspa-share-prompt-snooze"><?php esc_html_e('Don\'t share for 24 hours', 'super-speedy-performance-analysis'); ?></button>
-        <span class="sspa-share-prompt-status" role="status" aria-live="polite"></span>
+        <span class="sspa-share-prompt-status" aria-live="polite"></span>
     </p>
     <p class="description"><?php esc_html_e('Automatic sharing is the Share tab\'s "Share every analysis I run" setting: it covers each analysis as it finishes, from now on, and you can turn it off there at any time.', 'super-speedy-performance-analysis'); ?></p>
 </section>

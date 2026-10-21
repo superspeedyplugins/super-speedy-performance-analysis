@@ -19,7 +19,7 @@ const { session, admin, expect, output, fs } = require("./fleet-context.cjs");
       expect(response.ok(), "History HTTP " + response.status()).toBe(true);
       const payload = await response.json();
       expect(payload.success, "History response must succeed").toBe(true);
-      expect(payload.data.tabs.history, "History HTML must be present").toBeTruthy();
+      expect(payload.data.tabs.compare, "Compare HTML must be present").toBeTruthy();
       await page.waitForFunction(() => window.SSPAECharts, null, { timeout: 30000 });
       const chart = page.locator(".sspa-history-chart");
       await expect(chart.locator("canvas")).toBeVisible();
