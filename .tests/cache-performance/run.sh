@@ -39,6 +39,9 @@ sspa_require_site || exit 1
 sync_plugin || exit 1
 source "$PLUGIN_DIR/.tests/local-services.sh" || exit 1
 cli plugin activate "$PLUGIN_SLUG" --quiet || exit 1
+# A kept site is repointed between checkouts, which leaves the profiler helpers generated for
+# the old path (health "stale", profiler off). Re-install them for this checkout, as setup does.
+cli eval '$r = SSPA_Helper_Files::enable_profiler(); if (is_wp_error($r)) { WP_CLI::error($r->get_error_message()); }' || exit 1
 if [ "$KIND" = nowoo ]; then
     if cli plugin is-active woocommerce >/dev/null 2>&1; then echo "FAIL: WooCommerce is active on $SSPA_SCENARIO"; exit 1; fi
 else

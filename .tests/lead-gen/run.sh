@@ -39,6 +39,9 @@ sspa_require_site || exit 1
 sync_plugin || exit 1
 source "$PLUGIN_DIR/.tests/local-services.sh" || exit 1
 cli plugin activate "$PLUGIN_SLUG" woocommerce --quiet || exit 1
+# A kept site is repointed between checkouts, which leaves the profiler helpers generated for
+# the old path (health "stale", profiler off). Re-install them for this checkout, as setup does.
+cli eval '$r = SSPA_Helper_Files::enable_profiler(); if (is_wp_error($r)) { WP_CLI::error($r->get_error_message()); }' || exit 1
 # HPOS on and coming-soon off, re-asserted because a WooCommerce reactivation turns HPOS off.
 cli option update woocommerce_custom_orders_table_enabled yes --quiet || exit 1
 cli option update woocommerce_coming_soon no --quiet || exit 1

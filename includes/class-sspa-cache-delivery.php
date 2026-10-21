@@ -550,8 +550,11 @@ class SSPA_Cache_Delivery {
             }
             $cookie_names[sanitize_key($cookie->name)] = true;
         }
-        $ttfb = is_array($curl_info) && is_numeric($curl_info['starttransfer_time']) && $curl_info['starttransfer_time'] > 0
-            ? round((float) $curl_info['starttransfer_time'] * 1000, 1)
+        // cURL's clock and PHP's differ by a few milliseconds, so cURL's absolute first-byte time
+        // can exceed the wall time measured around the request. Measure both ends on the wall
+        // clock: subtract the body-transfer time, a duration cURL measures on its own clock.
+        $ttfb = is_array($curl_info) && is_numeric($curl_info['starttransfer_time']) && $curl_info['starttransfer_time'] > 0 && is_numeric($curl_info['total_time'] ?? null)
+            ? round($total_ms - ((float) $curl_info['total_time'] - (float) $curl_info['starttransfer_time']) * 1000, 1)
             : null;
         return array(
             'transport' => 'server_loopback',

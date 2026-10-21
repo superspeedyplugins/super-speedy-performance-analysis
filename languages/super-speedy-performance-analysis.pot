@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.48.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--feature-compare\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.48.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis--bug-cache-ttfb-clock\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-21T13:58:51+00:00\n"
+"POT-Creation-Date: 2026-10-21T14:09:55+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -4576,22 +4576,22 @@ msgid "You are not allowed to run this check."
 msgstr ""
 
 #: includes/class-sspa-cache-delivery.php:110
-#: includes/class-sspa-cache-delivery.php:1047
+#: includes/class-sspa-cache-delivery.php:1050
 msgid "Home"
 msgstr ""
 
 #: includes/class-sspa-cache-delivery.php:111
-#: includes/class-sspa-cache-delivery.php:1048
+#: includes/class-sspa-cache-delivery.php:1051
 msgid "Shop"
 msgstr ""
 
 #: includes/class-sspa-cache-delivery.php:112
-#: includes/class-sspa-cache-delivery.php:1049
+#: includes/class-sspa-cache-delivery.php:1052
 msgid "Product category"
 msgstr ""
 
 #: includes/class-sspa-cache-delivery.php:113
-#: includes/class-sspa-cache-delivery.php:1050
+#: includes/class-sspa-cache-delivery.php:1053
 msgid "Product"
 msgstr ""
 
@@ -4647,39 +4647,39 @@ msgstr ""
 msgid "The canonical page redirected outside the allowed public site routes."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:656
+#: includes/class-sspa-cache-delivery.php:659
 msgid "The browser did not return every visitor-path measurement."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:662
+#: includes/class-sspa-cache-delivery.php:665
 msgid "The browser returned an invalid check result."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:670
+#: includes/class-sspa-cache-delivery.php:673
 msgid "The browser returned a result outside the fixed check targets."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1172
+#: includes/class-sspa-cache-delivery.php:1175
 msgid "Page caching confirmed for anonymous visitors on every checked page"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1173
+#: includes/class-sspa-cache-delivery.php:1176
 msgid "Page caching confirmed for anonymous visitors on some checked pages"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1174
+#: includes/class-sspa-cache-delivery.php:1177
 msgid "The checked anonymous requests were bypassed by the observed cache layer"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1175
+#: includes/class-sspa-cache-delivery.php:1178
 msgid "No page cache was observed on the checked pages"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1176
+#: includes/class-sspa-cache-delivery.php:1179
 msgid "Page-cache reuse was not observed"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1177
+#: includes/class-sspa-cache-delivery.php:1180
 msgid "The cache performance check is inconclusive"
 msgstr ""
 
