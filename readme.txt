@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.46.3
+Stable tag: 0.47.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -107,10 +107,8 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.46.3 (21st October 2026) =
+= 0.47.0 (21st October 2026) =
 * The fixed-price fix quote for a page whose time is mostly unattributed now appears only when that page takes 1,000 ms or more to generate.
-
-= 0.46.2 (21st October 2026) =
 * Findings now offer Scalability Pro, Super Speedy Search, Super Speedy Filters, Super Speedy Imports or a fixed-price fix quote only when this site's measured evidence triggers them, after the finding and its free fix.
 * Each screen shows at most one primary and one secondary offer, and never offers a product the site already runs.
 * Every offer has a Don't show this again link, and a dismissed offer is left out of Markdown exports too.
