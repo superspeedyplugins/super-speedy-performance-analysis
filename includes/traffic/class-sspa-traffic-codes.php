@@ -4,7 +4,8 @@ defined('ABSPATH') || exit;
 /** Stable numeric storage codes for the experimental traffic collector. */
 class SSPA_Traffic_Codes {
 
-    const OBSERVER_VERSION = 4;
+    // 5: the observer steps aside when the plugin's files are missing instead of fatally erroring.
+    const OBSERVER_VERSION = 5;
 
     const COLLECTION_PLANNED = 1;
     const COLLECTION_RUNNING = 2;

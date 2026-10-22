@@ -796,6 +796,17 @@ Point it at another real GET endpoint with `SSPA_ENDPOINT_ROUTE`, `SSPA_ENDPOINT
 `SSPA_ENDPOINT_PLACEHOLDER` and `SSPA_ENDPOINT_TERM`; the script header shows Super Speedy
 Search's Fast REST suggestions route as the example.
 
+### Traffic observer with the plugin folder missing (case 142)
+
+`.tests/run-tests.sh 142-` delegates to `.tests/observer-guard/run.sh`, which keeps its own site,
+`tests-observer-copy`, with Performance Analysis installed as a real folder copied (rsync) from the
+invoking checkout on every run. On the symlinked suite sites WP-CLI resolves the plugin to the
+checkout, so the generated traffic observer loads from there and renaming the site's plugins entry
+cannot show the fault. The case starts a real AJAX window, renames the plugin folder as a customer does
+over FTP, and requires `/`, `/wp-login.php`, `/wp-json/` and a query URL to answer and send
+`X-SSPA-Traffic-Observer: inactive; plugin files missing`; then it renames the folder back and stops
+the window. A run interrupted mid-rename is repaired at the next run's entry.
+
 ### Feature regression journeys
 
 The default scenario is `tests-feature-regressions`; any `SSPA_SCENARIO` site works, as the

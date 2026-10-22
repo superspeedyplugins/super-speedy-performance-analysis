@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.51.0
+Stable tag: 0.51.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -114,6 +114,9 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.51.1 (22nd October 2026) =
+* Fixed every page, including wp-admin and the login page, returning HTTP 500 when the plugin's folder was renamed or deleted while a traffic collection or AJAX window was running; the traffic observer now stands down and sends `X-SSPA-Traffic-Observer: inactive; plugin files missing`.
 
 = 0.51.0 (22nd October 2026) =
 * Added an Observed endpoints table to the AJAX tab: per endpoint, handler time, time outside the handler, time before the MU plugins load, CPU against wall time, and the plugins and theme that actually loaded, including the trimmed set of a Fast Ajax or Fast REST endpoint.
