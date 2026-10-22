@@ -620,7 +620,7 @@ class SSPA_Profile_Panel {
         }
         if (!empty($oc['interned_strings'])) {
             /* translators: 1: interned strings memory used, 2: buffer size */
-            $html .= $row(__('OPcache interned strings', 'super-speedy-performance-analysis'), sprintf(__('%1$s of %2$s', 'super-speedy-performance-analysis'), size_format($oc['interned_strings']['used_bytes']), size_format($oc['interned_strings']['buffer_bytes'])));
+            $html .= $row(__('OPcache interned strings', 'super-speedy-performance-analysis'), sprintf(__('%1$s used of a %2$s buffer', 'super-speedy-performance-analysis'), size_format($oc['interned_strings']['used_bytes']), size_format($oc['interned_strings']['buffer_bytes'])));
         }
         if (!empty($oc['ini'])) {
             $ini = $oc['ini'];
