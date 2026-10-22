@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.49.4
+Stable tag: 0.50.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -115,7 +115,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.49.5 (22nd October 2026) =
+= 0.50.0 (22nd October 2026) =
 * Fixed profiling of requests that do not load Performance Analysis itself, such as Fast Ajax or Fast REST endpoints and plugin organiser rules, which reported `capture_missing` for every sample.
 * A measurement that cannot be recorded because PHP raised an error now names that error instead of reporting `capture_missing`.
 
