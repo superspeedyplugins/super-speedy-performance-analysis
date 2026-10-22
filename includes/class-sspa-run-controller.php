@@ -124,10 +124,14 @@ class SSPA_Run_Controller {
             // Admin-bar "Analyse this page": one URL, stored under a URL-derived page
             // key. Runs of this type are excluded from the Overview/Pages "latest
             // analysis" queries so a one-page check never replaces a full run.
-            $job = SSPA_Adhoc::job_for(!empty($args['url']) ? $args['url'] : '');
+            $job = SSPA_Adhoc::job_for(!empty($args['url']) ? $args['url'] : '', isset($args['variant']) ? $args['variant'] : null);
             if (is_wp_error($job)) {
                 SSPA_Helper_Files::restore_legacy_db_hold();
                 return $job;
+            }
+            // "Profile this endpoint" (AJAX tab) asks for N measured samples, 1-10.
+            if (isset($args['samples'])) {
+                $job['samples'] = max(1, min(10, (int) $args['samples']));
             }
             if (!empty($args['raw_streams'])) { $job['flags']['rs'] = '1'; $job['flags']['xp'] = '0'; }
             if (!empty($args['all_hooks'])) { $job['flags']['ah'] = 'all'; $job['flags']['xp'] = '0'; }

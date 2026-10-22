@@ -225,6 +225,11 @@ class SSPA_Profile_Panel {
         if (in_array($key, array('baseline', 'mail-probe'), true) || 0 === strpos($key, 'write-') || 0 === strpos($key, 'flow')) {
             return false;
         }
+        // A logged-in endpoint measurement: Re-run measures a URL anonymously, so it would
+        // silently change what is measured. Profile it again from the AJAX tab instead.
+        if (0 === strpos($key, 'endpoint-') && '-admin' === substr($key, -6)) {
+            return false;
+        }
         return 'GET' === strtoupper((string) $row['method']) && '' !== (string) $row['url'];
     }
 
@@ -260,6 +265,7 @@ class SSPA_Profile_Panel {
         $queries = self::queries_html($capture);
         $html .= $minor_sql ? '<details class="sspa-adhoc-span"><summary>' . esc_html__('Minor SQL evidence (under 5% of generation)', 'super-speedy-performance-analysis') . '</summary>' . $queries . '</details>' : $queries;
         $html .= self::http_html($capture);
+        $html .= self::environment_html($capture);
         if (null === $capture) {
             if (!self::transport_errors($row)) {
                 $html .= '<p class="sspa-adhoc-note sspa-adhoc-span">'
@@ -419,6 +425,12 @@ class SSPA_Profile_Panel {
                 . esc_html(sprintf(__('Measurement transport error: %s', 'super-speedy-performance-analysis'), $error))
                 . '</p>';
         }
+        foreach (self::environment_warnings($capture) as $warning) {
+            if ('error' === $warning['severity']) {
+                $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">' . esc_html($warning['message']) . ' '
+                    . esc_html__('See Environment below.', 'super-speedy-performance-analysis') . '</p>';
+            }
+        }
         if (!is_array($capture) || !isset($capture['overview'])) {
             return $html;
         }
@@ -495,6 +507,161 @@ class SSPA_Profile_Panel {
         if (is_array($capture) && isset($capture['cache']['persistent']) && false === $capture['cache']['persistent']) {
             $html .= '<p class="sspa-adhoc-note">' . esc_html__('No persistent object cache was in use for this measurement, so every lookup above was served from PHP memory and thrown away at the end of the request.', 'super-speedy-performance-analysis') . '</p>';
         }
+        return $html;
+    }
+
+    /** The capture's opcache warnings as readable sentences, with their figures. */
+    public static function environment_warnings($capture) {
+        $oc = is_array($capture) && isset($capture['environment']['opcache']) ? $capture['environment']['opcache'] : null;
+        if (!is_array($oc) || empty($oc['warnings'])) {
+            return array();
+        }
+        $out = array();
+        foreach ((array) $oc['warnings'] as $warning) {
+            $code = isset($warning['code']) ? (string) $warning['code'] : '';
+            switch ($code) {
+                case 'opcache_unavailable':
+                    $message = __('OPcache is not loaded in the PHP that served this request, so every PHP file is compiled again on every request.', 'super-speedy-performance-analysis');
+                    break;
+                case 'opcache_disabled':
+                    $message = __('OPcache is disabled in the PHP that served this request, so every PHP file is compiled again on every request.', 'super-speedy-performance-analysis');
+                    break;
+                case 'opcache_status_restricted':
+                    $message = __('The host restricts reading OPcache\'s status (opcache.restrict_api), so its state could not be measured.', 'super-speedy-performance-analysis');
+                    break;
+                case 'opcache_full':
+                    $message = __('OPcache is full: scripts it has no room for are compiled again on every request.', 'super-speedy-performance-analysis');
+                    break;
+                case 'opcache_memory_low':
+                    /* translators: 1: free opcache memory, 2: total opcache memory */
+                    $message = sprintf(__('OPcache memory is nearly exhausted: %1$s free of %2$s.', 'super-speedy-performance-analysis'), size_format($oc['memory']['free_bytes']), size_format($oc['memory']['used_bytes'] + $oc['memory']['free_bytes'] + $oc['memory']['wasted_bytes']));
+                    break;
+                case 'opcache_keys_high':
+                    /* translators: 1: keys used, 2: key limit */
+                    $message = sprintf(__('OPcache\'s script table is nearly full: %1$s of %2$s keys used.', 'super-speedy-performance-analysis'), number_format_i18n($oc['scripts']['cached_keys']), number_format_i18n($oc['scripts']['max_cached_keys']));
+                    break;
+                case 'opcache_interned_full':
+                    /* translators: %s: interned strings buffer size */
+                    $message = sprintf(__('OPcache\'s interned strings buffer is full (%s).', 'super-speedy-performance-analysis'), size_format($oc['interned_strings']['buffer_bytes']));
+                    break;
+                case 'opcache_restarts':
+                    /* translators: 1: restarts for lack of memory, 2: restarts for lack of keys */
+                    $message = sprintf(__('OPcache has restarted %1$s times for lack of memory and %2$s times for lack of keys since it started. Each restart discards every compiled script: it is thrashing.', 'super-speedy-performance-analysis'), number_format_i18n($oc['statistics']['oom_restarts']), number_format_i18n($oc['statistics']['hash_restarts']));
+                    break;
+                case 'opcache_hit_rate_low':
+                    /* translators: %s: opcache hit rate percentage */
+                    $message = sprintf(__('OPcache\'s hit rate since it started is %s%%.', 'super-speedy-performance-analysis'), number_format_i18n($oc['statistics']['hit_rate'], 1));
+                    break;
+                case 'opcache_request_files_uncached':
+                    /* translators: 1: files not in opcache, 2: files this request included */
+                    $message = sprintf(__('%1$s of the %2$s PHP files this request included were not in OPcache, so they were compiled for this request.', 'super-speedy-performance-analysis'), number_format_i18n($oc['request_files']['included'] - $oc['request_files']['cached']), number_format_i18n($oc['request_files']['included']));
+                    break;
+                default:
+                    continue 2;
+            }
+            $out[] = array('code' => $code, 'severity' => isset($warning['severity']) ? (string) $warning['severity'] : 'warning', 'message' => $message);
+        }
+        return $out;
+    }
+
+    /**
+     * Environment evidence measured inside the PHP that served the request (capture schema 5):
+     * opcache, the database round trip and the object cache round trip.
+     */
+    public static function environment_html($capture) {
+        $env = is_array($capture) && isset($capture['environment']) && is_array($capture['environment']) ? $capture['environment'] : null;
+        if (!$env) {
+            return '';
+        }
+        $row = static function ($label, $value) {
+            return '<tr><th scope="row">' . esc_html($label) . '</th><td>' . esc_html($value) . '</td></tr>';
+        };
+        $ms = static function ($value) {
+            return null === $value ? '—' : number_format_i18n((float) $value, 3) . ' ms';
+        };
+        $html = '<div class="sspa-adhoc-span sspa-environment"><h4>' . esc_html__('Environment', 'super-speedy-performance-analysis') . '</h4>';
+        $html .= '<p class="description">' . esc_html__('Measured inside the PHP process that served this request, after its generation time was recorded.', 'super-speedy-performance-analysis') . '</p>';
+        foreach (self::environment_warnings($capture) as $warning) {
+            $html .= '<p class="' . ('error' === $warning['severity'] ? 'sspa-adhoc-error' : 'sspa-adhoc-note') . '">' . esc_html($warning['message']) . '</p>';
+        }
+        $html .= '<table class="widefat striped sspa-environment-table"><tbody>';
+        /* translators: 1: PHP version, 2: PHP server API name */
+        $html .= $row(__('Served by', 'super-speedy-performance-analysis'), sprintf(__('PHP %1$s (%2$s)', 'super-speedy-performance-analysis'), $env['php'] ?? '?', $env['sapi'] ?? '?'));
+
+        $oc = isset($env['opcache']) ? $env['opcache'] : array();
+        if (empty($oc['loaded'])) {
+            $state = __('not loaded', 'super-speedy-performance-analysis');
+        } elseif (null === ($oc['enabled'] ?? null)) {
+            $state = __('state not readable', 'super-speedy-performance-analysis');
+        } else {
+            $state = !empty($oc['enabled']) ? (!empty($oc['cache_full']) ? __('enabled, full', 'super-speedy-performance-analysis') : __('enabled', 'super-speedy-performance-analysis')) : __('disabled', 'super-speedy-performance-analysis');
+        }
+        $html .= $row(__('OPcache', 'super-speedy-performance-analysis'), $state);
+        if (!empty($oc['memory'])) {
+            $m = $oc['memory'];
+            /* translators: 1: used, 2: free, 3: wasted memory, 4: wasted percentage */
+            $html .= $row(__('OPcache memory', 'super-speedy-performance-analysis'), sprintf(__('%1$s used, %2$s free, %3$s wasted (%4$s%%)', 'super-speedy-performance-analysis'), size_format($m['used_bytes']), size_format($m['free_bytes']), size_format($m['wasted_bytes']), number_format_i18n($m['wasted_percent'], 1)));
+        }
+        if (!empty($oc['scripts'])) {
+            $sc = $oc['scripts'];
+            /* translators: 1: cached scripts, 2: opcache.max_accelerated_files, 3: keys used, 4: key limit */
+            $html .= $row(__('OPcache scripts', 'super-speedy-performance-analysis'), sprintf(__('%1$s cached; max_accelerated_files %2$s; keys %3$s of %4$s', 'super-speedy-performance-analysis'), number_format_i18n($sc['cached']), null === $sc['max_accelerated_files'] ? '?' : number_format_i18n($sc['max_accelerated_files']), number_format_i18n($sc['cached_keys']), number_format_i18n($sc['max_cached_keys'])));
+        }
+        if (!empty($oc['request_files'])) {
+            /* translators: 1: this request's files found in opcache, 2: files this request included */
+            $html .= $row(__('This request\'s files in OPcache', 'super-speedy-performance-analysis'), sprintf(__('%1$s of %2$s', 'super-speedy-performance-analysis'), number_format_i18n($oc['request_files']['cached']), number_format_i18n($oc['request_files']['included'])));
+        }
+        if (!empty($oc['statistics'])) {
+            $st = $oc['statistics'];
+            /* translators: 1: hit rate percentage, 2: hits, 3: misses */
+            $html .= $row(__('OPcache hit rate', 'super-speedy-performance-analysis'), sprintf(__('%1$s%% (%2$s hits, %3$s misses since start)', 'super-speedy-performance-analysis'), number_format_i18n($st['hit_rate'], 2), number_format_i18n($st['hits']), number_format_i18n($st['misses'])));
+            /* translators: 1: out-of-memory restarts, 2: hash-table restarts, 3: manual restarts */
+            $html .= $row(__('OPcache restarts', 'super-speedy-performance-analysis'), sprintf(__('%1$s out of memory, %2$s out of keys, %3$s manual', 'super-speedy-performance-analysis'), number_format_i18n($st['oom_restarts']), number_format_i18n($st['hash_restarts']), number_format_i18n($st['manual_restarts'])));
+        }
+        if (!empty($oc['interned_strings'])) {
+            /* translators: 1: interned strings memory used, 2: buffer size */
+            $html .= $row(__('OPcache interned strings', 'super-speedy-performance-analysis'), sprintf(__('%1$s of %2$s', 'super-speedy-performance-analysis'), size_format($oc['interned_strings']['used_bytes']), size_format($oc['interned_strings']['buffer_bytes'])));
+        }
+        if (!empty($oc['ini'])) {
+            $ini = $oc['ini'];
+            $html .= $row(__('OPcache settings', 'super-speedy-performance-analysis'), sprintf(
+                'memory_consumption=%s, interned_strings_buffer=%s, max_accelerated_files=%s, validate_timestamps=%s, revalidate_freq=%s, jit=%s, file_cache=%s',
+                null === $ini['memory_consumption_mb'] ? '?' : $ini['memory_consumption_mb'] . 'M',
+                null === $ini['interned_strings_buffer_mb'] ? '?' : $ini['interned_strings_buffer_mb'] . 'M',
+                null === $ini['max_accelerated_files'] ? '?' : $ini['max_accelerated_files'],
+                null === $ini['validate_timestamps'] ? '?' : ($ini['validate_timestamps'] ? '1' : '0'),
+                null === $ini['revalidate_freq'] ? '?' : $ini['revalidate_freq'],
+                null === $ini['jit'] ? '?' : ('' === $ini['jit'] ? 'off' : $ini['jit']),
+                $ini['file_cache'] ? 'on' : 'off'
+            ));
+        }
+
+        $db = isset($env['db']) ? $env['db'] : array();
+        $html .= $row(__('Database connection', 'super-speedy-performance-analysis'), !empty($db['connect_measured'])
+            ? $ms($db['connect_ms']) . (empty($db['transport']) ? '' : ' (' . $db['transport'] . ')')
+            : __('not measured: the connection was not made by Performance Analysis\'s database drop-in', 'super-speedy-performance-analysis'));
+        if (!empty($db['trivial_query']['n'])) {
+            /* translators: 1: number of queries, 2: median, 3: p95 */
+            $html .= $row(__('Database round trip', 'super-speedy-performance-analysis'), sprintf(__('SELECT 1 x%1$s: median %2$s, p95 %3$s', 'super-speedy-performance-analysis'), $db['trivial_query']['n'], $ms($db['trivial_query']['median_ms']), $ms($db['trivial_query']['p95_ms'])) . (empty($db['server']) ? '' : ' · ' . $db['server']));
+        }
+
+        $cache = isset($env['object_cache']) ? $env['object_cache'] : array();
+        $dropin = isset($cache['dropin']) ? $cache['dropin'] : array();
+        $dropin_label = empty($dropin['present']) ? __('no object-cache.php drop-in', 'super-speedy-performance-analysis')
+            : trim(($dropin['name'] ?? __('object-cache.php', 'super-speedy-performance-analysis')) . ' ' . ($dropin['version'] ?? '')) . (empty($dropin['class']) ? '' : ' (' . $dropin['class'] . ')');
+        $html .= $row(__('Object cache', 'super-speedy-performance-analysis'), (!empty($cache['persistent']) ? __('persistent', 'super-speedy-performance-analysis') : __('not persistent', 'super-speedy-performance-analysis')) . ' · ' . $dropin_label);
+        if (!empty($cache['round_trip']['n'])) {
+            /* translators: 1: number of lookups, 2: median, 3: p95 */
+            $html .= $row(__('Object cache round trip', 'super-speedy-performance-analysis'), sprintf(__('%1$s misses: median %2$s, p95 %3$s', 'super-speedy-performance-analysis'), $cache['round_trip']['n'], $ms($cache['round_trip']['median_ms']), $ms($cache['round_trip']['p95_ms'])));
+        }
+        if (isset($cache['misses_this_request'])) {
+            /* translators: 1: hits, 2: misses */
+            $html .= $row(__('Object cache this request', 'super-speedy-performance-analysis'), sprintf(__('%1$s hits, %2$s misses', 'super-speedy-performance-analysis'), number_format_i18n((int) $cache['hits_this_request']), number_format_i18n((int) $cache['misses_this_request'])));
+        }
+        if (isset($env['probe_ms'])) {
+            $html .= $row(__('Cost of these probes', 'super-speedy-performance-analysis'), $ms($env['probe_ms']) . ' · ' . __('after generation time; included in the response time', 'super-speedy-performance-analysis'));
+        }
+        $html .= '</tbody></table></div>';
         return $html;
     }
 

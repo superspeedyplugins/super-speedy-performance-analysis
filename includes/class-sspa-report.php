@@ -612,6 +612,11 @@ class SSPA_Report {
 			$queries = array();
 			$handler = array();
 			$observer = array();
+			$outside = array();
+			$cpu = array();
+			$pre_mu = array();
+			$php_start = array();
+			$setups = array();
 			$status_counts = array('2xx' => 0, '3xx' => 0, '4xx' => 0, '5xx' => 0, 'other' => 0);
 			$first = null;
 			$last = null;
@@ -621,6 +626,25 @@ class SSPA_Report {
 				if (null !== $row['query_count']) { $queries[] = (int) $row['query_count']; }
 				if (null !== $row['handler_ms']) { $handler[] = (int) $row['handler_ms']; }
 				if (null !== $row['observer_us']) { $observer[] = (int) $row['observer_us']; }
+				// Wall minus handler: start-up before the handler plus shutdown after it.
+				if (null !== $row['handler_ms']) { $outside[] = max(0, (int) $row['wall_ms'] - (int) $row['handler_ms']); }
+				if (null !== $row['cpu_us']) { $cpu[] = (int) round((int) $row['cpu_us'] / 1000); }
+				$measured = null !== $row['measurement_json'] ? json_decode((string) $row['measurement_json'], true) : null;
+				if (isset($measured['pre_mu']['wordpress_timer_to_observer_ms'])) { $pre_mu[] = (int) round((float) $measured['pre_mu']['wordpress_timer_to_observer_ms']); }
+				if (isset($measured['pre_mu']['php_start_to_wordpress_timer_ms'])) { $php_start[] = (int) round((float) $measured['pre_mu']['php_start_to_wordpress_timer_ms']); }
+				if (isset($measured['setup_hash'], $measured['setup']) && is_array($measured['setup'])) {
+					$hash = (string) $measured['setup_hash'];
+					if (!isset($setups[$hash])) {
+						$setups[$hash] = array(
+							'setup_hash' => $hash,
+							'requests' => 0,
+							'plugins' => isset($measured['setup']['plugins']) ? (array) $measured['setup']['plugins'] : array(),
+							'theme' => isset($measured['setup']['theme']) ? (array) $measured['setup']['theme'] : array(),
+							'spro' => isset($measured['setup']['spro']) ? $measured['setup']['spro'] : null,
+						);
+					}
+					$setups[$hash]['requests']++;
+				}
 				$status = (int) $row['status_code'];
 				$bucket = $status >= 200 && $status < 300 ? '2xx' : ($status >= 300 && $status < 400 ? '3xx' : ($status >= 400 && $status < 500 ? '4xx' : ($status >= 500 && $status < 600 ? '5xx' : 'other')));
 				$status_counts[$bucket]++;
@@ -664,7 +688,16 @@ class SSPA_Report {
 					'handler_wall_ms' => self::numeric_distribution($handler, false),
 					'query_count' => self::numeric_distribution($queries, false),
 					'observer_overhead_us' => self::numeric_distribution($observer, false),
+					// Additive (0.51.0). Wall minus handler per request, CPU time, and the pre-MU
+					// split recorded by AJAX windows. Existing fields keep their meaning.
+					'outside_handler_ms' => self::numeric_distribution($outside, false),
+					'cpu_ms' => self::numeric_distribution($cpu, false),
+					'pre_mu_ms' => self::numeric_distribution($pre_mu, false),
+					'php_start_to_wordpress_ms' => self::numeric_distribution($php_start, false),
 				),
+				// The plugin set and theme AJAX windows recorded for this endpoint, one entry
+				// per distinct setup. Empty for collections that record no measurement.
+				'setups' => array_values($setups),
 				'owners' => $owners,
 				'plugin_activity' => array_values($activity),
 				'quality' => array(

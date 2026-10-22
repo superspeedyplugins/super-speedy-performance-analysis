@@ -771,6 +771,31 @@ Case 73 checks real failed requests, method/mode compatibility, detail caps and 
 Database append preflight rejects actual insert failures; successful insert latency is informational
 following core adb471e. A refused start is never a skipped/passed fixture or automatically retried.
 
+### Endpoint start-up and endpoint profiles (cases 140, 141)
+
+`.tests/run-tests.sh 140-` and `.tests/run-tests.sh 141-` cover additions B, C, E and F of
+`.docs/2026-10-22-endpoint-startup-profiling-plan.md`. The fixtures in
+`.tests/fixtures/endpoint-startup/` give a GET REST route and a GET admin-ajax action with known
+costs (30 ms slept before the MU observer, 40 ms on `plugins_loaded`, 30 ms in the handler), and a
+real MU plugin that trims both to WooCommerce plus the fixture, as a Fast Ajax/REST MU plugin
+does. Case 140 checks the window's pre-MU split, outside-handler, CPU and recorded setup, and the
+AJAX tab's observed endpoints table. Case 141 checks "Profile this endpoint" (URL validation,
+N samples, the trim honoured, the endpoint key on the Pages and AJAX tabs) and the capture's
+environment evidence. php-fpm's opcache is shared by every local site and is whatever state it is
+in, so case 141 checks the probe against an independent `opcache_get_status()` from the same
+php-fpm (fixture `opcache-status.php`, copied to the docroot) and each warning against the
+figures. Opcache off and a deliberately tiny opcache are served for real by a private
+`php -S` the case starts with its own `-d` flags on the site's docroot and stops afterwards; the
+shared php-fpm configuration is never changed. Server logs stay in `.data/case-141/`.
+
+`bash .tests/browser/run-endpoint-profile.sh` (registered as `endpoint-profile-browser`) is the
+same journey in a browser: start a window, a logged-out visitor uses the endpoint, stop, read the
+row, refuse an unfilled `{placeholder}`, profile, read the environment block, then find the
+result on the Pages tab. Screenshots and `summary.json` go to `.data/endpoint-profile-browser/`.
+Point it at another real GET endpoint with `SSPA_ENDPOINT_ROUTE`, `SSPA_ENDPOINT_MATCH`,
+`SSPA_ENDPOINT_PLACEHOLDER` and `SSPA_ENDPOINT_TERM`; the script header shows Super Speedy
+Search's Fast REST suggestions route as the example.
+
 ### Feature regression journeys
 
 The default scenario is `tests-feature-regressions`; any `SSPA_SCENARIO` site works, as the

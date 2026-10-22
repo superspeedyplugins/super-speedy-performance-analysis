@@ -20,11 +20,6 @@ if (class_exists('WooCommerce')) : ?>
     </p>
 <?php endif;
 
-if (!$sspa_last_run_id) : ?>
-    <div class="sspa-placeholder">
-        <p><?php esc_html_e('Per-page profiles (TTFB, SQL time, PHP time, RAM, query counts) will appear here after your first analysis.', 'super-speedy-performance-analysis'); ?></p>
-    </div>
-<?php else :
     /*
      * Newest measurement per page, not "the last full run's rows".
      *
@@ -46,10 +41,15 @@ if (!$sspa_last_run_id) : ?>
          ORDER BY p.id ASC",
         SSPA_Schema::table('profiles'),
         $sspa_runs_table,
-        $sspa_last_run_id,
+        $sspa_last_run_id, // 0 when no full analysis has finished: one-page results still show
         $wpdb->esc_like('url-') . '%'
     ), ARRAY_A);
 
+if (!$sspa_profiles) : ?>
+    <div class="sspa-placeholder">
+        <p><?php esc_html_e('Per-page profiles (TTFB, SQL time, PHP time, RAM, query counts) will appear here after your first analysis.', 'super-speedy-performance-analysis'); ?></p>
+    </div>
+<?php else :
     $sspa_newest = array();
     foreach ($sspa_profiles as $sspa_p) {
         // Ordered by id ascending, so the last write per key is the newest measurement.
@@ -81,7 +81,10 @@ if (!$sspa_last_run_id) : ?>
         <tbody>
         <?php foreach ($sspa_newest as $sspa_p) : ?>
             <tr class="sspa-page-row" data-profile-id="<?php echo (int) $sspa_p['id']; ?>" tabindex="0" role="button" title="<?php esc_attr_e('Click for the full profile of this page', 'super-speedy-performance-analysis'); ?>">
-                <td><code><?php echo esc_html($sspa_p['page_key']); ?></code></td>
+                <td><code><?php echo esc_html($sspa_p['page_key']); ?></code>
+                    <?php if (0 === strpos($sspa_p['page_key'], 'endpoint-')) : // An endpoint's key says nothing on its own; show what was requested. ?>
+                        <br><span class="description"><?php echo esc_html((string) wp_parse_url($sspa_p['url'], PHP_URL_PATH) . (wp_parse_url($sspa_p['url'], PHP_URL_QUERY) ? '?' . wp_parse_url($sspa_p['url'], PHP_URL_QUERY) : '')); ?></span>
+                    <?php endif; ?></td>
                 <td><?php echo esc_html(SSPA_Catalogue::variant_label($sspa_p['variant'])); ?></td>
                 <td>
                     <?php echo esc_html(get_date_from_gmt($sspa_p['created'], get_option('date_format') . ' ' . get_option('time_format'))); ?>

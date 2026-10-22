@@ -22,6 +22,9 @@ class SSPA_Traffic_Hot_Path {
 	private static $endpoint_boundary = 'shutdown_fallback';
 
     public static function boot($config) {
+        // Wall-clock entry to this MU observer, comparable with core's $timestart and PHP's
+        // REQUEST_TIME_FLOAT: the AJAX measurement's pre-MU split is taken from it.
+        $observer_entry = microtime(true);
         // Old generated files load this current class after an upgrade. Their missing
         // generation cannot grant observation, and their row must not remain "running".
         if (empty($config['generation']) && !empty($config['collection_id'])) {
@@ -45,7 +48,7 @@ class SSPA_Traffic_Hot_Path {
         self::$started_ns = function_exists('hrtime') ? hrtime(true) : (int) round(microtime(true) * 1000000000);
         if (!empty($config['ajax_profile']) && time() <= (int) $config['collect_until']) {
             require_once __DIR__ . '/class-sspa-ajax-measurement.php';
-            self::$ajax_measurement = new SSPA_Ajax_Measurement($config['ajax_profile']);
+            self::$ajax_measurement = new SSPA_Ajax_Measurement($config['ajax_profile'], $observer_entry);
         }
         self::$started_usage = function_exists('getrusage') ? getrusage() : null;
         self::$basket_was_non_empty = self::cookie_basket_non_empty();

@@ -117,6 +117,20 @@ class SSPA_Ajax_Profile {
                 $comparisons[$id] = array('name' => $name, 'before' => $before, 'after' => $after); update_option('sspa_ajax_comparisons', $comparisons, false);
             }
         }
+        elseif ($op === 'endpoints') {
+            wp_send_json_success(array('html' => SSPA_Endpoint_Profile::table_html(sanitize_text_field(wp_unslash($_POST['uuid'] ?? '')))));
+        }
+        elseif ($op === 'profile_endpoint') {
+            $result = SSPA_Endpoint_Profile::start(array(
+                'uuid' => sanitize_text_field(wp_unslash($_POST['uuid'] ?? '')),
+                'key' => sanitize_key(wp_unslash($_POST['key'] ?? '')),
+                // Sanitised as a URL inside start(), after its placeholder check: esc_url_raw() here
+                // would delete the braces of an unfilled {placeholder} and change the request.
+                'url' => sanitize_text_field(wp_unslash($_POST['url'] ?? '')),
+                'samples' => isset($_POST['samples']) ? absint($_POST['samples']) : SSPA_Endpoint_Profile::DEFAULT_SAMPLES,
+                'confirmed' => !empty($_POST['confirmed']),
+            ));
+        }
         else { $result = new WP_Error('sspa_ajax_operation', 'Unknown operation.'); }
         if (is_wp_error($result)) { wp_send_json_error($result->get_error_message()); }
         wp_send_json_success($result);

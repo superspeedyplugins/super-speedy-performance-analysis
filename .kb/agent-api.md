@@ -212,6 +212,8 @@ Each endpoint is keyed by the exact registered transport, action or REST route p
 
 The first contract intentionally returns `plugin_activity: []`, `quality.activity: "unknown"`, `capture.detailed_samples: 0` and `capture.detailed_sample_ceiling: 0`. Consumers must not interpret that as proof that a plugin did no work. Detailed per-plugin activity remains unavailable until its production overhead has been measured and bounded.
 
+Since 0.51 each endpoint's `observations` also carries `outside_handler_ms` (wall minus handler per request), `cpu_ms`, `pre_mu_ms` (WordPress timer start to the MU observer) and `php_start_to_wordpress_ms` (`REQUEST_TIME_FLOAT` to the WordPress timer), each with `median`, `p95` and `samples`; the pre-MU pair is present only for AJAX-window rows. Each endpoint also has `setups`: one entry per distinct recorded setup with `setup_hash`, `requests`, `plugins` (basename => version actually loaded), `theme` and `spro`. Existing fields and schema identifiers keep their meaning; these are additive.
+
 The observer stores no request or response body, cookie, query value, account identifier or literal dynamic REST path. Unregistered and ambiguous request input cannot create evidence. The Traffic tab displays the same identities, frequency, timing, query, failure and evidence-quality data for administrator review.
 
 ### Page
@@ -326,6 +328,19 @@ window and returns its UUID and collection ID. Endpoints may be empty for discov
 `stop($uuid)` ends it; `windows()` returns saved metadata; `compare($before_uuid, $after_uuid)`
 returns `sspa/ajax-series@1`. Administrator AJAX operation `sspa_ajax_profile` checks
 `manage_options` and the `sspa_admin` nonce. No replay or external submission occurs.
+
+Since 0.51 each window measurement (`sspa/ajax-measurement@1`) adds `pre_mu`: `boundary`
+(`request_time_float_to_mu_observer`), `php_start_to_wordpress_timer_ms` and
+`wordpress_timer_to_observer_ms`. `wall_ms` and `boundary` are unchanged.
+`SSPA_Endpoint_Profile::start(['uuid' => ..., 'key' => <endpoint evidence key>, 'url' => <literal URL>,
+'samples' => 1-10, 'confirmed' => true])` profiles an observed GET/HEAD REST or admin-ajax endpoint
+through an ordinary ad-hoc run (operation `profile_endpoint` of `sspa_ajax_profile`). The URL must
+match the observed route pattern or action; results are stored under `endpoint-<hash>` (anonymous)
+or `endpoint-<hash>-admin` (logged in). Profile captures from 0.51 (capture schema 5) carry a
+local-only `environment` section, `sspa/environment@1`: `sapi`, `opcache` (state, memory, scripts,
+statistics, `request_files` {included, cached}, ini values, `warnings` [{code, severity}]), `db`
+(`connect_ms`, `trivial_query`, `server`, `transport`), `object_cache` (`persistent`, `dropin`,
+`round_trip`) and `probe_ms`.
 
 Endpoint reports with actual detail samples return `sspa/endpoint-evidence@2`; identity-only
 collections retain `@1`. Both advertise capabilities. `plugin_activity` contains plugin basename,

@@ -176,7 +176,7 @@ class SSPA_Adhoc {
      *
      * @return array|WP_Error {url, page_key, variant}
      */
-    public static function job_for($url) {
+    public static function job_for($url, $variant = null) {
         $url = trim((string) $url);
         if (($hash = strpos($url, '#')) !== false) {
             $url = substr($url, 0, $hash);
@@ -202,11 +202,53 @@ class SSPA_Adhoc {
             );
         }
 
+        $default_variant = (false !== strpos($path, '/wp-admin')) ? 'admin' : 'anon';
+        $variant = in_array($variant, array('anon', 'admin'), true) ? $variant : $default_variant;
+
+        // A REST or admin-ajax endpoint gets its own key family. Unlike a one-off url-<hash>
+        // page, an endpoint is something the AJAX tab profiles again and compares, so its
+        // results are listed on the Pages tab and found again from the AJAX tab.
+        if (self::is_endpoint_url($url)) {
+            return array(
+                'url' => $url,
+                'page_key' => self::endpoint_page_key($url, $variant),
+                'variant' => $variant,
+            );
+        }
+
         return array(
             'url' => $url,
             'page_key' => 'url-' . substr(md5($url), 0, 12),
-            'variant' => (false !== strpos($path, '/wp-admin')) ? 'admin' : 'anon',
+            'variant' => $variant,
         );
+    }
+
+    /** A REST request (pretty or ?rest_route=) or an admin-ajax.php request naming an action. */
+    public static function is_endpoint_url($url) {
+        $parts = wp_parse_url((string) $url);
+        if (!is_array($parts)) {
+            return false;
+        }
+        $path = isset($parts['path']) ? (string) $parts['path'] : '/';
+        $query = array();
+        parse_str(isset($parts['query']) ? (string) $parts['query'] : '', $query);
+        if (isset($query['rest_route']) && is_string($query['rest_route']) && '' !== $query['rest_route']) {
+            return true;
+        }
+        $rest_path = (string) wp_parse_url(get_rest_url(), PHP_URL_PATH);
+        if ('' !== $rest_path && '/' !== $rest_path && 0 === strpos(trailingslashit($path), trailingslashit($rest_path))) {
+            return true;
+        }
+        $ajax_path = (string) wp_parse_url(admin_url('admin-ajax.php'), PHP_URL_PATH);
+        return untrailingslashit($path) === untrailingslashit($ajax_path) && !empty($query['action']) && is_string($query['action']);
+    }
+
+    /**
+     * endpoint-<hash> for an anonymous measurement, endpoint-<hash>-admin for a logged-in one,
+     * so the two are never filed as one page.
+     */
+    public static function endpoint_page_key($url, $variant) {
+        return 'endpoint-' . substr(md5((string) $url), 0, 12) . ('admin' === $variant ? '-admin' : '');
     }
 
     /**

@@ -6,8 +6,10 @@ class SSPA_Ajax_Measurement {
     private $loaded = array();
     private $detail = null;
     private $context = null;
-    public function __construct($config) {
+    private $pre_mu = null;
+    public function __construct($config, $observer_entry = null) {
         $this->config = $config;
+        $this->pre_mu = self::pre_mu($observer_entry);
         add_action('plugin_loaded', function ($file) {
             $header = get_file_data($file, array('Version' => 'Version'));
             $this->loaded[plugin_basename($file)] = $header['Version'];
@@ -51,6 +53,23 @@ class SSPA_Ajax_Measurement {
             'mode' => $this->detail ? 'named-action-detail@1' : 'identity@1', 'detail_requested' => !empty($this->config['detail']), 'peak_memory_bytes' => memory_get_peak_usage(true), 'boundary' => 'mu_observer_to_shutdown',
             'environment' => array('wordpress' => $GLOBALS['wp_version'], 'php' => PHP_VERSION, 'blog_id' => get_current_blog_id()),
             'setup' => $setup, 'setup_hash' => hash('sha256', wp_json_encode($setup)), 'inventory_at_start' => $this->config['inventory'],
-            'activity' => $this->detail ? $this->detail->result() : null, 'browser_elapsed_ms' => null);
+            'activity' => $this->detail ? $this->detail->result() : null, 'browser_elapsed_ms' => null,
+            // Additive: the part of the PHP request before the boundary above. wall_ms is unchanged.
+            'pre_mu' => $this->pre_mu);
+    }
+    /**
+     * Time before the MU observer, from three wall-clock reads: PHP's request start, core's
+     * timer_start() and this observer's entry. Null parts mean the clock was not available.
+     */
+    private static function pre_mu($observer_entry) {
+        $timestart = isset($GLOBALS['timestart']) && is_float($GLOBALS['timestart']) ? $GLOBALS['timestart'] : null;
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- numeric server timestamp, cast to float and never output.
+        $php_start = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : null;
+        $ms = static function ($from, $to) { return (null === $from || null === $to) ? null : round(max(0, $to - $from) * 1000, 1); };
+        return array(
+            'boundary' => 'request_time_float_to_mu_observer',
+            'php_start_to_wordpress_timer_ms' => $ms($php_start, $timestart),
+            'wordpress_timer_to_observer_ms' => $ms($timestart, is_float($observer_entry) ? $observer_entry : null),
+        );
     }
 }

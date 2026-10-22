@@ -65,6 +65,42 @@ $(document).on('submit', '.sspa-ajax-compare', function(event) {
         });
     }).catch(fail);
 });
+// ---- Observed endpoints: the window's figures per endpoint, and "Profile this endpoint" ----
+function endpointsUuid() { return $('.sspa-ajax-endpoints').data('uuid') || $('.sspa-ajax-endpoints-window').val() || ''; }
+function loadEndpoints(uuid) {
+    return request({operation:'endpoints', uuid:uuid}).then(function (data) { $('.sspa-ajax-endpoints-mount').html(data.html); });
+}
+$(document).on('change', '.sspa-ajax-endpoints-window', function () { loadEndpoints(this.value).catch(fail); });
+$(document).on('click', '.sspa-endpoint-profile-open', function () {
+    var row=$(this).closest('tr'), form=$('.sspa-endpoint-profile-form');
+    form.find('[name=key]').val(row.data('key'));
+    form.find('[name=url]').val($(this).data('url'));
+    form.find('[name=confirmed]').prop('checked', false);
+    form.prop('hidden', false).insertAfter(row.closest('.sspa-table-scroll'));
+    form.find('[name=url]').trigger('focus');
+});
+$(document).on('click', '.sspa-endpoint-profile-cancel', function () { $('.sspa-endpoint-profile-form').prop('hidden', true); });
+$(document).on('click', '.sspa-endpoint-profile-view', function () { if (window.sspaPanel) window.sspaPanel.openProfile($(this).data('profile-id')); });
+$(document).on('submit', '.sspa-endpoint-profile-form', function (event) {
+    event.preventDefault();
+    var form=$(this), uuid=endpointsUuid(), key=form.find('[name=key]').val();
+    var data={operation:'profile_endpoint', uuid:uuid, key:key, url:form.find('[name=url]').val(), samples:form.find('[name=samples]').val(), confirmed:form.find('[name=confirmed]').is(':checked') ? 1 : ''};
+    $('.sspa-ajax-status').text(wp.i18n.__("Starting the endpoint profile…", "super-speedy-performance-analysis"));
+    request(data).then(function (started) {
+        form.prop('hidden', true);
+        $('.sspa-ajax-status').text('');
+        if (!window.sspaPanel) { $('.sspa-ajax-status').text(wp.i18n.__("The profile is running. Reload this tab when it finishes.", "super-speedy-performance-analysis")); return; }
+        /* translators: %s: number of measured samples */
+        var message=wp.i18n.sprintf(wp.i18n.__("Profiling this endpoint: a warm-up and %s samples…", "super-speedy-performance-analysis"), started.samples);
+        window.sspaPanel.openRun(started.run_id, function () {
+            loadEndpoints(uuid).then(function () {
+                var view=$('.sspa-ajax-endpoints tr[data-key="'+key+'"] .sspa-endpoint-profile-view');
+                if (view.length) window.sspaPanel.openProfile(view.data('profile-id'));
+                else window.sspaPanel.openError(wp.i18n.__("The profile finished but no stored result was found.", "super-speedy-performance-analysis"));
+            }).catch(fail);
+        }, message);
+    }).catch(fail);
+});
 $(document).on('input', '.sspa-ajax-filter', paint);
 $(window).on('resize',function(){if(chart)chart.resize();});
 $(document).on('click','.sspa-ajax-export',function(){

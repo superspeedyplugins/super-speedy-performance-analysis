@@ -39,6 +39,47 @@ Timings run from the MU observer's entry to request shutdown. They include serve
 The before-and-after figures come from the requests captured on your site. There is no promised target time or reduction: the saving depends on the plugins omitted and the work the endpoint still needs to perform.
 :::
 
+## Read each endpoint's start-up and setup
+
+*Available since 0.51.*
+
+Under **Observed endpoints**, choose a window to see one row per endpoint it recorded, unprofiled:
+
+| Column | What it is |
+| --- | --- |
+| Wall | MU observer entry to shutdown, median and p95 |
+| Handler | The endpoint's own callback: the REST callback, or the admin-ajax action until it ends the request |
+| Outside handler | Wall minus handler for each request: start-up before the handler plus shutdown after it |
+| Before MU / PHP start | WordPress starting its timer to the MU observer, and PHP receiving the request to WordPress starting its timer. Neither is inside Wall |
+| CPU | CPU time for the request, and its share of wall. Well below 100% means the request waited on the database, the network, the disk or a sleep. Close to 100% means PHP was busy, for example compiling files |
+| Loaded setup | The plugins and theme that actually loaded for the endpoint. When a Fast trim (Scalability Pro, Super Speedy Search or a plugin organiser) loaded fewer plugins than are active, the row says how many, such as "2 of 16 active plugins loaded" |
+
+An endpoint whose handler is a few milliseconds and whose outside-handler time is most of the wall spends its time starting WordPress, not answering the request. Profile it to see where.
+
+## Profile this endpoint
+
+*Available since 0.51.*
+
+For a GET or HEAD request to a REST route or an admin-ajax action, choose **Profile this endpoint**. Windows do not store the literal URLs of requests, only the route, so you confirm the exact URL to request: replace each `{placeholder}` with a real value, such as a search term. Choose how many samples to take (1 to 10), confirm that the URL is safe to request that many times plus one warm-up, and start.
+
+The requests go through your site's own MU plugins, so a Fast trim applies exactly as it does for visitors, and the result shows the trimmed plugin set. An anonymous endpoint is requested without your login; a logged-in one as you. A HEAD endpoint is profiled with GET, which WordPress routes to the same handler. POST requests are never profiled from here: they change data and their bodies are not stored.
+
+The result opens in the usual profile panel: request phases from core start-up to output, per-plugin cost, the slowest callbacks, SQL by component and the environment evidence below. It is listed on the **Pages** tab under an `endpoint-…` key with the requested path, and the endpoint's row gets **Open latest profile**. The profile stores the URL you confirmed.
+
+Profiling adds overhead, so use its phases as proportions and the window's figures for the unprofiled total.
+
+## Environment evidence
+
+*Available since 0.51.*
+
+Every profiled request, not only endpoint profiles, records measurements taken inside the PHP process that served it, after its generation time was recorded:
+
+- **OPcache**: enabled or not, memory used, free and wasted, whether it is full, cached scripts against `max_accelerated_files`, hit rate, restarts, interned strings, the relevant settings, and how many of this request's PHP files were in OPcache. Only the PHP that serves your site can read this; WP-CLI has its own.
+- **Database**: how long the connection took (when Performance Analysis's database drop-in made it), five `SELECT 1` round trips, and whether it connects over a socket or TCP.
+- **Object cache**: whether it is persistent, which drop-in provides it, and ten cache misses timed against the cache server.
+
+Warnings appear when OPcache is disabled, full, nearly out of memory or keys, has restarted for lack of memory or keys, or when many of this request's files were not cached. When PHP compiles the same files on every request, start-up is slow on any endpoint, and no plugin change fixes it: the host's OPcache settings do. The probes cost a millisecond or two, after generation time; they are included in the response time.
+
 ## Why a comparison may be unavailable
 
 Different HTTP methods, authentication contexts, scenarios, environments or actual instrumentation modes do not form an equivalent pair. Check these details before drawing a conclusion from two windows.
@@ -72,7 +113,7 @@ An endpoint selection remains an administrator decision. Collecting evidence doe
 
 Choose **Export chart and measured summary** to download a standalone HTML report. It contains the measured summary and retained evidence. Review it before sharing it with another person.
 
-Traffic observations and AJAX measurements stay on your site. They are not sent by profiling-run sharing consent. The endpoint identity record excludes request bodies, response bodies, cookies and literal dynamic REST paths.
+Traffic observations and AJAX measurements stay on your site. They are not sent by profiling-run sharing consent. The endpoint identity record excludes request bodies, response bodies, cookies and literal dynamic REST paths. An endpoint profile stores the URL you confirmed, like any other profiled page. Environment evidence stays local and is not part of shared analyses.
 
 Sharing a conventional saved performance analysis is a separate action. Its boot, include, selected-hook, render and asset evidence can be included with the applicable run-sharing consent or **Share this analysis**. That does not submit your AJAX windows.
 

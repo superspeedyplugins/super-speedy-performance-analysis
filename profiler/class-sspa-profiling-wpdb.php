@@ -19,6 +19,18 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
          * rather than there being none to find. Measured rather than assumed.
          */
         public $sspa_frames_truncated = 0;
+        /** Milliseconds the first database connection took. Environment evidence (capture schema 5). */
+        public $sspa_connect_ms = null;
+
+        /** wpdb's constructor calls this, so the first call is the request's connection. */
+        public function db_connect($allow_bail = true) {
+            $start = microtime(true);
+            $result = parent::db_connect($allow_bail);
+            if (null === $this->sspa_connect_ms) {
+                $this->sspa_connect_ms = (microtime(true) - $start) * 1000;
+            }
+            return $result;
+        }
 
         public function query($query) {
             // Isolation cells: refuse destructive statements outright. Hook neutering in the

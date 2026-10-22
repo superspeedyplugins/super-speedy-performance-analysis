@@ -12,7 +12,10 @@ if (!class_exists('SSPA_Capture')) {
         // archives" - the two are indistinguishable from the payload alone.
         // 3 adds HTTP scheme and sslverify to the stable outbound-call source data.
         // 4 adds local-only, bounded PHP diagnostics for each profiled request.
-        const SCHEMA_VERSION = 4;
+        // 5 adds `environment`: database connect and round trip, object-cache round trip and
+        // drop-in, and the serving PHP's opcache state. A schema-4 capture has no such section,
+        // which means "not measured", never "no opcache".
+        const SCHEMA_VERSION = 5;
         const FULL_SQL_TOP_N = 20;
         const FULL_SQL_MS = 50;
         const FULL_SQL_ROWS = 200;
@@ -448,6 +451,12 @@ if (!class_exists('SSPA_Capture')) {
                 // 'boot' is built first, so request_end is already stamped.
                 'profile' => $this->excimer ? $this->excimer->report($map, $this->boot_timer ? $this->boot_timer->milestones_ms() : array()) : null,
             );
+
+            // Last, so its queries, cache lookups and sampler frames are in no section above, and
+            // after gen_ms was stamped, so it never adds to generation time. Local evidence only:
+            // the community export is an allowlist that does not take this section.
+            require_once __DIR__ . '/class-sspa-environment-probe.php';
+            $payload['environment'] = SSPA_Environment_Probe::collect($wpdb, $cache);
 
             $json = function_exists('wp_json_encode') ? wp_json_encode($payload) : json_encode($payload);
             if ($json === false) {

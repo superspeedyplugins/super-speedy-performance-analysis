@@ -269,6 +269,14 @@
 		loadProfile(profileId);
 	}
 
+	// Drive a run someone else started (the AJAX tab's "Profile this endpoint") in this panel,
+	// then hand back so the caller can open the profile it produced.
+	function openRun(runId, onDone, message) {
+		current = { profileId: 0, url: '' };
+		show();
+		drive(runId, onDone, message);
+	}
+
 	function openStatus(message, detail) {
 		current = { profileId: 0, url: '' };
 		show();
@@ -288,6 +296,7 @@
 	// page's Plugin Impact Analysis button opens the site-scoped plugin picker.
 	window.sspaPanel = {
 		openProfile: openProfile,
+		openRun: openRun,
 		openUrl: openUrl,
 		openImpactPicker: openImpactPicker,
 		openStatus: openStatus,

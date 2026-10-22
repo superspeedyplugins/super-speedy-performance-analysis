@@ -102,6 +102,13 @@ if [ -z "$FILTER" ] || [[ "fast-ajax-browser" == *"$FILTER"* ]]; then
         FAILED_NAMES="$FAILED_NAMES fast-ajax-browser"
     fi
 fi
+if [ -z "$FILTER" ] || [[ "endpoint-profile-browser" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! bash "$PLUGIN_DIR/.tests/browser/run-endpoint-profile.sh"; then
+        FAILED=$((FAILED + 1))
+        FAILED_NAMES="$FAILED_NAMES endpoint-profile-browser"
+    fi
+fi
 if [ -z "$FILTER" ] || [[ "history-tooltips-browser" == *"$FILTER"* ]]; then
     RAN=$((RAN + 1))
     if ! bash "$PLUGIN_DIR/.tests/browser/run-history-tooltips.sh"; then
