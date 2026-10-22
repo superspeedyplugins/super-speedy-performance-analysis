@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.50.0
+Stable tag: 0.50.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
