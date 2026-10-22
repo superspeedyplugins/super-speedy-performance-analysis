@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.51.1
+Stable tag: 0.52.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -115,7 +115,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.51.1 (22nd October 2026) =
+= 0.52.0 (22nd October 2026) =
 * Fixed every page, including wp-admin and the login page, returning HTTP 500 when the plugin's folder was renamed or deleted while a traffic collection or AJAX window was running; the traffic observer now stands down and sends `X-SSPA-Traffic-Observer: inactive; plugin files missing`.
 
 = 0.51.0 (22nd October 2026) =
