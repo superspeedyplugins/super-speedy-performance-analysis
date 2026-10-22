@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.50.1
+Stable tag: 0.51.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -115,7 +115,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.50.1 (22nd October 2026) =
+= 0.51.0 (22nd October 2026) =
 * Added an Observed endpoints table to the AJAX tab: per endpoint, handler time, time outside the handler, time before the MU plugins load, CPU against wall time, and the plugins and theme that actually loaded, including the trimmed set of a Fast Ajax or Fast REST endpoint.
 * Added "Profile this endpoint" to the AJAX tab for observed GET and HEAD REST or admin-ajax endpoints: confirm the exact URL and the number of samples, and the result opens in the profile panel and is listed on the Pages tab.
 * Added environment evidence to every profiled request: OPcache state (full, disabled, restarts, and how many of the request's PHP files were cached), database connection and round-trip time, and object-cache round-trip time and drop-in, with warnings when OPcache is disabled, full or thrashing.
