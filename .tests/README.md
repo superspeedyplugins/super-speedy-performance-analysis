@@ -221,6 +221,29 @@ with its original missing-generation state; case 107 separately checks compatibl
 
 `wp` commands run through `cli()` in `env.sh`, which is just `wp --path=<site> --url=<site>`.
 
+### Local SMTP mail sink
+
+`setup-site.sh`, `run-tests.sh` and the runners under `browser/`, `compare/`, `quote-request/`,
+`lead-gen/` and `cache-performance/` source `local-services.sh`, which starts
+`fixtures/mail-sink.py` for the scenario and points the site's `sspa-regression-delivery.php` MU
+fixture at it (option `sspa_regression_smtp_port`). The shell that starts the sink owns it and
+stops it when it exits, whether it passes, fails, calls `exit` or receives SIGTERM, SIGINT or
+SIGHUP. A nested run on the same scenario (`run-regressions.sh` calling `run-tests.sh`) reuses
+the outer sink and leaves it running. Captured mail stays in
+`.data/local-services/<scenario>/mail.jsonl`, with the sink's own log in `smtp.log`. Until
+22 October 2026 nothing stopped the sink, so every run left one running indefinitely.
+
+Backstops for an owner killed outright: the sink exits within about 2 seconds of its owner PID
+disappearing, and after `SSPA_MAIL_SINK_IDLE_SECONDS` (default 14400) without a connection. Each
+records the reason in `smtp.log`. Between runs the site has no SMTP listener, so mail sent while
+you click around a retained site fails to deliver. Start a run, or source `env.sh` and
+`local-services.sh` in a shell, to capture it.
+
+`SSPA_SCENARIO=<scenario> bash .tests/harness/mail-sink-lifecycle.sh` is the regression for this.
+It runs a passing run (case 106), a failing run, `setup-site.sh`, a SIGTERM, a SIGKILL, a nested
+run and the idle timeout, and requires that none leaves a sink for that scenario. It only
+inspects and stops sinks serving its own checkout's scenario.
+
 ### Browser resource boundaries
 
 The synthetic site disables avatars and uses native emoji, so page-load assertions do not
