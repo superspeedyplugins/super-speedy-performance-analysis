@@ -76,6 +76,11 @@
     },
     {
       "check": "core-files",
+      "file": "includes/class-sspa-endpoint-profile.php",
+      "reason": "This file loads the local WordPress definition immediately before calling get_plugins to name the plugins each observed AJAX or REST endpoint actually loaded. The API is not guaranteed to be loaded in this entry context."
+    },
+    {
+      "check": "core-files",
       "file": "includes/class-sspa-anonymiser.php",
       "reason": "This file loads the local WordPress definition immediately before calling get_plugins to resolve component versions. The API is not guaranteed to be loaded in this entry context."
     },
