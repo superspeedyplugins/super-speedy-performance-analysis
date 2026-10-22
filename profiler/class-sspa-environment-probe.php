@@ -9,7 +9,9 @@ defined('ABSPATH') || exit;
 if (!class_exists('SSPA_Environment_Probe')) {
     class SSPA_Environment_Probe {
 
-        const DB_QUERIES = 5;
+        // Three, not more: Query Monitor and anything else counting wpdb queries sees these, and
+        // case 88 bounds Performance Analysis's own footprint on a profiled request at 6.
+        const DB_QUERIES = 3;
         const CACHE_MISSES = 10;
         /** Below this share of free opcache memory the cache is nearly full. */
         const LOW_FREE_SHARE = 0.05;

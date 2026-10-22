@@ -75,7 +75,7 @@ Profiling adds overhead, so use its phases as proportions and the window's figur
 Every profiled request, not only endpoint profiles, records measurements taken inside the PHP process that served it, after its generation time was recorded:
 
 - **OPcache**: enabled or not, memory used, free and wasted, whether it is full, cached scripts against `max_accelerated_files`, hit rate, restarts, interned strings, the relevant settings, and how many of this request's PHP files were in OPcache. Only the PHP that serves your site can read this; WP-CLI has its own.
-- **Database**: how long the connection took (when Performance Analysis's database drop-in made it), five `SELECT 1` round trips, and whether it connects over a socket or TCP.
+- **Database**: how long the connection took (when Performance Analysis's database drop-in made it), three `SELECT 1` round trips, and whether it connects over a socket or TCP.
 - **Object cache**: whether it is persistent, which drop-in provides it, and ten cache misses timed against the cache server.
 
 Warnings appear when OPcache is disabled, full, nearly out of memory or keys, has restarted for lack of memory or keys, or when many of this request's files were not cached. When PHP compiles the same files on every request, start-up is slow on any endpoint, and no plugin change fixes it: the host's OPcache settings do. The probes cost a millisecond or two, after generation time; they are included in the response time.

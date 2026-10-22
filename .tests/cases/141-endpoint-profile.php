@@ -147,7 +147,7 @@ sspa_141_t(!in_array('opcache_disabled', $sspa_141_codes, true)
     'each opcache warning follows from the figures (' . wp_json_encode(array('codes' => $sspa_141_codes, 'full' => $sspa_141_oc['cache_full'], 'restarts' => array($sspa_141_oc['statistics']['oom_restarts'], $sspa_141_oc['statistics']['hash_restarts']), 'uncached' => $sspa_141_uncached)) . ')');
 $sspa_141_db = $sspa_141_env['db'] ?? array();
 sspa_141_t(isset($sspa_141_db['connect_ms']) && $sspa_141_db['connect_ms'] > 0 && $sspa_141_db['connect_ms'] < 5000, 'the database connection time is measured (' . wp_json_encode($sspa_141_db['connect_ms'] ?? null) . ' ms)');
-sspa_141_t(5 === ($sspa_141_db['trivial_query']['n'] ?? 0) && ($sspa_141_db['trivial_query']['median_ms'] ?? 0) > 0, 'five trivial queries are timed (' . wp_json_encode($sspa_141_db['trivial_query'] ?? null) . ')');
+sspa_141_t(3 === ($sspa_141_db['trivial_query']['n'] ?? 0) && ($sspa_141_db['trivial_query']['median_ms'] ?? 0) > 0, 'three trivial queries are timed (' . wp_json_encode($sspa_141_db['trivial_query'] ?? null) . ')');
 sspa_141_t(!isset($sspa_141_db['host']) && in_array($sspa_141_db['transport'] ?? '', array('socket', 'tcp'), true), 'the database transport is recorded, the host is not');
 $sspa_141_cache = $sspa_141_env['object_cache'] ?? array();
 sspa_141_t(true === ($sspa_141_cache['persistent'] ?? null) && false !== stripos((string) ($sspa_141_cache['dropin']['name'] ?? ''), 'redis'),
