@@ -429,7 +429,8 @@
 
 /* ── Progress + errors ──────────────────────────────────────────────── */
 
-#sspa-adhoc-pop .sspa-adhoc-error {
+#sspa-adhoc-pop .sspa-adhoc-error,
+#sspa-adhoc-pop .sspa-environment-alert {
 	color: #ba1a1a;
 	font-weight: 600;
 }

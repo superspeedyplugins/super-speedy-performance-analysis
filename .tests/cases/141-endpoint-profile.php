@@ -229,7 +229,12 @@ $sspa_141_off_panel = '';
 if ($sspa_141_off_env) {
     $sspa_141_off_panel = SSPA_Profile_Panel::environment_html($sspa_141_off['captures'][0]);
 }
-sspa_141_t(false !== strpos($sspa_141_off_panel, 'sspa-adhoc-error') && false !== stripos($sspa_141_off_panel, 'opcache is disabled'), 'the panel shows the disabled warning');
+sspa_141_t(false !== strpos($sspa_141_off_panel, 'sspa-environment-alert') && false !== stripos($sspa_141_off_panel, 'opcache is disabled'), 'the panel shows the disabled warning');
+// An environment warning is not a failed measurement: the panel's status announces the first
+// sspa-adhoc-error, so the opcache warnings above the fold must not use that class.
+$sspa_141_has_error_warning = in_array('error', array_column((array) ($sspa_141_oc['warnings'] ?? array()), 'severity'), true);
+sspa_141_t(false === strpos((string) $sspa_141_panel, 'sspa-adhoc-error') && $sspa_141_has_error_warning === (false !== strpos((string) $sspa_141_panel, 'sspa-environment-alert')),
+    'opcache warnings show as environment alerts and never mark the successful measurement failed (error-severity warnings: ' . ($sspa_141_has_error_warning ? 'yes' : 'no') . ')');
 
 $sspa_141_tiny = $sspa_141_serve('opcache-tiny', array('-d', 'opcache.enable=1', '-d', 'opcache.memory_consumption=16', '-d', 'opcache.interned_strings_buffer=2', '-d', 'opcache.max_accelerated_files=200'), 3);
 $sspa_141_tiny_env = isset($sspa_141_tiny['captures']) ? end($sspa_141_tiny['captures']) : array();

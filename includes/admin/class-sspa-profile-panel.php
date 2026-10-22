@@ -427,7 +427,9 @@ class SSPA_Profile_Panel {
         }
         foreach (self::environment_warnings($capture) as $warning) {
             if ('error' === $warning['severity']) {
-                $html .= '<p class="sspa-adhoc-error sspa-adhoc-span">' . esc_html($warning['message']) . ' '
+                // Not sspa-adhoc-error: the panel announces the first of those as the measurement's
+                // status, and a server setting is evidence about the environment, not a failed measurement.
+                $html .= '<p class="sspa-environment-alert sspa-adhoc-span">' . esc_html($warning['message']) . ' '
                     . esc_html__('See Environment below.', 'super-speedy-performance-analysis') . '</p>';
             }
         }
@@ -582,7 +584,7 @@ class SSPA_Profile_Panel {
         $html = '<div class="sspa-adhoc-span sspa-environment"><h4>' . esc_html__('Environment', 'super-speedy-performance-analysis') . '</h4>';
         $html .= '<p class="description">' . esc_html__('Measured inside the PHP process that served this request, after its generation time was recorded.', 'super-speedy-performance-analysis') . '</p>';
         foreach (self::environment_warnings($capture) as $warning) {
-            $html .= '<p class="' . ('error' === $warning['severity'] ? 'sspa-adhoc-error' : 'sspa-adhoc-note') . '">' . esc_html($warning['message']) . '</p>';
+            $html .= '<p class="' . ('error' === $warning['severity'] ? 'sspa-environment-alert' : 'sspa-adhoc-note') . '">' . esc_html($warning['message']) . '</p>';
         }
         $html .= '<table class="widefat striped sspa-environment-table"><tbody>';
         /* translators: 1: PHP version, 2: PHP server API name */
