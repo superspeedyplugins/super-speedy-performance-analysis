@@ -40,7 +40,7 @@ $sspa_classification = class_exists('SPRO_Fast_Ajax_Advice') ? SPRO_Fast_Ajax_Ad
 <option value="<?php echo esc_attr($sspa_window['uuid']); ?>"><?php echo esc_html($sspa_window['label'] . ' · ' . $sspa_window['created']); ?></option>
 <?php endforeach; ?></select></label>
 <?php endif; ?>
-<div class="sspa-ajax-endpoints-mount"><?php echo SSPA_Endpoint_Profile::table_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every value is escaped inside table_html(). ?></div>
+<div class="sspa-ajax-endpoints-mount"><?php SSPA_Endpoint_Profile::render_table(); ?></div>
 <h3><?php esc_html_e('Compare saved windows', 'super-speedy-performance-analysis'); ?></h3>
 <label><?php esc_html_e('Saved comparison', 'super-speedy-performance-analysis'); ?> <select class="sspa-ajax-saved"><option value=""><?php esc_html_e('Choose a saved comparison', 'super-speedy-performance-analysis'); ?></option>
 <?php foreach (SSPA_Ajax_Profile::comparisons() as $sspa_comparison) : ?>

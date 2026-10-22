@@ -90,7 +90,7 @@ if (!class_exists('SSPA_Environment_Probe')) {
         private static function object_cache($cache) {
             global $wp_object_cache;
             $persistent = function_exists('wp_using_ext_object_cache') && (bool) wp_using_ext_object_cache();
-            $dropin_file = WP_CONTENT_DIR . '/object-cache.php';
+            $dropin_file = SSPA_CONTENT_DIR . '/object-cache.php';
             $dropin = array('present' => is_file($dropin_file), 'name' => null, 'version' => null, 'class' => is_object($wp_object_cache) ? get_class($wp_object_cache) : null);
             if ($dropin['present'] && function_exists('get_file_data')) {
                 $header = get_file_data($dropin_file, array('name' => 'Plugin Name', 'version' => 'Version'));

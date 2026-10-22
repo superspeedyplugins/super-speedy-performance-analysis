@@ -211,11 +211,19 @@ class SSPA_Endpoint_Profile {
         return trim($name . ' ' . $version);
     }
 
-    /** The observed-endpoints table for one window: the latest one when $uuid is empty. */
+    /** The observed-endpoints table for one window, as a string (the AJAX operation). */
     public static function table_html($uuid = '') {
+        ob_start();
+        self::render_table($uuid);
+        return ob_get_clean();
+    }
+
+    /** Output the observed-endpoints table for one window: the latest one when $uuid is empty. */
+    public static function render_table($uuid = '') {
         $windows = SSPA_Ajax_Profile::windows();
         if (!$windows) {
-            return '<p class="description">' . esc_html__('Run a window to see each endpoint\'s start-up, handler, CPU and loaded plugins here.', 'super-speedy-performance-analysis') . '</p>';
+            echo '<p class="description">' . esc_html__('Run a window to see each endpoint\'s start-up, handler, CPU and loaded plugins here.', 'super-speedy-performance-analysis') . '</p>';
+            return;
         }
         if (!isset($windows[$uuid])) {
             $uuids = array_keys($windows);
@@ -223,14 +231,10 @@ class SSPA_Endpoint_Profile {
         }
         $window = $windows[$uuid];
         $evidence = SSPA_Report::endpoint_evidence((int) $window['collection_id']);
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
+        if (!function_exists('get_plugins')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/plugin.php'; }
         $installed = get_plugins();
         $active = count((array) get_option('active_plugins', array()));
         $records = self::records();
-
-        ob_start();
         ?>
         <div class="sspa-ajax-endpoints" data-uuid="<?php echo esc_attr($uuid); ?>">
         <p class="description"><?php esc_html_e('What this window recorded for each endpoint, unprofiled. Wall time runs from the MU observer to shutdown. Outside handler is wall minus handler: start-up before the handler plus shutdown after it. Before MU is core start to the observer; PHP start is the request reaching PHP to WordPress starting its timer. CPU well below wall means waiting: database, network, disk or sleeps.', 'super-speedy-performance-analysis'); ?></p>
@@ -330,6 +334,5 @@ class SSPA_Endpoint_Profile {
         <?php endif; ?>
         </div>
         <?php
-        return ob_get_clean();
     }
 }
