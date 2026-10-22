@@ -289,7 +289,56 @@ if (!class_exists('SSPA_Capture')) {
             }
         }
 
+        /**
+         * Shutdown entry point. A Throwable from the capture's own work (a fault in our code, or a
+         * third-party filter we call, such as alloptions) would otherwise end the request with no
+         * capture, and the run could only say capture_missing. Record what failed under this
+         * request's token, then rethrow: PHP still reports and logs the real fatal (issue #47).
+         * An engine fatal such as memory exhaustion cannot be caught and still reads as missing.
+         */
         public function finalize() {
+            try {
+                $this->write_capture();
+            } catch (Throwable $e) {
+                $this->write_failure($e);
+                throw $e;
+            }
+        }
+
+        /** Local-only failure record; the crawler reports it as sample error capture_failed. */
+        private function write_failure($e) {
+            global $wpdb;
+            if (!isset($wpdb)) {
+                return;
+            }
+            $payload = array(
+                'schema' => self::SCHEMA_VERSION,
+                'token' => $this->token_id,
+                'ts' => time(),
+                'capture_failed' => array(
+                    'class' => get_class($e),
+                    'message' => substr((string) $e->getMessage(), 0, self::PHP_DIAGNOSTICS_MESSAGE_MAX),
+                    'file' => substr((string) $e->getFile(), 0, 1024),
+                    'line' => (int) $e->getLine(),
+                ),
+            );
+            $json = function_exists('wp_json_encode') ? wp_json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE) : json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE);
+            if (false === $json) {
+                return;
+            }
+            $suppress = $wpdb->suppress_errors(true);
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO %i (token_id, capture, created) VALUES (%s, %s, %s)
+                 ON DUPLICATE KEY UPDATE capture = VALUES(capture), created = VALUES(created)",
+                $wpdb->prefix . 'sspa_captures',
+                $this->token_id,
+                gzcompress($json, 6),
+                gmdate('Y-m-d H:i:s')
+            ));
+            $wpdb->suppress_errors($suppress);
+        }
+
+        private function write_capture() {
             global $wpdb, $timestart, $wp_object_cache;
 
             if (!isset($wpdb)) {

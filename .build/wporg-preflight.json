@@ -238,26 +238,26 @@
     },
     {
       "check": "location-constants",
-      "file": "super-speedy-performance-analysis.php",
-      "reason": "ABSPATH defines the prefixed equivalent of the WordPress core directory once for the plugin.",
+      "file": "includes/locations.php",
+      "reason": "ABSPATH defines the prefixed equivalent of the WordPress core directory once. The main plugin, the standalone profiler and uninstall all load this file, so the profiler still has it on a request where the main plugin is not loaded.",
       "match": "ABSPATH"
     },
     {
       "check": "location-constants",
-      "file": "super-speedy-performance-analysis.php",
-      "reason": "WPMU_PLUGIN_DIR defines the prefixed equivalent of the WordPress MU-plugin directory once for the plugin.",
+      "file": "includes/locations.php",
+      "reason": "WPMU_PLUGIN_DIR defines the prefixed equivalent of the WordPress MU-plugin directory once. The main plugin, the standalone profiler and uninstall all load this file, so the profiler still has it on a request where the main plugin is not loaded.",
       "match": "WPMU_PLUGIN_DIR"
     },
     {
       "check": "location-constants",
-      "file": "super-speedy-performance-analysis.php",
-      "reason": "WP_CONTENT_DIR defines the prefixed equivalent of the WordPress content directory once for the plugin.",
+      "file": "includes/locations.php",
+      "reason": "WP_CONTENT_DIR defines the prefixed equivalent of the WordPress content directory once. The main plugin, the standalone profiler and uninstall all load this file, so the profiler still has it on a request where the main plugin is not loaded.",
       "match": "WP_CONTENT_DIR"
     },
     {
       "check": "location-constants",
-      "file": "super-speedy-performance-analysis.php",
-      "reason": "WP_PLUGIN_DIR defines the prefixed equivalent of the WordPress plugin directory once for the plugin.",
+      "file": "includes/locations.php",
+      "reason": "WP_PLUGIN_DIR defines the prefixed equivalent of the WordPress plugin directory once. The main plugin, the standalone profiler and uninstall all load this file, so the profiler still has it on a request where the main plugin is not loaded.",
       "match": "WP_PLUGIN_DIR"
     },
     {
@@ -265,24 +265,6 @@
       "file": "traffic-observer/class-sspa-traffic-hot-path.php",
       "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner’s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
       "match": "woocommerce_cookie"
-    },
-    {
-      "check": "location-constants",
-      "file": "uninstall.php",
-      "reason": "Uninstall runs without the plugin bootstrap and uses ABSPATH once to define its own prefixed WordPress core directory constant.",
-      "match": "ABSPATH"
-    },
-    {
-      "check": "location-constants",
-      "file": "uninstall.php",
-      "reason": "Uninstall runs without the plugin bootstrap and uses WPMU_PLUGIN_DIR once to define its own prefixed WordPress MU-plugin directory constant.",
-      "match": "WPMU_PLUGIN_DIR"
-    },
-    {
-      "check": "location-constants",
-      "file": "uninstall.php",
-      "reason": "Uninstall runs without the plugin bootstrap and uses WP_CONTENT_DIR once to define its own prefixed WordPress content directory constant.",
-      "match": "WP_CONTENT_DIR"
     },
     {
       "check": "core-files",

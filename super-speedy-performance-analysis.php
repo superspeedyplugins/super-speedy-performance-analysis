@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.49.4
+ * Version: 0.49.5
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -26,10 +26,8 @@ define('SSPA_VERSION', '' !== $sspa_header['Version'] ? $sspa_header['Version'] 
 define('SSPA_PLUGIN_FILE', __FILE__);
 define('SSPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSPA_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('SSPA_CONTENT_DIR', WP_CONTENT_DIR);
-define('SSPA_MU_DIR', WPMU_PLUGIN_DIR);
-define('SSPA_PLUGINS_DIR', WP_PLUGIN_DIR);
-define('SSPA_CORE_DIR', ABSPATH);
+// The location constants are shared with the standalone profiler, which loads without this file.
+require_once SSPA_PLUGIN_DIR . 'includes/locations.php';
 
 require_once SSPA_PLUGIN_DIR . 'defines.php';
 

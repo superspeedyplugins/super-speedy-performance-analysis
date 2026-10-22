@@ -217,7 +217,20 @@ class SSPA_Crawler {
         $sample['body_hash'] = isset($norm['body_evidence']) ? $norm['body_evidence']['body_hash'] : self::body_hash((string) $norm['body'], $headers);
 
         $capture = self::fetch_capture($token_id);
-        if ($capture) {
+        if ($capture && isset($capture['capture_failed']) && is_array($capture['capture_failed'])) {
+            // The request ran, but the profiler's own shutdown capture threw (issue #47). Name
+            // the fault rather than report a capture that is merely missing.
+            $failed = $capture['capture_failed'];
+            $sample['error'] = 'capture_failed';
+            $sample['error_message'] = sprintf(
+                /* translators: 1: PHP exception class, 2: its message, 3: file, 4: line number. */
+                __('The profiler could not record this request because PHP raised %1$s: %2$s in %3$s on line %4$d.', 'super-speedy-performance-analysis'),
+                isset($failed['class']) ? (string) $failed['class'] : 'Error',
+                isset($failed['message']) ? (string) $failed['message'] : '',
+                isset($failed['file']) ? (string) $failed['file'] : '',
+                isset($failed['line']) ? (int) $failed['line'] : 0
+            );
+        } elseif ($capture) {
             if (!empty($flags['cr'])) {
                 $capture['cache_recon'] = isset($norm['body_evidence']) ? SSPA_Cache_Recon::from_browser_evidence($norm['body_evidence'], $headers, $capture) : SSPA_Cache_Recon::scan_response(
                     (string) $norm['body'],

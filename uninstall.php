@@ -2,9 +2,7 @@
 defined('WP_UNINSTALL_PLUGIN') || exit;
 defined('ABSPATH') || exit;
 require_once __DIR__ . '/includes/class-sspa-filesystem.php';
-if (!defined('SSPA_CORE_DIR')) { define('SSPA_CORE_DIR', ABSPATH); }
-if (!defined('SSPA_CONTENT_DIR')) { define('SSPA_CONTENT_DIR', WP_CONTENT_DIR); }
-if (!defined('SSPA_MU_DIR')) { define('SSPA_MU_DIR', WPMU_PLUGIN_DIR); }
+require_once __DIR__ . '/includes/locations.php';
 require_once __DIR__ . '/includes/class-sspa-mail.php';
 require_once __DIR__ . '/includes/class-sspa-probes.php';
 require_once __DIR__ . '/includes/class-sspa-workflow-analysis.php';
