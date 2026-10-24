@@ -22,6 +22,9 @@ class SSPA_Crawler {
      */
     public function profile_job($job, $user_id) {
         $cookies = SSPA_Auth::cookies_for($job['variant'], $user_id);
+        // A logged-in REST request needs the REST nonce beside its cookies, or WordPress serves it
+        // as logged out and an endpoint requiring a login answers 401.
+        $this->extra_headers = ($cookies && self::is_rest_url($job['url'])) ? array_filter(array('X-WP-Nonce' => SSPA_Auth::rest_nonce_for($cookies))) : array();
         $is_baseline = ('baseline' === $job['page_key']);
 
         // Sweep "prime" cells skip the warm-up on purpose: they measure the first sample
@@ -470,8 +473,27 @@ class SSPA_Crawler {
         return $sample;
     }
 
+    /** Headers every request of the current job carries, such as a logged-in REST nonce. */
+    private $extra_headers = array();
+
+    /** A request WordPress serves through the REST API: under the REST prefix, or ?rest_route=. */
+    public static function is_rest_url($url) {
+        $parts = wp_parse_url((string) $url);
+        if (!is_array($parts)) {
+            return false;
+        }
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+            if (isset($query['rest_route']) && is_string($query['rest_route']) && '' !== $query['rest_route']) {
+                return true;
+            }
+        }
+        $prefix = (string) wp_parse_url(get_rest_url(), PHP_URL_PATH);
+        return '' !== $prefix && '/' !== $prefix && 0 === strpos(trailingslashit(isset($parts['path']) ? (string) $parts['path'] : '/'), trailingslashit($prefix));
+    }
+
     private function send($url, $cookies, $token_header) {
-        $headers = array('Cache-Control' => 'no-cache');
+        $headers = array_merge(array('Cache-Control' => 'no-cache'), $cookies ? $this->extra_headers : array());
         if ($token_header) {
             $headers[SSPA_Token::HEADER] = $token_header;
         }

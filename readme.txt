@@ -115,6 +115,11 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.5 (24th October 2026) =
+* Fixed "Profile this endpoint" getting HTTP 401 from REST endpoints that need a login, such as `wc-analytics/reports`; logged-in REST requests now carry the REST nonce.
+* "Profile this endpoint" now asks whether to send the request as a logged-out visitor or as you, preselected from how the endpoint was observed.
+* A refused request's result now says which HTTP status it got and, for 401 or 403 as a logged-out visitor, to send it as you, instead of "No detailed data is stored for this measurement because it was pruned."
+
 = 0.52.4 (24th October 2026) =
 * Each Overview insight measured on a page now links to that page (new tab) and to its page analysis on the Pages tab, where Re-run analyses it again.
 

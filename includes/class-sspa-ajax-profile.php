@@ -129,6 +129,7 @@ class SSPA_Ajax_Profile {
                 'url' => sanitize_text_field(wp_unslash($_POST['url'] ?? '')),
                 'samples' => isset($_POST['samples']) ? absint($_POST['samples']) : SSPA_Endpoint_Profile::DEFAULT_SAMPLES,
                 'confirmed' => !empty($_POST['confirmed']),
+                'as' => isset($_POST['as']) ? sanitize_key(wp_unslash($_POST['as'])) : null,
             ));
         }
         else { $result = new WP_Error('sspa_ajax_operation', 'Unknown operation.'); }

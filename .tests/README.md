@@ -23,6 +23,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 143-checkout-address # GR store with no postcode completes block and classic purchases; a country with no real postcode stops with checkout_address_incomplete before the cart
 .tests/run-tests.sh 144-overview-insight # Overview insights link to the measured URL and to that page's analysis (Pages deep link)
 .tests/browser/run-insight-links.sh # after case 144 on the same site: Page analysis click opens the panel, the deep link selects Pages
+.tests/run-tests.sh 145-endpoint-profile # wc-analytics/reports profiled as the admin (REST nonce) answers 200; logged-out answers 401 with a clear explanation, never "pruned"
 .tests/run-tests.sh 81-temp-registry # checkout temp registry survives a cross-process write before cleanup
 .tests/run-tests.sh 05-run-e2e # full baseline; installs the Home query fixture (four known queries on Home) to prove real query capture
 .tests/run-tests.sh 83-history-declared # declared expectations judge the approved HTTP response code separately from the output signature

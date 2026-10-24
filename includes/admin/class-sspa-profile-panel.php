@@ -267,7 +267,21 @@ class SSPA_Profile_Panel {
         $html .= self::http_html($capture);
         $html .= self::environment_html($capture);
         if (null === $capture) {
-            if (!self::transport_errors($row)) {
+            $code = (int) $row['response_code'];
+            if ($code >= 400) {
+                // A refused request has no capture because it failed, not because anything was pruned.
+                $message = sprintf(
+                    /* translators: %d: HTTP status code, e.g. 401 */
+                    __('The request was answered HTTP %d, so there is no profile to show.', 'super-speedy-performance-analysis'),
+                    $code
+                );
+                if (in_array($code, array(401, 403), true)) {
+                    $message .= ' ' . ('anon' === $row['variant']
+                        ? __('The endpoint needs a logged-in user: profile it again from the AJAX tab and send it as you.', 'super-speedy-performance-analysis')
+                        : __('It was sent with your login, so the endpoint refuses even this account; check what permission it requires.', 'super-speedy-performance-analysis'));
+                }
+                $html .= '<p class="sspa-adhoc-note sspa-adhoc-span">' . esc_html($message) . '</p>';
+            } elseif (!self::transport_errors($row)) {
                 $html .= '<p class="sspa-adhoc-note sspa-adhoc-span">'
                     . esc_html__('No detailed data is stored for this measurement because it was pruned.', 'super-speedy-performance-analysis')
                     . '</p>';

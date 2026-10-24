@@ -76,6 +76,7 @@ $(document).on('click', '.sspa-endpoint-profile-open', function () {
     form.find('[name=key]').val(row.data('key'));
     form.find('[name=url]').val($(this).data('url'));
     form.find('[name=confirmed]').prop('checked', false);
+    form.find('[name=as][value="'+($(this).data('as')==='admin'?'admin':'anon')+'"]').prop('checked', true);
     form.prop('hidden', false).insertAfter(row.closest('.sspa-table-scroll'));
     form.find('[name=url]').trigger('focus');
 });
@@ -84,7 +85,7 @@ $(document).on('click', '.sspa-endpoint-profile-view', function () { if (window.
 $(document).on('submit', '.sspa-endpoint-profile-form', function (event) {
     event.preventDefault();
     var form=$(this), uuid=endpointsUuid(), key=form.find('[name=key]').val();
-    var data={operation:'profile_endpoint', uuid:uuid, key:key, url:form.find('[name=url]').val(), samples:form.find('[name=samples]').val(), confirmed:form.find('[name=confirmed]').is(':checked') ? 1 : ''};
+    var data={operation:'profile_endpoint', uuid:uuid, key:key, url:form.find('[name=url]').val(), samples:form.find('[name=samples]').val(), as:form.find('[name=as]:checked').val()||'', confirmed:form.find('[name=confirmed]').is(':checked') ? 1 : ''};
     $('.sspa-ajax-status').text(wp.i18n.__("Starting the endpoint profile…", "super-speedy-performance-analysis"));
     request(data).then(function (started) {
         form.prop('hidden', true);

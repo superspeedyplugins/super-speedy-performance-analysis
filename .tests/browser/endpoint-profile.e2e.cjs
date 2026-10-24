@@ -73,6 +73,9 @@ const out = process.env.SSPA_ENDPOINT_ARTIFACT_DIR;
         const template = site + '/wp-json/' + route + placeholder;
         await form.locator('[name=url]').fill(template);
         await form.locator('[name=samples]').fill('3');
+        // Observed from a logged-out visitor, so "a logged-out visitor" is preselected.
+        assert.equal(await form.locator('[name=as]:checked').inputValue(), 'anon', 'the identity is preselected from the observation');
+        summary.steps.push('identity preselected: a logged-out visitor');
         await form.locator('[name=confirmed]').check();
         await form.locator('button.button-primary').click();
         await page.waitForFunction(() => /placeholder/i.test(document.querySelector('.sspa-ajax-status').textContent));
@@ -84,6 +87,7 @@ const out = process.env.SSPA_ENDPOINT_ARTIFACT_DIR;
         await panel.locator('.sspa-environment').waitFor({timeout: 300000});
         const panelText = await panel.innerText();
         summary.environment = await panel.locator('.sspa-environment').innerText();
+        assert.match(panelText, /profiled as a logged-out visitor/);
         assert.match(panelText, /This request's files in OPcache/);
         assert.match(panelText, /Database round trip/);
         assert.match(panelText, /Object cache/);

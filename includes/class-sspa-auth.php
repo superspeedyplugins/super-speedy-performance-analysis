@@ -97,6 +97,36 @@ class SSPA_Auth {
         return $cookies;
     }
 
+    /**
+     * The X-WP-Nonce a REST request sent with these login cookies needs. WordPress REST treats
+     * cookie authentication without a nonce as a logged-out request (rest_cookie_check_errors),
+     * so an endpoint requiring a login answers 401 to cookies alone. wp_create_nonce() binds to
+     * the current user and the session token in the logged-in cookie, so both are switched to the
+     * cookie's own for the call and restored after it.
+     *
+     * @return string The nonce, or '' when the cookies carry no valid login.
+     */
+    public static function rest_nonce_for($cookies) {
+        if (empty($cookies[LOGGED_IN_COOKIE])) {
+            return '';
+        }
+        $user_id = wp_validate_auth_cookie($cookies[LOGGED_IN_COOKIE], 'logged_in');
+        if (!$user_id) {
+            return '';
+        }
+        $saved_cookies = $_COOKIE;
+        $current_user = get_current_user_id();
+        try {
+            $_COOKIE[LOGGED_IN_COOKIE] = $cookies[LOGGED_IN_COOKIE];
+            wp_set_current_user($user_id);
+            $nonce = wp_create_nonce('wp_rest');
+        } finally {
+            wp_set_current_user($current_user);
+            $_COOKIE = $saved_cookies;
+        }
+        return $nonce;
+    }
+
     public static function test_customer_id() {
         return SSPA_Mail::with_admin(static function() { return self::create_customer(); });
     }

@@ -141,7 +141,8 @@ class SSPA_Endpoint_Profile {
     }
 
     /**
-     * @param array $args {uuid, key, url, samples, confirmed}
+     * @param array $args {uuid, key, url, samples, confirmed, as: 'anon'|'admin'|null - who sends
+     *                    the request; null uses the observed identity}
      * @return array|WP_Error {run_id, page_key, url, samples, variant}
      */
     public static function start($args) {
@@ -175,7 +176,10 @@ class SSPA_Endpoint_Profile {
         if (is_wp_error($valid)) {
             return $valid;
         }
-        $variant = 'logged_in' === $identity['auth_context'] ? 'admin' : 'anon';
+        // Who sends it: the admin's choice, else the identity the window observed.
+        $variant = (isset($args['as']) && in_array($args['as'], array('anon', 'admin'), true))
+            ? $args['as']
+            : ('logged_in' === $identity['auth_context'] ? 'admin' : 'anon');
         $run_id = SSPA_Run_Controller::start(array('type' => 'adhoc', 'url' => $url, 'samples' => $samples, 'variant' => $variant, 'trigger' => 'ajax-endpoint'));
         if (is_wp_error($run_id)) {
             return $run_id;
@@ -314,7 +318,7 @@ class SSPA_Endpoint_Profile {
                         }
                         if (self::profilable($identity)) {
                             $url = isset($records[$endpoint['key']]['url']) ? $records[$endpoint['key']]['url'] : self::url_template($identity);
-                            echo '<button type="button" class="button sspa-endpoint-profile-open" data-url="' . esc_attr($url) . '">' . esc_html__('Profile this endpoint', 'super-speedy-performance-analysis') . '</button>';
+                            echo '<button type="button" class="button sspa-endpoint-profile-open" data-url="' . esc_attr($url) . '" data-as="' . esc_attr('logged_in' === $identity['auth_context'] ? 'admin' : 'anon') . '">' . esc_html__('Profile this endpoint', 'super-speedy-performance-analysis') . '</button>';
                         } else {
                             echo '<span class="description">' . esc_html__('Not profiled: only GET and HEAD REST or admin-ajax requests are replayed.', 'super-speedy-performance-analysis') . '</span>';
                         }
@@ -326,7 +330,12 @@ class SSPA_Endpoint_Profile {
         <form class="sspa-endpoint-profile-form" hidden>
             <input type="hidden" name="key" value="">
             <p><label><?php esc_html_e('Exact URL to request', 'super-speedy-performance-analysis'); ?> <input type="url" name="url" class="large-text" required></label></p>
-            <p class="description"><?php esc_html_e('Windows do not store the literal URLs of requests, only the route. Replace each {placeholder} with a real value, such as a search term. The request is sent without your login for an anonymous endpoint, and as you for a logged-in one. A HEAD endpoint is profiled with GET, which WordPress routes to the same handler.', 'super-speedy-performance-analysis'); ?></p>
+            <p class="description"><?php esc_html_e('Windows do not store the literal URLs of requests, only the route. Replace each {placeholder} with a real value, such as a search term. A HEAD endpoint is profiled with GET, which WordPress routes to the same handler.', 'super-speedy-performance-analysis'); ?></p>
+            <fieldset><legend><?php esc_html_e('Send the request as', 'super-speedy-performance-analysis'); ?></legend>
+                <label><input type="radio" name="as" value="anon"> <?php esc_html_e('a logged-out visitor', 'super-speedy-performance-analysis'); ?></label><br>
+                <label><input type="radio" name="as" value="admin"> <?php esc_html_e('you (logged in)', 'super-speedy-performance-analysis'); ?></label>
+                <p class="description"><?php esc_html_e('Preselected from how the endpoint was observed. An endpoint that needs a login answers a logged-out request with HTTP 401 or 403.', 'super-speedy-performance-analysis'); ?></p>
+            </fieldset>
             <p><label><?php esc_html_e('Samples', 'super-speedy-performance-analysis'); ?> <input type="number" name="samples" min="1" max="<?php echo (int) self::MAX_SAMPLES; ?>" value="<?php echo (int) self::DEFAULT_SAMPLES; ?>"></label></p>
             <p><label><input type="checkbox" name="confirmed" value="1" required> <?php esc_html_e('I confirm this exact URL is safe to request this many times plus one warm-up.', 'super-speedy-performance-analysis'); ?></label></p>
             <p><button class="button button-primary"><?php esc_html_e('Start profiling', 'super-speedy-performance-analysis'); ?></button> <button type="button" class="button sspa-endpoint-profile-cancel"><?php esc_html_e('Cancel', 'super-speedy-performance-analysis'); ?></button></p>
