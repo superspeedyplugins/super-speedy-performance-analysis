@@ -811,7 +811,8 @@ class SSPA_Analysis_Engine {
             }
         }
         foreach ($seen as $f) {
-            $shape = self::classify_query_shape($f['sql']);
+            $shapes = self::classify_query_shapes($f['sql']);
+            $shape = $shapes ? $shapes[0] : 'generic';
             $plan = $this->plan_for($f['fp']);
             if ($plan !== null) {
                 $this->flagged_slow[md5($f['fp'])] = true;
@@ -821,33 +822,54 @@ class SSPA_Analysis_Engine {
                 'slow_query',
                 $f['component'],
                 $f['page_key'],
-                array_merge($f, array('shape' => $shape), self::plan_evidence($plan)),
+                array_merge($f, array('shape' => $shape, 'shapes' => $shapes), self::plan_evidence($plan)),
                 'slow_query_' . $shape
             );
         }
     }
 
-    public static function classify_query_shape($sql) {
+    /**
+     * Every recognised shape of a query, strongest evidence first. The first is the one the advice
+     * is about.
+     *
+     * The order is by what the SQL proves on its own. A leading-wildcard LIKE can never use a B-tree
+     * index; ORDER BY RAND() sorts every candidate row; postmeta and taxonomy self-joins multiply rows.
+     * SQL_CALC_FOUND_ROWS only costs the rest of a scan that a LIMIT could otherwise have stopped
+     * early, and with any of the other shapes present the scan does not stop early anyway, so it is
+     * blamed only when nothing else is. On the demo's 6,175 ms search query, removing the count saved
+     * about 4%; the first-match version of this method blamed the count and hid the LIKE.
+     *
+     * @return string[] e.g. array('like', 'found_rows'); empty for a generic query.
+     */
+    public static function classify_query_shapes($sql) {
         global $wpdb;
+        $sql = (string) $sql;
         $upper = strtoupper($sql);
-        if (strpos($upper, 'SQL_CALC_FOUND_ROWS') !== false) {
-            return 'found_rows';
+        $shapes = array();
+        if (preg_match("/LIKE\s+'%/i", $sql) || preg_match('/LIKE\s+\?/', $sql) && strpos($sql, "'%") !== false) {
+            $shapes[] = 'like';
         }
         if (preg_match('/ORDER\s+BY\s+RAND\s*\(/i', $sql)) {
-            return 'rand';
-        }
-        if (preg_match("/LIKE\s+'%/i", $sql) || preg_match('/LIKE\s+\?/', $sql) && strpos($sql, "'%") !== false) {
-            return 'like';
+            $shapes[] = 'rand';
         }
         $postmeta = isset($wpdb->postmeta) ? $wpdb->postmeta : 'wp_postmeta';
         if (substr_count($upper, strtoupper($postmeta)) >= 2 || (strpos($upper, strtoupper($postmeta)) !== false && strpos($upper, 'JOIN') !== false)) {
-            return 'postmeta';
+            $shapes[] = 'postmeta';
         }
         $term_rel = isset($wpdb->term_relationships) ? $wpdb->term_relationships : 'wp_term_relationships';
         if (substr_count($upper, strtoupper($term_rel)) >= 2) {
-            return 'tax';
+            $shapes[] = 'tax';
         }
-        return 'generic';
+        if (strpos($upper, 'SQL_CALC_FOUND_ROWS') !== false) {
+            $shapes[] = 'found_rows';
+        }
+        return $shapes;
+    }
+
+    /** The strongest shape of a query, 'generic' when none is recognised. */
+    public static function classify_query_shape($sql) {
+        $shapes = self::classify_query_shapes($sql);
+        return $shapes ? $shapes[0] : 'generic';
     }
 
     private function big_result_sets() {

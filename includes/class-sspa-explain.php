@@ -10,7 +10,8 @@ defined('ABSPATH') || exit;
  * already has. See .docs/implementation-plan-profilers-and-digests.md section A.
  *
  * WHY IT IS SAFE:
- * - SELECT only. EXPLAIN on a SELECT produces a plan; it does not execute the statement.
+ * - SELECT only (a WITH ... SELECT included). EXPLAIN on a SELECT produces a plan; it does not
+ *   execute the statement.
  *   EXPLAIN ANALYZE would execute it, and is never used here.
  * - Runs during analysis (an admin or cron request, after profiling), never inside a
  *   profiled request, so it can never contaminate a measurement.
@@ -35,8 +36,17 @@ class SSPA_Explain {
 
     public static function is_explainable($sql) {
         $sql = ltrim((string) $sql);
-        if ($sql === '' || !preg_match('/^SELECT\b/i', $sql)) {
+        if ($sql === '' || !preg_match('/^(SELECT|WITH)\b/i', $sql)) {
             return false;
+        }
+        // A CTE can precede a data change in MySQL 8 (WITH ... UPDATE/DELETE). Plain EXPLAIN would
+        // not execute it either, but only SELECTs are explained: refuse any data-changing keyword
+        // outside string literals.
+        if (preg_match('/^WITH\b/i', $sql)) {
+            $unquoted = preg_replace("/'(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\"/s", "''", $sql);
+            if (null === $unquoted || preg_match('/\b(INSERT|UPDATE|DELETE|REPLACE)\b/i', $unquoted)) {
+                return false;
+            }
         }
         // Refuse anything that could be more than one statement.
         if (strpos($sql, ';') !== false && !preg_match('/;\s*$/', $sql)) {

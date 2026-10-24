@@ -66,7 +66,9 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
 
             $is_write = (bool) preg_match('/^\s*(insert|update|delete|replace|create|alter|drop|truncate)\b/i', (string) $query);
             $this->sspa_log[] = array(
-                'sql' => (string) $query,
+                // As executed: wpdb::query() removes the placeholder escape through its 'query'
+                // filter, so a prepared LIKE '%x%' would otherwise be stored as '{64-hex}x{64-hex}'.
+                'sql' => $this->remove_placeholder_escape((string) $query),
                 'ms' => $ms,
                 'rows' => $is_write ? (int) $this->rows_affected : (int) $this->num_rows,
                 'err' => ($this->last_error !== '') ? $this->last_error : null,

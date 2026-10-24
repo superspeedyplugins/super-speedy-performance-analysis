@@ -115,6 +115,11 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.6 (24th October 2026) =
+* Slow-query advice now reports every shape a query has, strongest evidence first, and blames `SQL_CALC_FOUND_ROWS` only when nothing else explains the query; a leading-wildcard `LIKE` is now named.
+* Queries that start with `WITH` (common table expressions) now get a query plan.
+* Stored SQL now shows `%` instead of a 64-character placeholder hash, so it can be pasted into a database client.
+
 = 0.52.5 (24th October 2026) =
 * Fixed "Profile this endpoint" getting HTTP 401 from REST endpoints that need a login, such as `wc-analytics/reports`; logged-in REST requests now carry the REST nonce.
 * "Profile this endpoint" now asks whether to send the request as a logged-out visitor or as you, preselected from how the endpoint was observed.

@@ -126,6 +126,27 @@ class SSPA_Insights {
     /**
      * @return array {headline, detail, rec_title, rec_body, rec_link}
      */
+    /** "Query shapes, strongest evidence first: ..." when a slow query has more than one. */
+    private static function shapes_line($e) {
+        $shapes = isset($e['shapes']) && is_array($e['shapes']) ? $e['shapes'] : array();
+        if (count($shapes) < 2) {
+            return '';
+        }
+        $labels = array(
+            'like' => __('leading-wildcard LIKE', 'super-speedy-performance-analysis'),
+            'rand' => 'ORDER BY RAND()',
+            'postmeta' => __('postmeta join', 'super-speedy-performance-analysis'),
+            'tax' => __('taxonomy join', 'super-speedy-performance-analysis'),
+            'found_rows' => 'SQL_CALC_FOUND_ROWS',
+        );
+        $named = array();
+        foreach ($shapes as $shape) {
+            $named[] = isset($labels[$shape]) ? $labels[$shape] : (string) $shape;
+        }
+        /* translators: %s: comma-separated query shapes, e.g. "leading-wildcard LIKE, SQL_CALC_FOUND_ROWS" */
+        return sprintf(__('Query shapes, strongest evidence first: %s.', 'super-speedy-performance-analysis'), implode(', ', $named));
+    }
+
     public static function render($finding) {
         $e = json_decode($finding['evidence'], true);
         $e = is_array($e) ? $e : array();
@@ -157,7 +178,8 @@ class SSPA_Insights {
             case 'slow_query':
                 /* translators: 1: component name, 2: milliseconds, 3: page key */
                 $headline = sprintf(__('%1$s ran a %2$sms query on %3$s', 'super-speedy-performance-analysis'), $component, number_format((float) $e['ms']), $page) . $via_note;
-                $detail = trim((!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
+                // Shapes first: the Overview truncates a long statement, and this line must survive it.
+                $detail = trim(self::shapes_line($e) . "\n" . (!empty($e['sql']) ? $e['sql'] : '') . ($plan_line ? "\n" . $plan_line : ''));
                 break;
             case 'unindexed_query':
                 $headline = sprintf(
