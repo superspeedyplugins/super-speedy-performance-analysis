@@ -115,6 +115,10 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.2 (24th October 2026) =
+* Fixed the checkout analysis failing with "place_order_failed - Billing Postcode / ZIP is a required field." on stores outside 24 countries that have no store postcode; the test address now has a real postcode and state for 89 countries.
+* The checkout analysis now stops before adding to the cart, with the outcome `checkout_address_incomplete`, when WooCommerce would reject the store address, and says to set the store postcode in WooCommerce > Settings > General.
+
 = 0.52.1 (22nd October 2026) =
 * Internal test fixes; no change to the plugin's behaviour.
 

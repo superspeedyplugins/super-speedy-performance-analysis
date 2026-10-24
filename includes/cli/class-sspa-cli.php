@@ -190,7 +190,8 @@ class SSPA_CLI {
             $notes = json_decode((string) $run['notes'], true);
             $outcome = is_array($notes) && isset($notes['outcome']) ? $notes['outcome'] : 'unknown';
             if ('ok' !== $outcome) {
-                WP_CLI::error(sprintf('Purchase %d did not complete: %s', $i + 1, $outcome));
+                $detail = is_array($notes) && !empty($notes['flow']['error']) ? ' - ' . $notes['flow']['error'] : '';
+                WP_CLI::error(sprintf('Purchase %d did not complete: %s%s', $i + 1, $outcome, $detail));
             }
             $run_ids[] = $run_id;
 

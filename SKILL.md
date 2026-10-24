@@ -161,6 +161,10 @@ Both the block checkout and the classic `[woocommerce_checkout]` shortcode are s
 step list differs slightly between them (the classic one has no separate cart-API or
 rate-selection call and no draft order). A checkout page that is neither - one rendered by a
 page builder - reports `unsupported_checkout` rather than guessing at the payload.
+A store address WooCommerce would reject (no store postcode in a country the plugin has no
+real fallback postcode for) reports `checkout_address_incomplete` before anything is added to
+the cart; relay its message, which says to set the store postcode in WooCommerce > Settings >
+General.
 
 ## 7. Cautions
 

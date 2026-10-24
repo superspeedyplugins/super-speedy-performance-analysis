@@ -20,6 +20,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 78-history-graceful # real WordPress retained-record comparison regressions
 .tests/run-tests.sh 79-admin-bar # admin-bar "This site" nodes deep-link to Tools by fragment; no MySQL digests node exists
 .tests/run-tests.sh 80-checkout-type # preflight names a checkout block, shortcode or unsupported page by its real content
+.tests/run-tests.sh 143-checkout-address # GR store with no postcode completes block and classic purchases; a country with no real postcode stops with checkout_address_incomplete before the cart
 .tests/run-tests.sh 81-temp-registry # checkout temp registry survives a cross-process write before cleanup
 .tests/run-tests.sh 05-run-e2e # full baseline; installs the Home query fixture (four known queries on Home) to prove real query capture
 .tests/run-tests.sh 83-history-declared # declared expectations judge the approved HTTP response code separately from the output signature

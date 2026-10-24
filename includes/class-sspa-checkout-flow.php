@@ -461,10 +461,50 @@ class SSPA_Checkout_Flow {
     }
 
     /**
-     * A deliverable address in the store's own base country. The country drives tax and
-     * shipping lookups, and an invalid postcode silently changes which zone matches - so
-     * where the store has not set one, fall back to a known-valid postcode for that
-     * country rather than sending an empty string the Store API will reject.
+     * Real, central postcodes (a capital or main city) and the matching state, used only where
+     * the store has not set its own. The country drives tax and shipping lookups, and an invalid
+     * postcode silently changes which zone matches, so these are real codes WooCommerce's own
+     * postcode validation accepts. A state is used only when the store has none; free-text
+     * names are for countries whose locale requires a state but WooCommerce lists none.
+     * Countries absent here fall through to address_problem(), which stops the run.
+     */
+    const FALLBACK_ADDRESSES = array(
+        'AL' => array('1001', 'AL-11'), 'AM' => array('0010', 'Yerevan'), 'AR' => array('1002', 'C'),
+        'AT' => array('1010', ''), 'AU' => array('2000', 'NSW'), 'AZ' => array('AZ1000', 'Baku'),
+        'BA' => array('71000', ''), 'BD' => array('1000', 'BD-13'), 'BE' => array('1000', ''),
+        'BG' => array('1000', 'BG-22'), 'BO' => array('', 'BO-L'), 'BR' => array('01310-100', 'SP'),
+        'BY' => array('220030', 'Minsk'), 'CA' => array('K1A 0B1', 'ON'), 'CH' => array('8001', ''),
+        'CL' => array('8320000', 'CL-RM'), 'CN' => array('100000', 'CN2'), 'CO' => array('110111', 'CO-DC'),
+        'CR' => array('10101', 'CR-SJ'), 'CY' => array('1010', ''), 'CZ' => array('110 00', ''),
+        'DE' => array('10115', ''), 'DK' => array('1050', ''), 'DZ' => array('16000', 'DZ-16'),
+        'EC' => array('170150', 'EC-P'), 'EE' => array('10111', ''), 'EG' => array('11511', 'EGC'),
+        'ES' => array('28001', 'M'), 'FI' => array('00100', ''), 'FR' => array('75001', ''),
+        'GB' => array('SW1A 1AA', ''), 'GE' => array('0105', 'Tbilisi'), 'GH' => array('', 'AA'),
+        'GR' => array('104 31', 'I'), 'GT' => array('01001', 'GT-GU'), 'HK' => array('', 'HONG KONG'),
+        'HR' => array('10000', 'HR-21'), 'HU' => array('1051', 'BU'), 'ID' => array('10110', 'JK'),
+        'IE' => array('D02 AF30', 'D'), 'IN' => array('110001', 'DL'), 'IS' => array('101', ''),
+        'IT' => array('00100', 'RM'), 'JO' => array('11118', 'Amman'), 'JP' => array('100-0001', 'JP13'),
+        'KE' => array('00100', 'KE30'), 'KR' => array('04524', ''), 'KW' => array('13001', ''),
+        'KZ' => array('010000', 'Astana'), 'LK' => array('00100', ''), 'LT' => array('LT-01100', 'Vilnius County'),
+        'LU' => array('2449', ''), 'LV' => array('LV-1050', ''), 'MA' => array('10000', 'marab'),
+        'MD' => array('MD-2001', 'C'), 'ME' => array('81000', 'Podgorica'), 'MK' => array('1000', 'Skopje'),
+        'MT' => array('VLT 1117', ''), 'MX' => array('06000', 'DF'), 'MY' => array('50000', 'KUL'),
+        'NG' => array('100001', 'LA'), 'NL' => array('1012 JS', ''), 'NO' => array('0150', ''),
+        'NP' => array('44600', 'BAG'), 'NZ' => array('6011', 'WGN'), 'PE' => array('15001', 'LMA'),
+        'PH' => array('1000', '00'), 'PK' => array('44000', 'IS'), 'PL' => array('00-001', ''),
+        'PR' => array('00901', ''), 'PT' => array('1000-001', ''), 'RO' => array('010011', 'B'),
+        'RS' => array('11000', 'RS00'), 'RU' => array('101000', 'Moscow'), 'SA' => array('11564', 'Riyadh'),
+        'SE' => array('111 20', ''), 'SG' => array('018956', ''), 'SI' => array('1000', ''),
+        'SK' => array('811 01', ''), 'TH' => array('10200', 'TH-10'), 'TN' => array('1000', 'Tunis'),
+        'TR' => array('06420', 'TR06'), 'TW' => array('100', 'Taipei'), 'UA' => array('01001', 'UA30'),
+        'UG' => array('', 'UG102'), 'US' => array('90210', 'CA'), 'UY' => array('11000', 'UY-MO'),
+        'VE' => array('1010', 'VE-A'), 'ZA' => array('8001', 'WC'),
+    );
+
+    /**
+     * A deliverable address in the store's own base country, completed from FALLBACK_ADDRESSES
+     * where the store has not set a postcode or state. Never invents one for a country it has
+     * no real postcode for: address_problem() reports that before the run buys anything.
      */
     public static function default_address() {
         $saved = sspa_get_option('checkout_address');
@@ -477,20 +517,12 @@ class SSPA_Checkout_Flow {
         $postcode = $countries ? $countries->get_base_postcode() : '';
         $city = $countries ? $countries->get_base_city() : '';
 
-        $fallback_postcodes = array(
-            'US' => '90210', 'GB' => 'SW1A 1AA', 'CA' => 'K1A 0B1', 'AU' => '2000',
-            'NZ' => '6011', 'IE' => 'D02 AF30', 'DE' => '10115', 'FR' => '75001',
-            'ES' => '28001', 'IT' => '00100', 'NL' => '1012 JS', 'BE' => '1000',
-            'SE' => '111 20', 'NO' => '0150', 'DK' => '1050', 'FI' => '00100',
-            'PT' => '1000-001', 'PL' => '00-001', 'AT' => '1010', 'CH' => '8001',
-            'IN' => '110001', 'JP' => '100-0001', 'BR' => '01310-100', 'ZA' => '8001',
-        );
-        if ('' === (string) $postcode && isset($fallback_postcodes[$country])) {
-            $postcode = $fallback_postcodes[$country];
+        $fallback = isset(self::FALLBACK_ADDRESSES[$country]) ? self::FALLBACK_ADDRESSES[$country] : array('', '');
+        if ('' === (string) $postcode) {
+            $postcode = $fallback[0];
         }
-        $fallback_states = array('US' => 'CA', 'CA' => 'ON', 'AU' => 'NSW', 'IN' => 'DL', 'BR' => 'SP');
-        if ('' === (string) $state && isset($fallback_states[$country])) {
-            $state = $fallback_states[$country];
+        if ('' === (string) $state) {
+            $state = $fallback[1];
         }
 
         return array(
@@ -504,6 +536,50 @@ class SSPA_Checkout_Flow {
             'postcode' => (string) $postcode,
             'country' => (string) $country,
             'phone' => '01632960000',
+        );
+    }
+
+    /**
+     * Would WooCommerce's checkout reject this address? Asked of WooCommerce itself: the
+     * billing fields for the country (its locale plus any woocommerce_billing_fields filter)
+     * say whether postcode and state are required, and its own validators judge the values.
+     *
+     * @return string Empty when the address will pass, else the reason, for the admin.
+     */
+    public static function address_problem($address) {
+        if (!function_exists('WC') || !WC()->countries) {
+            return '';
+        }
+        $country = isset($address['country']) ? (string) $address['country'] : '';
+        $postcode = isset($address['postcode']) ? (string) $address['postcode'] : '';
+        $state = isset($address['state']) ? (string) $address['state'] : '';
+        $fields = WC()->countries->get_address_fields($country, 'billing_');
+        $problems = array();
+        if ('' === $postcode) {
+            if (!empty($fields['billing_postcode']['required'])) {
+                $problems[] = __('no postcode', 'super-speedy-performance-analysis');
+            }
+        } elseif (class_exists('WC_Validation') && !WC_Validation::is_postcode(wc_format_postcode($postcode, $country), $country)) {
+            /* translators: %s: the postcode */
+            $problems[] = sprintf(__('a postcode WooCommerce does not accept (%s)', 'super-speedy-performance-analysis'), $postcode);
+        }
+        $states = WC()->countries->get_states($country);
+        if ('' === $state) {
+            if (!empty($fields['billing_state']['required'])) {
+                $problems[] = __('no state or county', 'super-speedy-performance-analysis');
+            }
+        } elseif (is_array($states) && $states && !isset($states[strtoupper($state)]) && !isset($states[$state])) {
+            /* translators: %s: the state code */
+            $problems[] = sprintf(__('a state WooCommerce does not list (%s)', 'super-speedy-performance-analysis'), $state);
+        }
+        if (!$problems) {
+            return '';
+        }
+        return sprintf(
+            /* translators: 1: two-letter country code, 2: what is wrong, e.g. "no postcode" */
+            __('The test purchase uses your store address in %1$s, which has %2$s, and the WooCommerce checkout would reject it. Set the store address postcode (and state, if asked) in WooCommerce > Settings > General, then run the checkout analysis again. Nothing was added to the cart and no order was created.', 'super-speedy-performance-analysis'),
+            $country,
+            implode(__(' and ', 'super-speedy-performance-analysis'), $problems)
         );
     }
 
@@ -567,6 +643,14 @@ class SSPA_Checkout_Flow {
 
         $quantity = max(1, (int) (isset($opts['quantity']) ? $opts['quantity'] : sspa_get_option('checkout_quantity')));
         $address = isset($opts['address']) && is_array($opts['address']) ? $opts['address'] : self::default_address();
+        // Stop before the first request rather than fail at place-order: an address the
+        // checkout must reject would only measure a refusal, and leave a draft order behind.
+        $address_problem = self::address_problem($address);
+        if ('' !== $address_problem) {
+            $result['outcome'] = 'checkout_address_incomplete';
+            $result['notes'] = array('error' => $address_problem, 'address' => $address);
+            return $result;
+        }
         $email = self::billing_email($run_id);
         $payment_mode = isset($opts['payment_mode']) ? $opts['payment_mode'] : 'no_payment';
 
