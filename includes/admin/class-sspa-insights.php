@@ -47,6 +47,49 @@ class SSPA_Insights {
         ), ARRAY_A);
     }
 
+    /**
+     * The page a finding was measured on: the newest plain GET profile of its run and page key.
+     * Null for a site-wide finding, and for write probes and journeys, which have no page to open.
+     *
+     * @return array|null {profile_id, url}
+     */
+    public static function page_target($finding) {
+        if (empty($finding['page_key']) || empty($finding['run_id'])) {
+            return null;
+        }
+        global $wpdb;
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, url FROM %i WHERE run_id = %d AND page_key = %s AND plugin_set_hash = '' AND method = 'GET' ORDER BY id DESC LIMIT 1",
+            SSPA_Schema::table('profiles'),
+            (int) $finding['run_id'],
+            (string) $finding['page_key']
+        ), ARRAY_A);
+        if (!$row || !wp_http_validate_url($row['url'])) {
+            return null;
+        }
+        return array('profile_id' => (int) $row['id'], 'url' => (string) $row['url']);
+    }
+
+    /**
+     * "Open the page" (the measured URL, new tab) and "Page analysis" (that profile in the Pages
+     * tab's panel) for a finding with a page, else ''. The analysis link is a real URL, so it also
+     * works opened in a new tab: sspa-admin.js opens the profile named by sspa_profile on load.
+     */
+    public static function page_links_html($finding) {
+        $target = self::page_target($finding);
+        if (!$target) {
+            return '';
+        }
+        $analysis = add_query_arg(array('page' => 'sspa', 'sspa_profile' => $target['profile_id']), admin_url('admin.php')) . '#pages';
+        return '<p class="sspa-insight-links">'
+            . '<a class="sspa-insight-open" href="' . esc_url($target['url']) . '" target="_blank" rel="noopener noreferrer">'
+            . esc_html__('Open the page', 'super-speedy-performance-analysis') . '<span class="screen-reader-text"> ' . esc_html__('(opens in a new tab)', 'super-speedy-performance-analysis') . '</span> &#8599;</a>'
+            . ' <span aria-hidden="true">&middot;</span> '
+            . '<a class="sspa-insight-profile" href="' . esc_url($analysis) . '" data-profile-id="' . (int) $target['profile_id'] . '">'
+            . esc_html__('Page analysis', 'super-speedy-performance-analysis') . '</a>'
+            . '</p>';
+    }
+
     public static function top($run_id, $limit = 5) {
         global $wpdb;
         $rows = $wpdb->get_results($wpdb->prepare(

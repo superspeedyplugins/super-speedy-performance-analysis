@@ -115,6 +115,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.4 (24th October 2026) =
+* Each Overview insight measured on a page now links to that page (new tab) and to its page analysis on the Pages tab, where Re-run analyses it again.
+
 = 0.52.3 (24th October 2026) =
 * Fixed the Imports tab saying "No importer plugin is active on this site." while Super Speedy Imports Pro or Lite is active; the Import speed box now lists every active importer, and the separate Super Speedy Imports box only appears when there is an upgrade to offer.
 

@@ -422,6 +422,30 @@ jQuery(document).on('click', '.sspa-page-row', function () {
 	window.sspaPanel.openProfile(jQuery(this).data('profile-id'));
 });
 
+// An Overview insight's "Page analysis" link opens the same panel in place. Its href is a real
+// deep link (?sspa_profile=<id>#pages), so a new tab or a copied link opens it on load instead.
+jQuery(document).on('click', '.sspa-insight-profile', function (e) {
+	if (!window.sspaPanel || e.ctrlKey || e.metaKey || e.shiftKey || 1 !== e.which) {
+		return;
+	}
+	e.preventDefault();
+	window.sspaPanel.openProfile(jQuery(this).data('profile-id'));
+});
+jQuery(function () {
+	var query = new URLSearchParams(window.location.search);
+	var profileId = parseInt(query.get('sspa_profile'), 10) || 0;
+	if (!profileId || !window.sspaPanel) {
+		return;
+	}
+	// Consumed once, like sspa_autospot, so switching tabs and reloading does not reopen it.
+	if (window.history.replaceState) {
+		var url = new URL(window.location.href);
+		url.searchParams.delete('sspa_profile');
+		window.history.replaceState(null, '', url.toString());
+	}
+	window.sspaPanel.openProfile(profileId);
+});
+
 function sspa_esc(str) {
 	return jQuery('<span>').text(str == null ? '' : String(str)).html();
 }

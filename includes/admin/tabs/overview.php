@@ -65,6 +65,7 @@ if ($sspa_last_run) {
                     <?php if ($sspa_r['rec_body']) : ?>
                         <p class="sspa-insight-rec"><?php echo esc_html($sspa_r['rec_body']); ?></p>
                     <?php endif; ?>
+                    <?php echo wp_kses_post(SSPA_Insights::page_links_html($sspa_f)); ?>
                     <?php
                     if (isset($sspa_offer_at[(int) $sspa_f['id']])) {
                         echo wp_kses(SSPA_Offers::render($sspa_offer_at[(int) $sspa_f['id']], 'overview'), SSPA_Offers::allowed_html());
@@ -77,11 +78,14 @@ if ($sspa_last_run) {
                 <div class="sspa-offer-next">
                     <h3><?php esc_html_e('Suggested next step', 'super-speedy-performance-analysis'); ?></h3>
                     <?php
+                    $sspa_loose_row = null;
                     if ($sspa_offer['finding_id']) {
                         // A measured finding outside the top five: show it with its free fix.
                         $sspa_loose_finding = null;
+                        $sspa_loose_row = null;
                         foreach (SSPA_Insights::top($sspa_last_run['id'], 1000) as $sspa_candidate) {
                             if ((int) $sspa_candidate['id'] === (int) $sspa_offer['finding_id']) {
+                                $sspa_loose_row = $sspa_candidate;
                                 $sspa_loose_finding = SSPA_Insights::render($sspa_candidate);
                                 break;
                             }
@@ -92,6 +96,9 @@ if ($sspa_last_run) {
                         }
                     }
                     echo wp_kses(SSPA_Offers::render($sspa_offer, 'overview', true), SSPA_Offers::allowed_html());
+                    if (!empty($sspa_loose_row)) {
+                        echo wp_kses_post(SSPA_Insights::page_links_html($sspa_loose_row));
+                    }
                     ?>
                 </div>
             <?php endforeach; ?>

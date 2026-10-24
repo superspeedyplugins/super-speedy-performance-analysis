@@ -155,6 +155,10 @@
 	color: #50575e;
 }
 
+#sspa_main .sspa-insight-links {
+	margin: 0.3em 0 0;
+}
+
 #sspa_main .sspa-page-row {
 	cursor: pointer;
 }
