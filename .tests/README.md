@@ -24,6 +24,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 144-overview-insight # Overview insights link to the measured URL and to that page's analysis (Pages deep link)
 .tests/browser/run-insight-links.sh # after case 144 on the same site: Page analysis click opens the panel, the deep link selects Pages
 .tests/run-tests.sh 145-endpoint-profile # wc-analytics/reports profiled as the admin (REST nonce) answers 200; logged-out answers 401 with a clear explanation, never "pruned"
+.tests/run-tests.sh 146-slow-query # core-executed CTE search query: every shape (like before found_rows), a plan, runnable SQL, real caller, page_url
 .tests/run-tests.sh 81-temp-registry # checkout temp registry survives a cross-process write before cleanup
 .tests/run-tests.sh 05-run-e2e # full baseline; installs the Home query fixture (four known queries on Home) to prove real query capture
 .tests/run-tests.sh 83-history-declared # declared expectations judge the approved HTTP response code separately from the output signature

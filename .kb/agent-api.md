@@ -109,7 +109,7 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
   "confidence": "inferred | measured",
   "headline": "plain-English one-liner naming the culprit",
   "detail": "supporting detail (often the offending SQL)",
-  "evidence": { "ms": 210.5, "rows": 3400, "shape": "like", "shapes": ["like", "found_rows"], "...": "type-specific" },
+  "evidence": { "ms": 210.5, "rows": 3400, "shape": "like", "shapes": ["like", "found_rows"], "page_url": "https://example.com/?s=term", "...": "type-specific" },
   "recommendation": {"key": "slow_query_postmeta", "title": "...", "body": "...", "link": "https://... or empty"}
 }
 ```

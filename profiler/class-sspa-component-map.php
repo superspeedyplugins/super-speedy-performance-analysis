@@ -252,6 +252,12 @@ if (!class_exists('SSPA_Component_Map')) {
                 if (strpos(str_replace('\\', '/', $frame[0]), $this->own_dir . '/') === 0) {
                     continue;
                 }
+                // wpdb's own methods, and the profiling subclass PA installs for the request, are
+                // the transport: name the code that asked for the query, e.g. WP_Query::get_posts.
+                $fn = isset($frame[2]) ? (string) $frame[2] : '';
+                if (0 === strpos($fn, 'SSPA_Profiling_WPDB::') || $this->is_db_layer($fn)) {
+                    continue;
+                }
                 return $this->caller_label($frame);
             }
             return '';

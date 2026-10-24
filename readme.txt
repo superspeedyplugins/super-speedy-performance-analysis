@@ -115,6 +115,10 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.7 (24th October 2026) =
+* A query run by WordPress core now names the code that asked for it, such as `WP_Query::get_posts`, instead of `SSPA_Profiling_WPDB::query`.
+* Findings measured on a page now store the URL that was measured, and the Overview's "Open the page" link uses it.
+
 = 0.52.6 (24th October 2026) =
 * Slow-query advice now reports every shape a query has, strongest evidence first, and blames `SQL_CALC_FOUND_ROWS` only when nothing else explains the query; a leading-wildcard `LIKE` is now named.
 * Queries that start with `WITH` (common table expressions) now get a query plan.

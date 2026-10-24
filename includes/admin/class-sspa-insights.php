@@ -64,10 +64,16 @@ class SSPA_Insights {
             (int) $finding['run_id'],
             (string) $finding['page_key']
         ), ARRAY_A);
-        if (!$row || !wp_http_validate_url($row['url'])) {
+        if (!$row) {
             return null;
         }
-        return array('profile_id' => (int) $row['id'], 'url' => (string) $row['url']);
+        // Prefer the URL stored with the finding (0.52.7 and later); older findings use the profile's.
+        $e = json_decode((string) ($finding['evidence'] ?? ''), true);
+        $url = (is_array($e) && !empty($e['page_url'])) ? (string) $e['page_url'] : (string) $row['url'];
+        if (!wp_http_validate_url($url)) {
+            return null;
+        }
+        return array('profile_id' => (int) $row['id'], 'url' => $url);
     }
 
     /**

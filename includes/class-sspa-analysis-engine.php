@@ -757,6 +757,14 @@ class SSPA_Analysis_Engine {
 
     private function add($severity, $type, $component, $page_key, $evidence, $rec_key, $confidence = 'inferred') {
         global $wpdb;
+        // The URL that was measured, so a finding can be reopened without decoding its page key.
+        // 'page_url', not 'url': HTTP findings already use 'url' for the remote address.
+        if ($page_key && is_array($evidence) && !isset($evidence['page_url'])) {
+            $page_url = $this->page_url($page_key);
+            if ($page_url) {
+                $evidence['page_url'] = $page_url;
+            }
+        }
         $wpdb->insert(SSPA_Schema::table('findings'), array(
             'run_id' => $this->run_id,
             'severity' => $severity,
@@ -773,6 +781,16 @@ class SSPA_Analysis_Engine {
 
     private function skip_component($component) {
         return in_array($component, array('super-speedy-performance-analysis', 'mu:sspa-loader'), true);
+    }
+
+    /** The measured URL of a page key in this run: its base (full plugin set) profile's. */
+    private function page_url($page_key) {
+        foreach ($this->profiles as $p) {
+            if ($p['page_key'] === $page_key && '' === (string) (isset($p['plugin_set_hash']) ? $p['plugin_set_hash'] : '') && !empty($p['url'])) {
+                return (string) $p['url'];
+            }
+        }
+        return null;
     }
 
     private function page_key($profile_id) {
