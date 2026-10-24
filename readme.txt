@@ -115,6 +115,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.3 (24th October 2026) =
+* Fixed the Imports tab saying "No importer plugin is active on this site." while Super Speedy Imports Pro or Lite is active; the Import speed box now lists every active importer, and the separate Super Speedy Imports box only appears when there is an upgrade to offer.
+
 = 0.52.2 (24th October 2026) =
 * Fixed the checkout analysis failing with "place_order_failed - Billing Postcode / ZIP is a required field." on stores outside 24 countries that have no store postcode; the test address now has a real postcode and state for 89 countries.
 * The checkout analysis now stops before adding to the cart, with the outcome `checkout_address_incomplete`, when WooCommerce would reject the store address, and says to set the store postcode in WooCommerce > Settings > General.

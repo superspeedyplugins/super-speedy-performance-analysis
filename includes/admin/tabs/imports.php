@@ -18,6 +18,16 @@ foreach (array_merge(array_keys($sspa_imports_importers), array_keys($sspa_impor
     }
 }
 $sspa_imports_figures = array_values(array_unique($sspa_imports_figures));
+// Every importer that is active, Super Speedy Imports first. active_in('importer') lists only the
+// others, because it feeds the offer made to sites using another importer.
+$sspa_imports_active = array();
+if ($sspa_imports_pro_active) {
+    $sspa_imports_active[] = __('Super Speedy Imports Pro', 'super-speedy-performance-analysis');
+}
+if ($sspa_imports_lite_active) {
+    $sspa_imports_active[] = __('Super Speedy Imports Lite', 'super-speedy-performance-analysis');
+}
+$sspa_imports_active = array_merge($sspa_imports_active, array_values($sspa_imports_importers));
 ?>
 <div class="sspa-imports-tab">
     <div class="sspa-placeholder">
@@ -25,9 +35,12 @@ $sspa_imports_figures = array_values(array_unique($sspa_imports_figures));
         <p class="description"><?php esc_html_e('How long your imports take on this site, measured from your importer\'s own records, beside the published Super Speedy Imports benchmarks.', 'super-speedy-performance-analysis'); ?></p>
         <p>
             <?php
-            if ($sspa_imports_importers) {
-                /* translators: %s: comma-separated importer plugin names */
-                echo esc_html(sprintf(__('Importer active on this site: %s.', 'super-speedy-performance-analysis'), implode(', ', $sspa_imports_importers)));
+            if ($sspa_imports_active) {
+                echo esc_html(sprintf(
+                    /* translators: %s: comma-separated importer plugin names */
+                    _n('Importer active on this site: %s.', 'Importers active on this site: %s.', count($sspa_imports_active), 'super-speedy-performance-analysis'),
+                    implode(', ', $sspa_imports_active)
+                ));
             } else {
                 esc_html_e('No importer plugin is active on this site.', 'super-speedy-performance-analysis');
             }
@@ -119,26 +132,25 @@ $sspa_imports_figures = array_values(array_unique($sspa_imports_figures));
         ?>
     </div>
 
+    <?php
+    // With Pro active there is nothing left to offer, and the Import speed box already names it.
+    $sspa_imports_matches = array();
+    if (!$sspa_imports_pro_active) {
+        if (!SSPA_Offers::is_dismissed('imports')) {
+            $sspa_imports_matches[] = array('offer' => 'imports', 'trigger' => 'imports_tab', 'role' => 'primary', 'importer' => '', 'evidence' => '', 'free_fix' => '', 'context' => '', 'anchor' => '');
+        }
+        if (SSPA_Imports::wp_all_import_active() && !SSPA_Offers::product_active('scalability_pro') && !SSPA_Offers::is_dismissed('scalability_pro')) {
+            $sspa_imports_matches[] = array('offer' => 'scalability_pro', 'trigger' => 'imports_tab', 'role' => $sspa_imports_matches ? 'secondary' : 'primary', 'importer' => '', 'evidence' => '', 'free_fix' => '', 'context' => __('For sites importing with WP All Import:', 'super-speedy-performance-analysis'), 'anchor' => '');
+        }
+    }
+    if ($sspa_imports_matches) : ?>
     <div class="sspa-placeholder sspa-imports-offers">
         <h2><?php esc_html_e('Super Speedy Imports', 'super-speedy-performance-analysis'); ?></h2>
         <?php
-        if ($sspa_imports_pro_active) {
-            echo '<p>' . esc_html__('Super Speedy Imports Pro is active on this site.', 'super-speedy-performance-analysis') . '</p>';
-        } else {
-            $sspa_imports_matches = array();
-            if (!SSPA_Offers::is_dismissed('imports')) {
-                $sspa_imports_matches[] = array('offer' => 'imports', 'trigger' => 'imports_tab', 'role' => 'primary', 'importer' => '', 'evidence' => '', 'free_fix' => '', 'context' => '', 'anchor' => '');
-            }
-            if (SSPA_Imports::wp_all_import_active() && !SSPA_Offers::product_active('scalability_pro') && !SSPA_Offers::is_dismissed('scalability_pro')) {
-                $sspa_imports_matches[] = array('offer' => 'scalability_pro', 'trigger' => 'imports_tab', 'role' => $sspa_imports_matches ? 'secondary' : 'primary', 'importer' => '', 'evidence' => '', 'free_fix' => '', 'context' => __('For sites importing with WP All Import:', 'super-speedy-performance-analysis'), 'anchor' => '');
-            }
-            if ($sspa_imports_lite_active) {
-                echo '<p>' . esc_html__('Super Speedy Imports Lite is active on this site.', 'super-speedy-performance-analysis') . '</p>';
-            }
-            foreach ($sspa_imports_matches as $sspa_imports_match) {
-                echo wp_kses(SSPA_Offers::render($sspa_imports_match, 'imports_tab', false, false), SSPA_Offers::allowed_html());
-            }
+        foreach ($sspa_imports_matches as $sspa_imports_match) {
+            echo wp_kses(SSPA_Offers::render($sspa_imports_match, 'imports_tab', false, false), SSPA_Offers::allowed_html());
         }
         ?>
     </div>
+    <?php endif; ?>
 </div>

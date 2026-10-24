@@ -3,8 +3,8 @@
 //   none     no importer active: the tab still shows the published figures and the Lite button
 //   traffic  a real WooCommerce product CSV import and a slow admin-ajax endpoint were measured
 //            by a Traffic collection: I3 and S8
-//   lite     Super Speedy Imports Lite from wordpress.org active: only the Pro link
-//   pro      Super Speedy Imports Pro active: no offer at all
+//   lite     Super Speedy Imports Lite from wordpress.org active: named as the active importer, only the Pro link
+//   pro      Super Speedy Imports Pro active: named as the active importer, no offer box at all
 // Usage: wp eval-file assert-imports.php <state>
 require __DIR__ . '/lib.php';
 lg_reset_dismissals();
@@ -20,6 +20,7 @@ lg_t(!$bad, $state . ': no link carries identifying parameters' . ($bad ? ': ' .
 
 if ('none' === $state) {
     lg_t(false !== strpos($text, 'No importer plugin is active'), 'none: the tab says no importer was detected');
+    lg_t(false !== strpos($tab, 'sspa-imports-offers'), 'none: the Super Speedy Imports offer box is shown');
     lg_t(false !== strpos($tab, $install) && false !== strpos($text, 'Install Super Speedy Imports Lite (free)'), 'none: the Install Super Speedy Imports Lite (free) button opens WordPress\'s installer');
     lg_t('imports_imports_tab' === lg_campaign($tab, 'imports') && false !== strpos($text, 'Super Speedy Imports Pro'), 'none: the Super Speedy Imports Pro text link sits under the button');
     lg_t(!in_array('imports', lg_offer_ids(lg_tab('overview')), true), 'none: no importer, so no Imports offer on the Overview');
@@ -52,10 +53,14 @@ if ('traffic' === $state) {
 if ('lite' === $state) {
     lg_t(false === strpos($tab, $install) && false === strpos($text, 'Install Super Speedy Imports Lite'), 'lite: with Lite active the install button gives way');
     lg_t('imports_imports_tab' === lg_campaign($tab, 'imports') && false !== strpos($text, 'Super Speedy Imports Pro'), 'lite: only the Super Speedy Imports Pro link remains');
-    lg_t(false !== strpos($text, 'Super Speedy Imports Lite is active'), 'lite: the tab says Lite is active');
+    lg_t(false !== strpos($text, 'Importer active on this site: Super Speedy Imports Lite.'), 'lite: the Import speed box names Super Speedy Imports Lite as the active importer');
+    lg_t(false === strpos($text, 'No importer plugin is active'), 'lite: the tab does not also say no importer is active');
+    lg_t(false === strpos($text, 'Super Speedy Imports Lite is active'), 'lite: no second, separate "Lite is active" line');
 }
 if ('pro' === $state) {
     lg_t(!lg_offers($tab) && false === strpos($tab, $install) && false === strpos($tab, 'utm_campaign=imports'), 'pro: with Pro active the tab shows no offer at all');
-    lg_t(false !== strpos($text, 'Super Speedy Imports Pro is active'), 'pro: the tab says Pro is active');
+    lg_t(false !== strpos($text, 'Importer active on this site: Super Speedy Imports Pro.'), 'pro: the Import speed box names Super Speedy Imports Pro as the active importer');
+    lg_t(false === strpos($text, 'No importer plugin is active'), 'pro: the tab does not also say no importer is active');
+    lg_t(false === strpos($tab, 'sspa-imports-offers'), 'pro: the separate Super Speedy Imports box is gone');
     lg_t(!in_array('imports', lg_offer_ids(lg_tab('overview')), true), 'pro: no Imports offer on the Overview');
 }
