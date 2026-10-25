@@ -18,7 +18,7 @@ function sspa_acct_t($ok, $label) {
     echo ($ok ? 'PASS' : 'FAIL') . ": $label\n";
 }
 
-$user_id = SSPA_Auth::test_customer_id();
+$user_id = SSPA_Auth::fresh_test_customer();
 sspa_acct_t($user_id > 0, 'the synthetic customer exists');
 if (!$user_id) {
     return;

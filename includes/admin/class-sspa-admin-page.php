@@ -42,8 +42,9 @@ class SSPA_Admin_Page {
             return;
         }
         $count = count($change_set['changes']);
-        $quick_page_keys = SSPA_History_Series::quick_comparison_page_keys();
-        $baseline_run_id = SSPA_History_Series::latest_compatible_run_id($quick_page_keys);
+        // Shown on every admin screen, so it only reads the change set and one run row.
+        // The quick-comparison pages are worked out on PA's own screen when the run starts.
+        $baseline_run_id = SSPA_History_Series::latest_compatible_run_id();
         $run_url = add_query_arg(array(
             'page' => 'sspa',
             'sspa_autospot' => '1',

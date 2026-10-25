@@ -176,6 +176,11 @@ class SSPA_Cache_Delivery {
         if (!$targets || 'home' !== $targets[0]['page_key']) {
             return new WP_Error('sspa_cache_delivery_targets', __('The check needs a public home page on this site.', 'super-speedy-performance-analysis'));
         }
+        // The customer audience measures as the synthetic account, created on the way in.
+        $customer = SSPA_Auth::ensure_test_customer();
+        if (is_wp_error($customer)) {
+            return $customer;
+        }
         $assessment_id = wp_generate_uuid4();
         $pending = array(
             'assessment_id' => $assessment_id,

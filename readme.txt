@@ -115,6 +115,10 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.52.8 (25th October 2026) =
+* A plugin-change notice could stop wp-admin pages loading; it no longer creates or edits users while showing.
+* When the synthetic test customer cannot be saved, a new analysis or cache check now shows WordPress's reason instead of breaking the page.
+
 = 0.52.7 (24th October 2026) =
 * A query run by WordPress core now names the code that asked for it, such as `WP_Query::get_posts`, instead of `SSPA_Profiling_WPDB::query`.
 * Findings measured on a page now store the URL that was measured, and the Overview's "Open the page" link uses it.

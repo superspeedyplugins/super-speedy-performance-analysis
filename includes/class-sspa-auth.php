@@ -127,38 +127,72 @@ class SSPA_Auth {
         return $nonce;
     }
 
+    /**
+     * The marked synthetic customer's id, or 0 when none exists. Read-only: it never
+     * creates, edits or deletes a user, so it is safe on any request, including page
+     * rendering. Only the explicit way in to an analysis or a cache check creates the
+     * account (fresh_test_customer(), ensure_test_customer()).
+     */
     public static function test_customer_id() {
-        return SSPA_Mail::with_admin(static function() { return self::create_customer(); });
-    }
-
-    private static function create_customer() {
         $existing = get_users(array(
             'meta_key' => self::TEST_ACCOUNT_META,
             'meta_value' => '1',
             'number' => 1,
             'fields' => 'ID',
         ));
-        if ($existing) {
+        return $existing ? (int) $existing[0] : 0;
+    }
+
+    /**
+     * The synthetic customer, created or brought to its administrator-plus address when
+     * needed. Called only on the way in to work that measures as that customer.
+     *
+     * @return int|WP_Error The account id, or WordPress's own reason it could not be saved.
+     */
+    public static function ensure_test_customer() {
+        return SSPA_Mail::with_admin(static function() { return self::create_customer(); });
+    }
+
+    private static function create_customer() {
+        try {
             $email = SSPA_Mail::address('customer');
-            if (get_userdata((int) $existing[0])->user_email !== $email) {
-                $updated = wp_update_user(array('ID' => (int) $existing[0], 'user_email' => $email));
-                if (is_wp_error($updated)) { throw new RuntimeException(esc_html($updated->get_error_message())); }
+        } catch (RuntimeException $e) {
+            return new WP_Error('sspa_test_customer_email', $e->getMessage());
+        }
+        $existing = self::test_customer_id();
+        if ($existing) {
+            if (get_userdata($existing)->user_email !== $email) {
+                $updated = wp_update_user(array('ID' => $existing, 'user_email' => $email));
+                if (is_wp_error($updated)) {
+                    return self::customer_error($updated);
+                }
             }
-            return (int) $existing[0];
+            return $existing;
         }
         $role = get_role('customer') ? 'customer' : 'subscriber';
         $user_id = wp_insert_user(array(
             'user_login' => 'sspa-test-customer',
             'user_pass' => wp_generate_password(32),
-            'user_email' => SSPA_Mail::address('customer'),
+            'user_email' => $email,
             'role' => $role,
             'display_name' => 'SSPA Test Customer',
         ));
         if (is_wp_error($user_id)) {
-            return 0;
+            return self::customer_error($user_id);
         }
         update_user_meta($user_id, self::TEST_ACCOUNT_META, '1');
         return (int) $user_id;
+    }
+
+    private static function customer_error(WP_Error $error) {
+        return new WP_Error(
+            'sspa_test_customer_unavailable',
+            sprintf(
+                /* translators: %s: WordPress's reason the user could not be saved. */
+                __('The synthetic test customer account could not be saved: %s', 'super-speedy-performance-analysis'),
+                wp_strip_all_tags($error->get_error_message())
+            )
+        );
     }
 
     /**
@@ -167,7 +201,7 @@ class SSPA_Auth {
      * measured as stays inspectable until the next run replaces it. The account owns
      * nothing, so nothing is reassigned.
      *
-     * @return int The fresh account's id, or 0 when one could not be created.
+     * @return int|WP_Error The fresh account's id, or why it could not be created.
      */
     public static function fresh_test_customer() {
         return SSPA_Mail::with_admin(static function() { return self::replace_customer(); });
@@ -178,6 +212,6 @@ class SSPA_Auth {
             if (!function_exists('wp_delete_user')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/user.php'; }
             wp_delete_user((int) $stale);
         }
-        return self::test_customer_id();
+        return self::create_customer();
     }
 }

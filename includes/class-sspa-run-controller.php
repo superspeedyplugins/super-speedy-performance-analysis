@@ -150,7 +150,11 @@ class SSPA_Run_Controller {
         } else {
             // The synthetic customer the catalogue measures as is new for every run, so no
             // real person's session, cart or history can ever be what a customer page shows.
-            SSPA_Auth::fresh_test_customer();
+            $customer = SSPA_Auth::fresh_test_customer();
+            if (is_wp_error($customer)) {
+                SSPA_Helper_Files::restore_legacy_db_hold();
+                return $customer;
+            }
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
             if (!$jobs) {
                 SSPA_Helper_Files::restore_legacy_db_hold();

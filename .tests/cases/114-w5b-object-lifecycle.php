@@ -60,10 +60,10 @@ try {
     update_option('admin_email', $long);
     sspa_w5b_t($long === get_option('admin_email') && $long === SSPA_Mail::address('long-tag'), 'overlong plus local part uses the validated plain administrator address');
 } finally { update_option('admin_email', $admin); }
-$customer = SSPA_Auth::test_customer_id();
+$customer = SSPA_Auth::ensure_test_customer();
 $updates = 0;
 $observe_update = static function() use (&$updates) { ++$updates; };
 add_action('profile_update', $observe_update);
-SSPA_Auth::test_customer_id();
+SSPA_Auth::ensure_test_customer();
 remove_action('profile_update', $observe_update);
 sspa_w5b_t($customer && 0 === $updates, 'unchanged synthetic customer email does not fire profile_update');
