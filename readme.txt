@@ -115,7 +115,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.52.8 (25th October 2026) =
+= 0.53.0 (25th October 2026) =
 * A plugin-change notice could stop wp-admin pages loading; it no longer creates or edits users while showing.
 * When the synthetic test customer cannot be saved, a new analysis or cache check now shows WordPress's reason instead of breaking the page.
 
