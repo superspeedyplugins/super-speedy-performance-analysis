@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.54.0
+Stable tag: 0.54.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -113,6 +113,9 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.54.1 (26th October 2026) =
+* The profiler's MU loader carries a new version number, so sites refresh their installed copy with the direct-access fix.
 
 = 0.54.0 (26th October 2026) =
 * Merge of 0.53.1 into the main release; no further change.

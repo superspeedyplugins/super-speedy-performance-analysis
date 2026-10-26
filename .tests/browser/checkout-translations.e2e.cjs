@@ -30,12 +30,13 @@ const {session, admin, expect, wp, json} = require('./fleet-context.cjs');
     await expect(pop.locator('.sspa-adhoc-close')).toHaveAttribute('aria-label', 'Fermer');
     await expect(pop.locator('label').filter({has:page.locator('.sspa-ck-integrations')})).toContainText('Autoriser les intégrations');
     await expect(pop.locator('label').filter({has:page.locator('.sspa-ck-webhooks')})).toContainText('Autoriser les webhooks');
-    await expect(pop.locator('.sspa-adhoc-foot')).toContainText('Par Super Speedy Performance Analysis · gratuit sur superspeedyplugins.com');
+    // wp.org Guideline 10: the front-end panel carries no vendor credit or link.
+    await expect(pop.locator('.sspa-adhoc-foot')).toHaveCount(0);
     await expect(pop.locator('.sspa-ck-list')).toContainText(/Jusqu’à \d+ messages? selon le statut/);
-    await expect(pop.locator('a[href="https://www.superspeedyplugins.com/"]')).toHaveCount(1);
+    await expect(pop.locator('a[href*="superspeedyplugins.com"]')).toHaveCount(0);
     await pop.locator('.sspa-ck-cancel').click();
     await expect(pop).toBeHidden();
     expect(orderCount()).toBe(before);
-    console.log('PASS actual checkout disclosure translates controls, complete plural messages and footer without altering DOM structure');
+    console.log('PASS actual checkout disclosure translates controls and complete plural messages, shows no vendor credit, without altering DOM structure');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode=1;});
