@@ -15,7 +15,8 @@ class SSPA_Install {
             SSPA_Traffic_Authority::activate();
         }
         SSPA_Token::secret();
-        if ($network_wide || !is_multisite()) { SSPA_Helper_Files::ensure_installed(); }
+        // Nothing is written to wp-content here: db.php and the MU loader arrive only with the
+        // administrator's explicit Enable profiler (Tools), and leave with Disable or deactivation.
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }
@@ -73,6 +74,7 @@ class SSPA_Install {
         if (get_option('sspa_behaviour_version') !== SSPA_VERSION) {
             SSPA_Traffic_Authority::migrate();
             SSPA_Helper_Files::migrate_profiler_consent();
+            SSPA_Helper_Files::remove_unconsented_dropin();
             delete_transient('sspa_rules_feed');
             delete_transient('sspa_rules_feed_backoff');
             delete_option('sspa_rules_pubkey');

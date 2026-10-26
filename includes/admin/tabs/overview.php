@@ -380,7 +380,7 @@ $sspa_cache_recon = $sspa_last_run ? SSPA_Insights::standalone($sspa_last_run['i
                     );
                     break;
                 default:
-                    echo '&#10060; ' . esc_html__('Query capture (db.php): not installed - wp-content is not writable; runs will use degraded capture', 'super-speedy-performance-analysis');
+                    echo '&#10060; ' . esc_html__('Query capture (db.php): not installed - use Enable profiler in Tools to install it; until then runs use degraded capture', 'super-speedy-performance-analysis');
             }
             ?>
         </li>

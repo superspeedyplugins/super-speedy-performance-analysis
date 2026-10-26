@@ -13,6 +13,9 @@ global $wpdb;
 $log_file = WP_CONTENT_DIR . '/debug.log';
 $mu = WPMU_PLUGIN_DIR . '/sspa-render-mail-recorder.php';
 copy(SSPA_PLUGIN_DIR . '.tests/fixtures/render-mail-recorder.php', $mu);
+// WordPress loaded mu-plugins before this file existed on a site's first run of this case, so
+// load it into this process too; the in-process WooCommerce send below must be recorded.
+require_once $mu;
 
 // --- State on the way in -------------------------------------------------------------------
 sspa_update_option('plugin_update_detection', true);

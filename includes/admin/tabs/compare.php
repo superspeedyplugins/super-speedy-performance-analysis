@@ -2,13 +2,17 @@
 defined('ABSPATH') || exit;
 
 global $wpdb;
-// 50 runs per page (SSPA_History_Series::PAGE_SIZE). The page arrives in the admin URL, or in
-// the nonce-checked sspa_render_tab POST when the tab loads over AJAX. Read-only and clamped.
-// phpcs:disable WordPress.Security.NonceVerification -- read-only page number; the AJAX loader checks its nonce.
+if (!current_user_can('manage_options')) {
+    return;
+}
+// 50 runs per page (SSPA_History_Series::PAGE_SIZE). This tab renders only through the
+// sspa_render_tab AJAX request, which carries the page number from the address bar.
 $sspa_run_total = SSPA_History_Series::run_count();
 $sspa_page_count = max(1, (int) ceil($sspa_run_total / SSPA_History_Series::PAGE_SIZE));
-$sspa_compare_page = isset($_POST['sspa_compare_page']) ? absint($_POST['sspa_compare_page']) : (isset($_GET['sspa_compare_page']) ? absint($_GET['sspa_compare_page']) : 1);
-// phpcs:enable WordPress.Security.NonceVerification
+$sspa_compare_page = 1;
+if (isset($_POST['nonce'], $_POST['sspa_compare_page']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'sspa_admin')) {
+    $sspa_compare_page = absint($_POST['sspa_compare_page']);
+}
 $sspa_compare_page = min(max(1, $sspa_compare_page), $sspa_page_count);
 $sspa_page_rows = SSPA_History_Series::run_page($sspa_compare_page);
 $sspa_older_run = count($sspa_page_rows) > SSPA_History_Series::PAGE_SIZE ? $sspa_page_rows[SSPA_History_Series::PAGE_SIZE] : null;

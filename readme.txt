@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.55.0
+Stable tag: 0.55.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -90,8 +90,7 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Files outside the plugin directory ==
 
-The database profiler follows the Query Monitor drop-in pattern: activation installs `wp-content/db.php` only when no drop-in exists, honours DISALLOW_FILE_MODS and removes only its own signed file.
-The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/sspa-loader.php`; Disable removes it.
+Activation writes nothing outside the plugin folder. The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/sspa-loader.php` and, only when no drop-in exists, the conditional database drop-in `wp-content/db.php`; Disable profiler and deactivation remove both. Enable honours DISALLOW_FILE_MODS, and only files signed by this plugin are ever removed.
 Traffic recording installs the fixed `wp-content/mu-plugins/sspa-traffic-observer.php` only while recording is enabled.
 Network-wide profiler changes require a network administrator on multisite; Traffic recording is unavailable on multisite.
 
@@ -113,6 +112,13 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.55.2 (26th October 2026) =
+* The Compare tab checks permissions and its security token before reading the requested page of runs.
+
+= 0.55.1 (26th October 2026) =
+* Activating the plugin no longer writes anything to wp-content; the query-capture drop-in (db.php) is installed only by Enable profiler in Tools, and Disable profiler now removes it as well as the loader. Upgrading removes a db.php the profiler was never enabled for.
+* Scalability Pro is offered again for slow catalogue queries that also join product categories.
 
 = 0.55.0 (26th October 2026) =
 * Merge of 0.54.2 into the main release; no further change.

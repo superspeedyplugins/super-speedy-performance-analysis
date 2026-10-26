@@ -242,6 +242,9 @@ class SSPA_Helper_Files {
         if (self::is_ours(self::mu_path()) && !SSPA_Filesystem::direct()->delete(self::mu_path())) {
             return new WP_Error('sspa_loader_remove', __('Could not remove the profiler loader; check its file permissions.', 'super-speedy-performance-analysis'));
         }
+        if (self::is_ours(self::dropin_path()) && !SSPA_Filesystem::direct()->delete(self::dropin_path())) {
+            return new WP_Error('sspa_dropin_remove', __('Could not remove the profiler db.php; check its file permissions.', 'super-speedy-performance-analysis'));
+        }
         update_option('sspa_profiler_enabled', false, false);
         return true;
     }
@@ -254,6 +257,17 @@ class SSPA_Helper_Files {
         if (null === get_option('sspa_profiler_enabled', null)) {
             update_option('sspa_profiler_enabled', self::is_ours(self::mu_path()), false);
         }
+    }
+
+    /**
+     * Versions before 0.55.1 installed db.php on activation. Where the administrator never
+     * enabled the profiler, take that file back out on upgrade (only our own, signature-checked).
+     */
+    public static function remove_unconsented_dropin() {
+        if (get_option('sspa_profiler_enabled') || !self::is_ours(self::dropin_path())) {
+            return;
+        }
+        SSPA_Filesystem::direct()->delete(self::dropin_path());
     }
 
     public static function remove_all() {

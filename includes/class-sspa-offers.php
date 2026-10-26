@@ -601,8 +601,14 @@ class SSPA_Offers {
             } elseif ($filters && self::is_archive_page($page)
                 && (('slow_query' === $type && false !== stripos($sql, 'term_relationships')) || 'archive_query_unindexed' === $type || 'slow_query_tax' === $rec)) {
                 $found = self::match('filters', 'F1', $base + array('context' => $filter_context));
-            } elseif ('slow_query' === $type && in_array($rec, array('slow_query_postmeta', 'slow_query_found_rows'), true)) {
-                $found = self::match('scalability_pro', 'slow_query_found_rows' === $rec ? 'S1_found_rows' : 'S1', $base);
+            } elseif ('slow_query' === $type && ($scal_shapes = array_intersect(
+                isset($e['shapes']) && is_array($e['shapes']) ? $e['shapes'] : array((string) substr($rec, strlen('slow_query_'))),
+                array('postmeta', 'found_rows')
+            ))) {
+                // Since 0.52.6 a query lists every shape, strongest first, so a catalogue count that
+                // also joins term_relationships leads with 'tax'. Scalability Pro still applies to
+                // its postmeta joins and SQL_CALC_FOUND_ROWS, whichever shape leads.
+                $found = self::match('scalability_pro', in_array('postmeta', $scal_shapes, true) ? 'S1' : 'S1_found_rows', $base);
             } elseif (in_array($type, array('unindexed_query', 'over_examining_query'), true)) {
                 $table = isset($e['table']) ? $e['table'] : (isset($e['plan_steps'][0]['table']) ? $e['plan_steps'][0]['table'] : '');
                 if (self::core_table($table)) {
