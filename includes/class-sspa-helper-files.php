@@ -168,11 +168,20 @@ class SSPA_Helper_Files {
      * plugins_loaded (cheap option check on admin requests only).
      */
     public static function stale_hold_check() {
+        $oc_hold = get_option('sspa_oc_hold');
+        $db_hold = get_option('sspa_dropin_hold');
+        if (!$oc_hold && !$db_hold) {
+            // The cached runtime flags said a hold exists, but neither record does (it was removed
+            // by another process). Refresh the flags so ordinary requests stop running this check.
+            SSPA_Bootstrap::update_runtime_flag('sspa_dropin_hold');
+            SSPA_Bootstrap::update_runtime_flag('sspa_oc_hold');
+            return;
+        }
         $active = class_exists('SSPA_Run_Controller') ? SSPA_Run_Controller::active_run_id() : 0;
-        if (get_option('sspa_oc_hold') && !$active) {
+        if ($oc_hold && !$active) {
             self::restore_legacy_cache_hold();
         }
-        if (!get_option('sspa_dropin_hold')) {
+        if (!$db_hold) {
             return;
         }
         if (!$active) {

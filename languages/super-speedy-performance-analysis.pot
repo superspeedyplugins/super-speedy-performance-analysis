@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.56.0\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.56.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-26T11:05:17+00:00\n"
+"POT-Creation-Date: 2026-10-26T13:25:51+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -5443,39 +5443,39 @@ msgstr ""
 msgid "an unknown plugin"
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:196
+#: includes/class-sspa-helper-files.php:205
 msgid "Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:197
+#: includes/class-sspa-helper-files.php:206
 msgid "Super Speedy Performance Analysis: could not restore your original db.php drop-in (db.php.sspa-hold still exists in wp-content). Please restore it manually."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:222
+#: includes/class-sspa-helper-files.php:231
 msgid "Only a network administrator may install network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:225
+#: includes/class-sspa-helper-files.php:234
 msgid "This site sets DISALLOW_FILE_MODS, which forbids installing the profiler loader."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:229
+#: includes/class-sspa-helper-files.php:238
 msgid "Could not install the profiler loader; check mu-plugins permissions and any existing file at that path."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:232
+#: includes/class-sspa-helper-files.php:241
 msgid "Could not refresh the profiler db.php; check wp-content permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:240
+#: includes/class-sspa-helper-files.php:249
 msgid "Only a network administrator may remove network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:243
+#: includes/class-sspa-helper-files.php:252
 msgid "Could not remove the profiler loader; check its file permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:246
+#: includes/class-sspa-helper-files.php:255
 msgid "Could not remove the profiler db.php; check its file permissions."
 msgstr ""
 
