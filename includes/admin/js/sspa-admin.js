@@ -40,6 +40,9 @@ function sspa_strip_autospot_param() {
 		.replace(/([?&])sspa_baseline_run_id=[^&]*(&|$)/, function (m, before, after) {
 			return after ? before : '';
 		})
+		.replace(/([?&])_sspa_autospot=[^&]*(&|$)/, function (m, before, after) {
+			return after ? before : '';
+		})
 		.replace(/[?&]$/, '');
 	window.history.replaceState(null, null, window.location.pathname + search + window.location.hash);
 }
@@ -1382,6 +1385,16 @@ function sspa_runner_update(s) {
 		counts = (s.phase === 1 ? wp.i18n.__("Phase 1/2, screening", "super-speedy-performance-analysis") : wp.i18n.__("Phase 2/2, confirming", "super-speedy-performance-analysis")) + ' \u00b7 ' + counts;
 	}
 	runner.find('.sspa-runner-counts').text(counts);
+	// The logged-in customer pages are skipped when WordPress refuses the synthetic customer.
+	var skipped = runner.find('.sspa-runner-skipped');
+	if (s.customer_pages_skipped) {
+		if (!skipped.length) {
+			skipped = jQuery('<p class="sspa-runner-skipped notice notice-warning inline" role="status"></p>').insertAfter(runner.find('.sspa-runner-counts'));
+		}
+		skipped.text(s.customer_pages_skipped);
+	} else {
+		skipped.remove();
+	}
 	runner.find('.sspa-runner-current').text(s.current ? wp.i18n.sprintf(/* translators: Current measurement label. */ wp.i18n.__("Now testing: %s", "super-speedy-performance-analysis"), s.current) : (s.status === 'analysing' ? wp.i18n.__("Analysing results…", "super-speedy-performance-analysis") : ''));
 	sspa_runner_feed(s);
 	var eta = sspa_fmt_duration(s.eta_seconds);

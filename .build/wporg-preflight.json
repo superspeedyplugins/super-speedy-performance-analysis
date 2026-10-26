@@ -186,11 +186,6 @@
     },
     {
       "check": "file-writes",
-      "file": "includes/traffic/class-sspa-traffic-authority.php",
-      "reason": "Traffic recording requires flock on a stable local authority stream, including when retiring an older authority. WP_Filesystem has no stream-lock API; the uploads file starts with a PHP exit guard before its JSON data."
-    },
-    {
-      "check": "file-writes",
       "file": "includes/traffic/class-sspa-traffic-helper.php",
       "reason": "Traffic recording atomically publishes private JSON under uploads and a fixed signed PHP loader under mu-plugins. Health Check & Troubleshooting also installs an MU loader for explicit diagnostic work; direct rename avoids a copy/delete interval during publication."
     },
@@ -458,17 +453,12 @@
     {
       "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fopen",
       "file": "includes/traffic/class-sspa-traffic-authority.php",
-      "reason": "Traffic recording requires flock on a stable local authority stream, including when retiring an older authority. WP_Filesystem has no stream-lock API; the uploads file starts with a PHP exit guard before its JSON data."
+      "reason": "Traffic recording needs flock to stop a deactivation from completing while an observer write is in flight; flock needs a PHP stream, which WP_Filesystem cannot provide. The stream is an empty lock file in wp_upload_dir()/super-speedy-performance-analysis/, opened without truncation; nothing is ever written to it. The authority state itself is a database option."
     },
     {
       "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fclose",
       "file": "includes/traffic/class-sspa-traffic-authority.php",
-      "reason": "Traffic recording requires flock on a stable local authority stream, including when retiring an older authority. WP_Filesystem has no stream-lock API; the uploads file starts with a PHP exit guard before its JSON data."
-    },
-    {
-      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fwrite",
-      "file": "includes/traffic/class-sspa-traffic-authority.php",
-      "reason": "Traffic recording requires flock on a stable local authority stream, including when retiring an older authority. WP_Filesystem has no stream-lock API; the uploads file starts with a PHP exit guard before its JSON data."
+      "reason": "Traffic recording needs flock to stop a deactivation from completing while an observer write is in flight; flock needs a PHP stream, which WP_Filesystem cannot provide. The stream is an empty lock file in wp_upload_dir()/super-speedy-performance-analysis/, opened without truncation; nothing is ever written to it. The authority state itself is a database option."
     },
     {
       "check": "WordPress.Security.ValidatedSanitizedInput.MissingUnslash",
@@ -530,6 +520,38 @@
       "file": "profiler/class-sspa-capture.php",
       "reason": "The profiler reads the current PHP engine error mask with zero arguments and never changes it. A real signed-request regression proves ini_get retains suppressed warnings, whereas error_reporting() honours temporary @ suppression.",
       "match": "error_reporting"
+    },
+    {
+      "check": "request-unchecked",
+      "file": "mu/sspa-loader.php",
+      "reason": "The profiler's loopback request is unauthenticated by design: it carries no user session, so it cannot carry a user nonce or pass a capability check. It is authorised by an expiring HMAC token bound to the exact path and flags, which the MU loader consumes once through a database claim; without a valid token both files return before doing anything."
+    },
+    {
+      "check": "request-unchecked",
+      "file": "dropins/db.php",
+      "reason": "The profiler's loopback request is unauthenticated by design: it carries no user session, so it cannot carry a user nonce or pass a capability check. It is authorised by an expiring HMAC token bound to the exact path and flags, which the MU loader consumes once through a database claim; without a valid token both files return before doing anything."
+    },
+    {
+      "check": "request-unchecked",
+      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
+      "reason": "The traffic observer only classifies the visitor's own request (which admin-ajax action or REST route it is) so the administrator's opt-in traffic recording can count it. It never dispatches the request, changes its authorisation or acts on it, so there is nothing to protect with a nonce or capability; the values are unslashed, validated and allowlisted before being stored locally."
+    },
+    {
+      "check": "request-unchecked",
+      "file": "traffic-observer/class-sspa-ajax-measurement.php",
+      "reason": "The traffic observer only classifies the visitor's own request (which admin-ajax action or REST route it is) so the administrator's opt-in traffic recording can count it. It never dispatches the request, changes its authorisation or acts on it, so there is nothing to protect with a nonce or capability; the values are unslashed, validated and allowlisted before being stored locally."
+    },
+    {
+      "check": "file-writes",
+      "file": "includes/class-sspa-filesystem.php",
+      "match": "put_contents",
+      "reason": "A thin wrapper over WP_Filesystem_Direct::put_contents. Its only callers write the profiler's db.php drop-in and MU loader (installed only when the administrator presses Enable profiler) and this plugin's own files under wp_upload_dir()/super-speedy-performance-analysis/."
+    },
+    {
+      "check": "file-writes",
+      "file": "includes/class-sspa-helper-files.php",
+      "match": "SSPA_MU_DIR",
+      "reason": "Creates wp-content/mu-plugins only when the administrator presses Enable profiler and it does not exist yet. The profiler's MU loader must live there to arm measurement before ordinary plugins load; it is removed again when the profiler is disabled or the plugin is deactivated."
     }
   ],
   "retained_sql_statements": {

@@ -9,8 +9,8 @@ class SSPA_Install {
     public static function activate($network_wide = false) {
         SSPA_Schema::create_tables();
         SSPA_Traffic_Authority::migrate();
-        // Sites that never used Traffic need no authority file or writable MU directory.
-        if (is_file(SSPA_Traffic_Authority::path()) || SSPA_Traffic_Helper::is_ours()) {
+        // Sites that never used Traffic need no authority state or writable MU directory.
+        if (SSPA_Traffic_Authority::exists() || SSPA_Traffic_Helper::is_ours()) {
             SSPA_Traffic_Collection::deactivate();
             SSPA_Traffic_Authority::activate();
         }
@@ -54,7 +54,8 @@ class SSPA_Install {
     }
 
     public static function upgrade_notice() {
-        if (!current_user_can('manage_options') || !SSPA_Mail::is_pa_screen()) { return; }
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!current_user_can('manage_options') || !$screen || !preg_match('/(?:^|_page_)sspa$/', $screen->id)) { return; }
         if (get_option('sspa_mail_options_removed')) {
             echo '<div class="notice notice-info"><p>' . esc_html__('Performance Analysis removed obsolete checkout email settings; synthetic emails now go to the administrator.', 'super-speedy-performance-analysis') . '</p></div>';
             delete_option('sspa_mail_options_removed');

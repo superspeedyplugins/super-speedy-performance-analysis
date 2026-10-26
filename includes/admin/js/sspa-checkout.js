@@ -31,16 +31,12 @@
 		if (el.length) {
 			return el;
 		}
-		var logo = sspa_checkout.logo_url
-			? '<img class="sspa-adhoc-logo" src="' + esc(sspa_checkout.logo_url) + '" alt="Super Speedy Plugins">'
-			: '<span class="sspa-adhoc-logo-text">Super Speedy Plugins</span>';
 		el = $(
 			'<div id="sspa-adhoc-pop" style="display:none">' +
 			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">Super Speedy Performance Analysis' +
-			'<span class="sspa-adhoc-version">v' + esc(sspa_checkout.version) + '</span></span>' + logo +
+			'<span class="sspa-adhoc-version">v' + esc(sspa_checkout.version) + '</span></span>' +
 			'<button type="button" class="sspa-adhoc-close" aria-label="' + esc(wp.i18n.__('Close', 'super-speedy-performance-analysis')) + '">&times;</button></div>' +
 			'<div class="sspa-adhoc-body"></div>' +
-			'<div class="sspa-adhoc-foot">' + wp.i18n.sprintf(/* translators: 1: linked product name, 2: linked publisher website. */ wp.i18n.__('Powered by %1$s · free from %2$s', 'super-speedy-performance-analysis'), '<strong>Super Speedy Performance Analysis</strong>', '<a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener">superspeedyplugins.com</a>') + '</div>' +
 			'</div>'
 		);
 		$('body').append(el);

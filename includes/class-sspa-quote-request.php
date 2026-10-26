@@ -61,12 +61,6 @@ class SSPA_Quote_Request {
         return 'sspa_quote_' . md5((string) $request_uuid);
     }
 
-    private static function require_admin() {
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('You are not allowed to request a quote from this site.', 'super-speedy-performance-analysis')), 403);
-        }
-    }
-
     /**
      * Open the dialog: build the page Markdown once, keep it under a new request ID for the
      * Send that may follow, and return the dialog markup with that exact Markdown in it.
@@ -74,7 +68,9 @@ class SSPA_Quote_Request {
      */
     public static function ajax_preview() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::require_admin();
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('You are not allowed to request a quote from this site.', 'super-speedy-performance-analysis')), 403);
+        }
         $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
         $source = isset($_POST['source']) ? sanitize_key(wp_unslash($_POST['source'])) : '';
         if (!in_array($source, self::SOURCES, true)) {
@@ -147,7 +143,9 @@ class SSPA_Quote_Request {
      */
     public static function ajax_send() {
         check_ajax_referer('sspa_admin', 'nonce');
-        self::require_admin();
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('You are not allowed to request a quote from this site.', 'super-speedy-performance-analysis')), 403);
+        }
         $request_uuid = isset($_POST['request_uuid']) ? sanitize_text_field(wp_unslash($_POST['request_uuid'])) : '';
         $draft = $request_uuid ? get_transient(self::draft_key($request_uuid)) : false;
         if (!is_array($draft) || (int) $draft['user_id'] !== get_current_user_id()) {

@@ -160,7 +160,8 @@ class SSPA_Mail {
     }
 
     public static function notice() {
-        if (!current_user_can('manage_options') || !self::is_pa_screen()) {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!current_user_can('manage_options') || !$screen || !preg_match('/(?:^|_page_)sspa$/', $screen->id)) {
             return;
         }
         $warning = self::warning();

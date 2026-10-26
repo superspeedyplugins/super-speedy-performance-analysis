@@ -210,6 +210,9 @@ class SSPA_Workflow_Analysis {
 
     /** Validated workflow configuration for the editor currently being rendered. */
     public static function editor_config($context) {
+        if (!current_user_can('manage_options')) {
+            return array('active' => false);
+        }
         if (empty($_GET['sspa_workflow']) || empty($_GET['sspa_workflow_nonce'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- verified below.
             return array('active' => false);
         }

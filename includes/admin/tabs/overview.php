@@ -160,6 +160,13 @@ if ($sspa_last_run) {
         </div>
     <?php endif; ?>
 
+    <?php $sspa_customer_skip = SSPA_Run_Controller::customer_skip_message($sspa_run_notes); ?>
+    <?php if ('' !== $sspa_customer_skip) : ?>
+    <div class="notice notice-warning inline sspa-customer-skipped">
+        <p><?php echo esc_html($sspa_customer_skip); ?></p>
+    </div>
+    <?php endif; ?>
+
     <?php if (!empty($sspa_run_notes['unmeasured_pages'])) : ?>
     <div class="notice notice-error inline">
         <p>

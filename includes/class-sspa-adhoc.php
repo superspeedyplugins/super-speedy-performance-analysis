@@ -87,15 +87,9 @@ class SSPA_Adhoc {
         wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
         wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
         wp_set_script_translations('sspa-adhoc', 'super-speedy-performance-analysis');
-        // The CURRENT white wordmark (text only, per Dave - no icon), bundled with the
-        // plugin - the settings submodule's copy is an older mark and submodules are
-        // absent from some zips anyway. Source of truth:
-        // marketing/site/company-icons-and-logos/super-speedy-plugins-logo-white-text-only.svg
-        $logo = SSPA_PLUGIN_URL . 'includes/admin/img/super-speedy-plugins-white.svg';
         wp_localize_script('sspa-adhoc', 'sspa_adhoc', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
-            'logo_url' => $logo,
             'version' => SSPA_VERSION,
             'mail_warning' => SSPA_Mail::warning(),
             'download_prefix' => sspa_download_prefix(),
@@ -163,7 +157,6 @@ class SSPA_Adhoc {
                 'excimer_prompt' => extension_loaded('excimer')
                     ? __('Re-run with Excimer to improve this data', 'super-speedy-performance-analysis')
                     : __('Install Excimer to improve this data', 'super-speedy-performance-analysis'),
-                'logo_url' => $logo,
                 'version' => SSPA_VERSION,
             'mail_warning' => SSPA_Mail::warning(),
             ));

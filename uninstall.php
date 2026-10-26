@@ -79,6 +79,13 @@ if (is_file($sspa_traffic_config)) {
     SSPA_Filesystem::direct()->delete($sspa_traffic_config);
 }
 delete_option('sspa_profiler_enabled');
+delete_option('sspa_dropin_restore_notice');
+delete_option('sspa_traffic_authority');
+// Our own folder only: the lock file and the direct-access guards written by SSPA_Traffic_Helper::data_dir().
+foreach (array('sspa-traffic.lock', '.htaccess', 'index.html') as $sspa_data_file) {
+    $sspa_own_file = $sspa_uploads['basedir'] . '/super-speedy-performance-analysis/' . $sspa_data_file;
+    if (is_file($sspa_own_file)) { SSPA_Filesystem::direct()->delete($sspa_own_file); }
+}
 foreach (array('sspa-traffic-authority.php', 'sspa-traffic-authority.json', 'sspa-traffic-observer.stopped') as $sspa_data_file) {
     foreach (array($sspa_uploads['basedir'] . '/super-speedy-performance-analysis/', SSPA_MU_DIR . '/') as $sspa_data_dir) {
         if (is_file($sspa_data_dir . $sspa_data_file)) { SSPA_Filesystem::direct()->delete($sspa_data_dir . $sspa_data_file); }
