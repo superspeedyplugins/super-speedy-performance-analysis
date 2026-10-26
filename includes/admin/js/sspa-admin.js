@@ -204,7 +204,11 @@ function sspa_refresh_tabs(tabs, done) {
 			panel.prepend(notice);
 		});
 	}
-	jQuery.post(ajaxurl, { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') }, function (resp) {
+	// The Compare tab pages its saved runs (50 per page); the page lives in the address bar.
+	var request = { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') };
+	var comparePage = new URLSearchParams(window.location.search).get('sspa_compare_page');
+	if (comparePage && /^[1-9][0-9]*$/.test(comparePage)) { request.sspa_compare_page = comparePage; }
+	jQuery.post(ajaxurl, request, function (resp) {
 		if (resp && resp.success && resp.data && resp.data.tabs) {
 			Object.keys(resp.data.tabs).forEach(function (slug) {
 				var panel = jQuery('#sspa_main div.tab-contents[data-tab="' + slug + '"]');
@@ -1632,4 +1636,23 @@ jQuery(document).on('click', '.sspa-figures-show-all', function () {
 	var button = jQuery(this);
 	button.closest('.sspa-community-figures-result').find('tbody.sspa-figures-more').prop('hidden', false);
 	button.attr('aria-expanded', 'true').prop('hidden', true);
+});
+
+// ---- Compare paging: Older/Newer runs re-render only the Compare tab ----
+jQuery(document).on('click', '#sspa_main .sspa-compare-page-link', function (event) {
+	if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.which > 1 || !window.history.pushState) { return; }
+	event.preventDefault();
+	var url = new URL(window.location.href);
+	var page = parseInt(jQuery(this).attr('data-compare-page'), 10) || 1;
+	if (page > 1) { url.searchParams.set('sspa_compare_page', page); } else { url.searchParams.delete('sspa_compare_page'); }
+	url.hash = 'compare';
+	window.history.pushState(null, '', url.href);
+	jQuery('#sspa_main .sspa-compare-page-link').addClass('disabled').attr('aria-disabled', 'true');
+	sspa_refresh_tabs(['compare']);
+});
+jQuery(window).on('popstate', function () {
+	var pager = jQuery('#sspa_main .sspa-compare-pager').first();
+	if (!pager.length) { return; }
+	var wanted = parseInt(new URLSearchParams(window.location.search).get('sspa_compare_page'), 10) || 1;
+	if (wanted !== (parseInt(pager.attr('data-page'), 10) || 1)) { sspa_refresh_tabs(['compare']); }
 });

@@ -3,8 +3,12 @@ defined('ABSPATH') || exit;
 
 /** Read-only view of one explicitly selected retained run. */
 class SSPA_History_Run_View {
-    public static function url($run_id = 0) {
+    /** $compare_page keeps the Compare page (50 runs each) the run was opened from. */
+    public static function url($run_id = 0, $compare_page = 1) {
         $args = array('page' => 'sspa');
+        if ((int) $compare_page > 1) {
+            $args['sspa_compare_page'] = (int) $compare_page;
+        }
         if ($run_id > 0) {
             $args['sspa_history_run'] = (int) $run_id;
         }
@@ -15,14 +19,14 @@ class SSPA_History_Run_View {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $id = isset($_POST['run_id']) ? absint($_POST['run_id']) : 0;
-        $html = self::render($id);
+        $html = self::render($id, isset($_POST['sspa_compare_page']) ? absint($_POST['sspa_compare_page']) : 1);
         if (is_wp_error($html)) {
             wp_send_json_error($html->get_error_message(), 'sspa_forbidden' === $html->get_error_code() ? 403 : 404);
         }
         wp_send_json_success(array('run_id' => $id, 'html' => $html));
     }
 
-    public static function render($run_id) {
+    public static function render($run_id, $compare_page = 1) {
         if (!current_user_can('manage_options')) {
             return new WP_Error('sspa_forbidden', __('You cannot view saved analysis reports.', 'super-speedy-performance-analysis'));
         }
@@ -43,7 +47,7 @@ class SSPA_History_Run_View {
         ob_start();
         ?>
         <section class="sspa-history-saved-report" data-saved-run-id="<?php echo esc_attr($run_id); ?>">
-            <p><a class="button sspa-history-back" href="<?php echo esc_url(self::url()); ?>"><?php esc_html_e('Back to Compare', 'super-speedy-performance-analysis'); ?></a></p>
+            <p><a class="button sspa-history-back" href="<?php echo esc_url(self::url(0, $compare_page)); ?>"><?php esc_html_e('Back to Compare', 'super-speedy-performance-analysis'); ?></a></p>
             <h2 tabindex="-1"><?php
                 /* translators: %d: saved analysis run ID. */
                 echo esc_html(sprintf(__('Saved analysis #%d', 'super-speedy-performance-analysis'), $run_id));

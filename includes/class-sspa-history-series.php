@@ -9,13 +9,43 @@ class SSPA_History_Series {
     const SCHEMA = 'sspa/history-series@1';
     const SCENARIO_REVISION = 1;
 
-    /** All retained runs are selectable, regardless of age, status or type. */
-    public static function recent_runs() {
+    /** Runs shown per Compare page (selectors, run table and details Back link). */
+    const PAGE_SIZE = 50;
+
+    /**
+     * One Compare page of runs, newest first. Returns up to PAGE_SIZE + 1 rows: the extra
+     * row only shows that an older page exists and supplies the Before option for the
+     * oldest run on the page. Every run stays reachable through the older-page links.
+     */
+    public static function run_page($page = 1) {
         global $wpdb;
+        $page = max(1, (int) $page);
         return $wpdb->get_results($wpdb->prepare(
-            'SELECT * FROM %i ORDER BY id DESC',
-            SSPA_Schema::table('runs')
+            'SELECT * FROM %i ORDER BY id DESC LIMIT %d OFFSET %d',
+            SSPA_Schema::table('runs'),
+            self::PAGE_SIZE + 1,
+            ($page - 1) * self::PAGE_SIZE
         ), ARRAY_A);
+    }
+
+    public static function run_count() {
+        global $wpdb;
+        return (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i', SSPA_Schema::table('runs')));
+    }
+
+    public static function latest_run_id() {
+        global $wpdb;
+        return (int) $wpdb->get_var($wpdb->prepare('SELECT id FROM %i ORDER BY id DESC LIMIT 1', SSPA_Schema::table('runs')));
+    }
+
+    /** The newest run older than $run_id, or 0. */
+    public static function previous_run_id($run_id) {
+        global $wpdb;
+        return (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT id FROM %i WHERE id < %d ORDER BY id DESC LIMIT 1',
+            SSPA_Schema::table('runs'),
+            (int) $run_id
+        ));
     }
 
     /** Plot retained fields; inventory and environment metadata never determine eligibility. */
@@ -25,21 +55,13 @@ class SSPA_History_Series {
         if (!isset($metrics[$metric])) {
             $metric = 'request_wall_ms';
         }
-        $runs = (!$after_id || (!$before_id && 'pair' !== $mode)) ? self::recent_runs() : array();
         // Defaults choose adjacent saved runs, including unchanged and incomplete setups.
-        if (!$after_id && 'pair' !== $mode && $runs) {
-            $after_id = (int) $runs[0]['id'];
+        if (!$after_id && ('pair' !== $mode || !$before_id)) {
+            $after_id = self::latest_run_id();
         }
-        if (!$after_id && !$before_id && $runs) {
-            $after_id = (int) $runs[0]['id'];
-        }
-        if (!$before_id && 'pair' !== $mode) {
-            foreach ($runs as $index => $run) {
-                if ((int) $run['id'] === (int) $after_id && isset($runs[$index + 1])) {
-                    $before_id = (int) $runs[$index + 1]['id'];
-                    break;
-                }
-            }
+        // As before paging: only a retained After run gets a default Before.
+        if (!$before_id && 'pair' !== $mode && $after_id && SSPA_Run_Controller::run_row((int) $after_id)) {
+            $before_id = self::previous_run_id($after_id);
         }
         $after = $after_id ? SSPA_Run_Controller::run_row((int) $after_id) : null;
         $before = $before_id ? SSPA_Run_Controller::run_row((int) $before_id) : null;
@@ -126,8 +148,7 @@ class SSPA_History_Series {
 
     /** Kept for existing callers; every retained run can be selected. */
     public static function latest_compatible_run_id($page_keys = array()) {
-        $runs = self::recent_runs();
-        return $runs ? (int) $runs[0]['id'] : 0;
+        return self::latest_run_id();
     }
 
     public static function is_compatible_run_id($run_id, $page_keys = array()) {
