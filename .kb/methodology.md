@@ -8,7 +8,7 @@ Every page is requested once as a warm-up (priming caches), then three measured 
 
 ## Capture
 
-When no other database drop-in exists, SSPA installs a conditional `db.php` drop-in which, for profiling requests only, uses an instrumented database class recording every query's duration, returned row count, errors and call stack. The call stack maps each query to the plugin, theme or core code that ran it. HTTP API calls, object-cache hits/misses, peak memory and emails are captured alongside. For ordinary requests, the drop-in returns without replacing WordPress's database class.
+When you click **Enable profiler** and no other database drop-in exists, SSPA installs a conditional `db.php` drop-in which, for profiling requests only, uses an instrumented database class recording every query's duration, returned row count, errors and call stack. The call stack maps each query to the plugin, theme or core code that ran it. HTTP API calls, object-cache hits/misses, peak memory and emails are captured alongside. For ordinary requests, the drop-in returns without replacing WordPress's database class.
 
 Full SQL is kept locally only for the slowest/biggest queries; everything else is stored as a normalised fingerprint with all values stripped.
 

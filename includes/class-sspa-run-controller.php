@@ -357,7 +357,7 @@ class SSPA_Run_Controller {
         if ('ours' !== $dropin) {
             $why = in_array($dropin, array('foreign', 'qm'), true)
                 ? __('Another plugin currently owns wp-content/db.php. Plugin Impact Analysis needs SSPA\'s own drop-in to guard excluded-plugin requests; the existing drop-in is never replaced.', 'super-speedy-performance-analysis')
-                : __('It could not be installed - wp-content is not writable.', 'super-speedy-performance-analysis');
+                : __('It is installed by Enable profiler in Tools; if Enable profiler reports an error, wp-content is not writable.', 'super-speedy-performance-analysis');
             return new WP_Error('sspa_dropin_required', sprintf(
                 /* translators: %s: what to do about the missing drop-in */
                 __('Plugin impact analysis needs this plugin\'s own database drop-in in place - it is what refuses destructive database statements if a plugin reacts to another being excluded during a measurement. %s', 'super-speedy-performance-analysis'),

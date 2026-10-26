@@ -7,7 +7,8 @@ SSPA_Helper_Files::remove_all();
 delete_option('sspa_profiler_enabled');
 SSPA_Install::activate();
 w1_prof_t(!file_exists(SSPA_Helper_Files::mu_path()), 'fresh activation does not install the profiler loader');
-w1_prof_t(SSPA_Helper_Files::dropin_status() === 'ours', 'activation still installs an unoccupied db.php');
+// Dave, 26 October 2026: activation writes nothing to wp-content; db.php arrives only with Enable profiler.
+w1_prof_t(!file_exists(SSPA_Helper_Files::dropin_path()), 'fresh activation does not install db.php');
 $cookies = SSPA_Auth::cookies_for('admin', 1);
 $_COOKIE[LOGGED_IN_COOKIE] = $cookies[LOGGED_IN_COOKIE];
 $nonce = wp_create_nonce('sspa_admin');
@@ -24,13 +25,22 @@ $action = static function($enabled) use ($cookies, $nonce) {
     return json_decode(wp_remote_retrieve_body($r), true);
 };
 $on = $action(1);
-w1_prof_t(!empty($on['success']) && file_exists(SSPA_Helper_Files::mu_path()), 'Enable action writes the loader');
+w1_prof_t(!empty($on['success']) && file_exists(SSPA_Helper_Files::mu_path()) && 'ours' === SSPA_Helper_Files::dropin_status(), 'Enable action writes the loader and db.php');
 $invalid = wp_remote_post(admin_url('admin-ajax.php'), array('cookies' => $cookies, 'timeout' => 30, 'body' => array('action' => 'sspa_profiler_toggle', 'enabled' => 'junk', 'nonce' => $nonce)));
 w1_prof_t(!is_wp_error($invalid) && 400 === wp_remote_retrieve_response_code($invalid) && file_exists(SSPA_Helper_Files::mu_path()), 'an invalid toggle value cannot act as an implicit Disable');
 $action(1);
 
 $off = $action(0);
-w1_prof_t(!empty($off['success']) && !file_exists(SSPA_Helper_Files::mu_path()), 'Disable action removes the loader');
+clearstatcache();
+w1_prof_t(!empty($off['success']) && !file_exists(SSPA_Helper_Files::mu_path()) && !file_exists(SSPA_Helper_Files::dropin_path()), 'Disable action removes the loader and db.php');
+// A foreign db.php is never replaced by Enable; the loader still installs.
+$foreign = "<?php\n/**\n * Plugin Name: SSPA case 105 foreign drop-in\n */\n";
+file_put_contents(SSPA_Helper_Files::dropin_path(), $foreign);
+$fon = $action(1);
+w1_prof_t(!empty($fon['success']) && file_get_contents(SSPA_Helper_Files::dropin_path()) === $foreign && file_exists(SSPA_Helper_Files::mu_path()), 'Enable leaves a foreign db.php untouched');
+$action(0);
+w1_prof_t(file_get_contents(SSPA_Helper_Files::dropin_path()) === $foreign, 'Disable leaves a foreign db.php untouched');
+unlink(SSPA_Helper_Files::dropin_path());
 $on = $action(1);
 // A genuine local secret rotation makes installed helpers stale without changing source.
 delete_option('sspa_secret');
@@ -47,7 +57,16 @@ $before = is_file(SSPA_Helper_Files::mu_path()) ? file_get_contents(SSPA_Helper_
 SSPA_Install::maybe_upgrade();
 w1_prof_t($before !== '' && file_get_contents(SSPA_Helper_Files::mu_path()) === $before && get_option('sspa_profiler_enabled'), 'upgrade preserves an existing loader and records enabled state');
 SSPA_Install::deactivate();
-w1_prof_t(!file_exists(SSPA_Helper_Files::mu_path()), 'deactivation removes the loader');
+clearstatcache();
+w1_prof_t(!file_exists(SSPA_Helper_Files::mu_path()) && !file_exists(SSPA_Helper_Files::dropin_path()), 'deactivation removes the loader and db.php');
 SSPA_Install::activate();
-w1_prof_t(!file_exists(SSPA_Helper_Files::mu_path()), 'reactivation requires another explicit Enable');
+clearstatcache();
+w1_prof_t(!file_exists(SSPA_Helper_Files::mu_path()) && !file_exists(SSPA_Helper_Files::dropin_path()), 'reactivation writes nothing to wp-content and requires another explicit Enable');
+// A site upgraded from a version that installed db.php on activation, with the profiler never enabled.
+SSPA_Helper_Files::ensure_installed();
+update_option('sspa_profiler_enabled', false, false);
+update_option('sspa_behaviour_version', '0.54.1');
+SSPA_Install::maybe_upgrade();
+clearstatcache();
+w1_prof_t(!file_exists(SSPA_Helper_Files::dropin_path()), 'upgrade removes an activation-installed db.php the administrator never enabled');
 $action(1); // Leave the explicit enabled state for subsequent analysis cases.

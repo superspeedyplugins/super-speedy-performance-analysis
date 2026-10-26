@@ -16,7 +16,7 @@ $sspa_status_label = array(
 <?php $sspa_profiler_health = SSPA_Helper_Files::health(); ?>
 <div id="sspa-profiler-control">
     <h2><?php esc_html_e('Profiler', 'super-speedy-performance-analysis'); ?></h2>
-    <p><?php esc_html_e('Enable profiler installs the profiling loader in wp-content/mu-plugins; Disable removes it. Analysis requires this loader.', 'super-speedy-performance-analysis'); ?></p>
+    <p><?php esc_html_e('Enable profiler installs the profiling loader in wp-content/mu-plugins and, when no other drop-in is there, the query-capture drop-in wp-content/db.php; Disable removes both. Analysis requires the loader.', 'super-speedy-performance-analysis'); ?></p>
     <button type="button" class="button" id="sspa-profiler-toggle" data-enabled="<?php echo $sspa_profiler_health['mu'] ? '0' : '1'; ?>">
         <?php echo $sspa_profiler_health['mu'] ? esc_html__('Disable profiler', 'super-speedy-performance-analysis') : esc_html__('Enable profiler', 'super-speedy-performance-analysis'); ?>
     </button>

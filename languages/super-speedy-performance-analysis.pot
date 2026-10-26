@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.55.0\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.55.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-26T10:42:34+00:00\n"
+"POT-Creation-Date: 2026-10-26T10:50:37+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -2611,7 +2611,7 @@ msgstr ""
 
 #. translators: %s: date the published page was last checked
 #: includes/admin/tabs/cache.php:61
-#: includes/class-sspa-offers.php:928
+#: includes/class-sspa-offers.php:934
 #, php-format
 msgid "(checked %s)"
 msgstr ""
@@ -2916,7 +2916,7 @@ msgstr ""
 
 #: includes/admin/tabs/cache.php:483
 #: includes/admin/tabs/cache.php:519
-#: includes/class-sspa-offers.php:1010
+#: includes/class-sspa-offers.php:1016
 msgid "Don't show this again"
 msgstr ""
 
@@ -2937,7 +2937,7 @@ msgstr ""
 #. translators: %s: plugin name
 #. translators: %s: product or service name
 #: includes/admin/tabs/cache.php:508
-#: includes/class-sspa-offers.php:938
+#: includes/class-sspa-offers.php:944
 #, php-format
 msgid "View %s"
 msgstr ""
@@ -3163,7 +3163,7 @@ msgstr ""
 
 #. translators: %s: comma-separated importer plugin names
 #: includes/admin/tabs/imports.php:41
-#: includes/class-sspa-offers.php:755
+#: includes/class-sspa-offers.php:761
 #, php-format
 msgid "Importer active on this site: %s."
 msgid_plural "Importers active on this site: %s."
@@ -3441,7 +3441,7 @@ msgid "Query capture: db.php is owned by %s - runs use degraded capture without 
 msgstr ""
 
 #: includes/admin/tabs/overview.php:383
-msgid "Query capture (db.php): not installed - wp-content is not writable; runs will use degraded capture"
+msgid "Query capture (db.php): not installed - use Enable profiler in Tools to install it; until then runs use degraded capture"
 msgstr ""
 
 #: includes/admin/tabs/pages.php:15
@@ -3767,7 +3767,7 @@ msgid "Profiler"
 msgstr ""
 
 #: includes/admin/tabs/tools.php:19
-msgid "Enable profiler installs the profiling loader in wp-content/mu-plugins; Disable removes it. Analysis requires this loader."
+msgid "Enable profiler installs the profiling loader in wp-content/mu-plugins and, when no other drop-in is there, the query-capture drop-in wp-content/db.php; Disable removes both. Analysis requires the loader."
 msgstr ""
 
 #: includes/admin/tabs/tools.php:21
@@ -5475,6 +5475,10 @@ msgstr ""
 msgid "Could not remove the profiler loader; check its file permissions."
 msgstr ""
 
+#: includes/class-sspa-helper-files.php:246
+msgid "Could not remove the profiler db.php; check its file permissions."
+msgstr ""
+
 #: includes/class-sspa-history-ajax.php:34
 msgid "No saved Before run selected. Available After measurements are shown."
 msgstr ""
@@ -5718,12 +5722,12 @@ msgstr ""
 msgid "%ds"
 msgstr ""
 
-#: includes/class-sspa-install.php:60
+#: includes/class-sspa-install.php:61
 msgid "Performance Analysis removed obsolete checkout email settings; synthetic emails now go to the administrator."
 msgstr ""
 
 #. translators: %s: the migration error reported by the failing operation.
-#: includes/class-sspa-install.php:68
+#: includes/class-sspa-install.php:69
 #, php-format
 msgid "Performance Analysis upgrade failed: %s. It will retry on your next wp-admin request."
 msgstr ""
@@ -5884,102 +5888,102 @@ msgid "This is the site search query: its leading-wildcard LIKE conditions canno
 msgstr ""
 
 #. translators: 1: page key, 2: SQL milliseconds, 3: generation milliseconds, 4: percentage
-#: includes/class-sspa-offers.php:649
+#: includes/class-sspa-offers.php:655
 #, php-format
 msgid "On %1$s, SQL took %2$s ms of %3$s ms of page generation (%4$s%%)."
 msgstr ""
 
-#: includes/class-sspa-offers.php:652
+#: includes/class-sspa-offers.php:658
 msgid "Open this screen's profile in the Pages tab and inspect its largest SQL groups and their query plans."
 msgstr ""
 
 #. translators: %s: comma-separated names of active search plugins
-#: includes/class-sspa-offers.php:657
+#: includes/class-sspa-offers.php:663
 #, php-format
 msgid "Active search plugin: %s."
 msgstr ""
 
-#: includes/class-sspa-offers.php:658
+#: includes/class-sspa-offers.php:664
 msgid "Limit what search reads: search fewer post types, and keep long content out of the search query where visitors do not need it."
 msgstr ""
 
 #. translators: 1: generation milliseconds, 2: SQL milliseconds
-#: includes/class-sspa-offers.php:664
+#: includes/class-sspa-offers.php:670
 #, php-format
 msgid "Searching orders in wp-admin took %1$s ms to generate, %2$s ms of it in SQL, the largest share."
 msgstr ""
 
-#: includes/class-sspa-offers.php:665
+#: includes/class-sspa-offers.php:671
 msgid "Search by order number or the customer's exact email address where you can: a free-text order search reads every address and line item."
 msgstr ""
 
 #. translators: 1: collection start date, 2: number of requests, 3: admin-ajax action name, 4: median milliseconds
-#: includes/class-sspa-offers.php:733
+#: includes/class-sspa-offers.php:739
 #, php-format
 msgid "In the Traffic collection from %1$s, an importer processed a file in %2$s request to %3$s (median %4$s ms)."
 msgid_plural "In the Traffic collection from %1$s, an importer processed a file in %2$s requests to %3$s (median %4$s ms each)."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-sspa-offers.php:735
+#: includes/class-sspa-offers.php:741
 msgid "The Imports tab shows this measurement beside the published import benchmarks."
 msgstr ""
 
 #. translators: 1: collection start date, 2: transport such as admin-ajax, 3: action or route, 4: number of requests, 5: p95 milliseconds
-#: includes/class-sspa-offers.php:745
+#: includes/class-sspa-offers.php:751
 #, php-format
 msgid "In the Traffic collection from %1$s, the %2$s endpoint %3$s answered %4$s requests with a 95th percentile of %5$s ms."
 msgstr ""
 
-#: includes/class-sspa-offers.php:747
+#: includes/class-sspa-offers.php:753
 msgid "Profile this endpoint on the AJAX tab to see which plugins load and work while it answers."
 msgstr ""
 
-#: includes/class-sspa-offers.php:756
+#: includes/class-sspa-offers.php:762
 msgid "The Imports tab shows your importer's own run history beside the published import benchmarks."
 msgstr ""
 
 #. translators: 1: plugin, 2: milliseconds, 3: page key
-#: includes/class-sspa-offers.php:795
+#: includes/class-sspa-offers.php:801
 #, php-format
 msgid "The latest Plugin Impact Analysis measured %1$s adding %2$s ms to %3$s."
 msgstr ""
 
-#: includes/class-sspa-offers.php:796
+#: includes/class-sspa-offers.php:802
 msgid "Ask the plugin's author about the cost, or compare the page with the plugin deactivated on a staging copy."
 msgstr ""
 
 #. translators: 1: percentage, 2: milliseconds
-#: includes/class-sspa-offers.php:858
+#: includes/class-sspa-offers.php:864
 #, php-format
 msgid "%1$s%% of this page's generation (%2$s ms) ran during render without being attributed to a plugin, hook or template."
 msgstr ""
 
 #. translators: %s: the published test conditions, quoted
-#: includes/class-sspa-offers.php:931
+#: includes/class-sspa-offers.php:937
 #, php-format
 msgid "Published conditions: “%s”"
 msgstr ""
 
 #. translators: %s: product or service name
-#: includes/class-sspa-offers.php:938
+#: includes/class-sspa-offers.php:944
 #, php-format
 msgid "View the %s"
 msgstr ""
 
-#: includes/class-sspa-offers.php:953
+#: includes/class-sspa-offers.php:959
 msgid "Install Super Speedy Imports Lite (free)"
 msgstr ""
 
-#: includes/class-sspa-offers.php:955
+#: includes/class-sspa-offers.php:961
 msgid "Super Speedy Imports Lite is free in the WordPress plugin directory."
 msgstr ""
 
-#: includes/class-sspa-offers.php:1001
+#: includes/class-sspa-offers.php:1007
 msgid "Open the Imports tab"
 msgstr ""
 
-#: includes/class-sspa-offers.php:1006
+#: includes/class-sspa-offers.php:1012
 msgid "If you would rather not do this by hand:"
 msgstr ""
 
@@ -6320,7 +6324,7 @@ msgid "Another plugin currently owns wp-content/db.php. Plugin Impact Analysis n
 msgstr ""
 
 #: includes/class-sspa-run-controller.php:360
-msgid "It could not be installed - wp-content is not writable."
+msgid "It is installed by Enable profiler in Tools; if Enable profiler reports an error, wp-content is not writable."
 msgstr ""
 
 #. translators: %s: what to do about the missing drop-in

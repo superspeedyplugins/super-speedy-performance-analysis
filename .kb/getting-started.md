@@ -8,7 +8,7 @@ Super Speedy Performance Analysis finds out what is actually slowing your WordPr
 2. Plugins -> Add New -> Upload Plugin -> activate.
 3. Go to **Super Speedy -> Performance Analysis**.
 
-On activation the plugin installs its conditional `db.php` drop-in only if that path is unoccupied. Open the existing Tools tab and click **Enable profiler** to install the mu-plugin loader before starting analysis; **Disable profiler** removes it. Opening the screen or starting a run never recreates a missing loader. The profiling helpers operate on signed profiling requests. Separately, an explicitly started traffic or AJAX collection window observes matching real requests on the site. The Overview tab's Health box shows their status.
+Activating the plugin writes nothing outside its own folder. Open the existing Tools tab and click **Enable profiler** before starting analysis: it installs the mu-plugin loader and, when that path is unoccupied, the conditional `db.php` drop-in. **Disable profiler** and deactivation remove both. Opening the screen or starting a run never recreates a missing loader. The profiling helpers operate on signed profiling requests. Separately, an explicitly started traffic or AJAX collection window observes matching real requests on the site. The Overview tab's Health box shows their status.
 
 ## Your first analysis
 
@@ -48,6 +48,6 @@ AJAX windows stop after 15 minutes or 200 observations. Their data stays on your
 
 ### Database drop-in ownership
 
-SSPA installs its database drop-in only when no other drop-in exists, honours `DISALLOW_FILE_MODS`, and removes only its own file. When another plugin owns `wp-content/db.php`, ordinary analysis uses degraded capture, or Query Monitor's query log when available; per-query row counts may be unavailable. The existing file is never replaced, including a leftover Query Monitor drop-in after deactivation. Remove a leftover file manually if you want SSPA to install its own.
+SSPA installs its database drop-in only when you click **Enable profiler** and no other drop-in exists, honours `DISALLOW_FILE_MODS`, and removes only its own file. When another plugin owns `wp-content/db.php`, ordinary analysis uses degraded capture, or Query Monitor's query log when available; per-query row counts may be unavailable. The existing file is never replaced, including a leftover Query Monitor drop-in after deactivation. Remove a leftover file manually if you want SSPA to install its own.
 
 Cache Impact Analysis requires SSPA's own drop-in so it can disable the object cache for the signed profiling request alone. If another plugin owns the database drop-in, the analysis returns an error naming that owner. It never renames the site's object-cache drop-in. Plugin Impact Analysis also requires SSPA's own drop-in for its destructive-query guard.
