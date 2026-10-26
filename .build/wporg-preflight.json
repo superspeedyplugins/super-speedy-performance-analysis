@@ -552,6 +552,18 @@
       "file": "includes/class-sspa-helper-files.php",
       "match": "SSPA_MU_DIR",
       "reason": "Creates wp-content/mu-plugins only when the administrator presses Enable profiler and it does not exist yet. The profiler's MU loader must live there to arm measurement before ordinary plugins load; it is removed again when the profiler is disabled or the plugin is deactivated."
+    },
+    {
+      "check": "activation-writes",
+      "file": "includes/traffic/class-sspa-traffic-helper.php",
+      "match": "SSPA_Traffic_Helper::data_dir",
+      "reason": "Only on reactivation of a site upgraded from a version that kept the traffic authority in a file: the one-time migration creates this plugin's own folder wp_upload_dir()/super-speedy-performance-analysis/ (with its .htaccess and empty index.html) and moves the state into the database. Nothing is written to wp-content outside uploads on activation."
+    },
+    {
+      "check": "activation-writes",
+      "file": "includes/class-sspa-filesystem.php",
+      "match": "SSPA_Traffic_Helper::data_dir",
+      "reason": "Only on reactivation of a site upgraded from a version that kept the traffic authority in a file: the one-time migration creates this plugin's own folder wp_upload_dir()/super-speedy-performance-analysis/ (with its .htaccess and empty index.html) and moves the state into the database. Nothing is written to wp-content outside uploads on activation."
     }
   ],
   "retained_sql_statements": {
