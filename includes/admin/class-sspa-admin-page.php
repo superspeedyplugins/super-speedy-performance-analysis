@@ -13,28 +13,44 @@ class SSPA_Admin_Page {
      */
     public static function register_toggle_prompt() {
         SSPA_Change_Set::register();
+        add_action('admin_init', array(__CLASS__, 'handle_change_set_action'));
         add_action('admin_notices', array(__CLASS__, 'toggle_prompt_notice'));
     }
 
+    /** Snooze or dismiss from the plugin-change notice: capability, then nonce, then input. */
+    public static function handle_change_set_action() {
+        if (!isset($_GET['sspa_change_action'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presence test only; nothing is read or acted on before the checks below.
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to do that.', 'super-speedy-performance-analysis'), 403);
+        }
+        check_admin_referer('sspa_change_set_action');
+        $action = isset($_GET['sspa_change_action']) ? sanitize_key(wp_unslash($_GET['sspa_change_action'])) : '';
+        $change_set_id = isset($_GET['sspa_change_set']) ? sanitize_text_field(wp_unslash($_GET['sspa_change_set'])) : '';
+        if ('snooze' === $action) {
+            SSPA_Change_Set::snooze($change_set_id);
+        } elseif ('dismiss' === $action) {
+            SSPA_Change_Set::dismiss($change_set_id);
+        }
+        wp_safe_redirect(remove_query_arg(array('sspa_change_action', 'sspa_change_set', '_wpnonce')));
+        exit;
+    }
+
+    /**
+     * The plugin-change notice. Shown only on the Plugins and Updates screens, where plugin
+     * changes are made, and on Performance Analysis's own screen.
+     */
     public static function toggle_prompt_notice() {
         if (!current_user_can('manage_options')) {
             return;
         }
-        if (!empty($_GET['sspa_change_action']) && !empty($_GET['sspa_change_set']) && !empty($_GET['_wpnonce'])) {
-            $action = sanitize_key(wp_unslash($_GET['sspa_change_action']));
-            $change_set_id = sanitize_text_field(wp_unslash($_GET['sspa_change_set']));
-            $nonce = sanitize_text_field(wp_unslash($_GET['_wpnonce']));
-            if (wp_verify_nonce($nonce, 'sspa_change_set_action_' . $change_set_id)) {
-                if ('snooze' === $action) {
-                    SSPA_Change_Set::snooze($change_set_id);
-                } elseif ('dismiss' === $action) {
-                    SSPA_Change_Set::dismiss($change_set_id);
-                }
-            }
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || !(in_array($screen->id, array('plugins', 'update-core'), true) || preg_match('/(?:^|_page_)sspa$/', $screen->id))) {
             return;
         }
         // Keep the context until the AJAX request has created the spot-check run.
-        if (isset($_GET['sspa_autospot'])) {
+        if (isset($_GET['_sspa_autospot']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_sspa_autospot'])), 'sspa_autospot')) {
             return;
         }
         $change_set = SSPA_Change_Set::pending();
@@ -42,7 +58,7 @@ class SSPA_Admin_Page {
             return;
         }
         $count = count($change_set['changes']);
-        // Shown on every admin screen, so it only reads the change set and one run row.
+        // Shown on the Plugins and Updates screens too, so it only reads the change set and one run row.
         // The quick-comparison pages are worked out on PA's own screen when the run starts.
         $baseline_run_id = SSPA_History_Series::latest_compatible_run_id();
         $run_url = add_query_arg(array(
@@ -50,13 +66,14 @@ class SSPA_Admin_Page {
             'sspa_autospot' => '1',
             'sspa_change_set' => $change_set['id'],
             'sspa_baseline_run_id' => $baseline_run_id,
+            '_sspa_autospot' => wp_create_nonce('sspa_autospot'),
         ), admin_url('admin.php')) . '#overview';
         $base_action_url = add_query_arg(array(
             'sspa_change_set' => $change_set['id'],
         ));
-        $snooze = wp_nonce_url(add_query_arg('sspa_change_action', 'snooze', $base_action_url), 'sspa_change_set_action_' . $change_set['id']);
-        $dismiss = wp_nonce_url(add_query_arg('sspa_change_action', 'dismiss', $base_action_url), 'sspa_change_set_action_' . $change_set['id']);
-        echo '<div class="notice notice-info"><p><strong>';
+        $snooze = wp_nonce_url(add_query_arg('sspa_change_action', 'snooze', $base_action_url), 'sspa_change_set_action');
+        $dismiss = wp_nonce_url(add_query_arg('sspa_change_action', 'dismiss', $base_action_url), 'sspa_change_set_action');
+        echo '<div class="notice notice-info is-dismissible"><p><strong>';
         /* translators: %d: number of changed plugins */
         echo esc_html(sprintf(_n('%d plugin change was detected.', '%d plugin changes were detected.', $count, 'super-speedy-performance-analysis'), $count));
         echo '</strong> ';

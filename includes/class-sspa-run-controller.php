@@ -47,6 +47,7 @@ class SSPA_Run_Controller {
      * @return int|WP_Error run id
      */
     public static function start($args = array()) {
+        $customer_skipped = '';
         global $wpdb;
 
         if (self::active_run_id()) {
@@ -150,15 +151,17 @@ class SSPA_Run_Controller {
         } else {
             // The synthetic customer the catalogue measures as is new for every run, so no
             // real person's session, cart or history can ever be what a customer page shows.
+            // If WordPress refuses the account, the analysis still runs: only the logged-in
+            // customer pages cannot be measured, and the run says why (WordPress's reason).
             $customer = SSPA_Auth::fresh_test_customer();
-            if (is_wp_error($customer)) {
-                SSPA_Helper_Files::restore_legacy_db_hold();
-                return $customer;
-            }
+            $customer_skipped = is_wp_error($customer) ? $customer->get_error_message() : '';
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
+            if ('' !== $customer_skipped) {
+                $jobs = array_values(array_filter($jobs, static function ($job) { return 'customer' !== $job['variant']; }));
+            }
             if (!$jobs) {
                 SSPA_Helper_Files::restore_legacy_db_hold();
-                return new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
+                return '' !== $customer_skipped ? $customer : new WP_Error('sspa_no_jobs', __('No pages found to profile.', 'super-speedy-performance-analysis'));
             }
             if (!empty($args['include_writes'])) {
                 $jobs = array_merge($jobs, self::write_jobs());
@@ -264,6 +267,7 @@ class SSPA_Run_Controller {
             'plugin_set_hash' => md5(wp_json_encode(get_option('active_plugins', array()))),
             'share_context' => $share_context ? wp_json_encode($share_context) : null,
             'started' => gmdate('Y-m-d H:i:s'),
+            'notes' => '' !== $customer_skipped ? wp_json_encode(array('customer_pages_skipped' => $customer_skipped)) : null,
         ));
         $run_id = (int) $wpdb->insert_id;
         if (!$run_id) {
@@ -1032,6 +1036,13 @@ class SSPA_Run_Controller {
             }
         }
         return $label;
+    }
+
+    /** The run's notes as an array (empty when none were recorded). */
+    public static function run_notes($run_id) {
+        $run = self::run_row($run_id);
+        $notes = $run ? json_decode((string) $run['notes'], true) : null;
+        return is_array($notes) ? $notes : array();
     }
 
     public static function run_row($run_id) {
@@ -1968,6 +1979,10 @@ class SSPA_Run_Controller {
         if ($unmeasured > 0) {
             $notes['unmeasured_pages'] = $unmeasured;
         }
+        $start_notes = self::run_notes($run_id);
+        if (!empty($start_notes['customer_pages_skipped'])) {
+            $notes['customer_pages_skipped'] = $start_notes['customer_pages_skipped'];
+        }
         $wpdb->update(SSPA_Schema::table('runs'), array(
             'status' => 'done',
             'finished' => gmdate('Y-m-d H:i:s'),
@@ -2152,6 +2167,7 @@ class SSPA_Run_Controller {
             'current' => $current,
             'current_plugin' => $current_plugin,
             'mail_warning' => SSPA_Mail::warning(),
+            'customer_pages_skipped' => self::customer_skip_message(json_decode((string) $run['notes'], true)),
             'mail_mode' => 'deliver',
             'recent' => $recent,
             'phase' => (is_array($queue) && isset($queue['sweep']['phase'])) ? (int) $queue['sweep']['phase'] : null,
@@ -2160,6 +2176,18 @@ class SSPA_Run_Controller {
             // Who fetches the pages: 'loopback' (server, the default) or 'browser'
             // (the admin's browser drives, via SSPA_Browser_Transport).
             'transport' => (is_array($queue) && !empty($queue['transport'])) ? $queue['transport'] : 'loopback',
+        );
+    }
+
+    /** What the run screen says when the logged-in customer pages were skipped, or ''. */
+    public static function customer_skip_message($notes) {
+        if (!is_array($notes) || empty($notes['customer_pages_skipped'])) {
+            return '';
+        }
+        return sprintf(
+            /* translators: %s: why the synthetic test customer could not be saved, including WordPress's own reason. */
+            __('The logged-in customer pages were skipped; every other page was measured. %s', 'super-speedy-performance-analysis'),
+            (string) $notes['customer_pages_skipped']
         );
     }
 

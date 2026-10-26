@@ -73,20 +73,6 @@
 	vertical-align: 1px;
 }
 
-#sspa-adhoc-pop .sspa-adhoc-logo {
-	/* ~4.7:1 text-only wordmark: 18px tall renders ~85px wide */
-	height: 18px;
-	width: auto;
-	display: block;
-	opacity: 0.95;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-logo-text {
-	color: #c3c4c7;
-	font-weight: 600;
-	letter-spacing: 0.02em;
-}
-
 #sspa-adhoc-pop .sspa-adhoc-close {
 	background: none;
 	border: none;
@@ -104,24 +90,6 @@
 }
 
 /* ── Footer: the screenshot attribution line ────────────────────────── */
-
-#sspa-adhoc-pop .sspa-adhoc-foot {
-	padding: 8px 18px;
-	background: var(--sspa-surface);
-	border-top: 1px solid var(--sspa-outline);
-	color: var(--sspa-muted);
-	font-size: 12px;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-foot a {
-	color: var(--sspa-primary);
-	text-decoration: none;
-	font-weight: 600;
-}
-
-#sspa-adhoc-pop .sspa-adhoc-foot a:hover {
-	text-decoration: underline;
-}
 
 /* ── Section headings ───────────────────────────────────────────────── */
 

@@ -51,7 +51,7 @@ class SSPA_Admin_Bar {
             'do' => $do,
             'sspa_return' => rawurlencode(self::current_url()),
         ), $extra);
-        return wp_nonce_url(add_query_arg($args, admin_url('admin-post.php')), self::ACTION . '_' . $do);
+        return wp_nonce_url(add_query_arg($args, admin_url('admin-post.php')), self::ACTION);
     }
 
     private static function current_url() {
@@ -470,11 +470,11 @@ class SSPA_Admin_Bar {
     // ---------------------------------------------------------------- handler
 
     public static function handle() {
-        $do = isset($_GET['do']) ? sanitize_key(wp_unslash($_GET['do'])) : '';
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('You do not have permission to do that.', 'super-speedy-performance-analysis'), 403);
         }
-        check_admin_referer(self::ACTION . '_' . $do);
+        check_admin_referer(self::ACTION);
+        $do = isset($_GET['do']) ? sanitize_key(wp_unslash($_GET['do'])) : '';
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Input sanitisation is followed by esc_url_raw and wp_validate_redirect before any redirect.
         $return = isset($_GET['sspa_return']) ? esc_url_raw(wp_unslash($_GET['sspa_return'])) : admin_url();
@@ -518,7 +518,7 @@ class SSPA_Admin_Bar {
                 $message = __('Unknown action.', 'super-speedy-performance-analysis');
         }
 
-        set_transient('sspa_bar_notice_' . get_current_user_id(), $message, 60);
+        set_transient('sspa_bar_notice_' . get_current_user_id(), array('message' => $message, 'return' => $return), 60);
         wp_safe_redirect($return);
         exit;
     }
@@ -540,14 +540,29 @@ class SSPA_Admin_Bar {
             : __('Nothing stored for this page.', 'super-speedy-performance-analysis');
     }
 
+    /**
+     * The result of the administrator's own toolbar action, shown once, only on the admin
+     * screen the action returned to (front-end actions show nothing in wp-admin later).
+     */
     public static function result_notice() {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || !current_user_can('manage_options')) {
+            return;
+        }
         $key = 'sspa_bar_notice_' . get_current_user_id();
-        $message = get_transient($key);
-        if (!$message) {
+        $result = get_transient($key);
+        if (!is_array($result) || empty($result['message']) || empty($result['return'])) {
+            return;
+        }
+        $here = wp_parse_url(self::current_url());
+        $there = wp_parse_url($result['return']);
+        $same = isset($here['path'], $there['path']) && $here['path'] === $there['path']
+            && (isset($here['query']) ? $here['query'] : '') === (isset($there['query']) ? $there['query'] : '');
+        if (!$same) {
             return;
         }
         delete_transient($key);
-        printf('<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html($message));
+        printf('<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html($result['message']));
     }
 
     public static function styles() {

@@ -95,9 +95,8 @@ The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/ssp
 Traffic recording installs the fixed `wp-content/mu-plugins/sspa-traffic-observer.php` only while recording is enabled.
 Network-wide profiler changes require a network administrator on multisite; Traffic recording is unavailable on multisite.
 
-Non-PHP files live in `uploads/super-speedy-performance-analysis/`: `traffic-config.json` and `sspa-traffic-observer.stopped`, plus temporary traffic-config publication files.
-The non-public `sspa-traffic-authority.php` starts with an exit guard and stores JSON after it; it uses a locked stable inode to prevent recording after deactivation and is removed on uninstall.
-Upgrades migrate the old authority from mu-plugins; uninstall also removes legacy authority and stop-marker data there.
+Traffic data files live in `uploads/super-speedy-performance-analysis/`, which is closed to direct web access (`.htaccess` and an empty `index.html`): `traffic-config.json`, `sspa-traffic-observer.stopped`, temporary traffic-config publication files, and the empty lock file `sspa-traffic.lock`, which stops recording from continuing after deactivation. The recording on/off state is stored in the database.
+Upgrades move the state from older authority files into the database and delete them; uninstall removes the folder's files and the option.
 Recovery can restore `db.php.sspa-hold` and `object-cache.php.sspa-hold` left by older versions; this version never creates those holds.
 WP-CLI exports print to stdout; redirect output in your shell to save it.
 
@@ -114,6 +113,13 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.53.1 (26th October 2026) =
+* An analysis now starts even when WordPress will not save the synthetic test customer; only the logged-in customer pages are skipped, and the run says why.
+* The plugin-change notice now appears only on the Plugins, Updates and Performance Analysis screens, and can be dismissed.
+* The front-end analysis panels no longer show a "Powered by" credit or a link to superspeedyplugins.com.
+* Traffic recording now keeps its on/off state in the database instead of a file, and its uploads folder is closed to direct web access.
+* Admin actions now check permissions and their security token before reading any request values.
 
 = 0.53.0 (25th October 2026) =
 * A plugin-change notice could stop wp-admin pages loading; it no longer creates or edits users while showing.

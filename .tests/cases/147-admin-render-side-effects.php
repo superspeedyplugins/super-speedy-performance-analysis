@@ -54,6 +54,7 @@ $urls = array(
     home_url('/'),
 );
 $notice_seen = false;
+$notice_on = array();
 foreach ($urls as $url) {
     $response = wp_remote_get($url, array('cookies' => $cookies, 'timeout' => 60, 'redirection' => 0));
     $code = is_wp_error($response) ? $response->get_error_message() : wp_remote_retrieve_response_code($response);
@@ -63,9 +64,12 @@ foreach ($urls as $url) {
     sspa_147_t(200 === $code && $whole, "$url answers 200 with a whole page (got $code)");
     if (false !== strpos($body, 'plugin change was detected') || false !== strpos($body, 'plugin changes were detected')) {
         $notice_seen = true;
+        $notice_on[] = $url;
     }
 }
 sspa_147_t($notice_seen, 'the change-set notice is still shown');
+// wp.org Guideline 11: the notice belongs on the Plugins screen, not on every admin screen.
+sspa_147_t(array(admin_url('plugins.php')) === $notice_on, 'the change-set notice is shown on the Plugins screen only (shown on: ' . implode(', ', $notice_on) . ')');
 clearstatcache();
 $new_log = file_exists($log_file) ? (string) file_get_contents($log_file, false, null, $log_start) : '';
 $pa_lines = array_filter(explode("\n", $new_log), static function($line) {
@@ -80,6 +84,22 @@ sspa_147_t($users_before === (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->
 // --- The analysis that needs the account reports the refusal in its own result ------------
 $again = SSPA_Auth::fresh_test_customer();
 sspa_147_t(is_wp_error($again) && false !== strpos($again->get_error_message(), 'already used'), 'fresh_test_customer returns the real WordPress error, not an exception (' . (is_wp_error($again) ? $again->get_error_message() : var_export($again, true)) . ')');
+
+// Dave, 26 October 2026: the analysis still starts. Only the logged-in customer pages are
+// skipped, and the run says why, with WordPress's own reason.
+$active_before = SSPA_Run_Controller::active_run_id();
+if ($active_before) { SSPA_Run_Controller::cancel($active_before); }
+$run = SSPA_Run_Controller::start(array('type' => 'spot', 'page_keys' => array('home', 'customer-account'), 'user_id' => 1));
+sspa_147_t(!is_wp_error($run) && $run > 0, 'an analysis starts although the synthetic customer cannot be saved (' . (is_wp_error($run) ? $run->get_error_message() : 'run #' . (int) $run) . ')');
+if (!is_wp_error($run) && $run > 0) {
+    $queue = SSPA_Run_Queue::get($run);
+    $variants = is_array($queue) ? array_unique(wp_list_pluck($queue['jobs'], 'variant')) : array();
+    $keys = is_array($queue) ? wp_list_pluck($queue['jobs'], 'page_key') : array();
+    sspa_147_t(in_array('home', $keys, true) && !in_array('customer', $variants, true), 'the run measures the visitor page and skips only the customer page (' . implode(', ', $keys) . ')');
+    $status = SSPA_Run_Controller::status($run);
+    sspa_147_t(false !== strpos((string) $status['customer_pages_skipped'], 'customer pages were skipped') && false !== strpos((string) $status['customer_pages_skipped'], 'already used'), 'the run status tells the user why, in WordPress\'s words: ' . $status['customer_pages_skipped']);
+    SSPA_Run_Controller::cancel($run);
+}
 
 // Once the real user moves off the address, the same explicit entry point succeeds. The
 // holder stays on the site (renamed address) as evidence; later cases need no clash.

@@ -58,7 +58,7 @@ const {
     ]);
     await page.waitForLoadState("networkidle");
     expect(json(`echo wp_json_encode(wp_cache_get('sspa_journey_probe', 'sspa_journey'));`)).toBe(false);
-    expect(json(`echo wp_json_encode(get_transient('sspa_bar_notice_1'));`)).toBe("Flushed the object cache.");
+    expect(json(`$n = get_transient('sspa_bar_notice_1'); echo wp_json_encode(is_array($n) ? $n['message'] : $n);`)).toBe("Flushed the object cache.");
     console.log("PASS admin-bar cache control flushed the object cache and reported it");
 
     // 3. The profile panel from the Pages tab: attribution switching, stored then fresh,

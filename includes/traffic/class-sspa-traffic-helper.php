@@ -93,7 +93,7 @@ class SSPA_Traffic_Helper {
         if (class_exists('SSPA_Ajax_Profile') && SSPA_Ajax_Profile::$pending) { $safe['ajax_profile'] = SSPA_Ajax_Profile::$pending; }
         $content = str_replace('%%SSPA_PLUGIN_DIR%%', addslashes(trailingslashit(SSPA_PLUGIN_DIR)), $template);
         $config_path = self::config_path();
-        if (!wp_mkdir_p(dirname($config_path))) {
+        if (!self::data_dir()) {
             return new WP_Error('sspa_traffic_config_dir', __('Could not create the traffic configuration directory.', 'super-speedy-performance-analysis'));
         }
         $json = wp_json_encode($safe);
@@ -114,6 +114,27 @@ class SSPA_Traffic_Helper {
             @opcache_invalidate(self::path(), true);
         }
         return true;
+    }
+
+    /**
+     * This plugin's private folder under uploads, created on first use and closed to direct
+     * web access (Apache; other servers rely on the files' 0600 mode and unguessable names).
+     */
+    public static function data_dir() {
+        $dir = dirname(self::config_path());
+        if (!is_dir($dir) && !wp_mkdir_p($dir)) {
+            return false;
+        }
+        $guards = array(
+            '.htaccess' => "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n",
+            'index.html' => '',
+        );
+        foreach ($guards as $name => $content) {
+            if (!is_file($dir . '/' . $name) && !SSPA_Filesystem::put_contents($dir . '/' . $name, $content, 0644)) {
+                return false;
+            }
+        }
+        return $dir;
     }
 
     public static function config_path() {

@@ -8,7 +8,7 @@
 
 // TEMPLATE: placeholders are replaced at install time by SSPA_Helper_Files.
 if (!defined('ABSPATH')) {
-    return;
+    exit;
 }
 if (!function_exists('sspa_sanitize_early_token')) {
     function sspa_sanitize_early_token($value) {

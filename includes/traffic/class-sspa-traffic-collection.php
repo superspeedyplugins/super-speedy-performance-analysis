@@ -403,7 +403,7 @@ class SSPA_Traffic_Collection {
         // and this directory cannot create it. Do not make ordinary plugin deactivation
         // depend on an unused feature's filesystem permissions. A writable directory
         // must still take authority: the first collection could be starting concurrently.
-        if (!file_exists(SSPA_Traffic_Authority::path()) && !file_exists(SSPA_Traffic_Helper::path())
+        if (!SSPA_Traffic_Authority::exists() && !file_exists(SSPA_Traffic_Helper::path())
             && is_dir(SSPA_MU_DIR) && !wp_is_writable(SSPA_MU_DIR)) {
             return self::finish_deactivation(false);
         }

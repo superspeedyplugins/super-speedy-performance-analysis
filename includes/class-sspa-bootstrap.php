@@ -54,6 +54,7 @@ class SSPA_Bootstrap {
         add_action('admin_init', array(__CLASS__, 'privacy_policy'));
         add_action('admin_notices', array('SSPA_Mail', 'notice'));
         add_action('admin_notices', array('SSPA_Install', 'upgrade_notice'));
+        add_action('admin_notices', array('SSPA_Helper_Files', 'restore_notice'));
 
         if (SSPA_DB_VERSION !== get_option('sspa_db_version') || SSPA_VERSION !== get_option('sspa_behaviour_version')) {
             add_action('admin_init', array('SSPA_Install', 'admin_upgrade'));

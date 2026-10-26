@@ -176,14 +176,26 @@ class SSPA_Helper_Files {
             return;
         }
         if (!$active) {
-            $restored = self::restore_legacy_db_hold();
-            add_action('admin_notices', function () use ($restored) {
-                $msg = $restored
-                    ? __('Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored.', 'super-speedy-performance-analysis')
-                    : __('Super Speedy Performance Analysis: could not restore your original db.php drop-in (db.php.sspa-hold still exists in wp-content). Please restore it manually.', 'super-speedy-performance-analysis');
-                echo '<div class="notice notice-' . ($restored ? 'warning' : 'error') . '"><p>' . esc_html($msg) . '</p></div>';
-            });
+            update_option('sspa_dropin_restore_notice', self::restore_legacy_db_hold() ? 'restored' : 'failed', false);
         }
+    }
+
+    /** The drop-in recovery result, shown once on the Plugins screen or Performance Analysis's own screen. */
+    public static function restore_notice() {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!current_user_can('manage_options') || !$screen || !('plugins' === $screen->id || preg_match('/(?:^|_page_)sspa$/', $screen->id))) {
+            return;
+        }
+        $result = get_option('sspa_dropin_restore_notice');
+        if (!$result) {
+            return;
+        }
+        delete_option('sspa_dropin_restore_notice');
+        $restored = 'restored' === $result;
+        $msg = $restored
+            ? __('Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored.', 'super-speedy-performance-analysis')
+            : __('Super Speedy Performance Analysis: could not restore your original db.php drop-in (db.php.sspa-hold still exists in wp-content). Please restore it manually.', 'super-speedy-performance-analysis');
+        echo '<div class="notice notice-' . ($restored ? 'warning' : 'error') . ' is-dismissible"><p>' . esc_html($msg) . '</p></div>';
     }
 
     /** Recovery only: return object-cache.php held by versions before 0.43.4. */

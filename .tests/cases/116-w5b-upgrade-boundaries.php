@@ -31,17 +31,35 @@ try {
 $uploads=wp_upload_dir();
 $r=wp_remote_get(str_replace($uploads['basedir'],$uploads['baseurl'],SSPA_Traffic_Authority::path()),array('timeout'=>15));
 w5b_t(''===wp_remote_retrieve_body($r),'authority data cannot be read over HTTP');
+// wp.org review round 1: state lives in the database; the uploads lock file stays empty and no PHP is written there.
+clearstatcache();
+$data_dir=dirname(SSPA_Traffic_Authority::path());
+w5b_t(is_file(SSPA_Traffic_Authority::path())&&0===filesize(SSPA_Traffic_Authority::path())&&!glob($data_dir.'/*.php'),'the authority lock file is empty and no PHP file is written to uploads');
+w5b_t(is_array(get_option('sspa_traffic_authority'))&&is_file($data_dir.'/.htaccess')&&is_file($data_dir.'/index.html'),'authority state is a database option and the data folder is closed to direct access');
 
 // Reproduce the old disabled authority state using real deactivation state.
 wp_set_current_user(1);
 SSPA_Install::deactivate();
-$raw=file_get_contents(SSPA_Traffic_Authority::path());
-$state=substr($raw,strlen(SSPA_Traffic_Authority::GUARD));
+$state=wp_json_encode(get_option('sspa_traffic_authority'));
 $legacy=SSPA_MU_DIR.'/sspa-traffic-authority.json';
-file_put_contents($legacy,$state);unlink(SSPA_Traffic_Authority::path());
+file_put_contents($legacy,$state);delete_option('sspa_traffic_authority');unlink(SSPA_Traffic_Authority::path());
 update_option('sspa_behaviour_version','0.43.4');
 SSPA_Install::activate();SSPA_Install::maybe_upgrade();
 try {$start=SSPA_Traffic_Collection::start('1h','test');}
 catch(Throwable $error){$start=new WP_Error('exception',$error->getMessage());}
 echo (is_wp_error($start)?'FAIL: ':'PASS: ').'legacy disabled authority can start Traffic after reactivation'.(is_wp_error($start)?': '.$start->get_error_message():'')."\n";
+if(!is_wp_error($start))SSPA_Traffic_Collection::stop((int)$start['collection']['id'],true);
+
+// The 0.53.0 uploads authority (a PHP-guarded state file) migrates into the database and is removed.
+SSPA_Install::deactivate();
+$state=get_option('sspa_traffic_authority');
+$legacy_php=dirname(SSPA_Traffic_Authority::path()).'/sspa-traffic-authority.php';
+file_put_contents($legacy_php,"<?php exit; ?>\n".wp_json_encode($state));delete_option('sspa_traffic_authority');
+update_option('sspa_behaviour_version','0.53.0');
+SSPA_Install::activate();SSPA_Install::maybe_upgrade();
+clearstatcache();
+w5b_t(!file_exists($legacy_php)&&is_array(get_option('sspa_traffic_authority')),'the 0.53.0 uploads authority file migrates into the database and is removed');
+try {$start=SSPA_Traffic_Collection::start('1h','test');}
+catch(Throwable $error){$start=new WP_Error('exception',$error->getMessage());}
+w5b_t(!is_wp_error($start),'Traffic starts after the 0.53.0 authority migration'.(is_wp_error($start)?': '.$start->get_error_message():''));
 if(!is_wp_error($start))SSPA_Traffic_Collection::stop((int)$start['collection']['id'],true);

@@ -1,6 +1,10 @@
 <?php
 defined('ABSPATH') || exit;
 
+if (!current_user_can('manage_options')) {
+    return;
+}
+
 $sspa_last_run_id = SSPA_Plugins_Table::latest_run_id();
 if ($sspa_last_run_id) {
     SSPA_Share_Prompt::render();
