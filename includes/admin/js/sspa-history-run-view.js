@@ -44,7 +44,7 @@
 			status.attr('role', 'alert').text(message || sspa_history_run.failed);
 			$('<button>', { type: 'button', class: 'button sspa-history-retry', text: sspa_history_run.retry }).attr('data-run-id', id).appendTo(view);
 		}
-		request = $.post(ajaxurl, { action: 'sspa_history_run', nonce: sspa_admin.nonce, run_id: id })
+		request = $.post(ajaxurl, { action: 'sspa_history_run', nonce: sspa_admin.nonce, run_id: id, sspa_compare_page: new URL(window.location.href).searchParams.get('sspa_compare_page') || 1 })
 			.done(function (response) {
 				if (token !== serial) { return; }
 				if (!response || !response.success || !response.data || String(response.data.run_id) !== String(id)) {

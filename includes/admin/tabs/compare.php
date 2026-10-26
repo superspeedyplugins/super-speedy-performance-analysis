@@ -2,13 +2,25 @@
 defined('ABSPATH') || exit;
 
 global $wpdb;
-$sspa_runs = SSPA_History_Series::recent_runs();
+// 50 runs per page (SSPA_History_Series::PAGE_SIZE). The page arrives in the admin URL, or in
+// the nonce-checked sspa_render_tab POST when the tab loads over AJAX. Read-only and clamped.
+// phpcs:disable WordPress.Security.NonceVerification -- read-only page number; the AJAX loader checks its nonce.
+$sspa_run_total = SSPA_History_Series::run_count();
+$sspa_page_count = max(1, (int) ceil($sspa_run_total / SSPA_History_Series::PAGE_SIZE));
+$sspa_compare_page = isset($_POST['sspa_compare_page']) ? absint($_POST['sspa_compare_page']) : (isset($_GET['sspa_compare_page']) ? absint($_GET['sspa_compare_page']) : 1);
+// phpcs:enable WordPress.Security.NonceVerification
+$sspa_compare_page = min(max(1, $sspa_compare_page), $sspa_page_count);
+$sspa_page_rows = SSPA_History_Series::run_page($sspa_compare_page);
+$sspa_older_run = count($sspa_page_rows) > SSPA_History_Series::PAGE_SIZE ? $sspa_page_rows[SSPA_History_Series::PAGE_SIZE] : null;
+$sspa_runs = array_slice($sspa_page_rows, 0, SSPA_History_Series::PAGE_SIZE);
 $sspa_optin = SSPA_Submitter::opted_in();
 $sspa_remove_on_uninstall = (bool) sspa_get_option('remove_data_on_uninstall');
 $sspa_update_detection = (bool) sspa_get_option('plugin_update_detection');
 $sspa_comparable_runs = $sspa_runs;
+// Before also offers the next older run, so every adjacent pair is reachable from some page.
+$sspa_before_options = $sspa_older_run ? array_merge($sspa_runs, array($sspa_older_run)) : $sspa_runs;
 $sspa_after_run_id = $sspa_comparable_runs ? (int) $sspa_comparable_runs[0]['id'] : 0;
-$sspa_before_run_id = isset($sspa_comparable_runs[1]) ? (int) $sspa_comparable_runs[1]['id'] : 0;
+$sspa_before_run_id = isset($sspa_before_options[1]) ? (int) $sspa_before_options[1]['id'] : 0;
 $sspa_history_series = $sspa_after_run_id ? SSPA_History_Series::build($sspa_after_run_id, 'request_wall_ms', $sspa_before_run_id, $sspa_before_run_id ? 'pair' : 'setup') : null;
 
 // Plain names for the analysis types, so the share control says what it would actually send.
@@ -52,6 +64,20 @@ SSPA_Share_Prompt::render();
 </div>
 <div id="sspa-history-saved-run" hidden aria-live="polite"></div>
 <div id="sspa-history-list">
+<?php if ($sspa_page_count > 1) : ?>
+    <nav class="sspa-compare-pager" aria-label="<?php esc_attr_e('Saved runs pages', 'super-speedy-performance-analysis'); ?>" data-page="<?php echo (int) $sspa_compare_page; ?>">
+        <?php if ($sspa_compare_page > 1) : ?>
+            <a class="button sspa-compare-page-link sspa-compare-newer" data-compare-page="<?php echo (int) ($sspa_compare_page - 1); ?>" href="<?php echo esc_url(SSPA_History_Run_View::url(0, $sspa_compare_page - 1)); ?>"><?php esc_html_e('Newer runs', 'super-speedy-performance-analysis'); ?></a>
+        <?php endif; ?>
+        <span class="sspa-compare-page-status"><?php
+            /* translators: 1: current page number, 2: number of pages, 3: number of saved runs */
+            echo esc_html(sprintf(__('Page %1$d of %2$d (%3$d saved runs)', 'super-speedy-performance-analysis'), $sspa_compare_page, $sspa_page_count, $sspa_run_total));
+        ?></span>
+        <?php if ($sspa_older_run) : ?>
+            <a class="button sspa-compare-page-link sspa-compare-older" data-compare-page="<?php echo (int) ($sspa_compare_page + 1); ?>" href="<?php echo esc_url(SSPA_History_Run_View::url(0, $sspa_compare_page + 1)); ?>"><?php esc_html_e('Older runs', 'super-speedy-performance-analysis'); ?></a>
+        <?php endif; ?>
+    </nav>
+<?php endif; ?>
 <?php
 if ($sspa_comparable_runs) : ?>
     <section class="sspa-history-compare-picker">
@@ -60,7 +86,7 @@ if ($sspa_comparable_runs) : ?>
         <div class="sspa-history-compare-controls">
             <label><?php esc_html_e('Before', 'super-speedy-performance-analysis'); ?>
                 <select id="sspa-history-before">
-                    <?php foreach ($sspa_comparable_runs as $sspa_run) : ?>
+                    <?php foreach ($sspa_before_options as $sspa_run) : ?>
                         <option value="<?php echo (int) $sspa_run['id']; ?>" <?php selected($sspa_before_run_id, (int) $sspa_run['id']); ?>>#<?php echo (int) $sspa_run['id']; ?> — <?php echo esc_html($sspa_run['started']); ?> (<?php echo esc_html($sspa_run['run_type']); ?>)</option>
                     <?php endforeach; ?>
                 </select>
@@ -164,7 +190,7 @@ if (!$sspa_runs) : ?>
             $sspa_shareable = 'done' === $sspa_run['status'] || ('failed' === $sspa_run['status'] && 'checkout' === $sspa_run['run_type']);
             ?>
             <tr>
-                <td><a class="sspa-history-run-link" data-run-id="<?php echo (int) $sspa_run['id']; ?>" href="<?php echo esc_url(SSPA_History_Run_View::url((int) $sspa_run['id'])); ?>">#<?php echo (int) $sspa_run['id']; ?></a></td>
+                <td><a class="sspa-history-run-link" data-run-id="<?php echo (int) $sspa_run['id']; ?>" href="<?php echo esc_url(SSPA_History_Run_View::url((int) $sspa_run['id'], $sspa_compare_page)); ?>">#<?php echo (int) $sspa_run['id']; ?></a></td>
                 <td><?php echo esc_html($sspa_run['run_type']); ?></td>
                 <td><?php echo esc_html($sspa_run['started']); ?></td>
                 <td><?php echo esc_html($sspa_run['status']); ?></td>
@@ -221,6 +247,21 @@ if (!$sspa_runs) : ?>
         </tbody>
     </table>
     </div>
+<?php if ($sspa_page_count > 1) : ?>
+    <nav class="sspa-compare-pager" aria-label="<?php esc_attr_e('Saved runs pages', 'super-speedy-performance-analysis'); ?>" data-page="<?php echo (int) $sspa_compare_page; ?>">
+        <?php if ($sspa_compare_page > 1) : ?>
+            <a class="button sspa-compare-page-link sspa-compare-newer" data-compare-page="<?php echo (int) ($sspa_compare_page - 1); ?>" href="<?php echo esc_url(SSPA_History_Run_View::url(0, $sspa_compare_page - 1)); ?>"><?php esc_html_e('Newer runs', 'super-speedy-performance-analysis'); ?></a>
+        <?php endif; ?>
+        <span class="sspa-compare-page-status"><?php
+            /* translators: 1: current page number, 2: number of pages, 3: number of saved runs */
+            echo esc_html(sprintf(__('Page %1$d of %2$d (%3$d saved runs)', 'super-speedy-performance-analysis'), $sspa_compare_page, $sspa_page_count, $sspa_run_total));
+        ?></span>
+        <?php if ($sspa_older_run) : ?>
+            <a class="button sspa-compare-page-link sspa-compare-older" data-compare-page="<?php echo (int) ($sspa_compare_page + 1); ?>" href="<?php echo esc_url(SSPA_History_Run_View::url(0, $sspa_compare_page + 1)); ?>"><?php esc_html_e('Older runs', 'super-speedy-performance-analysis'); ?></a>
+        <?php endif; ?>
+    </nav>
+<?php endif; ?>
+
     <div class="sspa-payload-summary" style="display:none"></div>
     <pre class="sspa-payload-preview" style="display:none;max-height:420px;overflow:auto;background:#fff;padding:12px;border:1px solid #dcdcde;"></pre>
 <?php endif; ?>

@@ -5,7 +5,7 @@ PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "$PLUGIN_DIR/.tests/env.sh"
 
 SSPA_SCENARIO="$SSPA_SCENARIO" "$PLUGIN_DIR/.tests/run-tests.sh" 66-history-request-diagnostics || exit 1
-SSPA_E2E_DIAGNOSTIC_RUN="$(cli eval '$runs = SSPA_History_Series::recent_runs(); echo (int) $runs[0]["id"];')"
+SSPA_E2E_DIAGNOSTIC_RUN="$(cli eval 'echo SSPA_History_Series::latest_run_id();')"
 export SSPA_E2E_DIAGNOSTIC_RUN
 SSPA_SCENARIO="$SSPA_SCENARIO" "$PLUGIN_DIR/.tests/run-tests.sh" 62-history-setup-series || exit 1
 

@@ -66,7 +66,11 @@ try {
     $page = array_values(array_filter($doc['pages'], function ($p) { return $p['page_key'] === 'error-page'; }))[0];
     sspa_78_check(array(450.0, 0.0) === array_column($page['current']['points'], 'value'), 'HTTP error timing and valid zero are retained');
     sspa_78_check('http_error' === $page['current']['points'][0]['state'] && count($page['current']['faults']) === 1, 'error stays labelled and missing sample stays missing');
+    // Compare shows 50 runs per page (0.53.1); an old run stays selectable on its own page.
+    $newer = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE id > %d', SSPA_Schema::table('runs'), $before));
+    $_GET['sspa_compare_page'] = (int) floor($newer / 50) + 1;
     ob_start(); include dirname(__DIR__, 2) . '/includes/admin/tabs/compare.php'; $html = ob_get_clean();
-    sspa_78_check(strpos($html, 'value="' . $before . '"') !== false, 'picker includes old retained run');
+    unset($_GET['sspa_compare_page']);
+    sspa_78_check(strpos($html, 'value="' . $before . '"') !== false, 'picker includes old retained run on its Compare page');
 } catch (Throwable $error) { sspa_78_check(false, $error->getMessage()); }
 if ($GLOBALS['sspa_78_failures']) { exit(1); }
