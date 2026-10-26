@@ -230,6 +230,8 @@ file_put_contents($update_fixture, "<?php\n/**\n * Plugin Name: SSPA History Upd
 wp_clean_plugins_cache(true);
 SSPA_Change_Set::record('sspa-history-update-fixture/sspa-history-update-fixture.php', 'updated', '1.2.0', '1.3.0');
 update_option('sspa_history_fixture_variant', 'after', false);
+// Re-arm for the after run: on a busy machine the before run alone can outlast the first 120 s.
+update_option('sspa_history_fixture_armed', time() + 120, false);
 update_option('sspa_history_config_variant', 'after', false);
 $notice_user_id = get_current_user_id();
 wp_set_current_user(1);
@@ -439,9 +441,13 @@ sspa_history_t(
         && false !== strpos($html, 'Preview privacy-safe evidence'),
     'History renderer exposes the response headline, exact setup changes and preview-first export'
 );
+// The tab renders for an administrator (its real entry point is the admin-only sspa_render_tab).
+$sspa_tab_user = get_current_user_id();
+wp_set_current_user(1);
 ob_start();
 include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $history_html = ob_get_clean();
+wp_set_current_user($sspa_tab_user);
 sspa_history_t(false !== strpos($history_html, 'sspa-plugin-update-detection'), 'History exposes the default-enabled update comparison setting');
 sspa_history_t(false !== strpos($history_html, 'sspa-history-before') && false !== strpos($history_html, 'sspa-history-after'), 'History exposes explicit Before and After selectors');
 

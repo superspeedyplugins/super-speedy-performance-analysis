@@ -89,6 +89,10 @@ foreach (array(false, 'filtered', 'unfiltered') as $replacement) {
     else w1_mail_t(($capture['mail']['total_construct_ms'] ?? 0) > 0, 'core mail send time is measured');
 
     foreach (array('post', 'page', 'product', 'order', 'w1_book') as $type) {
+        // SSPA_Auth::cookies_for() lasts 300 seconds; this case can run longer than that on a busy
+        // machine, after which the editor answers 302 and REST saves 403. Fresh cookies per object.
+        $cookies = SSPA_Auth::cookies_for('admin', 1);
+        $_COOKIE[LOGGED_IN_COOKIE] = $cookies[LOGGED_IN_COOKIE];
         // Old launch accepted real IDs. Supplying one must now create a different owned object.
         $real = $type === 'order' ? wc_create_order() : wp_insert_post(array('post_type' => $type, 'post_status' => 'draft', 'post_title' => 'W1 real untouched content', 'post_author' => 1));
         $real_id = is_object($real) ? $real->get_id() : $real;

@@ -134,6 +134,15 @@ add_action('template_redirect', function () {
 }, PHP_INT_MAX);
 PHP
 );
+// A cached runtime flag can outlive its hold record when another process removed it (case 60's
+// killed controller). One ordinary request must heal the flag, not keep checking on every request.
+delete_option('sspa_dropin_hold');
+delete_option('sspa_oc_hold');
+update_option('sspa_runtime_flags', array_merge((array) get_option('sspa_runtime_flags', array()), array('sspa_dropin_hold' => true)), true);
+wp_remote_get(home_url('/'), array('timeout' => 20));
+wp_cache_delete('alloptions', 'options');
+$sspa_flags_after = get_option('sspa_runtime_flags');
+sspa_hardening_t(is_array($sspa_flags_after) && empty($sspa_flags_after['sspa_dropin_hold']), 'a stale hold flag with no hold record is cleared by the next ordinary request');
 $response = wp_remote_get(add_query_arg('sspa_bootstrap_probe', '1', home_url('/')), array('timeout' => 20));
 $loaded = !is_wp_error($response) ? json_decode(wp_remote_retrieve_body($response), true) : null;
 $loaded_debug = is_wp_error($response)
@@ -148,9 +157,13 @@ sspa_hardening_t(
 );
 
 // History exposes the persisted uninstall choice in the requested location.
+// The tab renders for an administrator (its real entry point is the admin-only sspa_render_tab).
+$sspa_tab_user = get_current_user_id();
+wp_set_current_user(1);
 ob_start();
 include SSPA_PLUGIN_DIR . 'includes/admin/tabs/compare.php';
 $history = ob_get_clean();
+wp_set_current_user($sspa_tab_user);
 sspa_hardening_t(false !== strpos($history, 'sspa-remove-data-on-uninstall'), 'History renders the delete-on-uninstall toggle');
 
 if ($GLOBALS['sspa_hardening_fails']) {
