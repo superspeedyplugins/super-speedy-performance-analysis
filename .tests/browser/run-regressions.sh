@@ -12,7 +12,7 @@ matched=0
 if [ -z "${1:-}" ]; then
     bash "$PLUGIN_DIR/.tests/browser/run-history-chart.sh" > "$SSPA_FLEET_OUTPUT/history-chart.log" 2>&1 || failed=$((failed + 1))
 fi
-for check in actionable-summary cache-controls cache-performance workflows-private profiler-consent derived-evidence browser-transport loopback-fallback quick-comparison admin-journey measurement measurement-error report-panels report-mobile history-mobile admin-mobile tab-retry shared-link translations checkout-translations checkout-flow traffic-workflow sharing; do
+for check in actionable-summary cache-controls cache-performance workflows-private profiler-consent derived-evidence browser-transport loopback-fallback quick-comparison admin-journey admin-lazy-panel measurement measurement-error report-panels report-mobile history-mobile admin-mobile tab-retry shared-link translations checkout-translations checkout-flow traffic-workflow sharing; do
     if [ -n "${1:-}" ] && [[ "$check" != *"$1"* ]]; then continue; fi
     matched=$((matched + 1))
     if [ "$check" = admin-mobile ]; then SSPA_SITE_DIR="$SSPA_SITE_DIR" PLUGIN_DIR="$PLUGIN_DIR" bash "$PLUGIN_DIR/.tests/lib/install-rtl-locale.sh" || exit 1; fi

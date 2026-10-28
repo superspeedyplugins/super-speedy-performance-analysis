@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.57.1 (28th October 2026) =
+* "Analyse this page" is back in the admin bar on every wp-admin screen, not only Performance Analysis's own; the panel loads when you first click it.
+
 = 0.57.0 (26th October 2026) =
 * Merge of 0.56.1 into the main release; no further change.
 

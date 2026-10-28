@@ -21,7 +21,16 @@ class SSPA_Adhoc {
     }
 
     private static function available() {
-        return is_admin_bar_showing() && current_user_can('manage_options') && (!is_admin() || self::on_settings_page());
+        return is_admin_bar_showing() && current_user_can('manage_options');
+    }
+
+    /**
+     * Any wp-admin screen except our own: the panel's files are registered, not enqueued, and
+     * load on the first click (see lazy_loader()). Keeps plugin files off core screens (wp.org
+     * L2) without taking "Analyse this page" away from every other admin page.
+     */
+    private static function lazy_screen() {
+        return is_admin() && !self::on_settings_page();
     }
 
     /** Our own settings page, where the Pages tab opens the same panel from a row click. */
@@ -84,8 +93,23 @@ class SSPA_Adhoc {
         if (true !== $editor_profile && !self::panel_context()) {
             return;
         }
-        wp_enqueue_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
-        wp_enqueue_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
+        if (wp_script_is('sspa-adhoc', 'registered')) {
+            // Registered lazily earlier on this screen; Analyse update/save needs it now.
+            if (true === $editor_profile) {
+                wp_enqueue_style('sspa-adhoc');
+                wp_enqueue_script('sspa-adhoc');
+            }
+            return;
+        }
+        wp_register_style('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-adhoc.css', array(), sspa_asset_version('includes/admin/css/sspa-adhoc.css'));
+        wp_register_script('sspa-adhoc', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-adhoc.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-adhoc.js'), true);
+        if (true === $editor_profile || !self::lazy_screen()) {
+            wp_enqueue_style('sspa-adhoc');
+            wp_enqueue_script('sspa-adhoc');
+        } elseif (!has_action('admin_enqueue_scripts', array(__CLASS__, 'lazy_loader'))) {
+            // Late, so an eager enqueue on the same screen (Analyse update/save) wins.
+            add_action('admin_enqueue_scripts', array(__CLASS__, 'lazy_loader'), 999);
+        }
         wp_set_script_translations('sspa-adhoc', 'super-speedy-performance-analysis');
         wp_localize_script('sspa-adhoc', 'sspa_adhoc', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
@@ -161,6 +185,126 @@ class SSPA_Adhoc {
             'mail_warning' => SSPA_Mail::warning(),
             ));
         }
+    }
+
+    /**
+     * The first-click loader for lazy screens. Our registered files, in dependency order with
+     * their localised data, inline code and translations, go into an inline manifest on a
+     * handle with no file; core dependencies (jQuery, wp-i18n) are enqueued as usual. A click
+     * on "Analyse this page" or the PA menu, or ?sspa_open=page, injects the files and then
+     * hands the click to sspa-adhoc.js's own handler.
+     */
+    public static function lazy_loader() {
+        if (wp_script_is('sspa-adhoc', 'enqueued') || !self::available()) {
+            return;
+        }
+        $scripts = wp_scripts();
+        $ours = array();
+        $core = array();
+        self::lazy_order('sspa-adhoc', $scripts, $ours, $core);
+        $steps = array();
+        foreach ($ours as $handle) {
+            $dep = $scripts->registered[$handle];
+            $steps[] = array(
+                'src' => $dep->ver ? add_query_arg('ver', $dep->ver, $dep->src) : $dep->src,
+                'before' => (string) $scripts->print_translations($handle, false) . (string) $scripts->print_extra_script($handle, false) . self::lazy_inline($scripts, $handle, 'before'),
+                'after' => self::lazy_inline($scripts, $handle, 'after'),
+            );
+        }
+        $style = wp_styles()->registered['sspa-adhoc'];
+        $manifest = array(
+            'style' => add_query_arg('ver', $style->ver, $style->src),
+            'scripts' => $steps,
+            'failed' => __('The Performance Analysis panel could not be loaded. Reload the page and try again.', 'super-speedy-performance-analysis'),
+        );
+        wp_register_script('sspa-adhoc-lazy', false, array_values(array_unique($core)), SSPA_VERSION, true);
+        wp_enqueue_script('sspa-adhoc-lazy');
+        wp_add_inline_script('sspa-adhoc-lazy', '(function ($, manifest) {
+	var state = 0, waiting = [];
+	function run(code) {
+		if (code) {
+			var s = document.createElement("script");
+			s.text = code;
+			document.head.appendChild(s);
+		}
+	}
+	function load(done) {
+		if (2 === state) {
+			return done();
+		}
+		waiting.push(done);
+		if (1 === state) {
+			return;
+		}
+		state = 1;
+		var link = document.createElement("link");
+		link.rel = "stylesheet";
+		link.href = manifest.style;
+		document.head.appendChild(link);
+		var i = 0;
+		(function next() {
+			if (i === manifest.scripts.length) {
+				state = 2;
+				while (waiting.length) {
+					waiting.shift()();
+				}
+				return;
+			}
+			var step = manifest.scripts[i++], s = document.createElement("script");
+			run(step.before);
+			s.src = step.src;
+			s.onload = function () {
+				run(step.after);
+				next();
+			};
+			s.onerror = function () {
+				state = 0;
+				waiting = [];
+				window.alert(manifest.failed);
+			};
+			document.head.appendChild(s);
+		})();
+	}
+	$(document).on("click", "#wp-admin-bar-sspa-menu > a, #wp-admin-bar-sspa-adhoc > a", function (e) {
+		if (2 === state) {
+			return;
+		}
+		e.preventDefault();
+		var link = this;
+		load(function () {
+			$(link).trigger("click");
+		});
+	});
+	$(function () {
+		if (/[?&]sspa_open=page(&|$)/.test(window.location.search)) {
+			load(function () {});
+		}
+	});
+})(jQuery, ' . wp_json_encode($manifest) . ');');
+    }
+
+    /** Depth-first dependency order: our files into $ours, anything else (core) into $core. */
+    private static function lazy_order($handle, $scripts, &$ours, &$core) {
+        if (in_array($handle, $ours, true) || !isset($scripts->registered[$handle])) {
+            return;
+        }
+        $dep = $scripts->registered[$handle];
+        if (!$dep->src || 0 !== strpos($dep->src, SSPA_PLUGIN_URL)) {
+            $core[] = $handle;
+            return;
+        }
+        foreach ($dep->deps as $parent) {
+            self::lazy_order($parent, $scripts, $ours, $core);
+        }
+        $ours[] = $handle;
+    }
+
+    /** A handle's inline code for one position. get_inline_script_data() arrived in WP 6.3. */
+    private static function lazy_inline($scripts, $handle, $position) {
+        if (method_exists($scripts, 'get_inline_script_data')) {
+            return $scripts->get_inline_script_data($handle, $position);
+        }
+        return (string) $scripts->print_inline_script($handle, $position, false);
     }
 
     /**

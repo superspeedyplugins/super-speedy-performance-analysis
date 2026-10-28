@@ -53,6 +53,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/browser/run-regressions.sh tab-retry # network/server tab errors and explicit recovery
 .tests/browser/run-regressions.sh shared-link # real shared Plugin Impact link, reload and bookmark
 .tests/browser/run-regressions.sh admin-journey # admin-bar Analyse this page and cache control, attribution switching, Re-run, Escape and focus restoration
+.tests/browser/run-regressions.sh admin-lazy-panel # Analyse this page on core wp-admin screens: no panel files until the first click, which profiles that admin URL; ?sspa_open=page; editor stays eager
 .tests/run-tests.sh 82-management-from # order management records the real before-status, not a cached draft
 .tests/run-tests.sh admin-tabs # real browser URL-fragment navigation regression
 .tests/run-tests.sh 135-compare # History renamed Compare, the share panel on PA screens only, community figures fetched only on click
