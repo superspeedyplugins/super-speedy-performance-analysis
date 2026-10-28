@@ -16,6 +16,15 @@
 		return $('<span>').text(str == null ? '' : String(str)).html();
 	}
 
+	// Escaped text with each http(s) URL made a link, so a message that names a screen by its
+	// URL (Enable profiler in Tools: ...) can be followed. Sentence punctuation stays outside.
+	function linkify(str) {
+		// esc() leaves quotes alone, so a quote also ends the URL: it can never close the href.
+		return esc(str).replace(/https?:\/\/[^\s<"']*[^\s<"'.,;:!?)]/g, function (url) {
+			return '<a href="' + url + '">' + url + '</a>';
+		});
+	}
+
 	function pageUrl() {
 		return window.location.href.split('#')[0];
 	}
@@ -102,7 +111,7 @@
 	}
 
 	function renderError(msg) {
-		body('<p class="sspa-adhoc-error">' + esc(msg) + '</p><p><button type="button" class="sspa-adhoc-btn sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button></p>');
+		body('<p class="sspa-adhoc-error">' + linkify(msg) + '</p><p><button type="button" class="sspa-adhoc-btn sspa-adhoc-rerun">' + esc(sspa_adhoc.i18n.rerun) + '</button></p>');
 	}
 
 	// ---- loading the panel ----
@@ -294,7 +303,8 @@
 		openUrl: openUrl,
 		openImpactPicker: openImpactPicker,
 		openStatus: openStatus,
-		openError: openError
+		openError: openError,
+		linkify: linkify
 	};
 
 	// Deep link. Another screen - the shared Super Speedy dashboard - can send someone here

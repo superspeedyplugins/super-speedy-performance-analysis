@@ -54,7 +54,7 @@
 	}
 
 	function error(msg) {
-		body('<p class="sspa-adhoc-error sspa-adhoc-span">' + esc(msg) + '</p>' +
+		body('<p class="sspa-adhoc-error sspa-adhoc-span">' + window.sspaPanel.linkify(msg) + '</p>' +
 			('<p><button type="button" class="sspa-adhoc-btn sspa-ck-preflight">' + wp.i18n.__('Try again', 'super-speedy-performance-analysis') + '</button></p>'));
 	}
 

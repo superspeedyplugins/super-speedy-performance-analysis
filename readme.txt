@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.57.2 (28th October 2026) =
+* The Tools address in the "Enable profiler in Tools" message on the page and checkout panels is now a clickable link.
+
 = 0.57.1 (28th October 2026) =
 * "Analyse this page" is back in the admin bar on every wp-admin screen, not only Performance Analysis's own; the panel loads when you first click it.
 
