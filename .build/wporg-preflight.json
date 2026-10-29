@@ -371,11 +371,6 @@
       "reason": "The profiler needs an argument-free, depth-bounded backtrace to attribute measured work to its plugin or theme. No stack arguments are retained."
     },
     {
-      "check": "WordPress.Security.NonceVerification.Recommended",
-      "file": "traffic-observer/class-sspa-traffic-hot-path.php",
-      "reason": "The observer classifies an existing third-party request and never dispatches it or changes its authorisation. Its endpoint names are unslashed, validated and allowlisted before being stored locally."
-    },
-    {
       "check": "WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound",
       "file": "traffic-observer/class-sspa-traffic-hot-path.php",
       "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner’s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",

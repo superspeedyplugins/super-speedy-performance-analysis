@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.57.3 (29th October 2026) =
+* AJAX windows again record no observation for an admin-ajax request whose GET and POST `action` values disagree.
+
 = 0.57.2 (28th October 2026) =
 * The Tools address in the "Enable profiler in Tools" message on the page and checkout panels is now a clickable link.
 

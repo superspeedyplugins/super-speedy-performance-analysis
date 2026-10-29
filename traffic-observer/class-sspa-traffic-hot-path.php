@@ -229,10 +229,20 @@ class SSPA_Traffic_Hot_Path {
 		}
 	}
 
+	/**
+	 * One validated scalar request value. GET and POST are read separately from the raw request:
+	 * absent from both, invalid or non-scalar in either, or present in both with different values
+	 * all return '' so an ambiguous request never creates an observation. Otherwise the POST value
+	 * wins, as admin-ajax.php's own $_REQUEST read does.
+	 */
 	private static function request_scalar($key) {
-        $value = filter_var(wp_unslash($_REQUEST[$key] ?? ''), FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'))) ?: ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only observation of another plugin's request action name for opt-in Traffic statistics; validated against a strict pattern and never used to change state.
-        return is_string($value) ? $value : '';
-    }
+		$options = array('options' => array('regexp' => '/\A[A-Za-z0-9_.:-]{1,191}\z/'), 'flags' => FILTER_REQUIRE_SCALAR);
+		$get = filter_input(INPUT_GET, $key, FILTER_VALIDATE_REGEXP, $options);
+		$post = filter_input(INPUT_POST, $key, FILTER_VALIDATE_REGEXP, $options);
+		if (false === $get || false === $post || (null === $get && null === $post)) { return ''; }
+		if (null !== $get && null !== $post && !hash_equals($get, $post)) { return ''; }
+		return is_string($post) ? $post : (string) $get;
+	}
 
 	private static function arm_endpoint($identity, $hook = '') {
 		if (self::$endpoint_identity) { return; }

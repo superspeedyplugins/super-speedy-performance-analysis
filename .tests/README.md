@@ -27,6 +27,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 146-slow-query # core-executed CTE search query: every shape (like before found_rows), a plan, runnable SQL, real caller, page_url
 .tests/run-tests.sh 147-admin-render # pending change set + a synthetic account WordPress refuses to repair: ordinary admin screens and the front end load whole, no user is written, ordinary mail keeps its recipient
 .tests/run-tests.sh 148-compare-paging # Compare shows 50 runs per page: Older/Newer links over real AJAX, a page-2 pair compares, Back returns to its page; adds 57 runs per run
+.tests/run-tests.sh 149-ajax-action # real admin-ajax requests in an AJAX window: conflicting GET/POST action and an array action are not observed; agreeing, POST-only and GET-only are
 .tests/run-tests.sh 81-temp-registry # checkout temp registry survives a cross-process write before cleanup
 .tests/run-tests.sh 05-run-e2e # full baseline; installs the Home query fixture (four known queries on Home) to prove real query capture
 .tests/run-tests.sh 83-history-declared # declared expectations judge the approved HTTP response code separately from the output signature
