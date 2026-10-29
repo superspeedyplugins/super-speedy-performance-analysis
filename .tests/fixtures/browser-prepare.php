@@ -6,6 +6,14 @@ $active = SSPA_Run_Controller::active_run_id();
 if ($active) SSPA_Run_Controller::cancel($active);
 if (!username_exists('sspa-browser-customer')) wp_insert_user(array('user_login'=>'sspa-browser-customer','user_pass'=>'Synthetic-local-customer-76!','user_email'=>'browser-customer@example.invalid','role'=>'customer'));
 update_option('sspa_share_optin', false);
+// Entry state for every journey: the latest Plugin Impact Analysis summary already seen, so its
+// dialog does not cover the screen the journey is about. plugins-tab.e2e.cjs covers the dialog.
+$sspa_deep = SSPA_Report::latest_deep_run();
+if ($sspa_deep) {
+    foreach (get_users(array('capability' => 'manage_options', 'fields' => 'ID')) as $sspa_admin_id) {
+        update_user_meta((int) $sspa_admin_id, 'sspa_impact_summary_seen', (int) $sspa_deep['id']);
+    }
+}
 update_option('sspa_fleet_enabled', true);
 update_option('sspa_fleet_browser_transport', false);
 // update_option() with false on a missing option writes nothing (false equals the "missing"

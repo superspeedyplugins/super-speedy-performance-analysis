@@ -23,6 +23,10 @@ jQuery(function () {
 			change_set_id: changeSetId,
 			baseline_run_id: baselineRunId
 		}, jQuery('#sspa-run-analysis'));
+	} else {
+		// Back after a Plugin Impact Analysis finished (tab closed, reload, run finished by
+		// WP-Cron): its summary waits here until this user closes it or views the results.
+		sspa_impact_summary_show(0);
 	}
 });
 
@@ -122,12 +126,12 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 	var buttons = jQuery('#sspa_main .sspa-attrib-mode').prop('disabled', true);
 	jQuery('#sspa-attrib-wrap').css('opacity', 0.5);
 
-	jQuery.post(ajaxurl, { action: 'sspa_attribution', nonce: sspa_admin.nonce, mode: mode }, function (resp) {
+	jQuery.post(ajaxurl, { action: 'sspa_attribution', nonce: sspa_admin.nonce, mode: mode, page: jQuery('#sspa-plugins-page').val() || '' }, function (resp) {
 		if (!resp.success) {
 			alert(resp.data || wp.i18n.__("Could not switch attribution mode.", "super-speedy-performance-analysis"));
 			return;
 		}
-		jQuery('#sspa-attrib-wrap').html(resp.data.html);
+		sspa_plugins_replace(resp.data.html);
 		jQuery('#sspa-attrib-describe').text(resp.data.describe);
 		buttons.each(function () {
 			var b = jQuery(this);
@@ -148,6 +152,243 @@ jQuery(document).on('click', '#sspa_main .sspa-attrib-mode', function () {
 		buttons.prop('disabled', false);
 		jQuery('#sspa-attrib-wrap').css('opacity', '');
 	});
+});
+
+
+// ---- Plugins tab explorer: page filter (server), sort and filters (browser) ----
+// Sort, show and name work on the rows already on screen; only a page change asks the
+// server, because the attribution columns and the impact cell become that page's figures.
+
+var sspa_plugins_params = { page: 'sspa_page', sort: 'sspa_sort', dir: 'sspa_dir', show: 'sspa_show', name: 'sspa_name' };
+
+function sspa_plugins_state() {
+	var table = jQuery('#sspa-attrib-table');
+	var sort = jQuery('#sspa-plugins-sort').val() || 'impact';
+	return {
+		page: jQuery('#sspa-plugins-page').val() || '',
+		sort: sort,
+		dir: table.attr('data-dir') || (sort === 'name' ? 'asc' : 'desc'),
+		show: jQuery('#sspa-plugins-show').val() || '',
+		name: jQuery('#sspa-plugins-name').val() || ''
+	};
+}
+
+function sspa_plugins_remember() {
+	if (!window.history.replaceState) {
+		return;
+	}
+	var state = sspa_plugins_state();
+	var defaults = { page: '', sort: 'impact', dir: state.sort === 'name' ? 'asc' : 'desc', show: '', name: '' };
+	var url = new URL(window.location.href);
+	Object.keys(sspa_plugins_params).forEach(function (key) {
+		if (state[key] && state[key] !== defaults[key]) {
+			url.searchParams.set(sspa_plugins_params[key], state[key]);
+		} else {
+			url.searchParams.delete(sspa_plugins_params[key]);
+		}
+	});
+	window.history.replaceState(null, '', url.toString());
+}
+
+// Restore sort, show and name from the address bar onto freshly rendered markup.
+function sspa_plugins_restore() {
+	var query = new URLSearchParams(window.location.search);
+	var sort = query.get('sspa_sort');
+	if (sort && jQuery('#sspa-plugins-sort option[value="' + sort.replace(/[^a-z]/g, '') + '"]').length) {
+		jQuery('#sspa-plugins-sort').val(sort);
+	}
+	var show = query.get('sspa_show');
+	if (show && jQuery('#sspa-plugins-show option[value="' + show.replace(/[^a-z]/g, '') + '"]').length) {
+		jQuery('#sspa-plugins-show').val(show);
+	}
+	jQuery('#sspa-plugins-name').val(query.get('sspa_name') || '');
+	var dir = query.get('sspa_dir');
+	if (dir === 'asc' || dir === 'desc') {
+		jQuery('#sspa-attrib-table').attr('data-dir', dir);
+	}
+	sspa_plugins_apply();
+}
+
+function sspa_plugins_replace(html) {
+	var before = sspa_plugins_state();
+	jQuery('#sspa-attrib-wrap').html(html);
+	jQuery('#sspa-plugins-sort').val(before.sort);
+	jQuery('#sspa-plugins-show').val(before.show);
+	jQuery('#sspa-plugins-name').val(before.name);
+	jQuery('#sspa-attrib-table').attr('data-dir', before.dir);
+	sspa_plugins_apply();
+}
+
+function sspa_plugins_apply() {
+	var table = jQuery('#sspa-attrib-table');
+	if (!table.length) {
+		return;
+	}
+	var state = sspa_plugins_state();
+	var sign = state.dir === 'asc' ? 1 : -1;
+	var tbody = table.children('tbody');
+	// A per-page breakdown row travels with the row it belongs to.
+	var pairs = tbody.children('tr[data-component]').get().map(function (row) {
+		var detail = jQuery(row).next('.sspa-impact-detail-row');
+		return { row: jQuery(row), detail: detail };
+	});
+	var number = function (row, key) {
+		var value = row.attr('data-sort-' + key);
+		return value === '' || value === undefined ? null : parseFloat(value);
+	};
+	pairs.sort(function (a, b) {
+		if (state.sort === 'name') {
+			return sign * String(a.row.attr('data-sort-name')).localeCompare(String(b.row.attr('data-sort-name')));
+		}
+		var va = number(a.row, state.sort);
+		var vb = number(b.row, state.sort);
+		// No measurement is not zero: unmeasured rows go last whichever way the column sorts.
+		if ((va === null) !== (vb === null)) {
+			return va === null ? 1 : -1;
+		}
+		if (va !== null && va !== vb) {
+			return sign * (va - vb);
+		}
+		return number(b.row, 'sql') - number(a.row, 'sql');
+	});
+	var needle = state.name.toLowerCase().trim();
+	var shown = 0;
+	pairs.forEach(function (pair) {
+		var rowState = pair.row.attr('data-state');
+		var visible = (state.show === '' ||
+			(state.show === 'unmeasured' ? (rowState === 'unmeasured' || pair.row.attr('data-stale') === '1') : rowState === state.show)) &&
+			(needle === '' || String(pair.row.attr('data-component')).toLowerCase().indexOf(needle) !== -1);
+		pair.row.prop('hidden', !visible);
+		pair.detail.prop('hidden', !visible);
+		if (visible) {
+			shown++;
+		}
+		tbody.append(pair.row);
+		if (pair.detail.length) {
+			tbody.append(pair.detail);
+		}
+	});
+	table.find('th[data-sort-key]').each(function () {
+		var th = jQuery(this);
+		th.attr('aria-sort', th.attr('data-sort-key') === state.sort ? (state.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+	});
+	jQuery('#sspa-plugins-count').text(wp.i18n.sprintf(/* translators: 1: plugins shown, 2: plugins in the table. */ wp.i18n.__("Showing %1$s of %2$s plugins", "super-speedy-performance-analysis"), shown, pairs.length));
+	jQuery('#sspa-attrib-wrap .sspa-plugins-empty').prop('hidden', shown > 0);
+}
+
+jQuery(document).on('sspa:tab-rendered', function (e, slug) {
+	if (slug === 'plugins') {
+		sspa_plugins_restore();
+	}
+});
+
+jQuery(document).on('change', '#sspa-plugins-sort', function () {
+	jQuery('#sspa-attrib-table').removeAttr('data-dir');
+	sspa_plugins_apply();
+	sspa_plugins_remember();
+});
+
+jQuery(document).on('change', '#sspa-plugins-show', function () {
+	sspa_plugins_apply();
+	sspa_plugins_remember();
+});
+
+jQuery(document).on('input', '#sspa-plugins-name', function () {
+	sspa_plugins_apply();
+	sspa_plugins_remember();
+});
+
+// A column header sorts by that column; pressing it again reverses the order.
+jQuery(document).on('click', '#sspa-attrib-table th[data-sort-key]', function () {
+	var key = jQuery(this).attr('data-sort-key');
+	var table = jQuery('#sspa-attrib-table');
+	var state = sspa_plugins_state();
+	if (state.sort === key) {
+		table.attr('data-dir', state.dir === 'asc' ? 'desc' : 'asc');
+	} else {
+		jQuery('#sspa-plugins-sort').val(key);
+		table.removeAttr('data-dir');
+	}
+	sspa_plugins_apply();
+	sspa_plugins_remember();
+});
+
+jQuery(document).on('change', '#sspa-plugins-page', function () {
+	var select = jQuery(this).prop('disabled', true);
+	var mode = jQuery('#sspa_main .sspa-attrib-mode.button-primary').data('mode') || '';
+	jQuery('#sspa-attrib-wrap').css('opacity', 0.5);
+	jQuery.post(ajaxurl, { action: 'sspa_attribution', nonce: sspa_admin.nonce, mode: mode, page: select.val() }, function (resp) {
+		if (!resp.success) {
+			alert(resp.data || wp.i18n.__("Could not show that page.", "super-speedy-performance-analysis"));
+			return;
+		}
+		sspa_plugins_replace(resp.data.html);
+		sspa_plugins_remember();
+	}).fail(function () {
+		alert(wp.i18n.__("Could not show that page.", "super-speedy-performance-analysis"));
+	}).always(function () {
+		jQuery('#sspa-plugins-page').prop('disabled', false);
+		jQuery('#sspa-attrib-wrap').css('opacity', '');
+	});
+});
+
+jQuery(document).on('click', '#sspa-attrib-wrap .sspa-plugins-open-profile', function (e) {
+	e.preventDefault();
+	if (window.sspaPanel && window.sspaPanel.openProfile) {
+		window.sspaPanel.openProfile(parseInt(jQuery(this).attr('data-profile-id'), 10));
+	}
+});
+
+// ---- Plugin Impact Analysis summary in the floating monitor ----
+// A finished run used to refresh the tabs and close the monitor, so someone who came back
+// later found nothing to say it had finished or what it found. The summary stays until it is
+// closed or followed, and a later visit shows it again until then.
+
+function sspa_impact_summary_show(runId, onNone) {
+	jQuery.post(ajaxurl, { action: 'sspa_impact_summary', nonce: sspa_admin.nonce, run_id: runId || 0 }, function (resp) {
+		if (!resp || !resp.success || !resp.data || typeof resp.data.html !== 'string') {
+			if (onNone) { onNone(); }
+			return;
+		}
+		var runner = jQuery('#sspa-runner').removeClass('sspa-runner-min');
+		runner.find('.sspa-runner-title').text(wp.i18n.__("Plugin Impact Analysis complete", "super-speedy-performance-analysis"));
+		runner.find('.sspa-runner-mini-summary').text('');
+		runner.find('.sspa-progress-bar, .sspa-runner-counts, .sspa-runner-skipped, .sspa-runner-current, .sspa-runner-eta, .sspa-runner-feed, .sspa-runner-actions').hide();
+		runner.find('.sspa-runner-summary').remove();
+		// Escaped by the server's renderer, the same wp_kses allow-list as the Plugins tab.
+		jQuery('<div class="sspa-runner-summary">').html(resp.data.html).appendTo(runner.find('.sspa-runner-body'));
+		runner.show();
+		sspa_runner_backdrop(runner);
+		runner.find('.sspa-impact-summary-view').trigger('focus');
+	}).fail(function () {
+		if (onNone) { onNone(); }
+	});
+}
+
+function sspa_impact_summary_seen(done) {
+	var runId = parseInt(jQuery('#sspa-runner .sspa-impact-summary').attr('data-run-id'), 10) || 0;
+	jQuery.post(ajaxurl, { action: 'sspa_impact_summary_seen', nonce: sspa_admin.nonce, run_id: runId }).always(function () {
+		if (done) { done(); }
+	});
+}
+
+jQuery(document).on('click', '#sspa-runner .sspa-impact-summary-close', function () {
+	sspa_impact_summary_seen();
+	sspa_runner_dismiss();
+});
+
+jQuery(document).on('click', '#sspa-runner .sspa-impact-summary-view', function (e) {
+	if (e.ctrlKey || e.metaKey || e.shiftKey || e.which > 1 || !window.history.pushState) {
+		sspa_impact_summary_seen();
+		return;
+	}
+	e.preventDefault();
+	var href = this.href;
+	sspa_impact_summary_seen();
+	sspa_runner_dismiss();
+	window.history.pushState(null, '', href);
+	sspa_refresh_tabs(['plugins']);
+	sspa_click_tab('plugins');
 });
 
 
@@ -208,6 +449,8 @@ function sspa_refresh_tabs(tabs, done) {
 	var request = { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') };
 	var comparePage = new URLSearchParams(window.location.search).get('sspa_compare_page');
 	if (comparePage && /^[1-9][0-9]*$/.test(comparePage)) { request.sspa_compare_page = comparePage; }
+	var pluginsPage = new URLSearchParams(window.location.search).get('sspa_page');
+	if (pluginsPage) { request.sspa_page = pluginsPage; }
 	jQuery.post(ajaxurl, request, function (resp) {
 		if (resp && resp.success && resp.data && resp.data.tabs) {
 			Object.keys(resp.data.tabs).forEach(function (slug) {
@@ -1423,7 +1666,8 @@ function sspa_runner_update(s) {
 // Take the panel down and release the dimmer, without touching the page.
 function sspa_runner_dismiss() {
 	var runner = jQuery('#sspa-runner').hide().removeClass('sspa-runner-min');
-	runner.find('.sspa-runner-current, .sspa-runner-eta, .sspa-runner-actions').show();
+	runner.find('.sspa-runner-summary').remove();
+	runner.find('.sspa-progress-bar, .sspa-runner-counts, .sspa-runner-current, .sspa-runner-eta, .sspa-runner-feed, .sspa-runner-actions').show();
 	runner.find('.sspa-runner-feed').empty();
 	sspa_feed_seen = -1;
 	sspa_feed_queue = [];
@@ -1435,7 +1679,7 @@ function sspa_runner_dismiss() {
 	sspa_runner_backdrop(runner);
 }
 
-function sspa_runner_finish(status) {
+function sspa_runner_finish(status, runType, runId) {
 	var runner = jQuery('#sspa-runner').removeClass('sspa-runner-min');
 	var label = status === 'done' ? wp.i18n.__("Analysis complete ✓ loading results…", "super-speedy-performance-analysis") : wp.i18n.sprintf(/* translators: Analysis status returned by the server. */ wp.i18n.__("Analysis %s - loading results…", "super-speedy-performance-analysis"), status);
 	runner.find('.sspa-runner-title').text(label);
@@ -1446,8 +1690,12 @@ function sspa_runner_finish(status) {
 	// Every tab a run can change. The results appear under whichever tab the user is already
 	// looking at, rather than throwing them back to Overview via a reload.
 	sspa_refresh_tabs(['overview', 'pages', 'plugins', 'compare', 'share'], function () {
-		sspa_runner_dismiss();
 		sspa_drive_submissions();
+		if (status === 'done' && runType === 'deep') {
+			sspa_impact_summary_show(runId, sspa_runner_dismiss);
+		} else {
+			sspa_runner_dismiss();
+		}
 	});
 }
 
@@ -1468,6 +1716,7 @@ function sspa_drive_run(runId) {
 	var batchTimer = null;
 	var statusTimer = null;
 	var statusRequest = null;
+	var runType = '';
 
 	function finish(status) {
 		if (stopped) {
@@ -1486,7 +1735,7 @@ function sspa_drive_run(runId) {
 		if (browserDriver) {
 			browserDriver.stop();
 		}
-		sspa_runner_finish(status);
+		sspa_runner_finish(status, runType, runId);
 	}
 
 	// process_batch deliberately keeps one request busy for up to 15 seconds. Poll the
@@ -1501,6 +1750,7 @@ function sspa_drive_run(runId) {
 				return;
 			}
 			var s = resp.data;
+			runType = s.run_type || runType;
 			sspa_runner_update(s);
 			if (s.status !== 'crawling' && s.status !== 'analysing') {
 				finish(s.status);
@@ -1527,6 +1777,7 @@ function sspa_drive_run(runId) {
 				return;
 			}
 			var s = resp.data;
+			runType = s.run_type || runType;
 			sspa_runner_update(s);
 			if (s.status === 'crawling' || s.status === 'analysing') {
 				if (s.transport === 'browser' && s.status === 'crawling' && !browserDriver && window.SSPATransport) {

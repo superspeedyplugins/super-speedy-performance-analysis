@@ -2542,9 +2542,11 @@ class SSPA_Run_Controller {
         if (!$run_id) {
             wp_send_json_error(__('There is no completed analysis to attribute yet.', 'super-speedy-performance-analysis'));
         }
+        // The page filter rides along, so switching attribution keeps the chosen page.
+        $page = isset($_POST['page']) ? sanitize_text_field(wp_unslash($_POST['page'])) : '';
         wp_send_json_success(array(
             'mode' => $mode,
-            'html' => SSPA_Plugins_Table::render($run_id, $mode),
+            'html' => SSPA_Plugins_Table::render($run_id, $mode, $page),
             'describe' => SSPA_Attribution::describe($mode),
         ));
     }

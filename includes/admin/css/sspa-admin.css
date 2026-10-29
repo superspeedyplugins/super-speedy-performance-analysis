@@ -894,3 +894,23 @@
 .sspa-quote-warning, .sspa-quote-status.is-error { color: #b32d2e; font-weight: 600; }
 .sspa-quote-dialog.is-sent .sspa-quote-status { color: #00a32a; font-weight: 600; }
 .sspa-quote-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Plugins tab explorer. */
+#sspa_main .sspa-plugins-compare { margin: 0 0 12px; padding: 8px 12px; background: #fff; border-left: 4px solid #7c3aed; }
+#sspa_main .sspa-plugins-compare p { margin: 0; }
+#sspa_main .sspa-plugins-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 8px; }
+#sspa_main .sspa-plugins-toolbar label { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+#sspa_main .sspa-plugins-toolbar select, #sspa_main .sspa-plugins-toolbar input { max-width: 100%; }
+#sspa_main #sspa-plugins-count { color: #646970; }
+#sspa_main #sspa-attrib-table th[data-sort-key] { cursor: pointer; }
+#sspa_main #sspa-attrib-table th[aria-sort="ascending"]::after { content: " \25B2"; font-size: 9px; }
+#sspa_main #sspa-attrib-table th[aria-sort="descending"]::after { content: " \25BC"; font-size: 9px; }
+#sspa_main #sspa-attrib-table tr[hidden] { display: none; }
+
+/* The finished Plugin Impact Analysis, in the floating monitor and the page panel. */
+.sspa-impact-summary-list { margin: 8px 0 12px 18px; list-style: disc; }
+.sspa-impact-summary-list li { margin: 0 0 4px; }
+.sspa-impact-summary .sspa-impact-adds { color: #b32d2e; }
+.sspa-impact-summary .sspa-impact-saves { color: #008a20; }
+.sspa-impact-summary .sspa-impact-none { color: #646970; }
+#sspa-runner .sspa-runner-summary { max-height: 60vh; overflow: auto; }

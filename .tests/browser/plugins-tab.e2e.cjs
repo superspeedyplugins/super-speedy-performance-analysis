@@ -106,6 +106,26 @@ const { chromium } = require(process.env.SSPA_PLAYWRIGHT_MODULE || '../node_modu
         assert.ok(await compare.count() >= 1, 'the tab links to the public figures on superspeedy.org');
         console.log('PASS superspeedy.org comparison link: ' + await compare.first().getAttribute('href'));
 
+        // 5. Page-scoped run from the admin-bar panel on the shop page: the summary heads the
+        //    panel and links to the Plugins tab filtered to that page.
+        await page.goto(site + '/?post_type=product');
+        // The node sits in a hover-revealed submenu; a DOM click runs its real handler.
+        await page.$eval('#wp-admin-bar-sspa-adhoc > a', a => a.click());
+        await page.locator('#sspa-adhoc-pop .sspa-adhoc-measure').click({ timeout: 120000 });
+        await page.locator('#sspa-adhoc-pop .sspa-adhoc-pluginpick[value="zz-slow-shop"]').check({ timeout: 30000 });
+        await page.locator('#sspa-adhoc-pop .sspa-adhoc-measure-start').click();
+        const panelSummary = page.locator('#sspa-adhoc-pop .sspa-adhoc-impact-summary');
+        await panelSummary.waitFor({ state: 'visible', timeout: 300000 });
+        // The panel profiles the address as an ad-hoc page (url-<hash>), not as the shop key.
+        const verdict = (await panelSummary.innerText()).match(/zz-slow-shop adds \d+ms on (url-[0-9a-f]+)/);
+        assert.ok(verdict, 'the panel summary gives the verdict for this page');
+        const viewHref = await panelSummary.locator('.sspa-impact-summary-view').getAttribute('href');
+        assert.ok(viewHref.endsWith('page=sspa&sspa_page=' + verdict[1] + '#plugins'), 'the panel links to the Plugins tab filtered to this page: ' + viewHref);
+        await page.screenshot({ path: out + '/panel-summary.png' });
+        await page.goto(viewHref);
+        await page.locator(table + '[data-page="' + verdict[1] + '"]').waitFor({ timeout: 60000 });
+        console.log('PASS the page-scoped run summarises in the panel and its link opens Plugins on that page');
+
         assert.deepEqual(errors, [], 'no JavaScript errors');
         console.log('PASS no JavaScript errors');
     } catch (error) {

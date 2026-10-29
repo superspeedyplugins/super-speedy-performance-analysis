@@ -145,12 +145,13 @@
 	}
 
 	// Whatever the panel is showing, show it again with fresh data.
-	function reload() {
+	function reload(done) {
 		if (current.url) {
 			fetchByUrl(function (resp) {
 				if (resp.success && resp.data.found) {
 					current.profileId = resp.data.profile_id;
 					body(resp.data.html);
+					if (done) { done(); }
 				} else {
 					renderError(sspa_adhoc.i18n.failed);
 				}
@@ -158,9 +159,32 @@
 			return;
 		}
 		if (current.profileId) {
-			loadProfile(current.profileId);
+			loadProfile(current.profileId, done);
 		}
 	}
+
+	// A finished page-scoped Plugin Impact Analysis: its summary goes at the top of the page's
+	// panel, with the link to the Plugins tab filtered to this page. Shown here, so it counts
+	// as seen and the settings screen does not show it a second time.
+	function impactSummary(runId) {
+		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_impact_summary', nonce: sspa_adhoc.nonce, run_id: runId }, function (resp) {
+			if (!resp || !resp.success || !resp.data || typeof resp.data.html !== 'string') {
+				return;
+			}
+			var block = $('<div class="sspa-adhoc-span sspa-adhoc-impact-summary">')
+				.append($('<h4>').text(wp.i18n.__('Plugin Impact Analysis complete', 'super-speedy-performance-analysis')))
+				.append(resp.data.html); // escaped by the server's wp_kses renderer
+			// The panel's own buttons: on the front end the theme styles WordPress's .button.
+			block.find('.button-primary').removeClass('button-primary').addClass('sspa-adhoc-btn-primary');
+			block.find('.button').removeClass('button').addClass('sspa-adhoc-btn');
+			pop().find('.sspa-adhoc-body').prepend(block);
+			$.post(sspa_adhoc.ajaxurl, { action: 'sspa_impact_summary_seen', nonce: sspa_adhoc.nonce, run_id: runId });
+		});
+	}
+
+	$(document).on('click', '#sspa-adhoc-pop .sspa-impact-summary-close', function () {
+		$(this).closest('.sspa-adhoc-impact-summary').remove();
+	});
 
 	function start(url, allHooks, rawStreams) {
 		current.url = url || current.url || pageUrl();
@@ -789,7 +813,10 @@
 				$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
 				return;
 			}
-			drive(resp.data.run_id, reload, wp.i18n.__('Measuring plugin impact on this page…', 'super-speedy-performance-analysis'));
+			var runId = resp.data.run_id;
+			drive(runId, function () {
+				reload(function () { impactSummary(runId); });
+			}, wp.i18n.__('Measuring plugin impact on this page…', 'super-speedy-performance-analysis'));
 		}).fail(function () {
 			$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
 			$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
