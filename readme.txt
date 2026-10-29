@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.58.1 (29th October 2026) =
+* Updated super-speedy-settings to 1.14.3: update downloads now send the licence key in a request header instead of the download URL.
+
 = 0.58.0 (29th October 2026) =
 * Merge of 0.57.6 into the main release; no further change.
 
