@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.57.0\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.58.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-26T13:26:07+00:00\n"
+"POT-Creation-Date: 2026-10-29T16:14:25+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -299,7 +299,7 @@ msgid "Hide installation steps"
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:213
-#: includes/class-sspa-adhoc.php:102
+#: includes/class-sspa-adhoc.php:126
 msgid "Copied"
 msgstr ""
 
@@ -325,7 +325,8 @@ msgid "This site did not answer. Press Send to try again; a repeat is never stor
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:227
-#: includes/class-sspa-adhoc.php:101
+#: includes/admin/class-sspa-plugins-table.php:558
+#: includes/class-sspa-adhoc.php:125
 #: includes/admin/js/sspa-checkout.js:38
 msgid "Close"
 msgstr ""
@@ -430,7 +431,7 @@ msgid "Super Speedy Plugins"
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:313
-#: includes/admin/js/sspa-admin.js:1416
+#: includes/admin/js/sspa-admin.js:1659
 msgid "Analysis running"
 msgstr ""
 
@@ -509,14 +510,16 @@ msgstr ""
 
 #: includes/admin/class-sspa-history-chart.php:72
 #: includes/admin/class-sspa-history-run-view.php:20
+#: includes/admin/class-sspa-plugins-table.php:583
+#: includes/admin/class-sspa-plugins-table.php:601
 #: includes/admin/class-sspa-profile-panel.php:45
 #: includes/admin/class-sspa-profile-panel.php:79
 #: includes/admin/class-sspa-profile-panel.php:93
 #: includes/admin/class-sspa-profile-panel.php:1245
 #: includes/admin/class-sspa-share-prompt.php:65
 #: includes/admin/class-sspa-share-prompt.php:74
-#: includes/class-sspa-adhoc.php:301
-#: includes/class-sspa-adhoc.php:324
+#: includes/class-sspa-adhoc.php:445
+#: includes/class-sspa-adhoc.php:468
 #: includes/class-sspa-admin-save.php:304
 #: includes/class-sspa-admin-save.php:326
 #: includes/class-sspa-browser-transport.php:150
@@ -542,16 +545,16 @@ msgstr ""
 #: includes/class-sspa-run-controller.php:2512
 #: includes/class-sspa-run-controller.php:2522
 #: includes/class-sspa-run-controller.php:2537
-#: includes/class-sspa-run-controller.php:2559
-#: includes/class-sspa-run-controller.php:2586
-#: includes/class-sspa-run-controller.php:2627
-#: includes/class-sspa-run-controller.php:2640
-#: includes/class-sspa-run-controller.php:2667
-#: includes/class-sspa-run-controller.php:2679
-#: includes/class-sspa-run-controller.php:2693
-#: includes/class-sspa-run-controller.php:2708
-#: includes/class-sspa-run-controller.php:2718
-#: includes/class-sspa-run-controller.php:2740
+#: includes/class-sspa-run-controller.php:2561
+#: includes/class-sspa-run-controller.php:2588
+#: includes/class-sspa-run-controller.php:2629
+#: includes/class-sspa-run-controller.php:2642
+#: includes/class-sspa-run-controller.php:2669
+#: includes/class-sspa-run-controller.php:2681
+#: includes/class-sspa-run-controller.php:2695
+#: includes/class-sspa-run-controller.php:2710
+#: includes/class-sspa-run-controller.php:2720
+#: includes/class-sspa-run-controller.php:2742
 #: includes/class-sspa-workflow-analysis.php:263
 #: includes/class-sspa-workflow-analysis.php:287
 #: includes/community/class-sspa-community-figures.php:30
@@ -807,13 +810,14 @@ msgstr ""
 
 #: includes/admin/class-sspa-history-run-view.php:69
 #: includes/admin/class-sspa-history-run-view.php:82
+#: includes/admin/class-sspa-plugins-table.php:225
 #: includes/admin/partials/cache-safety-scan.php:79
 #: includes/admin/partials/community-figures.php:61
 #: includes/admin/partials/community-figures.php:130
 #: includes/admin/tabs/cache.php:227
 #: includes/admin/tabs/cache.php:238
 #: includes/admin/tabs/pages.php:68
-#: includes/admin/js/sspa-admin.js:887
+#: includes/admin/js/sspa-admin.js:1130
 msgid "Page"
 msgstr ""
 
@@ -1146,26 +1150,20 @@ msgstr[1] ""
 msgid "Then clear the cached option set:"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:139
-#: includes/admin/class-sspa-profile-panel.php:945
-#: includes/admin/js/sspa-checkout.js:167
-msgid "Component"
+#: includes/admin/class-sspa-plugins-table.php:102
+msgid "Measured impact, typical page"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:140
-#: includes/admin/tabs/compare.php:168
-msgid "Type"
+#: includes/admin/class-sspa-plugins-table.php:103
+msgid "Measured impact, worst page"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:141
-msgid "Version"
+#: includes/admin/class-sspa-plugins-table.php:104
+msgid "SQL time"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:142
-msgid "SQL total (ms)"
-msgstr ""
-
-#: includes/admin/class-sspa-plugins-table.php:143
+#: includes/admin/class-sspa-plugins-table.php:105
+#: includes/admin/class-sspa-plugins-table.php:272
 #: includes/admin/class-sspa-profile-panel.php:946
 #: includes/admin/tabs/pages.php:73
 #: includes/admin/tabs/traffic.php:57
@@ -1174,125 +1172,268 @@ msgstr ""
 msgid "Queries"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:144
+#: includes/admin/class-sspa-plugins-table.php:106
+#: includes/admin/class-sspa-plugins-table.php:273
 #: includes/admin/tabs/pages.php:74
 msgid "Rows fetched"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:145
+#: includes/admin/class-sspa-plugins-table.php:107
+msgid "Slowest query"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:108
+msgid "HTTP time"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:109
+#: includes/admin/class-sspa-plugins-table.php:249
+msgid "Name"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:116
+msgid "All plugins"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:117
+msgid "Costs time"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:118
+msgid "Saves time"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:119
+msgid "Needs measuring"
+msgstr ""
+
+#. translators: %d: number of profiled pages
+#: includes/admin/class-sspa-plugins-table.php:229
+#, php-format
+msgid "All profiled pages (%d)"
+msgid_plural "All profiled pages (%d)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-sspa-plugins-table.php:235
+msgid "Sort by"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:242
+msgid "Show"
+msgstr ""
+
+#. translators: %s: page key
+#: includes/admin/class-sspa-plugins-table.php:258
+#, php-format
+msgid "Figures for %s only: the attribution columns are this page's numbers and Measured impact is the change on this page."
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:260
+msgid "Open the page analysis"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:268
+#: includes/admin/class-sspa-profile-panel.php:945
+#: includes/admin/js/sspa-checkout.js:167
+msgid "Component"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:269
+#: includes/admin/tabs/compare.php:168
+msgid "Type"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:270
+msgid "Version"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:271
+#: includes/admin/tabs/pages.php:72
+msgid "SQL (ms)"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:271
+msgid "SQL total (ms)"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:274
 msgid "Slowest query (ms)"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:146
+#: includes/admin/class-sspa-plugins-table.php:275
 #: includes/admin/tabs/pages.php:75
 msgid "HTTP (ms)"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:147
+#: includes/admin/class-sspa-plugins-table.php:276
 msgid "Measured impact"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:148
+#: includes/admin/class-sspa-plugins-table.php:277
 #: includes/admin/class-sspa-profile-panel.php:668
 #: includes/class-sspa-admin-bar.php:171
 #: includes/class-sspa-admin-bar.php:435
 msgid "Object cache"
 msgstr ""
 
+#: includes/admin/class-sspa-plugins-table.php:278
+#: includes/admin/class-sspa-plugins-table.php:324
+msgid "Measure"
+msgstr ""
+
 #. translators: %d: percentage of queries the plugin ran without consulting the object cache
-#: includes/admin/class-sspa-plugins-table.php:174
+#: includes/admin/class-sspa-plugins-table.php:311
 #, php-format
 msgid "cache-blind (%d%%)"
 msgstr ""
 
 #. translators: %d: percentage of queries saved by the object cache
-#: includes/admin/class-sspa-plugins-table.php:177
+#: includes/admin/class-sspa-plugins-table.php:314
 #, php-format
 msgid "%d%% queries saved"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:187
-msgid "Measure"
+#: includes/admin/class-sspa-plugins-table.php:332
+msgid "No plugins match these filters."
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:209
-msgid "inferred - run a Plugin Impact Analysis to measure"
+#. translators: 1: number of pages, 2: noise floor in milliseconds
+#: includes/admin/class-sspa-plugins-table.php:410
+#, php-format
+msgid "no measurable impact on %1$d page (±%2$sms noise)"
+msgid_plural "no measurable impact on %1$d pages (±%2$sms noise)"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: milliseconds saved, 2: page key
+#: includes/admin/class-sspa-plugins-table.php:418
+#, php-format
+msgid "saves %1$sms on %2$s"
+msgstr ""
+
+#. translators: 1: milliseconds added, 2: page key
+#: includes/admin/class-sspa-plugins-table.php:420
+#, php-format
+msgid "adds %1$sms on %2$s"
 msgstr ""
 
 #. translators: %s: milliseconds saved, formatted
-#: includes/admin/class-sspa-plugins-table.php:252
+#: includes/admin/class-sspa-plugins-table.php:424
 #, php-format
 msgid "saves %sms typically"
 msgstr ""
 
 #. translators: %s: milliseconds added, formatted
-#: includes/admin/class-sspa-plugins-table.php:254
+#: includes/admin/class-sspa-plugins-table.php:426
 #, php-format
 msgid "adds %sms typically"
 msgstr ""
 
 #. translators: 1: milliseconds saved, 2: page key
-#: includes/admin/class-sspa-plugins-table.php:260
+#: includes/admin/class-sspa-plugins-table.php:431
 #, php-format
 msgid "up to %1$sms saved on %2$s"
 msgstr ""
 
 #. translators: 1: milliseconds added, 2: page key
-#: includes/admin/class-sspa-plugins-table.php:262
+#: includes/admin/class-sspa-plugins-table.php:433
 #, php-format
 msgid "up to %1$sms on %2$s"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:266
+#: includes/admin/class-sspa-plugins-table.php:451
+msgid "not measured on this page - run a Plugin Impact Analysis to measure"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:452
+msgid "inferred - run a Plugin Impact Analysis to measure"
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:465
 msgid "measured, warm cache"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:266
+#: includes/admin/class-sspa-plugins-table.php:465
 msgid "measured"
 msgstr ""
 
 #. translators: 1: pages with a measurable effect, 2: pages measured
-#: includes/admin/class-sspa-plugins-table.php:270
+#: includes/admin/class-sspa-plugins-table.php:469
 #, php-format
 msgid "measurable on %1$d of %2$d pages measured"
 msgstr ""
 
-#. translators: 1: number of pages, 2: noise floor in milliseconds
-#: includes/admin/class-sspa-plugins-table.php:281
-#, php-format
-msgid "no measurable impact on %1$d pages (±%2$sms noise)"
-msgstr ""
-
-#: includes/admin/class-sspa-plugins-table.php:289
+#: includes/admin/class-sspa-plugins-table.php:480
 msgid "per-page breakdown"
 msgstr ""
 
+#. translators: 1: number of plugins, 2: number of pages, 3: date and time the run finished
+#: includes/admin/class-sspa-plugins-table.php:530
+#, php-format
+msgid "Measured %1$s on %2$s, finished %3$s."
+msgstr ""
+
+#. translators: %d: number of plugins
+#: includes/admin/class-sspa-plugins-table.php:532
+#, php-format
+msgid "%d plugin"
+msgid_plural "%d plugins"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: number of pages
+#: includes/admin/class-sspa-plugins-table.php:534
+#, php-format
+msgid "%d page"
+msgid_plural "%d pages"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: human-readable duration
+#: includes/admin/class-sspa-plugins-table.php:540
+#, php-format
+msgid "It took %s."
+msgstr ""
+
+#. translators: %d: number of further plugins
+#: includes/admin/class-sspa-plugins-table.php:554
+#, php-format
+msgid "and %d more plugin on the Plugins tab."
+msgid_plural "and %d more plugins on the Plugins tab."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-sspa-plugins-table.php:557
+msgid "View on the Plugins tab"
+msgstr ""
+
 #. translators: %s: comma-separated plugin slugs
-#: includes/admin/class-sspa-plugins-table.php:318
+#: includes/admin/class-sspa-plugins-table.php:633
 #, php-format
 msgid "measured together with %s, which cannot run without it"
 msgstr ""
 
 #. translators: 1: version measured, 2: version now, 3: date
-#: includes/admin/class-sspa-plugins-table.php:355
+#: includes/admin/class-sspa-plugins-table.php:687
 #, php-format
 msgid "measured on version %1$s, you now run %2$s (%3$s) - re-measure to trust this"
 msgstr ""
 
 #. translators: %s: date Plugin Impact Analysis ran
-#: includes/admin/class-sspa-plugins-table.php:364
+#: includes/admin/class-sspa-plugins-table.php:696
 #, php-format
 msgid "measured %s, before the analysis above - re-measure to trust this"
 msgstr ""
 
 #. translators: 1: date measured, 2: plugin version measured
-#: includes/admin/class-sspa-plugins-table.php:372
+#: includes/admin/class-sspa-plugins-table.php:704
 #, php-format
 msgid "measured %1$s on version %2$s"
 msgstr ""
 
 #. translators: %1$s: date measured
-#: includes/admin/class-sspa-plugins-table.php:374
+#: includes/admin/class-sspa-plugins-table.php:706
 #, php-format
 msgid "measured %1$s"
 msgstr ""
@@ -1365,7 +1506,7 @@ msgid "Recorded workflow or action endpoint; opening this profile does not repla
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:355
-#: includes/class-sspa-adhoc.php:100
+#: includes/class-sspa-adhoc.php:124
 msgid "Re-run"
 msgstr ""
 
@@ -1786,12 +1927,12 @@ msgid "Endpoint work"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:703
-#: includes/class-sspa-adhoc.php:158
+#: includes/class-sspa-adhoc.php:182
 msgid "Re-run with Excimer to improve this data"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:704
-#: includes/class-sspa-adhoc.php:159
+#: includes/class-sspa-adhoc.php:183
 msgid "Install Excimer to improve this data"
 msgstr ""
 
@@ -1959,12 +2100,12 @@ msgid "measured by disabling the plugin for test requests only - never for your 
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:1140
-#: includes/admin/js/sspa-admin.js:876
+#: includes/admin/js/sspa-admin.js:1119
 msgid "Standard (cache warm)"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:1141
-#: includes/admin/js/sspa-admin.js:876
+#: includes/admin/js/sspa-admin.js:1119
 msgid "No object cache"
 msgstr ""
 
@@ -1973,7 +2114,7 @@ msgid "Cache priming"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:1143
-#: includes/admin/js/sspa-admin.js:876
+#: includes/admin/js/sspa-admin.js:1119
 msgid "Warm cache"
 msgstr ""
 
@@ -1996,7 +2137,7 @@ msgstr ""
 #. translators: %s: noise floor in ms
 #. translators: Noise threshold in milliseconds.
 #: includes/admin/class-sspa-profile-panel.php:1210
-#: includes/admin/js/sspa-admin.js:908
+#: includes/admin/js/sspa-admin.js:1151
 #, php-format,js-format
 msgid "within ±%sms noise"
 msgstr ""
@@ -2004,7 +2145,7 @@ msgstr ""
 #. translators: %s: milliseconds
 #. translators: Time saved in milliseconds.
 #: includes/admin/class-sspa-profile-panel.php:1220
-#: includes/admin/js/sspa-admin.js:912
+#: includes/admin/js/sspa-admin.js:1155
 #, php-format,js-format
 msgid "saves %sms"
 msgstr ""
@@ -2012,7 +2153,7 @@ msgstr ""
 #. translators: %s: milliseconds
 #. translators: Time added in milliseconds.
 #: includes/admin/class-sspa-profile-panel.php:1222
-#: includes/admin/js/sspa-admin.js:912
+#: includes/admin/js/sspa-admin.js:1155
 #, php-format,js-format
 msgid "adds %sms"
 msgstr ""
@@ -2020,7 +2161,7 @@ msgstr ""
 #. translators: 1: signed SQL milliseconds, 2: signed query count
 #. translators: 1: signed SQL-time difference in milliseconds, 2: signed query-count difference.
 #: includes/admin/class-sspa-profile-panel.php:1226
-#: includes/admin/js/sspa-admin.js:915
+#: includes/admin/js/sspa-admin.js:1158
 #, php-format,js-format
 msgid "SQL %1$sms · %2$s queries"
 msgstr ""
@@ -2090,7 +2231,7 @@ msgid "Run Cache Impact Analysis"
 msgstr ""
 
 #: includes/admin/partials/analysis-panel.php:70
-#: includes/class-sspa-adhoc.php:132
+#: includes/class-sspa-adhoc.php:156
 #: includes/class-sspa-endpoint-profile.php:341
 #: includes/class-sspa-quote-request.php:129
 #: includes/admin/js/sspa-checkout.js:127
@@ -2242,7 +2383,7 @@ msgid "You can browse what superspeedy.org already publishes:"
 msgstr ""
 
 #: includes/admin/partials/community-figures.php:20
-#: includes/admin/js/sspa-admin.js:1624
+#: includes/admin/js/sspa-admin.js:1875
 msgid "The community figures could not be loaded."
 msgstr ""
 
@@ -3131,7 +3272,7 @@ msgid "(this run only)"
 msgstr ""
 
 #: includes/admin/tabs/compare.php:240
-#: includes/admin/js/sspa-admin.js:1117
+#: includes/admin/js/sspa-admin.js:1360
 msgid "Preview data"
 msgstr ""
 
@@ -3465,10 +3606,6 @@ msgstr ""
 msgid "Measured"
 msgstr ""
 
-#: includes/admin/tabs/pages.php:72
-msgid "SQL (ms)"
-msgstr ""
-
 #: includes/admin/tabs/pages.php:76
 msgid "PHP (ms)"
 msgstr ""
@@ -3491,19 +3628,31 @@ msgstr ""
 msgid "Per-plugin costs will appear here after your first analysis."
 msgstr ""
 
-#: includes/admin/tabs/plugins.php:25
+#: includes/admin/tabs/plugins.php:30
+msgid "How do your plugins compare with other sites?"
+msgstr ""
+
+#: includes/admin/tabs/plugins.php:31
+msgid "superspeedy.org publishes anonymised measurements of plugins on real sites, ranked against plugins that do the same job."
+msgstr ""
+
+#: includes/admin/tabs/plugins.php:32
+msgid "See the public plugin rankings on superspeedy.org"
+msgstr ""
+
+#: includes/admin/tabs/plugins.php:36
 msgid "Attribution:"
 msgstr ""
 
-#: includes/admin/tabs/plugins.php:37
+#: includes/admin/tabs/plugins.php:48
 msgid "Measured impact below is unaffected: it comes from disabling the plugin and re-measuring, so it does not depend on attribution at all."
 msgstr ""
 
-#: includes/admin/tabs/plugins.php:42
+#: includes/admin/tabs/plugins.php:53
 msgid "Attribution totals come from the last analysis (all profiled pages). Measured impact comes from the Plugin Impact Analysis: every page re-measured with the plugin virtually disabled, in every cache mode. \"adds\" means the plugin costs you that much page-generation time; \"saves\" means pages got SLOWER without it - the plugin is speeding your site up. Click \"per-page breakdown\" for the full picture."
 msgstr ""
 
-#: includes/admin/tabs/plugins.php:45
+#: includes/admin/tabs/plugins.php:56
 msgid "Careful with the SQL/query columns: they credit work to whichever component runs it. A plugin that REPLACES a slow feature (search, filtering) will show the queries it runs even when it is far faster than what it replaced - the measured impact is the true verdict on whether it costs or saves you time."
 msgstr ""
 
@@ -4037,8 +4186,8 @@ msgid "I understand that this writes small pseudonymous event rows for observed 
 msgstr ""
 
 #: includes/admin/tabs/traffic.php:103
-#: includes/admin/js/sspa-admin.js:767
-#: includes/admin/js/sspa-admin.js:774
+#: includes/admin/js/sspa-admin.js:1010
+#: includes/admin/js/sspa-admin.js:1017
 msgid "Start collection"
 msgstr ""
 
@@ -4401,167 +4550,171 @@ msgstr ""
 msgid "That run has no measured steps."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:49
+#: includes/class-sspa-adhoc.php:58
 msgid "Analyse this page"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:51
+#: includes/class-sspa-adhoc.php:60
 msgid "Profile this URL with Super Speedy Performance Analysis"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:60
+#: includes/class-sspa-adhoc.php:69
 msgid "Analyse checkout & order flow"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:62
+#: includes/class-sspa-adhoc.php:71
 msgid "Measure a real purchase and handling the order afterwards - viewing it and marking it completed"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:97
+#: includes/class-sspa-adhoc.php:121
 msgid "Profiling this page…"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:98
+#: includes/class-sspa-adhoc.php:122
 msgid "Warm-up + 3 measured samples, then analysis. Usually under a minute."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:99
+#: includes/class-sspa-adhoc.php:123
 msgid "The analysis failed - see the plugin page for details."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:103
-#: includes/admin/js/sspa-admin.js:867
+#: includes/class-sspa-adhoc.php:127
+#: includes/admin/js/sspa-admin.js:1110
 msgid "Loading…"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:104
+#: includes/class-sspa-adhoc.php:128
 msgid "Profile ready."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:105
+#: includes/class-sspa-adhoc.php:129
 msgid "Preparing export…"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:106
+#: includes/class-sspa-adhoc.php:130
 msgid "The page diagnostic could not be exported."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:107
+#: includes/class-sspa-adhoc.php:131
 msgid "The Markdown report could not be exported."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:111
+#: includes/class-sspa-adhoc.php:135
 msgid "Only this page (URL)"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:112
+#: includes/class-sspa-adhoc.php:136
 msgid "Use this page"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:113
+#: includes/class-sspa-adhoc.php:137
 msgid "Which plugins should I measure on this page?"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:114
+#: includes/class-sspa-adhoc.php:138
 msgid "Which plugins should I measure the impact of?"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:115
+#: includes/class-sspa-adhoc.php:139
 msgid "Each chosen plugin is left out of our test requests only - it is never deactivated, no activation or deactivation hook fires, and your visitors always get the full site. A measurement is a warm-up plus three samples per page."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:116
+#: includes/class-sspa-adhoc.php:140
 msgid "One caution: a plugin that depends on one you choose may notice it missing during those test requests and react. Reactions we can reach are stopped - your plugin list cannot change, activation and deactivation routines are silenced, and destructive database statements are refused - and any reaction is recorded, with the pair measured together from then on. Even so, choose plugins you understand."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:117
+#: includes/class-sspa-adhoc.php:141
 msgid "On a single page, the top three measured suspects are ticked for review; change the selection before starting."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:118
+#: includes/class-sspa-adhoc.php:142
 msgid "Select blamed"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:119
+#: includes/class-sspa-adhoc.php:143
 msgid "Select every eligible plugin"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:120
+#: includes/class-sspa-adhoc.php:144
 #: includes/class-sspa-history-view.php:147
 msgid "Clear"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:121
+#: includes/class-sspa-adhoc.php:145
 msgid "Also measure with the object cache off and take a first sample in the site's ambient cache state (three times the measurements, for plugins that show an impact)"
 msgstr ""
 
 #. translators: 1: number of plugins, 2: number of measurements, 3: estimated duration
-#: includes/class-sspa-adhoc.php:123
+#: includes/class-sspa-adhoc.php:147
 #, php-format
 msgid "%1$s plugins × 1 page = %2$s measurements, about %3$s."
 msgstr ""
 
 #. translators: 1: number of plugins, 2: number of pages, 3: number of measurements, 4: estimated duration
-#: includes/class-sspa-adhoc.php:125
+#: includes/class-sspa-adhoc.php:149
 #, php-format
 msgid "%1$s plugins × %2$s pages = %3$s measurements, about %4$s."
 msgstr ""
 
 #. translators: 1: number of plugins, 2: number of measurements, 3: estimated duration
-#: includes/class-sspa-adhoc.php:127
+#: includes/class-sspa-adhoc.php:151
 #, php-format
 msgid "All %1$s plugins, screened: each is first measured on its busiest pages (about %2$s measurements, %3$s), then only the plugins that show an impact get the full treatment."
 msgstr ""
 
 #. translators: 1: number of additional measurements, 2: estimated duration
-#: includes/class-sspa-adhoc.php:129
+#: includes/class-sspa-adhoc.php:153
 #, php-format
 msgid "Plugins that show an impact are then re-measured with the object cache off and priming - up to %1$s more measurements, about %2$s, if every one of them does."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:130
+#: includes/class-sspa-adhoc.php:154
 msgid "Tick at least one plugin."
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:131
+#: includes/class-sspa-adhoc.php:155
 msgid "Start measuring"
 msgstr ""
 
 #. translators: %s: number of minutes
-#: includes/class-sspa-adhoc.php:134
+#: includes/class-sspa-adhoc.php:158
 #, php-format
 msgid "%s minutes"
 msgstr ""
 
 #. translators: %s: number of seconds
-#: includes/class-sspa-adhoc.php:136
+#: includes/class-sspa-adhoc.php:160
 #, php-format
 msgid "%s seconds"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:137
+#: includes/class-sspa-adhoc.php:161
 msgid "nothing attributed"
 msgstr ""
 
 #. translators: %s: milliseconds attributed to this component on this page
-#: includes/class-sspa-adhoc.php:139
+#: includes/class-sspa-adhoc.php:163
 #, php-format
 msgid "%sms attributed here"
 msgstr ""
 
 #. translators: %s: milliseconds attributed to this component across the site
-#: includes/class-sspa-adhoc.php:141
+#: includes/class-sspa-adhoc.php:165
 #, php-format
 msgid "%sms attributed across the site"
 msgstr ""
 
 #. translators: %s: comma-separated plugins that must be measured together with this one
-#: includes/class-sspa-adhoc.php:143
+#: includes/class-sspa-adhoc.php:167
 #, php-format
 msgid "· measured together with %s, which cannot run without it"
 msgstr ""
 
-#: includes/class-sspa-adhoc.php:181
+#: includes/class-sspa-adhoc.php:218
+msgid "The Performance Analysis panel could not be loaded. Reload the page and try again."
+msgstr ""
+
+#: includes/class-sspa-adhoc.php:325
 msgid "Only URLs on this site can be profiled."
 msgstr ""
 
@@ -6492,16 +6645,16 @@ msgstr ""
 msgid "There is no completed analysis to attribute yet."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2568
+#: includes/class-sspa-run-controller.php:2570
 msgid "No measured impacts for this plugin yet - run a plugin impact analysis."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2722
+#: includes/class-sspa-run-controller.php:2724
 msgid "Invalid submission action."
 msgstr ""
 
 #. translators: 1: run ID, 2: error message
-#: includes/class-sspa-run-controller.php:2773
+#: includes/class-sspa-run-controller.php:2775
 #, php-format
 msgid "Detailed data was not deleted because run %1$d could not be preserved for sharing: %2$s"
 msgstr ""
@@ -7179,7 +7332,7 @@ msgid "You are not allowed to manage traffic collection."
 msgstr ""
 
 #: includes/traffic/class-sspa-traffic-ajax.php:25
-#: includes/admin/js/sspa-admin.js:756
+#: includes/admin/js/sspa-admin.js:999
 msgid "Confirm that you have read the privacy and resource limits before starting."
 msgstr ""
 
@@ -7288,16 +7441,16 @@ msgstr ""
 msgid "Could not activate the traffic file atomically."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:119
+#: includes/admin/js/sspa-adhoc.js:128
 msgid "Could not load that page profile."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:125
-#: includes/admin/js/sspa-adhoc.js:135
-#: includes/admin/js/sspa-adhoc.js:174
-#: includes/admin/js/sspa-adhoc.js:223
-#: includes/admin/js/sspa-adhoc.js:236
-#: includes/admin/js/sspa-adhoc.js:558
+#: includes/admin/js/sspa-adhoc.js:134
+#: includes/admin/js/sspa-adhoc.js:144
+#: includes/admin/js/sspa-adhoc.js:207
+#: includes/admin/js/sspa-adhoc.js:256
+#: includes/admin/js/sspa-adhoc.js:269
+#: includes/admin/js/sspa-adhoc.js:592
 #: includes/admin/js/sspa-ajax-profile.js:6
 #: includes/admin/js/sspa-ajax-profile.js:10
 #: includes/admin/js/sspa-checkout.js:471
@@ -7307,227 +7460,243 @@ msgstr ""
 msgid "Request failed."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:161
+#: includes/admin/js/sspa-adhoc.js:175
+#: includes/admin/js/sspa-admin.js:354
+msgid "Plugin Impact Analysis complete"
+msgstr ""
+
+#: includes/admin/js/sspa-adhoc.js:194
 msgid "Could not start."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:197
+#: includes/admin/js/sspa-adhoc.js:230
 msgid "[SSPA] loopbacks are blocked on this site - this browser is fetching the pages itself"
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:202
+#: includes/admin/js/sspa-adhoc.js:235
 msgid "[SSPA] browser transport stopped: "
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:338
+#: includes/admin/js/sspa-adhoc.js:372
 msgid "Escape"
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:415
+#: includes/admin/js/sspa-adhoc.js:449
 msgid "Downloaded."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:551
+#: includes/admin/js/sspa-adhoc.js:585
 msgid "Could not work out what to measure."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:708
+#: includes/admin/js/sspa-adhoc.js:742
 msgid "1 plugins "
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:708
+#: includes/admin/js/sspa-adhoc.js:742
 msgid "1 plugin "
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:708
+#: includes/admin/js/sspa-adhoc.js:742
 msgid " 1 pages "
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:708
+#: includes/admin/js/sspa-adhoc.js:742
 msgid " 1 page "
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:708
+#: includes/admin/js/sspa-adhoc.js:742
 msgid "1 minutes"
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:708
+#: includes/admin/js/sspa-adhoc.js:742
 msgid "1 minute"
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:752
-#: includes/admin/js/sspa-adhoc.js:763
-#: includes/admin/js/sspa-adhoc.js:778
-#: includes/admin/js/sspa-adhoc.js:784
+#: includes/admin/js/sspa-adhoc.js:786
+#: includes/admin/js/sspa-adhoc.js:797
+#: includes/admin/js/sspa-adhoc.js:812
+#: includes/admin/js/sspa-adhoc.js:821
 msgid "Could not start measuring."
 msgstr ""
 
-#: includes/admin/js/sspa-adhoc.js:782
+#: includes/admin/js/sspa-adhoc.js:819
 msgid "Measuring plugin impact on this page…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:58
 #: includes/admin/js/sspa-admin.js:62
+#: includes/admin/js/sspa-admin.js:66
 msgid "Re-check failed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:127
-#: includes/admin/js/sspa-admin.js:146
+#: includes/admin/js/sspa-admin.js:131
+#: includes/admin/js/sspa-admin.js:150
 msgid "Could not switch attribution mode."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:281
+#. translators: 1: plugins shown, 2: plugins in the table.
+#: includes/admin/js/sspa-admin.js:275
+#, js-format
+msgid "Showing %1$s of %2$s plugins"
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:322
+#: includes/admin/js/sspa-admin.js:328
+msgid "Could not show that page."
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:524
 msgid "Could not save the uninstall setting."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:297
+#: includes/admin/js/sspa-admin.js:540
 msgid "Could not save the update comparison setting."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:328
+#: includes/admin/js/sspa-admin.js:571
 msgid "Loading the selected comparison…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:343
+#: includes/admin/js/sspa-admin.js:586
 msgid "The points in time could not be compared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:346
+#: includes/admin/js/sspa-admin.js:589
 msgid "The points in time could not be compared. Please try Compare again."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:367
-#: includes/admin/js/sspa-admin.js:371
+#: includes/admin/js/sspa-admin.js:610
+#: includes/admin/js/sspa-admin.js:614
 msgid "The expectation could not be changed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:382
-#: includes/admin/js/sspa-admin.js:390
+#: includes/admin/js/sspa-admin.js:625
+#: includes/admin/js/sspa-admin.js:633
 msgid "The evidence preview could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:464
+#: includes/admin/js/sspa-admin.js:707
 msgid " Preparing report…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:471
+#: includes/admin/js/sspa-admin.js:714
 msgid "The report could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:483
-#: includes/admin/js/sspa-admin.js:825
+#: includes/admin/js/sspa-admin.js:726
+#: includes/admin/js/sspa-admin.js:1068
 msgid " Downloaded."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:485
+#: includes/admin/js/sspa-admin.js:728
 msgid " The report could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:519
+#: includes/admin/js/sspa-admin.js:762
 msgid "The request failed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:603
+#: includes/admin/js/sspa-admin.js:846
 msgid "The generated cache check address is not on this site."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:675
+#: includes/admin/js/sspa-admin.js:918
 msgid "Requesting pages with WooCommerce basket cookies"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:678
+#: includes/admin/js/sspa-admin.js:921
 msgid "Requesting pages as the logged-in test customer"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:681
+#: includes/admin/js/sspa-admin.js:924
 msgid "Checking that no logged-in content reached anonymous visitors"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:683
+#: includes/admin/js/sspa-admin.js:926
 msgid "Requesting pages from the server as an anonymous visitor"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:703
+#: includes/admin/js/sspa-admin.js:946
 msgid "Measuring your browser as an anonymous visitor"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:724
+#: includes/admin/js/sspa-admin.js:967
 msgid "Complete. Showing the results…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:727
+#: includes/admin/js/sspa-admin.js:970
 msgid "The cache check failed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:759
+#: includes/admin/js/sspa-admin.js:1002
 msgid "Running database pre-flight…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:768
-#: includes/admin/js/sspa-admin.js:775
+#: includes/admin/js/sspa-admin.js:1011
+#: includes/admin/js/sspa-admin.js:1018
 msgid "Collection could not be started."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:771
+#: includes/admin/js/sspa-admin.js:1014
 msgid "Collection started."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:782
+#: includes/admin/js/sspa-admin.js:1025
 msgid "Remove the observer immediately? No more request or order-outcome events will be recorded."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:794
-#: includes/admin/js/sspa-admin.js:800
+#: includes/admin/js/sspa-admin.js:1037
+#: includes/admin/js/sspa-admin.js:1043
 msgid "Collection could not be stopped."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:806
+#: includes/admin/js/sspa-admin.js:1049
 msgid " Preparing observations…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:813
+#: includes/admin/js/sspa-admin.js:1056
 msgid "Observations could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:827
+#: includes/admin/js/sspa-admin.js:1070
 msgid " Observations could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:834
+#: includes/admin/js/sspa-admin.js:1077
 msgid "Permanently delete this collection, all raw event rows and its temporary join key?"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:845
-#: includes/admin/js/sspa-admin.js:851
+#: includes/admin/js/sspa-admin.js:1088
+#: includes/admin/js/sspa-admin.js:1094
 msgid "Collection data could not be deleted."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:871
+#: includes/admin/js/sspa-admin.js:1114
 msgid "No detail available."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:876
+#: includes/admin/js/sspa-admin.js:1119
 msgid "First sample (ambient cache)"
 msgstr ""
 
 #. translators: 1: plugin identifier, 2: plugin version.
-#: includes/admin/js/sspa-admin.js:885
+#: includes/admin/js/sspa-admin.js:1128
 #, js-format
 msgid "Measured impact of %1$s version %2$s per page"
 msgstr ""
 
 #. translators: Plugin identifier.
-#: includes/admin/js/sspa-admin.js:885
+#: includes/admin/js/sspa-admin.js:1128
 #, js-format
 msgid "Measured impact of %s per page"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:901
+#: includes/admin/js/sspa-admin.js:1144
 msgid "\"adds\" = the plugin costs that much page-generation time; \"saves\" = the page is SLOWER without it (the plugin is speeding it up); \"within noise\" = no measurable difference on that page."
 msgstr ""
 
 #. translators: Number of recent runs to retain.
-#: includes/admin/js/sspa-admin.js:923
+#: includes/admin/js/sspa-admin.js:1166
 #, js-format
 msgid ""
 "Delete detailed per-query data for all but the last %s runs?\n"
@@ -7536,255 +7705,255 @@ msgid ""
 msgstr ""
 
 #. translators: Formatted storage size.
-#: includes/admin/js/sspa-admin.js:928
+#: includes/admin/js/sspa-admin.js:1171
 #, js-format
 msgid "Done. Detailed data now uses %s."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:940
+#: includes/admin/js/sspa-admin.js:1183
 msgid "Could not update sharing consent."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:967
+#: includes/admin/js/sspa-admin.js:1210
 msgid "Could not turn on sharing. Nothing was changed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:984
+#: includes/admin/js/sspa-admin.js:1227
 msgid "Could not hide this panel. Please try again."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1003
-#: includes/admin/js/sspa-admin.js:1013
+#: includes/admin/js/sspa-admin.js:1246
+#: includes/admin/js/sspa-admin.js:1256
 msgid "Could not save this choice."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1029
-#: includes/admin/js/sspa-admin.js:1035
+#: includes/admin/js/sspa-admin.js:1272
+#: includes/admin/js/sspa-admin.js:1278
 msgid "Could not update this plugin."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1050
+#: includes/admin/js/sspa-admin.js:1293
 msgid "Building the exact payload…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1054
+#: includes/admin/js/sspa-admin.js:1297
 msgid "Could not build the payload."
 msgstr ""
 
 #. translators: 1: analysis type, 2: payload size in kilobytes.
-#: includes/admin/js/sspa-admin.js:1080
+#: includes/admin/js/sspa-admin.js:1323
 #, js-format
 msgid "This is everything that would be sent for this %1$s analysis (%2$s KB)."
 msgstr ""
 
 #. translators: Payload size in kilobytes.
-#: includes/admin/js/sspa-admin.js:1080
+#: includes/admin/js/sspa-admin.js:1323
 #, js-format
 msgid "This is everything that would be sent (%s KB)."
 msgstr ""
 
 #. translators: 1: list of included fields, 2: number of active components.
-#: includes/admin/js/sspa-admin.js:1084
+#: includes/admin/js/sspa-admin.js:1327
 #, js-format
 msgid "%1$s, and the names and versions of %2$s active components"
 msgstr ""
 
 #. translators: List of included fields.
-#: includes/admin/js/sspa-admin.js:1085
+#: includes/admin/js/sspa-admin.js:1328
 #, js-format
 msgid "It contains: %s."
 msgstr ""
 
 #. translators: List of plugin names.
-#: includes/admin/js/sspa-admin.js:1088
+#: includes/admin/js/sspa-admin.js:1331
 #, js-format
 msgid "These plugins have opted in to publishing their own performance settings: %s."
 msgstr ""
 
 #. translators: List of excluded fields.
-#: includes/admin/js/sspa-admin.js:1091
+#: includes/admin/js/sspa-admin.js:1334
 #, js-format
 msgid "It does not contain %s."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1093
+#: includes/admin/js/sspa-admin.js:1336
 msgid "Download this file"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1103
+#: includes/admin/js/sspa-admin.js:1346
 msgid "Preparing the anonymised payload…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1110
-#: includes/admin/js/sspa-admin.js:1121
+#: includes/admin/js/sspa-admin.js:1353
+#: includes/admin/js/sspa-admin.js:1364
 msgid "Could not share this analysis."
 msgstr ""
 
 #. translators: Compressed payload size in bytes.
-#: includes/admin/js/sspa-admin.js:1116
+#: includes/admin/js/sspa-admin.js:1359
 #, js-format
 msgid "Queued to share (this run only) - %s bytes."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1129
+#: includes/admin/js/sspa-admin.js:1372
 msgid "Queued locally. Delivery runs in the background and retries automatically."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1129
-#: includes/admin/js/sspa-admin.js:1133
+#: includes/admin/js/sspa-admin.js:1372
+#: includes/admin/js/sspa-admin.js:1376
 msgid "Could not queue the submission."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1146
+#: includes/admin/js/sspa-admin.js:1389
 msgid "Building a bounded batch of historical payloads…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1153
+#: includes/admin/js/sspa-admin.js:1396
 msgid "Historical queueing failed."
 msgstr ""
 
 #. translators: 1: number queued, 2: number of historical runs remaining.
-#: includes/admin/js/sspa-admin.js:1159
+#: includes/admin/js/sspa-admin.js:1402
 #, js-format
 msgid "Queued %1$s; %2$s historical run(s) remain."
 msgstr ""
 
 #. translators: 1: number queued, 2: number needing review.
-#: includes/admin/js/sspa-admin.js:1164
+#: includes/admin/js/sspa-admin.js:1407
 #, js-format
 msgid "Historical queueing finished: %1$s queued, %2$s requiring review."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1168
+#: includes/admin/js/sspa-admin.js:1411
 msgid "Historical queueing request failed. Progress has been saved; press the button to resume."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1179
+#: includes/admin/js/sspa-admin.js:1422
 msgid "Pause this submission? Its exact local payload will be retained and can be resumed later."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1190
-#: includes/admin/js/sspa-admin.js:1197
+#: includes/admin/js/sspa-admin.js:1433
+#: includes/admin/js/sspa-admin.js:1440
 msgid "Could not update the submission."
 msgstr ""
 
 #. translators: Plugin identifier.
-#: includes/admin/js/sspa-admin.js:1225
+#: includes/admin/js/sspa-admin.js:1468
 #, js-format
 msgid "Measure \"%s\" on every profiled page with the plugin disabled for the test requests only? Visitors are unaffected."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1240
+#: includes/admin/js/sspa-admin.js:1483
 msgid "Could not start the analysis."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1247
+#: includes/admin/js/sspa-admin.js:1490
 msgid "Could not start the analysis (request failed)."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1253
+#: includes/admin/js/sspa-admin.js:1496
 msgid "Cancel the running analysis?"
 msgstr ""
 
 #. translators: 1: hours, 2: minutes.
-#: includes/admin/js/sspa-admin.js:1307
+#: includes/admin/js/sspa-admin.js:1550
 #, js-format
 msgid "%1$sh %2$sm"
 msgstr ""
 
 #. translators: Minutes.
-#: includes/admin/js/sspa-admin.js:1310
+#: includes/admin/js/sspa-admin.js:1553
 #, js-format
 msgid "%sm"
 msgstr ""
 
 #. translators: Seconds.
-#: includes/admin/js/sspa-admin.js:1312
+#: includes/admin/js/sspa-admin.js:1555
 #, js-format
 msgid "%ss"
 msgstr ""
 
 #. translators: 1: completed count, 2: total count, 3: progress percentage.
-#: includes/admin/js/sspa-admin.js:1387
+#: includes/admin/js/sspa-admin.js:1630
 #, js-format
 msgid "%1$s / %2$s measurements (%3$s%%)"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1389
+#: includes/admin/js/sspa-admin.js:1632
 msgid "Phase 1/2, screening"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1389
+#: includes/admin/js/sspa-admin.js:1632
 msgid "Phase 2/2, confirming"
 msgstr ""
 
 #. translators: Current measurement label.
-#: includes/admin/js/sspa-admin.js:1402
+#: includes/admin/js/sspa-admin.js:1645
 #, js-format
 msgid "Now testing: %s"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1402
+#: includes/admin/js/sspa-admin.js:1645
 msgid "Analysing results…"
 msgstr ""
 
 #. translators: Formatted elapsed duration.
-#: includes/admin/js/sspa-admin.js:1408
+#: includes/admin/js/sspa-admin.js:1651
 #, js-format
 msgid "Elapsed %s"
 msgstr ""
 
 #. translators: Formatted remaining duration.
-#: includes/admin/js/sspa-admin.js:1412
+#: includes/admin/js/sspa-admin.js:1655
 #, js-format
 msgid "~%s left in screening"
 msgstr ""
 
 #. translators: Formatted remaining duration.
-#: includes/admin/js/sspa-admin.js:1412
-#: includes/admin/js/sspa-admin.js:1415
+#: includes/admin/js/sspa-admin.js:1655
+#: includes/admin/js/sspa-admin.js:1658
 #, js-format
 msgid "~%s left"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1416
+#: includes/admin/js/sspa-admin.js:1659
 msgid "Plugin impact analysis running"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1416
+#: includes/admin/js/sspa-admin.js:1659
 msgid "Cache impact analysis running"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1418
+#: includes/admin/js/sspa-admin.js:1661
 msgid " - phase 1/2: screening all plugins"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1418
+#: includes/admin/js/sspa-admin.js:1661
 msgid " - phase 2/2: confirming impacted plugins"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1440
+#: includes/admin/js/sspa-admin.js:1684
 msgid "Analysis complete ✓ loading results…"
 msgstr ""
 
 #. translators: Analysis status returned by the server.
-#: includes/admin/js/sspa-admin.js:1440
+#: includes/admin/js/sspa-admin.js:1684
 #, js-format
 msgid "Analysis %s - loading results…"
 msgstr ""
 
 #. translators: Consecutive connection-failure count.
-#: includes/admin/js/sspa-admin.js:1553
+#: includes/admin/js/sspa-admin.js:1804
 #, js-format
 msgid "Connection hiccup, retrying… (%s)"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1618
+#: includes/admin/js/sspa-admin.js:1869
 msgid "Downloading the public figures from superspeedy.org…"
 msgstr ""
 
 #. translators: %s: HTTP or network error detail.
-#: includes/admin/js/sspa-admin.js:1627
+#: includes/admin/js/sspa-admin.js:1878
 #, js-format
 msgid "The community figures could not be loaded: %s"
 msgstr ""

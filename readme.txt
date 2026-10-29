@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.2
 Tested up to: 7.1
-Stable tag: 0.57.0
+Stable tag: 0.58.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,9 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.58.0 (29th October 2026) =
+* Merge of 0.57.6 into the main release; no further change.
 
 = 0.57.6 (29th October 2026) =
 * A finished Plugin Impact Analysis now stays on screen with a summary of each plugin's measured impact and a link to the Plugins tab, and shows again on your next visit until you close it.
