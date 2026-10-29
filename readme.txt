@@ -113,6 +113,11 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.57.6 (29th October 2026) =
+* A finished Plugin Impact Analysis now stays on screen with a summary of each plugin's measured impact and a link to the Plugins tab, and shows again on your next visit until you close it.
+* The Plugins tab can be filtered to one profiled page, sorted by measured impact, worst page, SQL, queries, rows, slowest query, HTTP time or name, and filtered to plugins that cost time, save time or need measuring.
+* The Plugins tab links to the public plugin rankings on superspeedy.org.
+
 = 0.57.5 (29th October 2026) =
 * The Plugins tab no longer makes the whole admin page scroll sideways on a phone.
 

@@ -10,7 +10,8 @@ function sspa_scoped_t($ok, $label) {
 /** The one <tr> of the rendered table that belongs to $component, so assertions cannot
  *  accidentally match text from a different plugin's row. */
 function sspa_scoped_row($html, $component) {
-    foreach (explode('<tr>', $html) as $row) {
+    // Rows carry data-* attributes since 0.57.5, so split on the tag, not the bare "<tr>".
+    foreach (preg_split('/<tr[\s>]/', $html) as $row) {
         if (false !== strpos($row, '<code>' . $component . '</code>')) {
             return $row;
         }
