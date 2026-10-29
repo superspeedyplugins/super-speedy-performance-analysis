@@ -818,6 +818,9 @@
 /* Except a one-word table button: the rule above let the squeezed last column of the Plugins
    table break "Measure" mid-word. The table scrolls sideways on narrow screens instead. */
 #sspa_main .button.sspa-measure-plugin { white-space: nowrap; overflow-wrap: normal; }
+/* The header's screen-reader label is absolutely positioned; without a positioned cell its
+   containing block is #wpbody, outside the scroll wrapper, and it widened the whole page. */
+#sspa_main #sspa-attrib-table th { position: relative; }
 #sspa-ajax-profile label { min-width: 0; max-width: 100%; }
 #sspa-ajax-profile select,
 #sspa-ajax-profile input:not([type="checkbox"]) { min-width: 0; max-width: 100%; box-sizing: border-box; }

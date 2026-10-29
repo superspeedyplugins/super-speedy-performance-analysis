@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.57.5 (29th October 2026) =
+* The Plugins tab no longer makes the whole admin page scroll sideways on a phone.
+
 = 0.57.4 (29th October 2026) =
 * The Measure button on the Plugins tab no longer wraps its text onto two lines.
 
