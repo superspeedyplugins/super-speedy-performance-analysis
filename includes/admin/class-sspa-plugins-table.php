@@ -146,7 +146,7 @@ class SSPA_Plugins_Table {
                     <th><?php esc_html_e('HTTP (ms)', 'super-speedy-performance-analysis'); ?></th>
                     <th><?php esc_html_e('Measured impact', 'super-speedy-performance-analysis'); ?></th>
                     <th><?php esc_html_e('Object cache', 'super-speedy-performance-analysis'); ?></th>
-                    <th></th>
+                    <th><span class="screen-reader-text"><?php esc_html_e('Measure', 'super-speedy-performance-analysis'); ?></span></th>
                 </tr>
             </thead>
             <tbody>

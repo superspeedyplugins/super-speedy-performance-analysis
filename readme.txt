@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.57.4 (29th October 2026) =
+* The Measure button on the Plugins tab no longer wraps its text onto two lines.
+
 = 0.57.3 (29th October 2026) =
 * AJAX windows again record no observation for an admin-ajax request whose GET and POST `action` values disagree.
 

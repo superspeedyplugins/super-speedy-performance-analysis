@@ -815,6 +815,9 @@
 
 /* Controls must fit their cards even with long labels or endpoint names. */
 #sspa_main .button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+/* Except a one-word table button: the rule above let the squeezed last column of the Plugins
+   table break "Measure" mid-word. The table scrolls sideways on narrow screens instead. */
+#sspa_main .button.sspa-measure-plugin { white-space: nowrap; overflow-wrap: normal; }
 #sspa-ajax-profile label { min-width: 0; max-width: 100%; }
 #sspa-ajax-profile select,
 #sspa-ajax-profile input:not([type="checkbox"]) { min-width: 0; max-width: 100%; box-sizing: border-box; }
