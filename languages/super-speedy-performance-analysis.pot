@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.60.0\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.61.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-02T17:36:15+00:00\n"
+"POT-Creation-Date: 2026-11-02T17:44:59+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -325,7 +325,7 @@ msgid "This site did not answer. Press Send to try again; a repeat is never stor
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:227
-#: includes/admin/class-sspa-plugins-table.php:580
+#: includes/admin/class-sspa-plugins-table.php:607
 #: includes/class-sspa-adhoc.php:125
 #: includes/admin/js/sspa-checkout.js:38
 msgid "Close"
@@ -369,7 +369,7 @@ msgid "Overview"
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:250
-#: includes/admin/tabs/cache.php:70
+#: includes/admin/tabs/cache.php:71
 #: includes/admin/tabs/overview.php:302
 msgid "Cache performance"
 msgstr ""
@@ -431,7 +431,7 @@ msgid "Super Speedy Plugins"
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:313
-#: includes/admin/js/sspa-admin.js:1659
+#: includes/admin/js/sspa-admin.js:1696
 msgid "Analysis running"
 msgstr ""
 
@@ -510,8 +510,8 @@ msgstr ""
 
 #: includes/admin/class-sspa-history-chart.php:72
 #: includes/admin/class-sspa-history-run-view.php:20
-#: includes/admin/class-sspa-plugins-table.php:605
-#: includes/admin/class-sspa-plugins-table.php:623
+#: includes/admin/class-sspa-plugins-table.php:632
+#: includes/admin/class-sspa-plugins-table.php:650
 #: includes/admin/class-sspa-profile-panel.php:45
 #: includes/admin/class-sspa-profile-panel.php:79
 #: includes/admin/class-sspa-profile-panel.php:93
@@ -810,14 +810,16 @@ msgstr ""
 
 #: includes/admin/class-sspa-history-run-view.php:69
 #: includes/admin/class-sspa-history-run-view.php:82
-#: includes/admin/class-sspa-plugins-table.php:247
+#: includes/admin/class-sspa-plugins-table.php:267
 #: includes/admin/partials/cache-safety-scan.php:79
 #: includes/admin/partials/community-figures.php:61
 #: includes/admin/partials/community-figures.php:130
-#: includes/admin/tabs/cache.php:230
-#: includes/admin/tabs/cache.php:241
+#: includes/admin/tabs/cache.php:146
+#: includes/admin/tabs/cache.php:157
+#: includes/admin/tabs/cache.php:280
+#: includes/admin/tabs/cache.php:291
 #: includes/admin/tabs/pages.php:58
-#: includes/admin/js/sspa-admin.js:1130
+#: includes/admin/js/sspa-admin.js:1167
 msgid "Page"
 msgstr ""
 
@@ -1130,8 +1132,66 @@ msgstr ""
 msgid "unknown"
 msgstr ""
 
+#: includes/admin/class-sspa-insights.php:372
+msgid "A page cache that refuses responses carrying Set-Cookie will not store these pages for new visitors."
+msgstr ""
+
+#: includes/admin/class-sspa-insights.php:374
+msgid "Run the Cache performance check to see what this site's page cache does with these pages."
+msgstr ""
+
+#. translators: 1: comma-separated items, 2: the last item
+#: includes/admin/class-sspa-insights.php:404
+#, php-format
+msgid "%1$s and %2$s"
+msgstr ""
+
+#. translators: %s: cookie name, e.g. "_fbp"
+#: includes/admin/class-sspa-insights.php:411
+#, php-format
+msgid "the %s cookie"
+msgstr ""
+
+#. translators: %s: list of cookie names, e.g. "_fbp and _fbc"
+#: includes/admin/class-sspa-insights.php:413
+#, php-format
+msgid "the %s cookies"
+msgstr ""
+
+#. translators: 1: "the _fbp cookie", 2: page list
+#: includes/admin/class-sspa-insights.php:421
+#, php-format
+msgid "Responses to the first visit to %2$s carry %1$s, but no PHP code the profiler observed set it (it may come from the web server, a proxy or code that runs before the profiler starts)"
+msgstr ""
+
+#. translators: 1: "the _fbp cookie", 2: page list, 3: where it was noticed, e.g. "before wp"
+#: includes/admin/class-sspa-insights.php:428
+#, php-format
+msgid "%1$s is set on the first visit to %2$s outside a timed callback (noticed %3$s)"
+msgstr ""
+
+#: includes/admin/class-sspa-insights.php:431
+msgid "at the end of the request"
+msgstr ""
+
+#. translators: 1: hook name, 2: callback name
+#: includes/admin/class-sspa-insights.php:438
+#, php-format
+msgid "on %1$s, in %2$s"
+msgstr ""
+
+#: includes/admin/class-sspa-insights.php:443
+msgid "while its code file loads"
+msgstr ""
+
+#. translators: 1: component name and version, 2: "the _fbp cookie", 3: page list, 4: where, e.g. "on init, in X::y"
+#: includes/admin/class-sspa-insights.php:447
+#, php-format
+msgid "%1$s sets %2$s on the first visit to %3$s (%4$s)"
+msgstr ""
+
 #. translators: 1: number of options, 2: human-readable size
-#: includes/admin/class-sspa-insights.php:408
+#: includes/admin/class-sspa-insights.php:478
 #, php-format
 msgid "Stop autoloading %1$d option never read during this analysis (%2$s)"
 msgid_plural "Stop autoloading %1$d options never read during this analysis (%2$s)"
@@ -1139,14 +1199,14 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of options, 2: pages profiled
-#: includes/admin/class-sspa-insights.php:430
+#: includes/admin/class-sspa-insights.php:500
 #, php-format
 msgid "Start autoloading %1$d option read on nearly all of the %2$d pages analysed"
 msgid_plural "Start autoloading %1$d options read on nearly all of the %2$d pages analysed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-sspa-insights.php:447
+#: includes/admin/class-sspa-insights.php:517
 msgid "Then clear the cached option set:"
 msgstr ""
 
@@ -1163,7 +1223,7 @@ msgid "SQL time"
 msgstr ""
 
 #: includes/admin/class-sspa-plugins-table.php:102
-#: includes/admin/class-sspa-plugins-table.php:294
+#: includes/admin/class-sspa-plugins-table.php:314
 #: includes/admin/class-sspa-profile-panel.php:970
 #: includes/admin/tabs/pages.php:63
 #: includes/admin/tabs/traffic.php:57
@@ -1173,7 +1233,7 @@ msgid "Queries"
 msgstr ""
 
 #: includes/admin/class-sspa-plugins-table.php:103
-#: includes/admin/class-sspa-plugins-table.php:295
+#: includes/admin/class-sspa-plugins-table.php:315
 #: includes/admin/tabs/pages.php:64
 msgid "Rows fetched"
 msgstr ""
@@ -1187,7 +1247,7 @@ msgid "HTTP time"
 msgstr ""
 
 #: includes/admin/class-sspa-plugins-table.php:106
-#: includes/admin/class-sspa-plugins-table.php:271
+#: includes/admin/class-sspa-plugins-table.php:291
 msgid "Name"
 msgstr ""
 
@@ -1208,98 +1268,108 @@ msgid "Needs measuring"
 msgstr ""
 
 #. translators: %d: number of profiled pages
-#: includes/admin/class-sspa-plugins-table.php:251
+#: includes/admin/class-sspa-plugins-table.php:271
 #, php-format
 msgid "All profiled pages (%d)"
 msgid_plural "All profiled pages (%d)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-sspa-plugins-table.php:257
+#: includes/admin/class-sspa-plugins-table.php:277
 msgid "Sort by"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:264
+#: includes/admin/class-sspa-plugins-table.php:284
 msgid "Show"
 msgstr ""
 
 #. translators: %s: page key
-#: includes/admin/class-sspa-plugins-table.php:280
+#: includes/admin/class-sspa-plugins-table.php:300
 #, php-format
 msgid "Figures for %s only: the attribution columns are this page's numbers and Measured impact is the change on this page."
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:282
+#: includes/admin/class-sspa-plugins-table.php:302
 msgid "Open the page analysis"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:290
+#: includes/admin/class-sspa-plugins-table.php:310
 #: includes/admin/class-sspa-profile-panel.php:969
 #: includes/admin/js/sspa-checkout.js:167
 msgid "Component"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:291
+#: includes/admin/class-sspa-plugins-table.php:311
 #: includes/admin/tabs/compare.php:168
 msgid "Type"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:292
+#: includes/admin/class-sspa-plugins-table.php:312
 msgid "Version"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:293
+#: includes/admin/class-sspa-plugins-table.php:313
 #: includes/admin/tabs/pages.php:62
 msgid "SQL (ms)"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:293
+#: includes/admin/class-sspa-plugins-table.php:313
 msgid "SQL total (ms)"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:296
+#: includes/admin/class-sspa-plugins-table.php:316
 msgid "Slowest query (ms)"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:297
+#: includes/admin/class-sspa-plugins-table.php:317
 #: includes/admin/tabs/pages.php:65
 msgid "HTTP (ms)"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:298
+#: includes/admin/class-sspa-plugins-table.php:318
 msgid "Measured impact"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:299
+#: includes/admin/class-sspa-plugins-table.php:319
 #: includes/admin/class-sspa-profile-panel.php:692
 #: includes/class-sspa-admin-bar.php:171
 #: includes/class-sspa-admin-bar.php:435
 msgid "Object cache"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:300
-#: includes/admin/class-sspa-plugins-table.php:346
+#: includes/admin/class-sspa-plugins-table.php:320
+#: includes/admin/class-sspa-plugins-table.php:373
 msgid "Measure"
 msgstr ""
 
+#. translators: %s: comma-separated cookie names
+#: includes/admin/class-sspa-plugins-table.php:342
+#, php-format
+msgid "Sets %s on a first visit. A page cache that refuses responses carrying Set-Cookie will not store these pages for new visitors."
+msgstr ""
+
+#: includes/admin/class-sspa-plugins-table.php:343
+msgid "sets a cookie for new visitors"
+msgstr ""
+
 #. translators: %d: percentage of queries the plugin ran without consulting the object cache
-#: includes/admin/class-sspa-plugins-table.php:333
+#: includes/admin/class-sspa-plugins-table.php:360
 #, php-format
 msgid "cache-blind (%d%%)"
 msgstr ""
 
 #. translators: %d: percentage of queries saved by the object cache
-#: includes/admin/class-sspa-plugins-table.php:336
+#: includes/admin/class-sspa-plugins-table.php:363
 #, php-format
 msgid "%d%% queries saved"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:354
+#: includes/admin/class-sspa-plugins-table.php:381
 msgid "No plugins match these filters."
 msgstr ""
 
 #. translators: 1: number of pages, 2: noise floor in milliseconds
-#: includes/admin/class-sspa-plugins-table.php:432
+#: includes/admin/class-sspa-plugins-table.php:459
 #, php-format
 msgid "no measurable impact on %1$d page (±%2$sms noise)"
 msgid_plural "no measurable impact on %1$d pages (±%2$sms noise)"
@@ -1307,75 +1377,75 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: milliseconds saved, 2: page key
-#: includes/admin/class-sspa-plugins-table.php:440
+#: includes/admin/class-sspa-plugins-table.php:467
 #, php-format
 msgid "saves %1$sms on %2$s"
 msgstr ""
 
 #. translators: 1: milliseconds added, 2: page key
-#: includes/admin/class-sspa-plugins-table.php:442
+#: includes/admin/class-sspa-plugins-table.php:469
 #, php-format
 msgid "adds %1$sms on %2$s"
 msgstr ""
 
 #. translators: %s: milliseconds saved, formatted
-#: includes/admin/class-sspa-plugins-table.php:446
+#: includes/admin/class-sspa-plugins-table.php:473
 #, php-format
 msgid "saves %sms typically"
 msgstr ""
 
 #. translators: %s: milliseconds added, formatted
-#: includes/admin/class-sspa-plugins-table.php:448
+#: includes/admin/class-sspa-plugins-table.php:475
 #, php-format
 msgid "adds %sms typically"
 msgstr ""
 
 #. translators: 1: milliseconds saved, 2: page key
-#: includes/admin/class-sspa-plugins-table.php:453
+#: includes/admin/class-sspa-plugins-table.php:480
 #, php-format
 msgid "up to %1$sms saved on %2$s"
 msgstr ""
 
 #. translators: 1: milliseconds added, 2: page key
-#: includes/admin/class-sspa-plugins-table.php:455
+#: includes/admin/class-sspa-plugins-table.php:482
 #, php-format
 msgid "up to %1$sms on %2$s"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:473
+#: includes/admin/class-sspa-plugins-table.php:500
 msgid "not measured on this page - run a Plugin Impact Analysis to measure"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:474
+#: includes/admin/class-sspa-plugins-table.php:501
 msgid "inferred - run a Plugin Impact Analysis to measure"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:487
+#: includes/admin/class-sspa-plugins-table.php:514
 msgid "measured, warm cache"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:487
+#: includes/admin/class-sspa-plugins-table.php:514
 msgid "measured"
 msgstr ""
 
 #. translators: 1: pages with a measurable effect, 2: pages measured
-#: includes/admin/class-sspa-plugins-table.php:491
+#: includes/admin/class-sspa-plugins-table.php:518
 #, php-format
 msgid "measurable on %1$d of %2$d pages measured"
 msgstr ""
 
-#: includes/admin/class-sspa-plugins-table.php:502
+#: includes/admin/class-sspa-plugins-table.php:529
 msgid "per-page breakdown"
 msgstr ""
 
 #. translators: 1: number of plugins, 2: number of pages, 3: date and time the run finished
-#: includes/admin/class-sspa-plugins-table.php:552
+#: includes/admin/class-sspa-plugins-table.php:579
 #, php-format
 msgid "Measured %1$s on %2$s, finished %3$s."
 msgstr ""
 
 #. translators: %d: number of plugins
-#: includes/admin/class-sspa-plugins-table.php:554
+#: includes/admin/class-sspa-plugins-table.php:581
 #, php-format
 msgid "%d plugin"
 msgid_plural "%d plugins"
@@ -1383,7 +1453,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of pages
-#: includes/admin/class-sspa-plugins-table.php:556
+#: includes/admin/class-sspa-plugins-table.php:583
 #, php-format
 msgid "%d page"
 msgid_plural "%d pages"
@@ -1391,49 +1461,49 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: human-readable duration
-#: includes/admin/class-sspa-plugins-table.php:562
+#: includes/admin/class-sspa-plugins-table.php:589
 #, php-format
 msgid "It took %s."
 msgstr ""
 
 #. translators: %d: number of further plugins
-#: includes/admin/class-sspa-plugins-table.php:576
+#: includes/admin/class-sspa-plugins-table.php:603
 #, php-format
 msgid "and %d more plugin on the Plugins tab."
 msgid_plural "and %d more plugins on the Plugins tab."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-sspa-plugins-table.php:579
+#: includes/admin/class-sspa-plugins-table.php:606
 msgid "View on the Plugins tab"
 msgstr ""
 
 #. translators: %s: comma-separated plugin slugs
-#: includes/admin/class-sspa-plugins-table.php:655
+#: includes/admin/class-sspa-plugins-table.php:682
 #, php-format
 msgid "measured together with %s, which cannot run without it"
 msgstr ""
 
 #. translators: 1: version measured, 2: version now, 3: date
-#: includes/admin/class-sspa-plugins-table.php:709
+#: includes/admin/class-sspa-plugins-table.php:736
 #, php-format
 msgid "measured on version %1$s, you now run %2$s (%3$s) - re-measure to trust this"
 msgstr ""
 
 #. translators: %s: date Plugin Impact Analysis ran
-#: includes/admin/class-sspa-plugins-table.php:718
+#: includes/admin/class-sspa-plugins-table.php:745
 #, php-format
 msgid "measured %s, before the analysis above - re-measure to trust this"
 msgstr ""
 
 #. translators: 1: date measured, 2: plugin version measured
-#: includes/admin/class-sspa-plugins-table.php:726
+#: includes/admin/class-sspa-plugins-table.php:753
 #, php-format
 msgid "measured %1$s on version %2$s"
 msgstr ""
 
 #. translators: %1$s: date measured
-#: includes/admin/class-sspa-plugins-table.php:728
+#: includes/admin/class-sspa-plugins-table.php:755
 #, php-format
 msgid "measured %1$s"
 msgstr ""
@@ -2100,12 +2170,12 @@ msgid "measured by disabling the plugin for test requests only - never for your 
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:1164
-#: includes/admin/js/sspa-admin.js:1119
+#: includes/admin/js/sspa-admin.js:1156
 msgid "Standard (cache warm)"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:1165
-#: includes/admin/js/sspa-admin.js:1119
+#: includes/admin/js/sspa-admin.js:1156
 msgid "No object cache"
 msgstr ""
 
@@ -2114,7 +2184,7 @@ msgid "Cache priming"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:1167
-#: includes/admin/js/sspa-admin.js:1119
+#: includes/admin/js/sspa-admin.js:1156
 msgid "Warm cache"
 msgstr ""
 
@@ -2137,7 +2207,7 @@ msgstr ""
 #. translators: %s: noise floor in ms
 #. translators: Noise threshold in milliseconds.
 #: includes/admin/class-sspa-profile-panel.php:1234
-#: includes/admin/js/sspa-admin.js:1151
+#: includes/admin/js/sspa-admin.js:1188
 #, php-format,js-format
 msgid "within ±%sms noise"
 msgstr ""
@@ -2145,7 +2215,7 @@ msgstr ""
 #. translators: %s: milliseconds
 #. translators: Time saved in milliseconds.
 #: includes/admin/class-sspa-profile-panel.php:1244
-#: includes/admin/js/sspa-admin.js:1155
+#: includes/admin/js/sspa-admin.js:1192
 #, php-format,js-format
 msgid "saves %sms"
 msgstr ""
@@ -2153,7 +2223,7 @@ msgstr ""
 #. translators: %s: milliseconds
 #. translators: Time added in milliseconds.
 #: includes/admin/class-sspa-profile-panel.php:1246
-#: includes/admin/js/sspa-admin.js:1155
+#: includes/admin/js/sspa-admin.js:1192
 #, php-format,js-format
 msgid "adds %sms"
 msgstr ""
@@ -2161,7 +2231,7 @@ msgstr ""
 #. translators: 1: signed SQL milliseconds, 2: signed query count
 #. translators: 1: signed SQL-time difference in milliseconds, 2: signed query-count difference.
 #: includes/admin/class-sspa-profile-panel.php:1250
-#: includes/admin/js/sspa-admin.js:1158
+#: includes/admin/js/sspa-admin.js:1195
 #, php-format,js-format
 msgid "SQL %1$sms · %2$s queries"
 msgstr ""
@@ -2333,7 +2403,7 @@ msgid "Existing coverage"
 msgstr ""
 
 #: includes/admin/partials/cache-safety-scan.php:101
-#: includes/admin/tabs/cache.php:243
+#: includes/admin/tabs/cache.php:293
 msgid "Open page"
 msgstr ""
 
@@ -2383,7 +2453,7 @@ msgid "You can browse what superspeedy.org already publishes:"
 msgstr ""
 
 #: includes/admin/partials/community-figures.php:20
-#: includes/admin/js/sspa-admin.js:1875
+#: includes/admin/js/sspa-admin.js:1912
 msgid "The community figures could not be loaded."
 msgstr ""
 
@@ -2693,12 +2763,12 @@ msgid "Unknown"
 msgstr ""
 
 #: includes/admin/tabs/cache.php:35
-#: includes/class-sspa-cache-delivery.php:248
+#: includes/class-sspa-cache-delivery.php:255
 msgid "WooCommerce is not active, so there is no basket to represent."
 msgstr ""
 
 #: includes/admin/tabs/cache.php:36
-#: includes/class-sspa-cache-delivery.php:279
+#: includes/class-sspa-cache-delivery.php:298
 msgid "The synthetic test customer account could not be created."
 msgstr ""
 
@@ -2707,68 +2777,73 @@ msgid "The first response set a cookie, so the page was not requested again."
 msgstr ""
 
 #: includes/admin/tabs/cache.php:38
-msgid "A cache reported a hit, but the two responses differed."
+#: includes/class-sspa-cache-delivery.php:252
+msgid "The first response set no cookie, so there is no returning visitor to represent."
 msgstr ""
 
 #: includes/admin/tabs/cache.php:39
-msgid "The cache that served visitors did not serve this audience."
+msgid "A cache reported a hit, but the two responses differed."
 msgstr ""
 
 #: includes/admin/tabs/cache.php:40
+msgid "The cache that served visitors did not serve this audience."
+msgstr ""
+
+#: includes/admin/tabs/cache.php:41
 msgid "The page did not answer with HTTP 200."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:46
+#: includes/admin/tabs/cache.php:47
 msgid "What usually happens"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:47
+#: includes/admin/tabs/cache.php:48
 msgid "What is possible"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:48
+#: includes/admin/tabs/cache.php:49
 msgid "How it works"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:49
+#: includes/admin/tabs/cache.php:50
 msgid "What stays private"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:50
+#: includes/admin/tabs/cache.php:51
 msgid "Why it is not a setting"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:51
+#: includes/admin/tabs/cache.php:52
 msgid "Where Ajax Prices fits"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:52
+#: includes/admin/tabs/cache.php:53
 msgid "Object cache is a different thing"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:53
+#: includes/admin/tabs/cache.php:54
 msgid "How to read the numbers"
 msgstr ""
 
 #. translators: %s: date the published page was last checked
-#: includes/admin/tabs/cache.php:61
+#: includes/admin/tabs/cache.php:62
 #: includes/class-sspa-offers.php:934
 #, php-format
 msgid "(checked %s)"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:71
+#: includes/admin/tabs/cache.php:72
 msgid "Most page caches serve anonymous visitors and step aside for visitors with a basket and logged-in customers. This tab measures what your cache does for each of them."
 msgstr ""
 
 #. translators: %s: time in milliseconds, e.g. "42 ms"
-#: includes/admin/tabs/cache.php:85
+#: includes/admin/tabs/cache.php:86
 #, php-format
 msgid "median %s to first byte (server-side request)"
 msgstr ""
 
 #. translators: %d: number of pages
-#: includes/admin/tabs/cache.php:90
+#: includes/admin/tabs/cache.php:91
 #, php-format
 msgid "%d page could not be determined"
 msgid_plural "%d pages could not be determined"
@@ -2776,312 +2851,431 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: date and time, 2: analysis number
-#: includes/admin/tabs/cache.php:102
+#: includes/admin/tabs/cache.php:103
 #, php-format
 msgid "Checked %1$s, alongside Analysis #%2$d."
 msgstr ""
 
 #. translators: %s: date and time
-#: includes/admin/tabs/cache.php:105
+#: includes/admin/tabs/cache.php:106
 #, php-format
 msgid "Checked %s, before any analysis was completed."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:110
+#: includes/admin/tabs/cache.php:111
 msgid "Not checked yet."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:110
+#: includes/admin/tabs/cache.php:111
 msgid "Run the check below to see whether visitors, visitors with a basket and logged-in customers get cached pages."
 msgstr ""
 
 #. translators: 1: collection start date, 2: page views, 3: seconds, 4: projected page views per day
-#: includes/admin/tabs/cache.php:118
+#: includes/admin/tabs/cache.php:119
 #, php-format
 msgid "In the Traffic collection from %1$s, %2$s catalogue page views from visitors with a basket or logged-in customers reached WordPress, costing %3$s seconds of page generation (about %4$s a day)."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:126
+#: includes/admin/tabs/cache.php:127
 msgid "How many visitors with a basket and logged-in customers reach WordPress is measured by a Traffic collection."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:127
+#: includes/admin/tabs/cache.php:128
 msgid "Open Traffic"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:134
+#: includes/admin/tabs/cache.php:147
+#: includes/admin/tabs/cache.php:158
+msgid "Cookie set on the first visit"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:148
+#: includes/admin/tabs/cache.php:159
+msgid "New visitor, twice"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:149
+#: includes/admin/tabs/cache.php:160
+msgid "Returning visitor, twice"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:159
+#: includes/admin/tabs/cache.php:160
+#: includes/admin/tabs/cache.php:465
+#: includes/class-sspa-cache-delivery.php:1372
+msgid "no cache status"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:160
+msgid "Not requested"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:166
+msgid "Cookies are set on a first visit"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:176
+msgid "A page cache that refuses responses carrying Set-Cookie will not store these pages for new visitors. Run the check below to see what this site's page cache does with them."
+msgstr ""
+
+#: includes/admin/tabs/cache.php:184
 msgid "Visitors with a basket were served the anonymous cached page."
 msgstr ""
 
 #. translators: %s: comma-separated page names
-#: includes/admin/tabs/cache.php:139
+#: includes/admin/tabs/cache.php:189
 #, php-format
 msgid "On %s, a request carrying WooCommerce's basket cookies received the same cached page as an anonymous visitor, and the page has no way to load that visitor's own basket afterwards: no WooCommerce cart fragments, Mini-Cart block or Ajax Prices markers were found. A mini-basket or basket count on these pages can therefore show an empty basket to a shopper who has items in it."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:145
+#: includes/admin/tabs/cache.php:195
 msgid "Loading each visitor's basket separately while the page stays cached is what the caching implementation service sets up."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:146
+#: includes/admin/tabs/cache.php:196
 msgid "View the caching implementation service"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:153
+#: includes/admin/tabs/cache.php:203
 msgid "Logged-in content may reach anonymous visitors."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:157
+#: includes/admin/tabs/cache.php:207
 msgid "After the check requested these pages as the logged-in test customer, an anonymous request received a page marked as logged in or showing the test account's name. Real customers on this site can cause the same effect."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:159
+#: includes/admin/tabs/cache.php:209
 msgid "An anonymous page that was identical on two requests changed after the check requested it as the logged-in test customer. The cache may have stored a logged-in response for anonymous visitors."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:175
-#: includes/admin/tabs/cache.php:205
+#: includes/admin/tabs/cache.php:225
+#: includes/admin/tabs/cache.php:255
 msgid "Check cache performance"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:177
+#: includes/admin/tabs/cache.php:227
 msgid "The check requests these fixed public pages of this site. It accepts no other address."
 msgstr ""
 
 #. translators: 1: total request count, 2: browser request count, 3: server request count
-#: includes/admin/tabs/cache.php:188
+#: includes/admin/tabs/cache.php:238
 #, php-format
-msgid "It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor, as a visitor carrying WooCommerce's basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer."
+msgid "It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and up to %3$d from the server: two each as a new visitor without cookies, as a returning visitor carrying only the cookies the first response set (sent only when it sets one), as a visitor carrying WooCommerce's basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer."
 msgstr ""
 
 #. translators: 1: total request count, 2: browser request count, 3: server request count
-#: includes/admin/tabs/cache.php:196
+#: includes/admin/tabs/cache.php:246
 #, php-format
-msgid "It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor and as the logged-in test account, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. WooCommerce is not active, so no basket requests are sent. It does not purge or change any cache."
+msgid "It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and up to %3$d from the server: two each as a new visitor without cookies, as a returning visitor carrying only the cookies the first response set (sent only when it sets one) and as the logged-in test account, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. WooCommerce is not active, so no basket requests are sent. It does not purge or change any cache."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:211
+#: includes/admin/tabs/cache.php:261
 msgid "This check needs a public home page."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:224
+#: includes/admin/tabs/cache.php:274
 msgid "Results by page"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:226
+#: includes/admin/tabs/cache.php:276
 msgid "This check was started without a browser (for example by an AI agent over MCP), so your browser's first-byte times were not measured. Every server-side request below was made."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:234
-#: includes/admin/tabs/cache.php:286
+#: includes/admin/tabs/cache.php:284
+#: includes/admin/tabs/cache.php:336
 msgid "Page generation without cache"
 msgstr ""
 
 #. translators: %s: cache name, e.g. "Cloudflare"
-#: includes/admin/tabs/cache.php:254
+#: includes/admin/tabs/cache.php:304
 #, php-format
 msgid "by %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:262
+#: includes/admin/tabs/cache.php:312
 #, php-format
 msgid "First byte %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:269
+#: includes/admin/tabs/cache.php:319
 #, php-format
 msgid "Complete %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:277
+#: includes/admin/tabs/cache.php:327
 #, php-format
 msgid "Your browser: first byte %s"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:290
+#: includes/admin/tabs/cache.php:340
 msgid "No analysis yet"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:293
+#: includes/admin/tabs/cache.php:343
 #, php-format
 msgid "Visitor %s"
 msgstr ""
 
 #. translators: %s: milliseconds
-#: includes/admin/tabs/cache.php:297
+#: includes/admin/tabs/cache.php:347
 #, php-format
 msgid "Logged-in customer %s"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:300
+#: includes/admin/tabs/cache.php:350
 #: includes/admin/js/sspa-ajax-profile.js:18
 #: includes/admin/js/sspa-history-chart.js:31
 #: includes/admin/js/sspa-measurement-chart.js:8
 msgid "Not measured"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:312
+#: includes/admin/tabs/cache.php:362
 msgid "\"First byte\" and \"Complete\" are measured by a request from this server to the page, the same boundary for all three audiences. \"Your browser\" is your own browser's anonymous request. \"Page generation without cache\" comes from the latest analysis; visitors with a basket are generated like visitors. These are separate measurements and are never subtracted from each other."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:318
-msgid "Your cache system"
+#: includes/admin/tabs/cache.php:371
+msgid "Ignored by the cache key: still served from cache"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:322
-msgid "Page cache plugins"
+#: includes/admin/tabs/cache.php:372
+msgid "Separate cache entry per value: every real click misses"
 msgstr ""
 
-#. translators: %s: plugin name
-#: includes/admin/tabs/cache.php:328
+#: includes/admin/tabs/cache.php:373
+msgid "Never served from cache"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:374
+msgid "Unknown: no cache reported a status"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:378
+msgid "Ad-click and campaign parameters"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:379
+msgid "Visitors from an ad or an email arrive with a parameter such as fbclid, gclid or utm_source. This check shows whether a parameter makes the site set a cookie, which code sets it, and whether the page cache still serves the page."
+msgstr ""
+
+#. translators: 1: maximum total requests, 2: profiled requests, 3: click ID list, 4: campaign parameter list, 5: cache-key requests
+#: includes/admin/tabs/cache.php:385
 #, php-format
-msgid "%s (cache integration)"
+msgid "It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d profiled requests without cookies (each page once without a parameter, the click IDs %3$s on every page, and %4$s on the home page), then, on one page the cache is shown to serve, %5$d requests repeating each parameter with the same value and once with a different one. It does not purge or change any cache."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:332
-msgid "None active"
+#: includes/admin/tabs/cache.php:395
+msgid "Check ad-click and campaign parameters"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:337
-msgid "advanced-cache.php drop-in"
+#. translators: 1: date and time, 2: page name, 3: requests made
+#: includes/admin/tabs/cache.php:409
+#, php-format
+msgid "Checked %1$s with %3$d requests. Cache key tested on %2$s."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:343
-msgid "Present, without a plugin header naming its owner"
+#. translators: %s: cookie names
+#: includes/admin/tabs/cache.php:417
+#, php-format
+msgid "Those requests carried only %s, the cookies a first visit sets, because the page is not cached without them."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:345
+#. translators: 1: date and time, 2: requests made
+#: includes/admin/tabs/cache.php:422
+#, php-format
+msgid "Checked %1$s with %2$d requests. No page was served from cache, so how the cache key treats each parameter is unknown."
+msgstr ""
+
+#: includes/admin/tabs/cache.php:431
+#: includes/admin/tabs/cache.php:438
+msgid "Parameter"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:432
+#: includes/admin/tabs/cache.php:439
+msgid "Cookies it makes the site set"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:433
+#: includes/admin/tabs/cache.php:462
+#: includes/class-sspa-admin-bar.php:436
+msgid "Page cache"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:441
+#: includes/admin/tabs/cache.php:503
 #: includes/admin/js/sspa-checkout.js:266
 msgid "None"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:351
+#. translators: 1: plugin name and version, 2: hook, 3: callback
+#: includes/admin/tabs/cache.php:451
+#, php-format
+msgid "set by %1$s (on %2$s, in %3$s)"
+msgstr ""
+
+#. translators: %s: plugin name and version
+#: includes/admin/tabs/cache.php:454
+#, php-format
+msgid "set by %s while its code file loads"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:456
+msgid "set outside any code the profiler could name"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:476
+msgid "Your cache system"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:480
+msgid "Page cache plugins"
+msgstr ""
+
+#. translators: %s: plugin name
+#: includes/admin/tabs/cache.php:486
+#, php-format
+msgid "%s (cache integration)"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:490
+msgid "None active"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:495
+msgid "advanced-cache.php drop-in"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:501
+msgid "Present, without a plugin header naming its owner"
+msgstr ""
+
+#: includes/admin/tabs/cache.php:509
 msgid "Cache seen in responses"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:363
+#: includes/admin/tabs/cache.php:521
 msgid "Run the check to see which cache answered."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:367
+#: includes/admin/tabs/cache.php:525
 msgid "No cache identified itself in the checked responses."
 msgstr ""
 
-#: includes/admin/tabs/cache.php:373
+#: includes/admin/tabs/cache.php:531
 msgid "Web server"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:374
+#: includes/admin/tabs/cache.php:532
 msgid "Not reported"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:374
+#: includes/admin/tabs/cache.php:532
 msgid "Other"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:377
+#: includes/admin/tabs/cache.php:535
 msgid "Persistent object cache"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:382
-#: includes/admin/tabs/cache.php:428
+#: includes/admin/tabs/cache.php:540
+#: includes/admin/tabs/cache.php:586
 msgid "Not active"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:384
-#: includes/admin/tabs/cache.php:428
+#: includes/admin/tabs/cache.php:542
+#: includes/admin/tabs/cache.php:586
 #: includes/admin/tabs/tools.php:9
 msgid "Active"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:389
+#: includes/admin/tabs/cache.php:547
 msgid "managed by the host"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:397
+#: includes/admin/tabs/cache.php:555
 msgid "PHP OPcache"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:403
+#: includes/admin/tabs/cache.php:561
 #: includes/admin/tabs/tools.php:12
 msgid "Not installed"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:404
-#: includes/admin/tabs/cache.php:410
+#: includes/admin/tabs/cache.php:562
+#: includes/admin/tabs/cache.php:568
 msgid "Disabled"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:405
+#: includes/admin/tabs/cache.php:563
 msgid "Not readable: the host restricts the OPcache status to another path"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:406
-#: includes/admin/tabs/cache.php:408
+#: includes/admin/tabs/cache.php:564
+#: includes/admin/tabs/cache.php:566
 msgid "Not readable"
 msgstr ""
 
 #. translators: 1: memory used, 2: memory free, 3: hit rate percentage, 4: cached script count, 5: restart count
-#: includes/admin/tabs/cache.php:414
+#: includes/admin/tabs/cache.php:572
 #, php-format
 msgid "Enabled: %1$s used, %2$s free, %3$s%% hit rate, %4$s cached scripts, %5$s restarts"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:427
+#: includes/admin/tabs/cache.php:585
 msgid "Super Speedy Ajax Prices"
 msgstr ""
 
 #. translators: %d: number of pages
-#: includes/admin/tabs/cache.php:441
+#: includes/admin/tabs/cache.php:599
 #, php-format
 msgid "In the latest analysis, %d page was answered by a cache before WordPress ran, even with a unique query string. Your cache serves those addresses regardless of query strings."
 msgid_plural "In the latest analysis, %d pages were answered by a cache before WordPress ran, even with a unique query string. Your cache serves those addresses regardless of query strings."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/tabs/cache.php:446
+#: includes/admin/tabs/cache.php:604
 msgid "Systems the caching service supports:"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:452
+#: includes/admin/tabs/cache.php:610
 msgid "You can cache visitors with a basket and logged-in customers"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:453
+#: includes/admin/tabs/cache.php:611
 msgid "In the words of the published Super Speedy Plugins pages:"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:480
+#: includes/admin/tabs/cache.php:638
 msgid "Have it implemented for you"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:486
-#: includes/admin/tabs/cache.php:522
+#: includes/admin/tabs/cache.php:644
+#: includes/admin/tabs/cache.php:680
 #: includes/class-sspa-offers.php:1016
 msgid "Don't show this again"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:495
+#: includes/admin/tabs/cache.php:653
 msgid "Want me to implement this for you?"
 msgstr ""
 
-#: includes/admin/tabs/cache.php:497
+#: includes/admin/tabs/cache.php:655
 msgid "Cache pages whose prices vary per visitor"
 msgstr ""
 
 #. translators: %s: service name
-#: includes/admin/tabs/cache.php:508
+#: includes/admin/tabs/cache.php:666
 #, php-format
 msgid "View the %s service"
 msgstr ""
 
 #. translators: %s: plugin name
 #. translators: %s: product or service name
-#: includes/admin/tabs/cache.php:511
+#: includes/admin/tabs/cache.php:669
 #: includes/class-sspa-offers.php:944
 #, php-format
 msgid "View %s"
@@ -3276,7 +3470,7 @@ msgid "(this run only)"
 msgstr ""
 
 #: includes/admin/tabs/compare.php:240
-#: includes/admin/js/sspa-admin.js:1360
+#: includes/admin/js/sspa-admin.js:1397
 msgid "Preview data"
 msgstr ""
 
@@ -4190,8 +4384,8 @@ msgid "I understand that this writes small pseudonymous event rows for observed 
 msgstr ""
 
 #: includes/admin/tabs/traffic.php:103
-#: includes/admin/js/sspa-admin.js:1010
-#: includes/admin/js/sspa-admin.js:1017
+#: includes/admin/js/sspa-admin.js:1047
+#: includes/admin/js/sspa-admin.js:1054
 msgid "Start collection"
 msgstr ""
 
@@ -4579,96 +4773,124 @@ msgstr ""
 msgid "Send a prepared draft (request_uuid) to Super Speedy Plugins with the contact details given. consent:true records that the site owner agreed to send this report and their details; confirm:true that they asked for it to be sent now. Leave marketing_opt_in false unless they asked for marketing email."
 msgstr ""
 
+#: includes/class-sspa-abilities-control.php:343
+msgid "Start the ad-click and campaign parameter check"
+msgstr ""
+
+#: includes/class-sspa-abilities-control.php:344
+msgid "Start the Cache performance tab's parameter check: each click ID (fbclid, gclid, gbraid, wbraid, msclkid, ttclid, twclid, li_fat_id, epik, srsltid) on every representative page and each campaign parameter (utm_*, ref, mc_cid, mc_eid) on home, as profiled cookie-less requests, naming any cookie a parameter makes the site set and the code that set it; then, on one page the cache is shown to serve, each parameter with the same value twice and a different value once, to classify the cache key as ignored, separate_key or bypass. About 110 requests, all to this site. Then loop advance-parameter-check with the check_id, and read get-parameter-check."
+msgstr ""
+
+#: includes/class-sspa-abilities-control.php:348
+msgid "Advance the parameter check"
+msgstr ""
+
 #: includes/class-sspa-abilities-control.php:349
+msgid "Make the next requests of a started parameter check (check_id) and return progress. When the last request is made the report is saved; done is then true."
+msgstr ""
+
+#: includes/class-sspa-abilities-control.php:354
+msgid "Get the parameter check report"
+msgstr ""
+
+#: includes/class-sspa-abilities-control.php:355
+msgid "The latest ad-click and campaign parameter check: per parameter the cookies it made the site set (name, plugin or theme, version, hook, callback; never values) and how the page cache keyed it (ignored, separate_key, bypass or unknown), worst first."
+msgstr ""
+
+#: includes/class-sspa-abilities-control.php:366
 msgid "This action needs confirm:true. Ask the site owner first."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:379
+#: includes/class-sspa-abilities-control.php:396
 msgid "The profiler is off. Ask the site owner, then call set-profiler with enabled:true and confirm:true; every analysis needs it."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:382
+#: includes/class-sspa-abilities-control.php:399
 msgid "A run is active: loop advance-run until it finishes, or cancel-run."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:385
+#: includes/class-sspa-abilities-control.php:402
 msgid "No analysis has finished yet: start with run-analysis (type baseline), loop advance-run, then read get-report."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:389
+#: includes/class-sspa-abilities-control.php:406
 msgid "This site cannot fetch its own pages (prerequisites.loopback.reason), so nothing can be measured over MCP yet. If a firewall or CDN in front of the site blocks it, set update-settings loopback_origin to the origin server's address (ask the host); if the site is behind HTTP basic auth, set loopback_credentials. Then call get-capabilities again."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:391
+#: includes/class-sspa-abilities-control.php:408
 msgid "Always loop advance-run after starting a run: it does not rely on WP-Cron."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:424
+#: includes/class-sspa-abilities-control.php:442
 msgid "WP-Cron is disabled here: runs move only when advance-run is called (or a system cron runs wp-cron.php)."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:425
+#: includes/class-sspa-abilities-control.php:443
 msgid "WP-Cron is enabled, but it only fires on site traffic; loop advance-run anyway."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:433
+#: includes/class-sspa-abilities-control.php:451
 msgid "Server-level changes (installing Excimer, PHP-FPM, OPcache or MySQL settings) need the host or SSH; install_steps says what to run."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:434
+#: includes/class-sspa-abilities-control.php:452
 msgid "Browser visitor-path timing in the cache check needs a browser; over MCP it is recorded as not measured."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:457
+#: includes/class-sspa-abilities-control.php:475
 msgid "When loopback is blocked, the Performance Analysis screen can measure pages through the administrator's browser instead. That needs a person in wp-admin and cannot be driven over MCP."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:461
+#: includes/class-sspa-abilities-control.php:479
 msgid "Not checked: the profiler is off, and the check needs it to recognise its own answer. Enable it with set-profiler, then call get-capabilities again."
 msgstr ""
 
 #. translators: 1: origin address, 2: why the public route failed
-#: includes/class-sspa-abilities-control.php:486
+#: includes/class-sspa-abilities-control.php:504
 #, php-format
 msgid "Loopback works direct to the origin server at %1$s. The public route failed: %2$s."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:488
+#: includes/class-sspa-abilities-control.php:506
 msgid "Loopback works over the public route: the site reached itself at its own URL."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:517
+#: includes/class-sspa-abilities-control.php:535
 msgid "No run with that id."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:563
+#: includes/class-sspa-abilities-control.php:581
 msgid "Pass profile_id, page_key or url."
 msgstr ""
 
 #. translators: %s: page key
-#: includes/class-sspa-abilities-control.php:568
+#: includes/class-sspa-abilities-control.php:586
 #, php-format
 msgid "No measurement of %s yet: call profile-url or run-analysis first."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:584
+#: includes/class-sspa-abilities-control.php:602
 msgid "No analysis has finished yet: call run-analysis first."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:627
+#: includes/class-sspa-abilities-control.php:647
 #: includes/class-sspa-run-controller.php:2586
 msgid "No measured impacts for this plugin yet - run a plugin impact analysis."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:663
+#: includes/class-sspa-abilities-control.php:683
 msgid "Sharing is the site owner's decision and is changed on the Share tab, not over MCP."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:804
+#: includes/class-sspa-abilities-control.php:824
 msgid "This cache check is missing or has been replaced. Start it again with run-cache-check."
 msgstr ""
 
-#: includes/class-sspa-abilities-control.php:886
+#: includes/class-sspa-abilities-control.php:884
+msgid "No completed parameter check was found: call run-parameter-check first."
+msgstr ""
+
+#: includes/class-sspa-abilities-control.php:935
 #: includes/class-sspa-history-ajax.php:62
 msgid "That expectation could not be changed."
 msgstr ""
@@ -4969,7 +5191,7 @@ msgid "The analysis failed - see the plugin page for details."
 msgstr ""
 
 #: includes/class-sspa-adhoc.php:127
-#: includes/admin/js/sspa-admin.js:1110
+#: includes/admin/js/sspa-admin.js:1147
 msgid "Loading…"
 msgstr ""
 
@@ -5281,10 +5503,6 @@ msgstr ""
 msgid "OPcache refused the reset. Some hosts disable it for web requests."
 msgstr ""
 
-#: includes/class-sspa-admin-bar.php:436
-msgid "Page cache"
-msgstr ""
-
 #. translators: 1: cache step, 2: backend error message.
 #: includes/class-sspa-admin-bar.php:443
 #, php-format
@@ -5510,117 +5728,170 @@ msgstr ""
 msgid "Invalid response header."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:49
-#: includes/class-sspa-cache-delivery.php:61
-#: includes/class-sspa-cache-delivery.php:78
+#: includes/class-sspa-cache-delivery.php:53
+#: includes/class-sspa-cache-delivery.php:65
+#: includes/class-sspa-cache-delivery.php:82
+#: includes/class-sspa-parameter-check.php:56
+#: includes/class-sspa-parameter-check.php:68
 msgid "You are not allowed to run this check."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:110
-#: includes/class-sspa-cache-delivery.php:1065
+#: includes/class-sspa-cache-delivery.php:114
+#: includes/class-sspa-cache-delivery.php:1095
 msgid "Home"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:111
-#: includes/class-sspa-cache-delivery.php:1066
+#: includes/class-sspa-cache-delivery.php:115
+#: includes/class-sspa-cache-delivery.php:1096
 msgid "Shop"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:112
-#: includes/class-sspa-cache-delivery.php:1067
+#: includes/class-sspa-cache-delivery.php:116
+#: includes/class-sspa-cache-delivery.php:1097
 msgid "Product category"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:113
-#: includes/class-sspa-cache-delivery.php:1068
+#: includes/class-sspa-cache-delivery.php:117
+#: includes/class-sspa-cache-delivery.php:1098
 msgid "Product"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:177
+#: includes/class-sspa-cache-delivery.php:184
+#: includes/class-sspa-parameter-check.php:81
 msgid "The check needs a public home page on this site."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:216
+#: includes/class-sspa-cache-delivery.php:223
 msgid "That page is not part of this fixed check."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:227
+#: includes/class-sspa-cache-delivery.php:234
 msgid "Invalid cache check request."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:238
+#: includes/class-sspa-cache-delivery.php:245
 msgid "The cache check requests must run in their fixed order."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:246
-msgid "The first response set an application cookie, so this URL was not repeated with a contaminated client."
-msgstr ""
-
-#: includes/class-sspa-cache-delivery.php:298
+#: includes/class-sspa-cache-delivery.php:317
 msgid "The server-side cache checks have not finished."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:336
+#: includes/class-sspa-cache-delivery.php:356
 msgid "This report contains exact public page URLs, software versions and local aggregate counts. It contains no response HTML, cookie values, nonce values, customer records or snippet source."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:340
+#: includes/class-sspa-cache-delivery.php:360
 msgid "Browser visitor-path timing, server-loopback timing for each audience and profiled origin generation are reported as separate measured boundaries."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:404
+#: includes/class-sspa-cache-delivery.php:425
 msgid "No completed cache performance check was found."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:407
+#: includes/class-sspa-cache-delivery.php:428
 msgid "The saved cache performance check belongs to a different analysis run."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:415
+#: includes/class-sspa-cache-delivery.php:439
 msgid "This cache check is missing or has been replaced."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:419
+#: includes/class-sspa-cache-delivery.php:443
 msgid "This cache check expired. Start it again."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:537
+#: includes/class-sspa-cache-delivery.php:561
 msgid "The canonical page redirected outside the allowed public site routes."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:672
+#: includes/class-sspa-cache-delivery.php:702
 msgid "The browser did not return every visitor-path measurement."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:678
+#: includes/class-sspa-cache-delivery.php:708
 msgid "The browser returned an invalid check result."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:686
+#: includes/class-sspa-cache-delivery.php:716
 msgid "The browser returned a result outside the fixed check targets."
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1190
+#. translators: 1: cookie name, 2: plugin or theme name and version
+#: includes/class-sspa-cache-delivery.php:1325
+#, php-format
+msgid "%1$s set by %2$s"
+msgstr ""
+
+#. translators: %s: cookie name
+#: includes/class-sspa-cache-delivery.php:1328
+#, php-format
+msgid "%s (run an analysis to name the code that sets it)"
+msgstr ""
+
+#. translators: %s: cookie name
+#: includes/class-sspa-cache-delivery.php:1331
+#, php-format
+msgid "%s, set outside any code the profiler could name"
+msgstr ""
+
+#. translators: %s: cookies and who sets them, e.g. "_fbp set by Example Tracker 1.2.3"
+#: includes/class-sspa-cache-delivery.php:1337
+#, php-format
+msgid "Not cached for new visitors: %s"
+msgstr ""
+
+#. translators: %s: cookies and who sets them
+#: includes/class-sspa-cache-delivery.php:1339
+#, php-format
+msgid "Cached for new visitors although the first response sets a cookie: %s"
+msgstr ""
+
+#. translators: 1: page list, 2: cache statuses, e.g. "MISS", 3: cookie list
+#: includes/class-sspa-cache-delivery.php:1383
+#, php-format
+msgid "The Cache performance check observed: two cookie-less requests to %1$s were not served from cache (%2$s), and each response set %3$s."
+msgstr ""
+
+#. translators: 1: page list, 2: cache statuses, 3: cookie list
+#: includes/class-sspa-cache-delivery.php:1392
+#, php-format
+msgid "The Cache performance check observed: cookie-less requests to %1$s were served from cache (%2$s) even though the first response set %3$s, so this page cache stores or strips that response."
+msgstr ""
+
+#. translators: 1: page list, 2: cache statuses, e.g. "MISS, HIT"
+#: includes/class-sspa-cache-delivery.php:1403
+#, php-format
+msgid "A returning visitor carrying only that cookie was served from cache on %1$s (%2$s), which is why a check from a browser that already has the cookie looks healthy."
+msgstr ""
+
+#. translators: 1: page list, 2: cache statuses
+#: includes/class-sspa-cache-delivery.php:1411
+#, php-format
+msgid "A returning visitor carrying only that cookie was not served from cache on %1$s either (%2$s)."
+msgstr ""
+
+#: includes/class-sspa-cache-delivery.php:1438
 msgid "Page caching confirmed for anonymous visitors on every checked page"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1191
+#: includes/class-sspa-cache-delivery.php:1439
 msgid "Page caching confirmed for anonymous visitors on some checked pages"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1192
+#: includes/class-sspa-cache-delivery.php:1440
 msgid "The checked anonymous requests were bypassed by the observed cache layer"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1193
+#: includes/class-sspa-cache-delivery.php:1441
 msgid "No page cache was observed on the checked pages"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1194
+#: includes/class-sspa-cache-delivery.php:1442
 msgid "Page-cache reuse was not observed"
 msgstr ""
 
-#: includes/class-sspa-cache-delivery.php:1195
+#: includes/class-sspa-cache-delivery.php:1443
 msgid "The cache performance check is inconclusive"
 msgstr ""
 
@@ -5628,7 +5899,7 @@ msgstr ""
 msgid "This file contains exact page URLs and local plugin or theme file paths. It contains no response HTML, cookie values, nonce values or customer content. Review it before sharing outside a trusted technical review."
 msgstr ""
 
-#: includes/class-sspa-cache-recon.php:266
+#: includes/class-sspa-cache-recon.php:271
 msgid "The browser response evidence is invalid."
 msgstr ""
 
@@ -6726,6 +6997,36 @@ msgstr ""
 msgid "First-sample-only cost observed; the cause is not established."
 msgstr ""
 
+#: includes/class-sspa-parameter-check.php:123
+msgid "This parameter check is missing or has been replaced. Start it again."
+msgstr ""
+
+#: includes/class-sspa-parameter-check.php:127
+msgid "This parameter check expired. Start it again."
+msgstr ""
+
+#: includes/class-sspa-parameter-check.php:384
+msgid "code the profiler could not name"
+msgstr ""
+
+#. translators: 1: parameter, 2: cookie name, 3: plugin name and version, 4: number of parameters
+#: includes/class-sspa-parameter-check.php:387
+#, php-format
+msgid "%1$s makes %3$s set %2$s and is not served from cache; %4$d parameter does both"
+msgid_plural "%1$s makes %3$s set %2$s and is not served from cache; %4$d parameters do both"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: number of parameters that set a cookie, 2: number of parameters not served from cache
+#: includes/class-sspa-parameter-check.php:396
+#, php-format
+msgid "%1$d parameter(s) set a cookie and %2$d are not served from cache"
+msgstr ""
+
+#: includes/class-sspa-parameter-check.php:401
+msgid "No checked parameter set a cookie or missed the cache"
+msgstr ""
+
 #: includes/class-sspa-probes.php:107
 msgid "The marked order could not be refunded."
 msgstr ""
@@ -7784,7 +8085,7 @@ msgid "You are not allowed to manage traffic collection."
 msgstr ""
 
 #: includes/traffic/class-sspa-traffic-ajax.php:25
-#: includes/admin/js/sspa-admin.js:999
+#: includes/admin/js/sspa-admin.js:1036
 msgid "Confirm that you have read the privacy and resource limits before starting."
 msgstr ""
 
@@ -8036,7 +8337,7 @@ msgid "The report could not be prepared."
 msgstr ""
 
 #: includes/admin/js/sspa-admin.js:726
-#: includes/admin/js/sspa-admin.js:1068
+#: includes/admin/js/sspa-admin.js:1105
 msgid " Downloaded."
 msgstr ""
 
@@ -8061,94 +8362,119 @@ msgid "Requesting pages as the logged-in test customer"
 msgstr ""
 
 #: includes/admin/js/sspa-admin.js:924
+msgid "Requesting pages as a returning visitor with only the cookies the first visit set"
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:927
 msgid "Checking that no logged-in content reached anonymous visitors"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:926
+#: includes/admin/js/sspa-admin.js:929
 msgid "Requesting pages from the server as an anonymous visitor"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:946
+#: includes/admin/js/sspa-admin.js:949
 msgid "Measuring your browser as an anonymous visitor"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:967
+#: includes/admin/js/sspa-admin.js:970
+#: includes/admin/js/sspa-admin.js:1004
 msgid "Complete. Showing the results…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:970
+#: includes/admin/js/sspa-admin.js:973
 msgid "The cache check failed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1002
+#: includes/admin/js/sspa-admin.js:987
+msgid "Requesting pages with each parameter, profiled"
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:988
+msgid "Finding a page the cache serves"
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:989
+msgid "Testing how the cache keys each parameter"
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:1001
+msgid "The parameter check did not finish."
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:1007
+msgid "The parameter check failed."
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:1039
 msgid "Running database pre-flight…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1011
-#: includes/admin/js/sspa-admin.js:1018
+#: includes/admin/js/sspa-admin.js:1048
+#: includes/admin/js/sspa-admin.js:1055
 msgid "Collection could not be started."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1014
+#: includes/admin/js/sspa-admin.js:1051
 msgid "Collection started."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1025
+#: includes/admin/js/sspa-admin.js:1062
 msgid "Remove the observer immediately? No more request or order-outcome events will be recorded."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1037
-#: includes/admin/js/sspa-admin.js:1043
+#: includes/admin/js/sspa-admin.js:1074
+#: includes/admin/js/sspa-admin.js:1080
 msgid "Collection could not be stopped."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1049
+#: includes/admin/js/sspa-admin.js:1086
 msgid " Preparing observations…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1056
+#: includes/admin/js/sspa-admin.js:1093
 msgid "Observations could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1070
+#: includes/admin/js/sspa-admin.js:1107
 msgid " Observations could not be prepared."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1077
+#: includes/admin/js/sspa-admin.js:1114
 msgid "Permanently delete this collection, all raw event rows and its temporary join key?"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1088
-#: includes/admin/js/sspa-admin.js:1094
+#: includes/admin/js/sspa-admin.js:1125
+#: includes/admin/js/sspa-admin.js:1131
 msgid "Collection data could not be deleted."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1114
+#: includes/admin/js/sspa-admin.js:1151
 msgid "No detail available."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1119
+#: includes/admin/js/sspa-admin.js:1156
 msgid "First sample (ambient cache)"
 msgstr ""
 
 #. translators: 1: plugin identifier, 2: plugin version.
-#: includes/admin/js/sspa-admin.js:1128
+#: includes/admin/js/sspa-admin.js:1165
 #, js-format
 msgid "Measured impact of %1$s version %2$s per page"
 msgstr ""
 
 #. translators: Plugin identifier.
-#: includes/admin/js/sspa-admin.js:1128
+#: includes/admin/js/sspa-admin.js:1165
 #, js-format
 msgid "Measured impact of %s per page"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1144
+#: includes/admin/js/sspa-admin.js:1181
 msgid "\"adds\" = the plugin costs that much page-generation time; \"saves\" = the page is SLOWER without it (the plugin is speeding it up); \"within noise\" = no measurable difference on that page."
 msgstr ""
 
 #. translators: Number of recent runs to retain.
-#: includes/admin/js/sspa-admin.js:1166
+#: includes/admin/js/sspa-admin.js:1203
 #, js-format
 msgid ""
 "Delete detailed per-query data for all but the last %s runs?\n"
@@ -8157,255 +8483,255 @@ msgid ""
 msgstr ""
 
 #. translators: Formatted storage size.
-#: includes/admin/js/sspa-admin.js:1171
+#: includes/admin/js/sspa-admin.js:1208
 #, js-format
 msgid "Done. Detailed data now uses %s."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1183
+#: includes/admin/js/sspa-admin.js:1220
 msgid "Could not update sharing consent."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1210
+#: includes/admin/js/sspa-admin.js:1247
 msgid "Could not turn on sharing. Nothing was changed."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1227
+#: includes/admin/js/sspa-admin.js:1264
 msgid "Could not hide this panel. Please try again."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1246
-#: includes/admin/js/sspa-admin.js:1256
+#: includes/admin/js/sspa-admin.js:1283
+#: includes/admin/js/sspa-admin.js:1293
 msgid "Could not save this choice."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1272
-#: includes/admin/js/sspa-admin.js:1278
+#: includes/admin/js/sspa-admin.js:1309
+#: includes/admin/js/sspa-admin.js:1315
 msgid "Could not update this plugin."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1293
+#: includes/admin/js/sspa-admin.js:1330
 msgid "Building the exact payload…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1297
+#: includes/admin/js/sspa-admin.js:1334
 msgid "Could not build the payload."
 msgstr ""
 
 #. translators: 1: analysis type, 2: payload size in kilobytes.
-#: includes/admin/js/sspa-admin.js:1323
+#: includes/admin/js/sspa-admin.js:1360
 #, js-format
 msgid "This is everything that would be sent for this %1$s analysis (%2$s KB)."
 msgstr ""
 
 #. translators: Payload size in kilobytes.
-#: includes/admin/js/sspa-admin.js:1323
+#: includes/admin/js/sspa-admin.js:1360
 #, js-format
 msgid "This is everything that would be sent (%s KB)."
 msgstr ""
 
 #. translators: 1: list of included fields, 2: number of active components.
-#: includes/admin/js/sspa-admin.js:1327
+#: includes/admin/js/sspa-admin.js:1364
 #, js-format
 msgid "%1$s, and the names and versions of %2$s active components"
 msgstr ""
 
 #. translators: List of included fields.
-#: includes/admin/js/sspa-admin.js:1328
+#: includes/admin/js/sspa-admin.js:1365
 #, js-format
 msgid "It contains: %s."
 msgstr ""
 
 #. translators: List of plugin names.
-#: includes/admin/js/sspa-admin.js:1331
+#: includes/admin/js/sspa-admin.js:1368
 #, js-format
 msgid "These plugins have opted in to publishing their own performance settings: %s."
 msgstr ""
 
 #. translators: List of excluded fields.
-#: includes/admin/js/sspa-admin.js:1334
+#: includes/admin/js/sspa-admin.js:1371
 #, js-format
 msgid "It does not contain %s."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1336
+#: includes/admin/js/sspa-admin.js:1373
 msgid "Download this file"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1346
+#: includes/admin/js/sspa-admin.js:1383
 msgid "Preparing the anonymised payload…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1353
-#: includes/admin/js/sspa-admin.js:1364
+#: includes/admin/js/sspa-admin.js:1390
+#: includes/admin/js/sspa-admin.js:1401
 msgid "Could not share this analysis."
 msgstr ""
 
 #. translators: Compressed payload size in bytes.
-#: includes/admin/js/sspa-admin.js:1359
+#: includes/admin/js/sspa-admin.js:1396
 #, js-format
 msgid "Queued to share (this run only) - %s bytes."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1372
+#: includes/admin/js/sspa-admin.js:1409
 msgid "Queued locally. Delivery runs in the background and retries automatically."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1372
-#: includes/admin/js/sspa-admin.js:1376
+#: includes/admin/js/sspa-admin.js:1409
+#: includes/admin/js/sspa-admin.js:1413
 msgid "Could not queue the submission."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1389
+#: includes/admin/js/sspa-admin.js:1426
 msgid "Building a bounded batch of historical payloads…"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1396
+#: includes/admin/js/sspa-admin.js:1433
 msgid "Historical queueing failed."
 msgstr ""
 
 #. translators: 1: number queued, 2: number of historical runs remaining.
-#: includes/admin/js/sspa-admin.js:1402
+#: includes/admin/js/sspa-admin.js:1439
 #, js-format
 msgid "Queued %1$s; %2$s historical run(s) remain."
 msgstr ""
 
 #. translators: 1: number queued, 2: number needing review.
-#: includes/admin/js/sspa-admin.js:1407
+#: includes/admin/js/sspa-admin.js:1444
 #, js-format
 msgid "Historical queueing finished: %1$s queued, %2$s requiring review."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1411
+#: includes/admin/js/sspa-admin.js:1448
 msgid "Historical queueing request failed. Progress has been saved; press the button to resume."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1422
+#: includes/admin/js/sspa-admin.js:1459
 msgid "Pause this submission? Its exact local payload will be retained and can be resumed later."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1433
-#: includes/admin/js/sspa-admin.js:1440
+#: includes/admin/js/sspa-admin.js:1470
+#: includes/admin/js/sspa-admin.js:1477
 msgid "Could not update the submission."
 msgstr ""
 
 #. translators: Plugin identifier.
-#: includes/admin/js/sspa-admin.js:1468
+#: includes/admin/js/sspa-admin.js:1505
 #, js-format
 msgid "Measure \"%s\" on every profiled page with the plugin disabled for the test requests only? Visitors are unaffected."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1483
+#: includes/admin/js/sspa-admin.js:1520
 msgid "Could not start the analysis."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1490
+#: includes/admin/js/sspa-admin.js:1527
 msgid "Could not start the analysis (request failed)."
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1496
+#: includes/admin/js/sspa-admin.js:1533
 msgid "Cancel the running analysis?"
 msgstr ""
 
 #. translators: 1: hours, 2: minutes.
-#: includes/admin/js/sspa-admin.js:1550
+#: includes/admin/js/sspa-admin.js:1587
 #, js-format
 msgid "%1$sh %2$sm"
 msgstr ""
 
 #. translators: Minutes.
-#: includes/admin/js/sspa-admin.js:1553
+#: includes/admin/js/sspa-admin.js:1590
 #, js-format
 msgid "%sm"
 msgstr ""
 
 #. translators: Seconds.
-#: includes/admin/js/sspa-admin.js:1555
+#: includes/admin/js/sspa-admin.js:1592
 #, js-format
 msgid "%ss"
 msgstr ""
 
 #. translators: 1: completed count, 2: total count, 3: progress percentage.
-#: includes/admin/js/sspa-admin.js:1630
+#: includes/admin/js/sspa-admin.js:1667
 #, js-format
 msgid "%1$s / %2$s measurements (%3$s%%)"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1632
+#: includes/admin/js/sspa-admin.js:1669
 msgid "Phase 1/2, screening"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1632
+#: includes/admin/js/sspa-admin.js:1669
 msgid "Phase 2/2, confirming"
 msgstr ""
 
 #. translators: Current measurement label.
-#: includes/admin/js/sspa-admin.js:1645
+#: includes/admin/js/sspa-admin.js:1682
 #, js-format
 msgid "Now testing: %s"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1645
+#: includes/admin/js/sspa-admin.js:1682
 msgid "Analysing results…"
 msgstr ""
 
 #. translators: Formatted elapsed duration.
-#: includes/admin/js/sspa-admin.js:1651
+#: includes/admin/js/sspa-admin.js:1688
 #, js-format
 msgid "Elapsed %s"
 msgstr ""
 
 #. translators: Formatted remaining duration.
-#: includes/admin/js/sspa-admin.js:1655
+#: includes/admin/js/sspa-admin.js:1692
 #, js-format
 msgid "~%s left in screening"
 msgstr ""
 
 #. translators: Formatted remaining duration.
-#: includes/admin/js/sspa-admin.js:1655
-#: includes/admin/js/sspa-admin.js:1658
+#: includes/admin/js/sspa-admin.js:1692
+#: includes/admin/js/sspa-admin.js:1695
 #, js-format
 msgid "~%s left"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1659
+#: includes/admin/js/sspa-admin.js:1696
 msgid "Plugin impact analysis running"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1659
+#: includes/admin/js/sspa-admin.js:1696
 msgid "Cache impact analysis running"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1661
+#: includes/admin/js/sspa-admin.js:1698
 msgid " - phase 1/2: screening all plugins"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1661
+#: includes/admin/js/sspa-admin.js:1698
 msgid " - phase 2/2: confirming impacted plugins"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1684
+#: includes/admin/js/sspa-admin.js:1721
 msgid "Analysis complete ✓ loading results…"
 msgstr ""
 
 #. translators: Analysis status returned by the server.
-#: includes/admin/js/sspa-admin.js:1684
+#: includes/admin/js/sspa-admin.js:1721
 #, js-format
 msgid "Analysis %s - loading results…"
 msgstr ""
 
 #. translators: Consecutive connection-failure count.
-#: includes/admin/js/sspa-admin.js:1804
+#: includes/admin/js/sspa-admin.js:1841
 #, js-format
 msgid "Connection hiccup, retrying… (%s)"
 msgstr ""
 
-#: includes/admin/js/sspa-admin.js:1869
+#: includes/admin/js/sspa-admin.js:1906
 msgid "Downloading the public figures from superspeedy.org…"
 msgstr ""
 
 #. translators: %s: HTTP or network error detail.
-#: includes/admin/js/sspa-admin.js:1878
+#: includes/admin/js/sspa-admin.js:1915
 #, js-format
 msgid "The community figures could not be loaded: %s"
 msgstr ""
