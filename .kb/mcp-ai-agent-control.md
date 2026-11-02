@@ -2,7 +2,7 @@
 
 Connect Super Speedy Performance Analysis to Codex or Claude Code to run measurements, monitor progress, interpret findings and plugin impact, collect real traffic observations and safely profile a checkout workflow.
 
-*Requires WordPress 6.9 or newer, Super Speedy Performance Analysis 0.60.1 or newer for the full set below (0.59.2 without the three parameter check abilities, 0.58.2 without `profile-admin-save` and the loopback settings, 0.23.1 for the original 21), and Node.js 18 or newer on the AI-client computer. Checkout profiling also requires WooCommerce.*
+*Requires WordPress 6.9 or newer, Super Speedy Performance Analysis 0.60.1 or newer for every ability listed below, and Node.js 18 or newer on the AI-client computer. Checkout profiling also requires WooCommerce.*
 
 ## Connect once for all Super Speedy plugins
 
@@ -10,7 +10,7 @@ Open **Super Speedy > MCP setup**, choose execute access only if the assistant m
 
 ## The abilities
 
-The namespace is `sspa`. Since 0.58.2 everything the Performance Analysis screens do is an ability, so an assistant with only the MCP connection can run the whole tool. Start with `get-capabilities`: it lists every workflow and its abilities, whether the profiler is on, which optional instruments (such as Excimer) are installed and how to install the missing ones, whether WP-Cron runs, whether Performance Analysis can reach its own site (and over which route), and the page keys `run-analysis` accepts.
+The namespace is `sspa`; an agent configured with ability names in any other namespace needs updating. Everything the Performance Analysis screens do is an ability, so an assistant with only the MCP connection can run the whole tool. Start with `get-capabilities`: it lists every workflow and its abilities, whether the profiler is on, which optional instruments (such as Excimer) are installed and how to install the missing ones, whether WP-Cron runs, whether Performance Analysis can reach its own site (and over which route), and the page keys `run-analysis` accepts.
 
 ### Read and interpret
 
@@ -35,7 +35,7 @@ The namespace is `sspa`. Since 0.58.2 everything the Performance Analysis screen
 ## Recommended analysis workflow
 
 1. `get-capabilities`, and enable the profiler with the owner's agreement if it is off.
-2. `run-analysis`, then call `advance-run` until the run is no longer active. Do not rely on polling `get-status`: a run started over MCP otherwise only moves when WP-Cron fires.
+2. `run-analysis`, then call `advance-run` until it reports `active: false`. Do not rely on polling `get-status`: a run started over MCP otherwise only moves when WP-Cron fires.
 3. Read `get-report` and `get-findings`, then `list-page-profiles` and `get-page-profile` for the slow pages, and `get-plugins-table` for per-plugin costs on one page or all.
 4. To prove which plugin costs the time, `get-impact-plan`, then `run-deep-analysis` with the suspects and `advance-run`, then `get-plugin-impacts` and `get-plugin-impact-detail`.
 5. For any other URL, `profile-url`, `advance-run`, then `get-page-profile` with the URL.
@@ -45,13 +45,13 @@ The namespace is `sspa`. Since 0.58.2 everything the Performance Analysis screen
 
 ## Profiling an editor save
 
-`profile-admin-save` does over MCP what the Workflows tab does in the browser. It creates a temporary object of the chosen type, loads its edit screen as the agent user, and sends the editor's real save request once, with the profiler watching: the block editor's REST update, or the classic editor form submitted with its Update button. The save runs every normal hook, so emails, webhooks and integrations behave as they would for a person clicking Update; emails go to the site administrator. The temporary object is deleted afterwards, and `temporary_object_removed` in the result confirms it. Existing content is never touched. The call is synchronous: there is no run to advance.
+`profile-admin-save` does over MCP what the Workflows tab does in the browser. It creates a temporary object of the chosen type, loads its edit screen as the agent user, and sends the editor's real save request once, with the profiler watching: the block editor's REST update, or the classic editor form submitted with its Update button. The save runs every normal hook, so emails, webhooks and integrations behave as they would for a person clicking Update; emails go to the site administrator. The temporary object is deleted afterwards, and `temporary_object_removed` in the result confirms it. No other content on the site is touched. The call is synchronous: there is no run to advance.
 
 ## Sites that block their own requests
 
 Every measurement is Performance Analysis requesting the site from its own server. A firewall, CDN or security plugin in front of the site often refuses those requests, and a staging site behind HTTP basic auth answers 401 to them. In the admin screens the browser can make the requests instead; over MCP there is no browser, so Performance Analysis tries these in order, and `get-capabilities` reports the result in `prerequisites.loopback`:
 
-1. **The public route**: the site's own URL, as before.
+1. **The public route**: the site's own URL.
 2. **Direct to the origin server**: the same URL, host name and HTTPS certificate check, but the connection goes straight to the server's address, past whatever sits in front of it. It tries the `loopback_origin` setting first, then `127.0.0.1`, then the server's own address. This needs PHP's cURL, which almost every host has.
 
 `prerequisites.loopback` says whether a route works (`healthy`, `transport`), which one (`route`: `public` or `direct`, and `origin_address`), every attempt with its result (`attempts`), and a one-sentence `reason`. When nothing works, the reason names each failure, for example a 403 from the firewall on the public route and a 401 on the direct one.
@@ -103,5 +103,3 @@ Reading reports requires `sspa_manage`. Starting or stopping work, submitting re
 
 - [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) - interpreting what the abilities return
 - [Methodology](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/advanced/methodology/) - how a run produces its numbers
-
-As of 0.43.16 the ability namespace and category are `sspa`; clients using the old namespace must update their ability names.
