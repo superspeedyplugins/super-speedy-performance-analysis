@@ -920,6 +920,9 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 		if (audience === 'customer') {
 			return wp.i18n.__('Requesting pages as the logged-in test customer', "super-speedy-performance-analysis");
 		}
+		if (audience === 'returning') {
+			return wp.i18n.__('Requesting pages as a returning visitor with only the cookies the first visit set', "super-speedy-performance-analysis");
+		}
 		if (audience === 'final_anonymous') {
 			return wp.i18n.__('Checking that no logged-in content reached anonymous visitors', "super-speedy-performance-analysis");
 		}
@@ -968,6 +971,40 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 			sspa_refresh_tabs(['cache', 'overview']);
 		} catch (e) {
 			shell.find('.sspa-cache-delivery-status').text(' ' + (e && e.message ? e.message : wp.i18n.__('The cache check failed.', "super-speedy-performance-analysis")));
+			button.prop('disabled', false);
+			spinner.removeClass('is-active');
+		}
+	});
+
+	// The ad-click and campaign parameter check: its own button, advanced in bounded server steps.
+	jQuery(document).on('click', '.sspa-parameter-check-start', async function () {
+		var button = jQuery(this);
+		var shell = button.closest('.sspa-parameter-check');
+		var spinner = shell.find('.sspa-parameter-check-spinner').addClass('is-active');
+		var status = shell.find('.sspa-parameter-check-status');
+		var bar = shell.find('.sspa-parameter-check-progress');
+		var phases = {
+			cookies: wp.i18n.__('Requesting pages with each parameter, profiled', "super-speedy-performance-analysis"),
+			cache_key_page: wp.i18n.__('Finding a page the cache serves', "super-speedy-performance-analysis"),
+			cache_key: wp.i18n.__('Testing how the cache keys each parameter', "super-speedy-performance-analysis")
+		};
+		button.prop('disabled', true);
+		try {
+			var prepared = await postCache({ action: 'sspa_parameter_check_prepare', nonce: sspa_admin.nonce });
+			var progress = { done: false, requests_made: 0, requests_total: prepared.request_count_max, phase: 'cookies' };
+			for (var guard = 0; guard < 200 && !progress.done; guard++) {
+				bar.prop('hidden', false).find('.sspa-progress-fill').css('width', Math.round((progress.requests_made / Math.max(1, progress.requests_total)) * 100) + '%');
+				status.text(' ' + (phases[progress.phase] || '') + ' (' + progress.requests_made + '/' + progress.requests_total + ')');
+				progress = await postCache({ action: 'sspa_parameter_check_advance', nonce: sspa_admin.nonce, check_id: prepared.check_id });
+			}
+			if (!progress.done) {
+				throw new Error(wp.i18n.__('The parameter check did not finish.', "super-speedy-performance-analysis"));
+			}
+			bar.find('.sspa-progress-fill').css('width', '100%');
+			status.text(' ' + wp.i18n.__('Complete. Showing the results…', "super-speedy-performance-analysis"));
+			sspa_refresh_tabs(['cache']);
+		} catch (e) {
+			status.text(' ' + (e && e.message ? e.message : wp.i18n.__('The parameter check failed.', "super-speedy-performance-analysis")));
 			button.prop('disabled', false);
 			spinner.removeClass('is-active');
 		}

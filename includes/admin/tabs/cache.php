@@ -35,6 +35,7 @@ $sspa_cache_reasons = array(
     'woocommerce_not_active' => __('WooCommerce is not active, so there is no basket to represent.', 'super-speedy-performance-analysis'),
     'test_customer_unavailable' => __('The synthetic test customer account could not be created.', 'super-speedy-performance-analysis'),
     'application_session_cookie_set' => __('The first response set a cookie, so the page was not requested again.', 'super-speedy-performance-analysis'),
+    'not_needed' => __('The first response set no cookie, so there is no returning visitor to represent.', 'super-speedy-performance-analysis'),
     'cached_bodies_differ' => __('A cache reported a hit, but the two responses differed.', 'super-speedy-performance-analysis'),
     'anonymous_cache_layer_not_used_for_this_audience' => __('The cache that served visitors did not serve this audience.', 'super-speedy-performance-analysis'),
     'http_status_not_200' => __('The page did not answer with HTTP 200.', 'super-speedy-performance-analysis'),
@@ -129,6 +130,55 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
         </p>
     </div>
 
+    <?php
+    // New visitors: a cookie set on the first visit, named with the code that sets it.
+    $sspa_cache_nv = $sspa_cache_report && isset($sspa_cache_report['new_visitors']) ? $sspa_cache_report['new_visitors'] : null;
+    $sspa_cache_nv_findings = $sspa_cache_run_id ? SSPA_Insights::all_of_type($sspa_cache_run_id, 'new_visitor_cache_blocked') : array();
+    if (($sspa_cache_nv && 'not_cached_for_new_visitors' === $sspa_cache_nv['status']) || $sspa_cache_nv_findings) :
+        $sspa_cache_nv_blocked = $sspa_cache_nv && 'not_cached_for_new_visitors' === $sspa_cache_nv['status'];
+        ?>
+        <div class="notice <?php echo $sspa_cache_nv_blocked ? 'notice-error' : 'notice-warning'; ?> inline sspa-cache-new-visitors" role="status">
+            <?php if ($sspa_cache_nv_blocked) : ?>
+                <p><strong><?php echo esc_html($sspa_cache_nv['headline']); ?></strong></p>
+                <p><?php echo esc_html($sspa_cache_nv['detail']); ?></p>
+                <table class="widefat striped sspa-stack-table sspa-cache-new-visitor-pages">
+                    <thead><tr>
+                        <th scope="col"><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?></th>
+                        <th scope="col"><?php esc_html_e('Cookie set on the first visit', 'super-speedy-performance-analysis'); ?></th>
+                        <th scope="col"><?php esc_html_e('New visitor, twice', 'super-speedy-performance-analysis'); ?></th>
+                        <th scope="col"><?php esc_html_e('Returning visitor, twice', 'super-speedy-performance-analysis'); ?></th>
+                    </tr></thead>
+                    <tbody>
+                    <?php foreach ($sspa_cache_nv['pages'] as $sspa_cache_nv_page) :
+                        if (!$sspa_cache_nv_page['cookies']) {
+                            continue;
+                        } ?>
+                        <tr data-page="<?php echo esc_attr($sspa_cache_nv_page['page_key']); ?>">
+                            <th scope="row" data-label="<?php esc_attr_e('Page', 'super-speedy-performance-analysis'); ?>"><?php echo esc_html(SSPA_Cache_Delivery::page_label($sspa_cache_nv_page['page_key'])); ?></th>
+                            <td data-label="<?php esc_attr_e('Cookie set on the first visit', 'super-speedy-performance-analysis'); ?>"><code><?php echo esc_html(implode(', ', $sspa_cache_nv_page['cookies'])); ?></code></td>
+                            <td data-label="<?php esc_attr_e('New visitor, twice', 'super-speedy-performance-analysis'); ?>"><?php echo esc_html(implode(', ', array_map(function ($sspa_s) { return '' !== $sspa_s ? $sspa_s : __('no cache status', 'super-speedy-performance-analysis'); }, $sspa_cache_nv_page['new_visitor_statuses']))); ?></td>
+                            <td data-label="<?php esc_attr_e('Returning visitor, twice', 'super-speedy-performance-analysis'); ?>"><?php echo esc_html($sspa_cache_nv_page['returning_visitor']['statuses'] ? implode(', ', array_map(function ($sspa_s) { return '' !== $sspa_s ? $sspa_s : __('no cache status', 'super-speedy-performance-analysis'); }, $sspa_cache_nv_page['returning_visitor']['statuses'])) : __('Not requested', 'super-speedy-performance-analysis')); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else : ?>
+                <p><strong><?php esc_html_e('Cookies are set on a first visit', 'super-speedy-performance-analysis'); ?></strong></p>
+            <?php endif; ?>
+            <?php if ($sspa_cache_nv_findings) : ?>
+                <ul>
+                    <?php foreach ($sspa_cache_nv_findings as $sspa_cache_nv_finding) :
+                        $sspa_cache_nv_text = SSPA_Insights::render($sspa_cache_nv_finding); ?>
+                        <li><?php echo esc_html($sspa_cache_nv_text['headline']); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php if (!$sspa_cache_nv_blocked) : ?>
+                    <p><?php esc_html_e('A page cache that refuses responses carrying Set-Cookie will not store these pages for new visitors. Run the check below to see what this site\'s page cache does with them.', 'super-speedy-performance-analysis'); ?></p>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
     <?php if ($sspa_cache_report && !empty($sspa_cache_report['basket_state']['warning'])) : ?>
         <div class="notice notice-warning inline sspa-cache-basket-warning" role="status">
             <p><strong><?php esc_html_e('Visitors with a basket were served the anonymous cached page.', 'super-speedy-performance-analysis'); ?></strong></p>
@@ -185,7 +235,7 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
                 if ($sspa_cache_plan['basket_requests']) {
                     printf(
                         /* translators: 1: total request count, 2: browser request count, 3: server request count */
-                        esc_html__('It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor, as a visitor carrying WooCommerce\'s basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer.', 'super-speedy-performance-analysis'),
+                        esc_html__('It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and up to %3$d from the server: two each as a new visitor without cookies, as a returning visitor carrying only the cookies the first response set (sent only when it sets one), as a visitor carrying WooCommerce\'s basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer.', 'super-speedy-performance-analysis'),
                         (int) $sspa_cache_plan['request_count'],
                         (int) $sspa_cache_plan['browser_requests'],
                         (int) $sspa_cache_plan['server_requests']
@@ -193,7 +243,7 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
                 } else {
                     printf(
                         /* translators: 1: total request count, 2: browser request count, 3: server request count */
-                        esc_html__('It sends %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and %3$d from the server, two each as an anonymous visitor and as the logged-in test account, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. WooCommerce is not active, so no basket requests are sent. It does not purge or change any cache.', 'super-speedy-performance-analysis'),
+                        esc_html__('It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and up to %3$d from the server: two each as a new visitor without cookies, as a returning visitor carrying only the cookies the first response set (sent only when it sets one) and as the logged-in test account, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. WooCommerce is not active, so no basket requests are sent. It does not purge or change any cache.', 'super-speedy-performance-analysis'),
                         (int) $sspa_cache_plan['request_count'],
                         (int) $sspa_cache_plan['browser_requests'],
                         (int) $sspa_cache_plan['server_requests']
@@ -311,6 +361,114 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
                 <?php endforeach; ?>
                 <li><?php esc_html_e('"First byte" and "Complete" are measured by a request from this server to the page, the same boundary for all three audiences. "Your browser" is your own browser\'s anonymous request. "Page generation without cache" comes from the latest analysis; visitors with a basket are generated like visitors. These are separate measurements and are never subtracted from each other.', 'super-speedy-performance-analysis'); ?></li>
             </ul>
+        <?php endif; ?>
+    </div>
+
+    <?php
+    $sspa_param_report = SSPA_Parameter_Check::latest();
+    $sspa_param_plan = SSPA_Parameter_Check::request_plan(count($sspa_cache_targets));
+    $sspa_param_outcomes = array(
+        'ignored' => __('Ignored by the cache key: still served from cache', 'super-speedy-performance-analysis'),
+        'separate_key' => __('Separate cache entry per value: every real click misses', 'super-speedy-performance-analysis'),
+        'bypass' => __('Never served from cache', 'super-speedy-performance-analysis'),
+        'unknown' => __('Unknown: no cache reported a status', 'super-speedy-performance-analysis'),
+    );
+    ?>
+    <div class="sspa-placeholder sspa-parameter-check">
+        <h2><?php esc_html_e('Ad-click and campaign parameters', 'super-speedy-performance-analysis'); ?></h2>
+        <p class="description"><?php esc_html_e('Visitors from an ad or an email arrive with a parameter such as fbclid, gclid or utm_source. This check shows whether a parameter makes the site set a cookie, which code sets it, and whether the page cache still serves the page.', 'super-speedy-performance-analysis'); ?></p>
+        <?php if ($sspa_cache_targets) : ?>
+            <p class="description sspa-parameter-plan">
+                <?php
+                printf(
+                    /* translators: 1: maximum total requests, 2: profiled requests, 3: click ID list, 4: campaign parameter list, 5: cache-key requests */
+                    esc_html__('It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d profiled requests without cookies (each page once without a parameter, the click IDs %3$s on every page, and %4$s on the home page), then, on one page the cache is shown to serve, %5$d requests repeating each parameter with the same value and once with a different one. It does not purge or change any cache.', 'super-speedy-performance-analysis'),
+                    (int) $sspa_param_plan['request_count_max'],
+                    (int) $sspa_param_plan['profiled_requests'],
+                    esc_html(implode(', ', SSPA_Parameter_Check::CLICK_IDS)),
+                    esc_html(implode(', ', SSPA_Parameter_Check::CAMPAIGN)),
+                    (int) $sspa_param_plan['cache_key_requests']
+                );
+                ?>
+            </p>
+            <p>
+                <button type="button" class="button sspa-parameter-check-start"><?php esc_html_e('Check ad-click and campaign parameters', 'super-speedy-performance-analysis'); ?></button>
+                <span class="spinner sspa-parameter-check-spinner"></span>
+                <span class="description sspa-parameter-check-status" aria-live="polite"></span>
+            </p>
+            <div class="sspa-progress-bar sspa-parameter-check-progress" hidden><div class="sspa-progress-fill" style="width:0"></div></div>
+        <?php endif; ?>
+        <?php if ($sspa_param_report) : ?>
+            <p class="sspa-parameter-headline"><strong><?php echo esc_html($sspa_param_report['headline']); ?></strong></p>
+            <p class="description">
+                <?php
+                $sspa_param_checked = mysql2date(get_option('date_format') . ' ' . get_option('time_format'), get_date_from_gmt(gmdate('Y-m-d H:i:s', strtotime($sspa_param_report['generated_at']))), true);
+                if ($sspa_param_report['cache_key_page']) {
+                    printf(
+                        /* translators: 1: date and time, 2: page name, 3: requests made */
+                        esc_html__('Checked %1$s with %3$d requests. Cache key tested on %2$s.', 'super-speedy-performance-analysis'),
+                        esc_html($sspa_param_checked),
+                        esc_html(SSPA_Cache_Delivery::page_label($sspa_param_report['cache_key_page']['page_key'])),
+                        (int) $sspa_param_report['requests']['total']
+                    );
+                    if ($sspa_param_report['cache_key_page']['cookie_names']) {
+                        echo ' ';
+                        /* translators: %s: cookie names */
+                        echo esc_html(sprintf(__('Those requests carried only %s, the cookies a first visit sets, because the page is not cached without them.', 'super-speedy-performance-analysis'), implode(', ', $sspa_param_report['cache_key_page']['cookie_names'])));
+                    }
+                } else {
+                    printf(
+                        /* translators: 1: date and time, 2: requests made */
+                        esc_html__('Checked %1$s with %2$d requests. No page was served from cache, so how the cache key treats each parameter is unknown.', 'super-speedy-performance-analysis'),
+                        esc_html($sspa_param_checked),
+                        (int) $sspa_param_report['requests']['total']
+                    );
+                }
+                ?>
+            </p>
+            <table class="widefat striped sspa-stack-table sspa-parameter-results">
+                <thead><tr>
+                    <th scope="col"><?php esc_html_e('Parameter', 'super-speedy-performance-analysis'); ?></th>
+                    <th scope="col"><?php esc_html_e('Cookies it makes the site set', 'super-speedy-performance-analysis'); ?></th>
+                    <th scope="col"><?php esc_html_e('Page cache', 'super-speedy-performance-analysis'); ?></th>
+                </tr></thead>
+                <tbody>
+                <?php foreach ($sspa_param_report['parameters'] as $sspa_param_row) : ?>
+                    <tr data-parameter="<?php echo esc_attr($sspa_param_row['parameter']); ?>" data-outcome="<?php echo esc_attr($sspa_param_row['cache']['outcome']); ?>"<?php echo $sspa_param_row['worst'] ? ' class="sspa-parameter-worst"' : ''; ?>>
+                        <th scope="row" data-label="<?php esc_attr_e('Parameter', 'super-speedy-performance-analysis'); ?>"><code><?php echo esc_html($sspa_param_row['parameter']); ?></code></th>
+                        <td data-label="<?php esc_attr_e('Cookies it makes the site set', 'super-speedy-performance-analysis'); ?>">
+                            <?php if (!$sspa_param_row['cookies']) : ?>
+                                <?php esc_html_e('None', 'super-speedy-performance-analysis'); ?>
+                            <?php else : ?>
+                                <?php foreach ($sspa_param_row['cookies'] as $sspa_param_cookie) :
+                                    $sspa_param_who = $sspa_param_cookie['set_by'][0];
+                                    ?>
+                                    <code><?php echo esc_html($sspa_param_cookie['name']); ?></code>
+                                    <?php
+                                    $sspa_param_name = !empty($sspa_param_who['component']) ? trim((!empty($sspa_param_who['component_name']) ? $sspa_param_who['component_name'] : $sspa_param_who['component']) . (!empty($sspa_param_who['version']) ? ' ' . $sspa_param_who['version'] : '')) : '';
+                                    if ($sspa_param_name && 'callback' === $sspa_param_who['attribution']) {
+                                        /* translators: 1: plugin name and version, 2: hook, 3: callback */
+                                        echo esc_html(sprintf(__('set by %1$s (on %2$s, in %3$s)', 'super-speedy-performance-analysis'), $sspa_param_name, (string) $sspa_param_who['hook'], (string) $sspa_param_who['callback']));
+                                    } elseif ($sspa_param_name) {
+                                        /* translators: %s: plugin name and version */
+                                        echo esc_html(sprintf(__('set by %s while its code file loads', 'super-speedy-performance-analysis'), $sspa_param_name));
+                                    } else {
+                                        esc_html_e('set outside any code the profiler could name', 'super-speedy-performance-analysis');
+                                    }
+                                    ?><br>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </td>
+                        <td data-label="<?php esc_attr_e('Page cache', 'super-speedy-performance-analysis'); ?>">
+                            <?php echo esc_html($sspa_param_outcomes[$sspa_param_row['cache']['outcome']]); ?>
+                            <?php if ($sspa_param_row['cache']['statuses']) : ?>
+                                <br><span class="description"><?php echo esc_html(implode(', ', array_map(function ($sspa_s) { return '' !== $sspa_s ? $sspa_s : __('no cache status', 'super-speedy-performance-analysis'); }, $sspa_param_row['cache']['statuses']))); ?></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         <?php endif; ?>
     </div>
 

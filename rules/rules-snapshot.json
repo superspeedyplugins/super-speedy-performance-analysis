@@ -114,6 +114,10 @@
       "title": "Review visitor-specific content",
       "body": "This is a passive safety scan, not proof that content leaks or that a named component caused it. Review the hazards and candidate components, then compare controlled guest, customer and basket responses before enabling shared caching for those states."
     },
+    "new_visitor_cache_blocked": {
+      "title": "Stop the cookie being set on a first visit",
+      "body": "The named code sets this cookie on the response to a visitor who arrived without it, so every first visit to these pages carries Set-Cookie. Look in that plugin's settings for an option that sets the cookie in the browser instead, or only after consent or an action, and ask its author if there is none. Telling the page cache to ignore the cookie is safe only when the page content does not depend on it. Run the Cache performance check again afterwards: it requests each page as a new visitor twice and as a returning visitor."
+    },
     "unindexed_query": {
       "title": "Query with no usable index",
       "body": "MySQL cannot use an index for this query, so it reads every row in the table and throws away the ones that do not match. It may be fast today because the table is small - it gets linearly slower as your content grows, and it is one of the most common causes of a site that was fine last year. Fixes, in order of preference: get the plugin author to add the missing index, add a covering index yourself, or change the query shape."

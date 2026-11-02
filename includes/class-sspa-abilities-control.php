@@ -338,6 +338,23 @@ class SSPA_Abilities_Control {
                     'confirm' => self::confirm_property(),
                 ), array('request_uuid', 'email'))
             ),
+            // ---------------- ad-click and campaign parameter check (0.60.1) ----------------
+            'run-parameter-check' => self::ability(
+                __('Start the ad-click and campaign parameter check', 'super-speedy-performance-analysis'),
+                __('Start the Cache performance tab\'s parameter check: each click ID (fbclid, gclid, gbraid, wbraid, msclkid, ttclid, twclid, li_fat_id, epik, srsltid) on every representative page and each campaign parameter (utm_*, ref, mc_cid, mc_eid) on home, as profiled cookie-less requests, naming any cookie a parameter makes the site set and the code that set it; then, on one page the cache is shown to serve, each parameter with the same value twice and a different value once, to classify the cache key as ignored, separate_key or bypass. About 110 requests, all to this site. Then loop advance-parameter-check with the check_id, and read get-parameter-check.', 'super-speedy-performance-analysis'),
+                'act', 'exec_run_parameter_check'
+            ),
+            'advance-parameter-check' => self::ability(
+                __('Advance the parameter check', 'super-speedy-performance-analysis'),
+                __('Make the next requests of a started parameter check (check_id) and return progress. When the last request is made the report is saved; done is then true.', 'super-speedy-performance-analysis'),
+                'act_idempotent', 'exec_advance_parameter_check',
+                self::input(array('check_id' => $string), array('check_id'))
+            ),
+            'get-parameter-check' => self::ability(
+                __('Get the parameter check report', 'super-speedy-performance-analysis'),
+                __('The latest ad-click and campaign parameter check: per parameter the cookies it made the site set (name, plugin or theme, version, hook, callback; never values) and how the page cache keyed it (ignored, separate_key, bypass or unknown), worst first.', 'super-speedy-performance-analysis'),
+                'read', 'exec_get_parameter_check'
+            ),
         );
     }
 
@@ -400,6 +417,7 @@ class SSPA_Abilities_Control {
                 array('name' => 'one page or URL', 'steps' => array('profile-url', 'advance-run', 'get-page-profile')),
                 array('name' => 'plugin culprits', 'steps' => array('get-impact-plan', 'run-deep-analysis', 'advance-run', 'get-plugin-impacts', 'get-plugin-impact-detail')),
                 array('name' => 'page cache', 'steps' => array('run-cache-check', 'advance-cache-check', 'get-cache-optimisation-analysis', 'get-cache-safety-report')),
+                array('name' => 'ad-click and campaign parameters', 'steps' => array('run-parameter-check', 'advance-parameter-check', 'get-parameter-check')),
                 array('name' => 'checkout', 'steps' => array('run-checkout-flow (dry_run first)', 'advance-run', 'get-checkout-flow')),
                 array('name' => 'editor save', 'steps' => array('get-admin-save-targets', 'profile-admin-save', 'get-page-profile')),
                 array('name' => 'AJAX and REST', 'steps' => array('start-ajax-window', 'stop-ajax-window', 'get-endpoint-profiles', 'profile-endpoint', 'advance-run', 'compare-ajax-windows')),
@@ -608,6 +626,8 @@ class SSPA_Abilities_Control {
                     'stale' => (bool) $c['stale'],
                 ) : null,
                 'object_cache' => isset($data['cache'][$c['component']]) ? $data['cache'][$c['component']] : null,
+                // Cookies this component set on a cookie-less (new-visitor) request in this analysis.
+                'new_visitor_cookies' => isset($data['new_visitor_cookies'][$c['component']]) ? $data['new_visitor_cookies'][$c['component']] : array(),
             );
         }
         return array(
@@ -835,6 +855,35 @@ class SSPA_Abilities_Control {
             return $report;
         }
         return array('done' => true, 'requests_made' => $total, 'requests_total' => $total, 'page_cache_status' => (string) $report['page_cache_status'], 'headline' => (string) $report['headline']);
+    }
+
+    /* ---------------- parameter check (0.60.1) ---------------- */
+
+    public static function exec_run_parameter_check($input) {
+        $prepared = SSPA_Parameter_Check::prepare();
+        if (is_wp_error($prepared)) {
+            return $prepared;
+        }
+        return array(
+            'check_id' => (string) $prepared['check_id'],
+            'targets' => $prepared['targets'],
+            'parameters' => $prepared['parameters'],
+            'profiled_requests' => (int) $prepared['profiled_requests'],
+            'cache_key_requests' => (int) $prepared['cache_key_requests'],
+            'request_count_max' => (int) $prepared['request_count_max'],
+        );
+    }
+
+    public static function exec_advance_parameter_check($input) {
+        return SSPA_Parameter_Check::advance(sanitize_text_field((string) ($input['check_id'] ?? '')));
+    }
+
+    public static function exec_get_parameter_check($input) {
+        $report = SSPA_Parameter_Check::latest();
+        if (!$report) {
+            return new WP_Error('sspa_no_parameter_check', __('No completed parameter check was found: call run-parameter-check first.', 'super-speedy-performance-analysis'));
+        }
+        return $report;
     }
 
     public static function exec_start_ajax_window($input) {

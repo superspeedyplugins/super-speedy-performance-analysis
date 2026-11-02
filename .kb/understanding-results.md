@@ -13,6 +13,7 @@
 - **Blocking HTTP call** - a plugin calls a remote server while your page renders (licence checks, geo lookups). Every visitor waits for it.
 - **Ignores the object cache (cache-blind)** - from a Cache Impact run: the plugin runs identical queries with Redis on and off. Your caching investment does nothing for it.
 - **Slow email construction** - building an email blocked the request; order status changes and checkout wait on this.
+- **Sets a cookie for new visitors** - a plugin or theme sets a cookie on the response to a visitor who arrived without one (a tracker setting `_fbp` on `init`, for example). The finding names the plugin, its version, the hook and the function, and the pages. A page cache that refuses responses carrying Set-Cookie will not store those pages for new visitors, so first visits are never cached while your own browser, which already has the cookie, sees a healthy cache. The finding then says what the Cache performance check actually observed on this site (served from cache or not), because some caches store or strip such responses. The plugin's row on the Plugins tab carries a "sets a cookie for new visitors" badge.
 - **Autoloaded options bloat / environment findings** - site-level issues: options loaded on every request, outdated PHP, missing object cache on a large database.
 
 ## Inferred vs measured

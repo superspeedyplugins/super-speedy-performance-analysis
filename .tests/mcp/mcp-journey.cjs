@@ -92,8 +92,11 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     try {
         // 1. Discovery.
         let caps = await call('get-capabilities', {}, { read: true });
-        assert.equal(caps.abilities.length, 57, 'discovery lists every ability');
+        assert.equal(caps.abilities.length, 60, 'discovery lists every ability');
         assert.ok(caps.abilities.includes('sspa/profile-admin-save'), 'discovery lists profile-admin-save');
+        for (const name of ['sspa/run-parameter-check', 'sspa/advance-parameter-check', 'sspa/get-parameter-check']) {
+            assert.ok(caps.abilities.includes(name), 'discovery lists ' + name);
+        }
         assert.equal(caps.prerequisites.loopback.checked, 'not checked', 'loopback is not probed while the profiler is off');
         assert.equal(caps.prerequisites.profiler.enabled, false, 'entry state: profiler off');
         assert.equal(caps.prerequisites.wp_cron.disabled, true, 'entry state: WP-Cron disabled');

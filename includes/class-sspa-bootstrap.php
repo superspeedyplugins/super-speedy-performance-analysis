@@ -114,6 +114,8 @@ class SSPA_Bootstrap {
             'sspa_cache_delivery_prepare' => array('SSPA_Cache_Delivery', 'ajax_prepare'),
             'sspa_cache_delivery_server_probe' => array('SSPA_Cache_Delivery', 'ajax_server_probe'),
             'sspa_cache_delivery_complete' => array('SSPA_Cache_Delivery', 'ajax_complete'),
+            'sspa_parameter_check_prepare' => array('SSPA_Parameter_Check', 'ajax_prepare'),
+            'sspa_parameter_check_advance' => array('SSPA_Parameter_Check', 'ajax_advance'),
             'sspa_browser_next' => array('SSPA_Browser_Transport', 'ajax_next'),
             'sspa_browser_record' => array('SSPA_Browser_Transport', 'ajax_record'),
             'sspa_checkout_preflight' => array('SSPA_Checkout_Flow', 'ajax_preflight'),

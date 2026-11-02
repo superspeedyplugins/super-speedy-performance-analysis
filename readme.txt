@@ -113,6 +113,13 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.60.1 (2nd November 2026) =
+* Every profiled request now records which plugin or theme set each cookie, with its version, hook and function (names only, never values).
+* New finding: a plugin that sets a cookie on a first visit is named, with the pages affected and what the Cache performance check observed, on the Overview, the Cache performance tab and as a "sets a cookie for new visitors" badge on its Plugins tab row.
+* The Cache performance check now requests each page as a second new visitor and, when the first visit sets a cookie, as a returning visitor carrying only that cookie, and says "Not cached for new visitors" naming the cookie and plugin.
+* New "Check ad-click and campaign parameters" button on the Cache performance tab: shows which parameters such as `fbclid`, `gclid` and `utm_source` make the site set a cookie, which plugin sets it, and whether the page cache ignores the parameter, keys it separately or bypasses it.
+* New abilities `run-parameter-check`, `advance-parameter-check` and `get-parameter-check`.
+
 = 0.60.0 (2nd November 2026) =
 * Merge of 0.59.2 into the main release; no further change.
 

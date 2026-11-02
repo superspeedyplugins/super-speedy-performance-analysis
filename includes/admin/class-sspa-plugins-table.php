@@ -229,7 +229,27 @@ class SSPA_Plugins_Table {
             'profiles' => $profiles,
             'components' => $grouped,
             'cache' => $cache,
+            'new_visitor_cookies' => self::new_visitor_cookies($run_id),
         );
+    }
+
+    /**
+     * Component => cookie names it set on a cookie-less (new-visitor) profiled request in this run,
+     * from the new_visitor_cache_blocked findings.
+     */
+    public static function new_visitor_cookies($run_id) {
+        $out = array();
+        if (!$run_id) {
+            return $out;
+        }
+        foreach (SSPA_Insights::all_of_type((int) $run_id, 'new_visitor_cache_blocked') as $finding) {
+            if (empty($finding['component'])) {
+                continue;
+            }
+            $e = json_decode((string) $finding['evidence'], true);
+            $out[$finding['component']] = is_array($e) ? array_values(array_map('strval', (array) ($e['cookie_names'] ?? array()))) : array();
+        }
+        return $out;
     }
 
     public static function render($run_id, $mode, $page = '') {
@@ -315,7 +335,14 @@ class SSPA_Plugins_Table {
                     data-sort-rows="<?php echo esc_attr((int) $c['total_rows']); ?>"
                     data-sort-slowest="<?php echo esc_attr(round((float) $c['slowest_query_ms'], 1)); ?>"
                     data-sort-http="<?php echo esc_attr(round((float) $c['total_http_ms'], 1)); ?>">
-                    <td><code><?php echo esc_html($c['component']); ?></code></td>
+                    <td><code><?php echo esc_html($c['component']); ?></code>
+                        <?php if (isset($data['new_visitor_cookies'][$c['component']])) : ?>
+                            <span class="sspa-badge sspa-blocked sspa-badge-new-visitor-cookie" title="<?php
+                            /* translators: %s: comma-separated cookie names */
+                            echo esc_attr(sprintf(__('Sets %s on a first visit. A page cache that refuses responses carrying Set-Cookie will not store these pages for new visitors.', 'super-speedy-performance-analysis'), implode(', ', $data['new_visitor_cookies'][$c['component']])));
+                            ?>"><?php esc_html_e('sets a cookie for new visitors', 'super-speedy-performance-analysis'); ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td><?php echo esc_html($c['component_type']); ?></td>
                     <td><?php echo $c['version'] ? esc_html($c['version']) : '-'; ?></td>
                     <td><?php echo esc_html(number_format((float) $c['total_sql_ms'], 1)); ?></td>

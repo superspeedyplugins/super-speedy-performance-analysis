@@ -86,6 +86,55 @@ class SSPA_Analysis_Engine {
             'cache_safety_review',
             'inferred'
         );
+        $this->new_visitor_cookies($assessment);
+    }
+
+    /**
+     * One finding per component that queued an application cookie on a cookie-less (new-visitor)
+     * profiled request, plus one site-level finding for cookies no timed code can be named for.
+     * What it means for a cache is worded at render time, from what the Cache performance check
+     * observed, never asserted here.
+     */
+    private function new_visitor_cookies($assessment) {
+        if (empty($assessment['set_cookie_attribution']) || !is_array($assessment['set_cookie_attribution'])) {
+            return;
+        }
+        // Crawl order (profile id), so "home, shop, product-cat and product-single" reads as visited.
+        $profiles = $this->profiles;
+        usort($profiles, function ($a, $b) { return (int) $a['id'] <=> (int) $b['id']; });
+        $order = array_values(array_unique(array_column($profiles, 'page_key')));
+        $groups = array();
+        foreach ($assessment['set_cookie_attribution'] as $row) {
+            $component = isset($row['component']) && '' !== (string) $row['component'] ? (string) $row['component'] : '';
+            if ('' !== $component && $this->skip_component($component)) {
+                continue;
+            }
+            if (!isset($groups[$component])) {
+                $groups[$component] = array(
+                    'component_name' => $row['component_name'],
+                    'component_type' => $row['type'],
+                    'version' => $row['version'],
+                    'cookies' => array(),
+                    'pages' => array(),
+                );
+            }
+            $groups[$component]['cookies'][] = array(
+                'name' => $row['name'],
+                'hook' => $row['hook'],
+                'callback' => $row['callback'],
+                'attribution' => $row['attribution'],
+                'detected_at' => $row['detected_at'],
+                'pages' => array_values((array) $row['pages']),
+            );
+            $groups[$component]['pages'] = array_values(array_unique(array_merge($groups[$component]['pages'], (array) $row['pages'])));
+        }
+        foreach ($groups as $component => $evidence) {
+            usort($evidence['pages'], function ($a, $b) use ($order) {
+                return (int) array_search($a, $order, true) <=> (int) array_search($b, $order, true);
+            });
+            $evidence['cookie_names'] = array_values(array_unique(array_column($evidence['cookies'], 'name')));
+            $this->add('critical', 'new_visitor_cache_blocked', '' !== $component ? $component : null, null, $evidence, 'new_visitor_cache_blocked', 'measured');
+        }
     }
 
     /**

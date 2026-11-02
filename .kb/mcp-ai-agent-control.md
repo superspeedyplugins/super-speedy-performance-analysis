@@ -2,7 +2,7 @@
 
 Connect Super Speedy Performance Analysis to Codex or Claude Code to run measurements, monitor progress, interpret findings and plugin impact, collect real traffic observations and safely profile a checkout workflow.
 
-*Requires WordPress 6.9 or newer, Super Speedy Performance Analysis 0.59.2 or newer for the full set below (0.58.2 without `profile-admin-save` and the loopback settings, 0.23.1 for the original 21), and Node.js 18 or newer on the AI-client computer. Checkout profiling also requires WooCommerce.*
+*Requires WordPress 6.9 or newer, Super Speedy Performance Analysis 0.60.1 or newer for the full set below (0.59.2 without the three parameter check abilities, 0.58.2 without `profile-admin-save` and the loopback settings, 0.23.1 for the original 21), and Node.js 18 or newer on the AI-client computer. Checkout profiling also requires WooCommerce.*
 
 ## Connect once for all Super Speedy plugins
 
@@ -16,15 +16,15 @@ The namespace is `sspa`. Since 0.58.2 everything the Performance Analysis screen
 
 - Discovery and runs: `get-capabilities`, `get-status`, `list-runs`, `get-run`
 - Results: `get-report`, `get-findings`, `list-page-profiles`, `get-page-profile` (the full page analysis panel), `get-plugins-table`, `get-plugin-impacts`, `get-plugin-impact-detail`, `get-impact-plan`, `get-page-plugin-usage`, `get-http-calls`, `get-archive-profile`, `get-site-metrics`
-- Caching: `get-cache-optimisation-analysis`, `get-cache-safety-report`
+- Caching: `get-cache-optimisation-analysis`, `get-cache-safety-report`, `get-parameter-check`
 - History and reports: `compare-history`, `get-history-series`, `get-markdown-report`
 - Checkout, AJAX and traffic: `get-checkout-flow`, `get-endpoint-profiles`, `get-admin-save-targets`, `get-traffic-collection-status`, `get-traffic-observations`, `compare-traffic-collections`
 - Settings and sharing: `get-settings`, `get-submission-queue`, `get-payload-preview`, `get-community-figures` (downloads public figures from superspeedy.org)
 
 ### Run and change
 
-- Measure: `run-analysis`, `run-deep-analysis`, `profile-url`, `profile-admin-save`, `run-checkout-flow`, `run-cache-check`, `profile-endpoint`, `start-ajax-window`, `stop-ajax-window`, `compare-ajax-windows`, `start-traffic-collection`, `stop-traffic-collection`
-- Keep it moving: `advance-run`, `advance-cache-check`, `cancel-run`
+- Measure: `run-analysis`, `run-deep-analysis`, `profile-url`, `profile-admin-save`, `run-checkout-flow`, `run-cache-check`, `run-parameter-check`, `profile-endpoint`, `start-ajax-window`, `stop-ajax-window`, `compare-ajax-windows`, `start-traffic-collection`, `stop-traffic-collection`
+- Keep it moving: `advance-run`, `advance-cache-check`, `advance-parameter-check`, `cancel-run`
 - Configure: `set-profiler`, `update-settings`, `set-history-expectation`
 - Sharing and quotes: `submit-results`, `process-submissions`, `manage-submission`, `prepare-quote-request`
 
@@ -39,8 +39,9 @@ The namespace is `sspa`. Since 0.58.2 everything the Performance Analysis screen
 3. Read `get-report` and `get-findings`, then `list-page-profiles` and `get-page-profile` for the slow pages, and `get-plugins-table` for per-plugin costs on one page or all.
 4. To prove which plugin costs the time, `get-impact-plan`, then `run-deep-analysis` with the suspects and `advance-run`, then `get-plugin-impacts` and `get-plugin-impact-detail`.
 5. For any other URL, `profile-url`, `advance-run`, then `get-page-profile` with the URL.
-6. For page caching, `run-cache-check`, then `advance-cache-check` until done, then `get-cache-optimisation-analysis`. Over MCP the browser's own timing is not measured; every server-side request is.
+6. For page caching, `run-cache-check`, then `advance-cache-check` until done, then `get-cache-optimisation-analysis`. Over MCP the browser's own timing is not measured; every server-side request is. When the first anonymous response sets a cookie, the check also requests each page as a second new visitor and as a returning visitor carrying only that cookie, and `new_visitors` names the cookie and the plugin that sets it.
 7. To measure what saving a post, page, product or order costs, `get-admin-save-targets`, then `profile-admin-save` with the `object_type` (and `transport`, `rest` or `classic`, when more than one is offered), then `get-page-profile` with the returned `profile_id`.
+8. For visitors arriving from ads and campaign emails, `run-parameter-check`, then `advance-parameter-check` until done, then `get-parameter-check`: per parameter (`fbclid`, `gclid`, `utm_source` and others) the cookies it makes the site set, which plugin sets them, and whether the page cache ignores it, keys it separately or bypasses it. It sends up to 118 requests to the site, so ask the owner first.
 
 ## Profiling an editor save
 

@@ -24,8 +24,9 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   `profile-url`, `run-cache-check`, `advance-cache-check`, `start-ajax-window`, `stop-ajax-window`,
   `compare-ajax-windows`, `profile-endpoint`, `set-history-expectation`, `process-submissions`,
   `manage-submission`, `update-settings`, `prepare-quote-request`, `prune-stored-captures`,
-  `delete-traffic-collection`, `cleanup-workflow-objects` and `send-quote-request`, and since
-  0.59.2 `profile-admin-save`. Readonly ones answer GET at
+  `delete-traffic-collection`, `cleanup-workflow-objects` and `send-quote-request`, since
+  0.59.2 `profile-admin-save`, and since 0.60.1 `run-parameter-check`, `advance-parameter-check`
+  and `get-parameter-check`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
@@ -34,7 +35,9 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
 Runs started via abilities are asynchronous: call `advance-run` in a loop until `active` is
 false. Polling `get-status` alone moves a run only when WP-Cron fires, which a site with
 `DISABLE_WP_CRON` and no system cron never does. The cache check is the same pattern:
-`run-cache-check`, then `advance-cache-check` until `done`.
+`run-cache-check`, then `advance-cache-check` until `done`. So is the parameter check:
+`run-parameter-check`, then `advance-parameter-check` with the `check_id` until `done`, then
+`get-parameter-check`.
 `wp sspa run` is synchronous and drives the batches itself.
 
 `profile-admin-save` (input `object_type`, optional `transport` `rest|classic`) is synchronous: it
@@ -133,7 +136,7 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
 {
   "type": "slow_query | big_result_set | query_loop | dupe_queries | slow_http |
            blocking_mail | cache_blind | cache_friendly | autoload_bloat | environment |
-           duplicate_functionality | security_block | cache_safety",
+           duplicate_functionality | security_block | cache_safety | new_visitor_cache_blocked",
   "severity": "critical | warn | info",
   "component": "plugin-slug | theme-slug | core | null (site-level)",
   "page_key": "home | shop | ... | null",
@@ -144,6 +147,30 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
   "recommendation": {"key": "slow_query_postmeta", "title": "...", "body": "...", "link": "https://... or empty"}
 }
 ```
+
+### Finding `new_visitor_cache_blocked` (since 0.60.1)
+
+Severity `critical`, confidence `measured`. One per component that set an application cookie on a
+cookie-less (new-visitor) profiled request of the analysis, plus one with `component: null` for
+cookies no timed code can be named for. Infrastructure cookies (`__cf_bm`, `_abck` and similar)
+are excluded. Evidence: `component_name`, `component_type`, `version`, `cookie_names`, `pages`
+(page keys in crawl order) and `cookies` (per cookie: `name`, `hook`, `callback`, `attribution`,
+`detected_at`, `pages`). The headline names the component, version, cookie, pages, hook and
+callback. The detail says "A page cache that refuses responses carrying Set-Cookie will not store
+these pages for new visitors." and then what the latest Cache performance check observed for
+these cookies (HIT or MISS), or that the check has not run. It names no cache product.
+`get-plugins-table` gives each component `new_visitor_cookies` (cookie names, empty when none).
+
+### Runtime Set-Cookie attribution (since 0.60.1)
+
+Every profiled request's boot profile (`capture.boot` in `get-page-profile`) carries
+`set_cookies`: one row per Set-Cookie name PHP queued while the profiler ran, with `name`,
+`component`, `type`, `component_name`, `version`, `hook`, `callback`, `file`, `line`, `phase` and
+`attribution`: `callback` (inside a timed hook callback; `send_headers` and `wp` are timed too),
+`plugin_include` or `mu_plugin_include` (while that file was included), or
+`outside_timed_callback` (component null, `detected_at` names the boundary where it was noticed;
+never guessed). It never contains a cookie value. `set_cookie_checks` gives the number of
+`headers_list()` comparisons and their measured cost in ms.
 
 ### Shared-cache safety report
 
@@ -163,6 +190,11 @@ Repeated site-wide signals are scored once, while their affected page count rema
 The `source_scan` block states component coverage and every component limited by the fair
 per-component scan ceiling. A controlled
 guest/customer/basket comparison is still required before enabling shared caching.
+Since 0.60.1 the assessment also has `set_cookie_attribution` (null for older captures): per
+application cookie and responsible code, the attribution fields above plus `pages`, joined from
+the boot profile of the same request; a cookie in the response that PHP never queued is
+`not_set_by_profiled_php`. The frozen `sspa/shared-cache-safety-report@2` export leaves this
+member out.
 
 ### Cache performance check
 
@@ -170,11 +202,14 @@ The administrator runs the check from the Cache performance tab. It needs no com
 when one exists, its origin generation is shown beside the check. It tests only up to four
 generated public routes: home and, with WooCommerce, the shop, the largest populated product
 category and the latest published product. It accepts no arbitrary URL. Per route it sends two
-sequential anonymous browser GETs (same origin, cookies omitted) and seven sequential
-server-loopback GETs in a fixed order the server enforces: two anonymous, two carrying
-WooCommerce's `woocommerce_items_in_cart` and `woocommerce_cart_hash` cookies with no session or
-basket behind them, two as the synthetic logged-in test customer, and one final anonymous
-request. With four routes that is 36 requests. The probe keeps TLS verification enabled and
+sequential anonymous browser GETs (same origin, cookies omitted) and up to nine sequential
+server-loopback GETs in a fixed order the server enforces: two anonymous without cookies (a new
+visitor, then another new visitor), two as a returning visitor carrying only the application
+cookies the first response set (sent only when it set one; otherwise recorded with
+`error_class: not_needed` and `skipped: true` and no request, so a site without a first-visit
+cookie costs 36 requests as before), two carrying WooCommerce's `woocommerce_items_in_cart` and
+`woocommerce_cart_hash` cookies with no session or basket behind them, two as the synthetic
+logged-in test customer, and one final anonymous request. With four routes that is at most 44. The probe keeps TLS verification enabled and
 does not purge or change a cache. WooCommerce may save a session row for the test account.
 
 After completion, `get-cache-optimisation-analysis`, `wp sspa cache-optimisation-report` and the JSON
@@ -187,7 +222,13 @@ not_cached / unknown, page counts and median server time to first byte), `audien
 `server_total_ms`, `logged_in_markers_seen`), `leak_check` (`status` no_leak_observed /
 logged_in_content_found / anonymous_page_changed / inconclusive, per page result),
 `cache_system` (page-cache plugins, `advanced-cache.php` drop-in, web server family, object
-cache, OPcache, Ajax Prices, WooCommerce customer-location setting), `origin_profiles`,
+cache, OPcache, Ajax Prices, WooCommerce customer-location setting), `new_visitors` (since
+0.60.1: `status` no_cookie_set / not_cached_for_new_visitors / cached_despite_cookie /
+cookie_set_no_cache_observed, `headline`, `detail` stating the HIT/MISS observed, `pages` with the
+cookies the first visit set, both new-visitor statuses and the returning-visitor verdict, and
+`cookies` naming the code that sets each from the analysis run's attribution, or
+`not_in_analysis`), `parameter_check` (the latest parameter check, added when read; null when none
+has run), `origin_profiles`,
 `delivery_path_observations`, `cache_layers`, `representative_pages`, `page_verdicts` (browser
 leg), `software_inventory`, `scale_inventory`, `source_coverage`, `route_failures`,
 `opportunity`, `difficulty`, `evidence_sufficiency` and `limitations`.
@@ -199,9 +240,33 @@ other transports. A private audience's page is "reuse not observed" when the cac
 served the anonymous request on that page gave it no cached response. The leak check reports a
 WordPress `logged-in` body class or the test account's display name in an anonymous response,
 or an anonymous body that was identical twice and changed after the private requests; markers
-are checked in memory and stored only as booleans. No response HTML, cookie value or name is
-stored. Origin generation, browser TTFB and server timings remain separate boundaries.
+are checked in memory and stored only as booleans. No response HTML or cookie value is stored;
+application cookie names are. When `new_visitors.status` is `not_cached_for_new_visitors` the
+report `headline` is "Not cached for new visitors: <cookie> set by <plugin> <version>". The
+returning visitor's cookie values are held only in the pending check option until it completes. Origin generation, browser TTFB and server timings remain separate boundaries.
 Consumers must not subtract them or invent a combined total.
+
+### Ad-click and campaign parameter check (since 0.60.1)
+
+Started only by the administrator ("Check ad-click and campaign parameters" on the Cache
+performance tab) or `run-parameter-check`, so analyses and the cache check send no extra requests.
+`get-parameter-check` returns the latest `sspa/parameter-check@1`. Parameters: click IDs `fbclid`,
+`gclid`, `gbraid`, `wbraid`, `msclkid`, `ttclid`, `twclid`, `li_fat_id`, `epik`, `srsltid` on every
+representative page, and `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`,
+`ref`, `mc_cid`, `mc_eid` on home only, each with a random value.
+
+- Cookie pass: 4 + 10 x 4 + 8 = 52 profiled cookie-less requests. A cookie absent from that page's
+  plain request (`baseline_cookies`) is the parameter's; `cookies[].set_by` uses the runtime
+  attribution of the same request.
+- Cache-key pass: up to 3 requests per page until one is served from cache (`cache_key_page`:
+  `audience` new_visitor or returning_visitor, the `cookie_names` carried, `statuses`), then per
+  parameter value A twice and value B once with the same cookies (54). `cache.outcome`: `ignored`
+  (B still HIT), `separate_key` (the repeated A HIT, B did not), `bypass` (never HIT) or `unknown`
+  (no status reported, or `reason: no_cacheable_page_found`). `cache.response_cookies` names
+  cookies those responses set beyond the page's own.
+- `parameters` is ordered worst first: a parameter that sets a cookie and is not served from cache
+  (`worst: true`), then cookie only, then cache miss only. `requests` counts what was sent (at most
+  118). No parameter value, cookie value or response body is stored.
 
 ### Experimental traffic observations
 

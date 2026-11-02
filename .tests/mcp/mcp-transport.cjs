@@ -61,6 +61,9 @@ function toolText(response) {
         fs.writeFileSync(out + '/discovered.json', JSON.stringify(discovered, null, 1));
         assert.ok(sspa.includes('sspa/get-status') && sspa.includes('sspa/run-analysis'), 'discovery lists the sspa abilities (' + sspa.length + ')');
         console.log('PASS discover-abilities lists ' + sspa.length + ' sspa abilities');
+        const parameterCheck = ['sspa/run-parameter-check', 'sspa/advance-parameter-check', 'sspa/get-parameter-check'];
+        assert.deepEqual(parameterCheck.filter(n => !sspa.includes(n)), [], 'the parameter check abilities are discoverable');
+        console.log('PASS the three parameter check abilities are discoverable over MCP');
 
         const executed = toolText(await post({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'mcp-adapter-execute-ability', arguments: { ability_name: 'sspa/get-status', parameters: {} } } }, init.session));
         assert.equal(executed.success, true, 'execute-ability succeeded: ' + JSON.stringify(executed).slice(0, 200));
@@ -73,7 +76,7 @@ function toolText(response) {
             const declared = caps.data.abilities;
             const missing = declared.filter(name => !sspa.includes(name));
             assert.deepEqual(missing, [], 'every declared ability is discoverable over MCP');
-            assert.equal(declared.length, 57, 'the plugin declares 57 abilities');
+            assert.equal(declared.length, 60, 'the plugin declares 60 abilities');
             assert.ok(sspa.includes('sspa/profile-admin-save'), 'profile-admin-save is discoverable over MCP');
             console.log('PASS get-capabilities over MCP: all ' + declared.length + ' declared abilities discoverable');
         } else {

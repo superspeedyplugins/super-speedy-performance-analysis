@@ -27,6 +27,8 @@ if (!class_exists('SSPA_Boot_Timer')) {
             'plugins_loaded', 'after_setup_theme', 'init', 'widgets_init', 'wp_loaded',
             'wp_enqueue_scripts', 'admin_init', 'admin_menu', 'admin_enqueue_scripts',
             'template_redirect', 'rest_api_init',
+            // Where cookies are commonly sent: wp runs the main query, send_headers sends headers.
+            'wp', 'send_headers',
             // Render phase. the_content is a FILTER - the wrap-on-entry callback passes
             // the value through untouched.
             'wp_head', 'wp_footer', 'the_content',
@@ -74,6 +76,14 @@ if (!class_exists('SSPA_Boot_Timer')) {
         private $cpu_start = null;
         private $wall_start = null;
 
+        // Set-Cookie attribution: a cursor over the Set-Cookie lines in headers_list(), checked
+        // at every boundary this timer already has. Names only; a value is never read.
+        private $cookie_cursor = 0;
+        private $cookie_events = array();
+        private $cookie_owners = array();
+        private $cookie_checks = 0;
+        private $cookie_check_s = 0.0;
+
         private $milestones = array();   // name => seconds since $timestart
         private $plugin_ms = array();    // plugin file (dir/file.php) => include ms
         private $callbacks = array();    // [hook, callable, ms, label?]
@@ -86,6 +96,8 @@ if (!class_exists('SSPA_Boot_Timer')) {
             $this->cpu_start = function_exists('getrusage') ? getrusage() : null;
             $this->last_mark = microtime(true);
             $this->mark('profiler_armed');
+            // Anything already queued was set before the profiler armed.
+            $this->cookie_check(null, 'before the profiler started');
 
             add_action('muplugins_loaded', function () {
                 $this->mark('plugins_start');
@@ -102,9 +114,19 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $pos = strpos($file, '/wp-content/plugins/');
                 $key = ($pos !== false) ? substr($file, $pos + strlen('/wp-content/plugins/')) : basename($file);
                 $this->plugin_ms[$key] = round(max(0, ($now - $this->last_mark) * 1000 - ($this->callback_wall_ms - $this->last_include_callback_ms)), 2);
+                $this->cookie_check(array('kind' => 'plugin_include', 'file' => $file, 'key' => $key), 'plugin include');
                 $this->last_include_callback_ms = $this->callback_wall_ms;
                 $this->last_mark = $now;
             });
+
+            // MU and network plugins have their own per-file actions; a cookie set by one's top-level
+            // code is that file's.
+            foreach (array('mu_plugin_loaded' => 'mu_plugin_include', 'network_plugin_loaded' => 'plugin_include') as $action => $kind) {
+                add_action($action, function ($plugin) use ($kind) {
+                    $file = str_replace('\\', '/', (string) $plugin);
+                    $this->cookie_check(array('kind' => $kind, 'file' => $file, 'key' => basename(dirname($file)) . '/' . basename($file)), $kind);
+                });
+            }
 
             add_action('plugins_loaded', function () {
                 $this->mark('includes_done');
@@ -263,9 +285,14 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $this->stack[] = 0.0;
                 $render = isset($this->milestones['template_redirect']);
                 if ($this->template && count($this->stack) === 1) $this->event('before ' . ($label ?: $hook));
+                // Cookies queued since the last boundary belong to the enclosing timed callback
+                // when one is running, otherwise to nobody we can name.
+                $this->cookie_check($this->cookie_owners ? end($this->cookie_owners) : null, 'before ' . ($label ?: $hook));
+                $this->cookie_owners[] = array('kind' => 'callback', 'hook' => $hook, 'callable' => $original, 'label' => $label);
                 try {
                     return call_user_func_array($original, $args);
                 } finally {
+                    $this->cookie_check(array_pop($this->cookie_owners), 'after ' . ($label ?: $hook));
                     $end = microtime(true);
                     $wall = ($end - $start) * 1000;
                     $self = max(0, $wall - array_pop($this->stack));
@@ -283,6 +310,117 @@ if (!class_exists('SSPA_Boot_Timer')) {
             };
             $this->wrappers->offsetSet($wrapper);
             return $wrapper;
+        }
+
+        /**
+         * Compare the Set-Cookie lines queued now with the cursor and give any new ones to $owner
+         * (a callback, a plugin include, or null: set outside a timed callback). headers_list() is
+         * the queue PHP will send, so a value never has to be read: only the name before '='.
+         * header_remove() or a replacing header() can shrink the queue; the cursor then follows it
+         * down rather than attributing lines twice.
+         */
+        private function cookie_check($owner, $detected_at) {
+            $started = microtime(true);
+            $this->cookie_checks++;
+            $lines = array();
+            foreach (headers_list() as $header) {
+                if (0 === strncasecmp($header, 'Set-Cookie:', 11)) {
+                    $lines[] = $header;
+                }
+            }
+            $count = count($lines);
+            if ($count > $this->cookie_cursor) {
+                $names = array();
+                foreach (array_slice($lines, $this->cookie_cursor) as $line) {
+                    if (preg_match('/^Set-Cookie:\s*([^=;\s]{1,200})=/i', $line, $m)) {
+                        $names[] = $m[1];
+                    }
+                }
+                if ($names && count($this->cookie_events) < 100) {
+                    $this->cookie_events[] = array('names' => $names, 'owner' => $owner, 'detected_at' => $detected_at,
+                        'phase' => isset($this->milestones['template_redirect']) ? 'render' : 'boot');
+                }
+            }
+            $this->cookie_cursor = $count;
+            $this->cookie_check_s += microtime(true) - $started;
+        }
+
+        /**
+         * One row per cookie name the profiled PHP queued, with who queued it. Name and version are
+         * read only for the few components that set a cookie, so a request without one pays nothing.
+         */
+        private function set_cookie_report($map) {
+            $rows = array();
+            $info = array();
+            foreach ($this->cookie_events as $event) {
+                $owner = $event['owner'];
+                $row = array('component' => null, 'type' => null, 'component_name' => null, 'version' => null,
+                    'hook' => null, 'callback' => null, 'file' => null, 'line' => null,
+                    'attribution' => 'outside_timed_callback', 'detected_at' => (string) $event['detected_at'], 'phase' => $event['phase']);
+                if ($owner && 'callback' === $owner['kind']) {
+                    $source = $this->callable_source($owner['callable']);
+                    $file = $this->callable_file($owner['callable']);
+                    $cls = $file ? $map->classify_file($file) : array('component' => 'core', 'type' => 'core');
+                    $row = array_merge($row, array('component' => $cls['component'], 'type' => $cls['type'], 'hook' => $owner['hook'],
+                        'callback' => $owner['label'] ?: $this->callable_label($owner['callable']), 'file' => $source['file'],
+                        'line' => $source['line'], 'attribution' => 'callback', 'detected_at' => null));
+                } elseif ($owner) {
+                    $cls = $map->classify_file($owner['file']);
+                    $row = array_merge($row, array('component' => $cls['component'], 'type' => $cls['type'], 'file' => $owner['file'],
+                        'attribution' => $owner['kind'], 'detected_at' => null));
+                }
+                if (null !== $row['component']) {
+                    $key = $row['type'] . ':' . $row['component'];
+                    if (!isset($info[$key])) {
+                        $info[$key] = $this->component_info($row['component'], $row['type'], $row['file']);
+                    }
+                    $row['component_name'] = $info[$key]['name'];
+                    $row['version'] = $info[$key]['version'];
+                }
+                foreach ($event['names'] as $name) {
+                    $rows[] = array_merge(array('name' => $name), $row);
+                }
+            }
+            return array_slice($rows, 0, 50);
+        }
+
+        /** Display name and version of one component, from its own header. */
+        private function component_info($component, $type, $file) {
+            $none = array('name' => $component, 'version' => null);
+            if ('core' === $type) {
+                return array('name' => 'WordPress', 'version' => isset($GLOBALS['wp_version']) ? (string) $GLOBALS['wp_version'] : null);
+            }
+            if ('theme' === $type && function_exists('wp_get_theme')) {
+                $theme = wp_get_theme($component);
+                return $theme->exists() ? array('name' => (string) $theme->get('Name'), 'version' => (string) $theme->get('Version') ?: null) : $none;
+            }
+            if (!function_exists('get_file_data')) {
+                return $none;
+            }
+            $main = null;
+            if ('plugin' === $type) {
+                foreach (array_keys($this->plugin_ms) as $key) {
+                    if (0 === strpos($key, $component . '/') || $key === $component . '.php') {
+                        $main = WP_PLUGIN_DIR . '/' . $key;
+                        break;
+                    }
+                }
+                if (!$main) {
+                    foreach ((array) get_option('active_plugins', array()) as $key) {
+                        if (0 === strpos((string) $key, $component . '/')) {
+                            $main = WP_PLUGIN_DIR . '/' . $key;
+                            break;
+                        }
+                    }
+                }
+            } elseif ('mu-plugin' === $type && $file && is_file($file)) {
+                $main = $file;
+            }
+            if (!$main || !is_file($main)) {
+                return $none;
+            }
+            $data = get_file_data($main, array('name' => 'Plugin Name', 'version' => 'Version'));
+            return array('name' => '' !== $data['name'] ? $data['name'] : $component, 'version' => '' !== $data['version'] ? $data['version'] : null);
         }
 
         /** Raw milestones in ms since request start, for cross-referencing other collectors. */
@@ -411,6 +549,9 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 'top_callbacks' => array_slice($top, 0, 15),
                 'render' => $render,
                 'assets' => $this->assets(),
+                // Who queued each Set-Cookie line: names only, never values.
+                'set_cookies' => $this->set_cookie_report($map),
+                'set_cookie_checks' => array('checks' => $this->cookie_checks, 'ms' => round($this->cookie_check_s * 1000, 3)),
             );
         }
 
@@ -508,6 +649,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
 
         public function finish() {
             if (null !== $this->wall_end) return;
+            $this->cookie_check(null, 'request end');
             $this->wall_end = microtime(true);
             $this->cpu_end = function_exists('getrusage') ? getrusage() : null;
             $this->mark('request_end');

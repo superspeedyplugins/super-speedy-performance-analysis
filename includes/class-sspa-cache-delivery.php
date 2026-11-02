@@ -27,14 +27,18 @@ class SSPA_Cache_Delivery {
     const CATALOGUE_PAGES = array('shop', 'product_category', 'product');
 
     /**
-     * The fixed server request order for every page. Anonymous first so a cache entry exists,
-     * then the two private audiences, then one final anonymous request that would show a
-     * private response stored under the public cache key.
+     * The fixed server request order for every page. Two cookie-less requests first: a new
+     * visitor, then another new visitor. Then, only when the first response set a cookie, two
+     * requests carrying just that cookie (a returning visitor), which explains why a warm browser
+     * sees a healthy cache. Then the two private audiences, then one final anonymous request that
+     * would show a private response stored under the public cache key.
      */
     public static function server_legs() {
         return array(
             array('anonymous', 1),
             array('anonymous', 2),
+            array('returning', 1),
+            array('returning', 2),
             array('basket', 1),
             array('basket', 2),
             array('customer', 1),
@@ -159,13 +163,16 @@ class SSPA_Cache_Delivery {
     /**
      * Requests the check will send, for the explanation shown before the button. Without
      * WooCommerce there is no basket to represent, so the two basket requests per page are
-     * not sent.
+     * not sent. The two returning-visitor requests per page are sent only when the first
+     * response sets a cookie, so server_requests is a maximum and returning_requests says how
+     * many of them depend on that.
      */
     public static function request_plan($target_count) {
         $server_per_page = count(self::server_legs()) - (self::woocommerce_active() ? 0 : 2);
         return array(
             'browser_requests' => $target_count * self::REQUESTS_PER_URL,
             'server_requests' => $target_count * $server_per_page,
+            'returning_requests' => $target_count * 2,
             'request_count' => $target_count * (self::REQUESTS_PER_URL + $server_per_page),
             'basket_requests' => self::woocommerce_active(),
         );
@@ -240,19 +247,28 @@ class SSPA_Cache_Delivery {
         }
 
         $first_key = $page_key . ':anonymous:1';
-        if ('anonymous' === $audience && 2 === (int) $request_number && !empty($pending['server_results'][$first_key]['application_cookie_names'])) {
-            // A browser would carry that cookie into the second request, so a second clean
-            // request would describe a visitor who does not exist.
-            $result = self::empty_result($target, $audience, 2, 'application_session_cookie_set', __('The first response set an application cookie, so this URL was not repeated with a contaminated client.', 'super-speedy-performance-analysis'));
+        if ('returning' === $audience && empty($pending['returning_cookies'][$page_key])) {
+            // Nothing to return with: the first visit set no application cookie.
+            $result = self::empty_result($target, $audience, (int) $request_number, 'not_needed', __('The first response set no cookie, so there is no returning visitor to represent.', 'super-speedy-performance-analysis'));
+            $result['skipped'] = true;
         } elseif ('basket' === $audience && !self::woocommerce_active()) {
             $result = self::empty_result($target, $audience, (int) $request_number, 'woocommerce_not_active', __('WooCommerce is not active, so there is no basket to represent.', 'super-speedy-performance-analysis'));
         } else {
-            $cookies = self::cookies_for_audience($audience, $pending);
+            $cookies = self::cookies_for_audience($audience, $pending, $page_key);
             if (is_wp_error($cookies)) {
                 $result = self::empty_result($target, $audience, (int) $request_number, $cookies->get_error_code(), $cookies->get_error_message());
             } else {
                 $result = self::server_get($target, $audience, (int) $request_number, $cookies);
             }
+        }
+        // The first visit's application cookies, values included, are what a returning visitor
+        // presents. They stay in the pending option for the check's lifetime only and never
+        // reach the report.
+        if (isset($result['cookie_jar'])) {
+            if ('anonymous' === $audience && 1 === (int) $request_number && $result['cookie_jar']) {
+                $pending['returning_cookies'][$page_key] = $result['cookie_jar'];
+            }
+            unset($result['cookie_jar']);
         }
         $pending['server_results'][$key] = $result;
         update_option(self::PENDING_OPTION, $pending, false);
@@ -266,7 +282,10 @@ class SSPA_Cache_Delivery {
      * a basket. There is no session cookie and no basket behind them, and WooCommerce answers
      * an empty basket by clearing the two cookies, so no basket or session is created.
      */
-    private static function cookies_for_audience($audience, $pending) {
+    private static function cookies_for_audience($audience, $pending, $page_key = '') {
+        if ('returning' === $audience) {
+            return isset($pending['returning_cookies'][$page_key]) ? (array) $pending['returning_cookies'][$page_key] : array();
+        }
         if ('basket' === $audience) {
             return array(
                 'woocommerce_items_in_cart' => '1',
@@ -319,6 +338,7 @@ class SSPA_Cache_Delivery {
         $leak_check = self::leak_check($pending['targets'], $server);
         $route_failures = self::route_failures($browser, $server);
         $audiences = self::audience_summary($pending['targets'], $audience_verdicts, $server, $origin_profiles);
+        $new_visitors = self::new_visitors($pending['targets'], $server, $audience_verdicts, $assessment);
 
         $report = array(
             'schema' => self::SCHEMA,
@@ -336,7 +356,7 @@ class SSPA_Cache_Delivery {
                 'warning' => __('This report contains exact public page URLs, software versions and local aggregate counts. It contains no response HTML, cookie values, nonce values, customer records or snippet source.', 'super-speedy-performance-analysis'),
             ),
             'run_id' => $run_id,
-            'headline' => self::status_label($page_cache_status),
+            'headline' => 'not_cached_for_new_visitors' === $new_visitors['status'] ? $new_visitors['headline'] : self::status_label($page_cache_status),
             'detail' => __('Browser visitor-path timing, server-loopback timing for each audience and profiled origin generation are reported as separate measured boundaries.', 'super-speedy-performance-analysis'),
             // Compatibility block for version 2 readers.
             'assessment' => $assessment,
@@ -344,6 +364,7 @@ class SSPA_Cache_Delivery {
             'audiences' => $audiences,
             'audience_verdicts' => $audience_verdicts,
             'leak_check' => $leak_check,
+            'new_visitors' => $new_visitors,
             'basket_state' => self::basket_state($audience_verdicts, $server),
             'cache_system' => $cache_system,
             'origin_profiles' => $origin_profiles,
@@ -406,6 +427,9 @@ class SSPA_Cache_Delivery {
         if ($run_id && (int) $run_id !== (int) $report['run_id']) {
             return new WP_Error('sspa_cache_delivery_run_mismatch', __('The saved cache performance check belongs to a different analysis run.', 'super-speedy-performance-analysis'));
         }
+        // The separately started parameter check, when one has run. Added at read time, so the
+        // saved check itself is unchanged.
+        $report['parameter_check'] = SSPA_Parameter_Check::latest();
         return $report;
     }
 
@@ -552,6 +576,7 @@ class SSPA_Cache_Delivery {
         $normalised = self::normalise_body($body);
         $sent = array_change_key_case((array) $cookies, CASE_LOWER);
         $cookie_names = array();
+        $cookie_jar = array();
         foreach ((array) wp_remote_retrieve_cookies($response) as $cookie) {
             if (!is_object($cookie) || empty($cookie->name) || self::infrastructure_cookie($cookie->name)) {
                 continue;
@@ -562,6 +587,9 @@ class SSPA_Cache_Delivery {
                 continue;
             }
             $cookie_names[sanitize_key($cookie->name)] = true;
+            if (is_string($cookie->value) && '' !== $cookie->value && 'deleted' !== $cookie->value) {
+                $cookie_jar[(string) $cookie->name] = $cookie->value;
+            }
         }
         // cURL's clock and PHP's differ by a few milliseconds, so cURL's absolute first-byte time
         // can exceed the wall time measured around the request. Measure both ends on the wall
@@ -596,6 +624,8 @@ class SSPA_Cache_Delivery {
             // Checked in memory and kept only as booleans. No HTML, name or cookie is stored.
             'private_markers' => self::private_markers($body),
             'basket_refresh' => self::basket_refresh($body),
+            // Removed by probe_server_request() before the result is stored.
+            'cookie_jar' => $cookie_jar,
         );
     }
 
@@ -1168,6 +1198,224 @@ class SSPA_Cache_Delivery {
         return array('status' => $status, 'pages' => $pages);
     }
 
+    /**
+     * One server-loopback GET of a public URL of this site, on the same boundary, layer
+     * classification and cookie handling as the check's own requests. Used by the parameter
+     * check. The cookie jar (values) is for the caller's next request only; never store it.
+     *
+     * @return array {http_status, error_class, statuses, layer, cookie_names, cookie_jar, ttfb_ms}
+     */
+    public static function probe_url($page_key, $url, $cookies = array()) {
+        if (!self::safe_target($url)) {
+            return array('http_status' => 0, 'error_class' => 'unsafe_target', 'statuses' => array(), 'layer' => '',
+                'cookie_names' => array(), 'cookie_jar' => array(), 'ttfb_ms' => null);
+        }
+        $row = self::server_get(array('page_key' => $page_key, 'url' => $url), 'parameter', 1, (array) $cookies);
+        return array(
+            'http_status' => (int) $row['http_status'],
+            'error_class' => (string) $row['error_class'],
+            'statuses' => array_values(array_unique(self::served_statuses(array($row)))),
+            'layer' => self::served_layer(array($row)),
+            'cookie_names' => array_values((array) $row['application_cookie_names']),
+            'cookie_jar' => isset($row['cookie_jar']) ? (array) $row['cookie_jar'] : array(),
+            'ttfb_ms' => $row['ttfb_ms'],
+        );
+    }
+
+    /** Edge/security cookies, which the cookie findings leave out. */
+    public static function is_infrastructure_cookie($name) {
+        return self::infrastructure_cookie($name);
+    }
+
+    /** The cache statuses served layers reported for one request, e.g. "MISS". */
+    private static function row_status($row) {
+        $statuses = $row ? array_values(array_unique(self::served_statuses(array($row)))) : array();
+        return $statuses ? implode('/', $statuses) : '';
+    }
+
+    /**
+     * What a first visit and a returning visit get, per page, and who set the cookie that
+     * separates them. The cookie names come from the cookie-less requests here; the code that set
+     * them comes from the analysis run's runtime attribution, when there is one.
+     */
+    private static function new_visitors($targets, $server, $audience_verdicts, $assessment) {
+        $find = function ($page_key, $audience, $number) use ($server) {
+            foreach ($server as $row) {
+                if ($row['page_key'] === $page_key && $row['audience'] === $audience && (int) $row['request_number'] === $number) {
+                    return $row;
+                }
+            }
+            return null;
+        };
+        $pages = array();
+        $names = array();
+        foreach ($targets as $index => $target) {
+            $first = $find($target['page_key'], 'anonymous', 1);
+            $second = $find($target['page_key'], 'anonymous', 2);
+            $r1 = $find($target['page_key'], 'returning', 1);
+            $r2 = $find($target['page_key'], 'returning', 2);
+            $cookies = $first ? array_values((array) $first['application_cookie_names']) : array();
+            foreach ($cookies as $name) {
+                $names[$name] = true;
+            }
+            $anonymous = isset($audience_verdicts['anonymous'][$index]) ? $audience_verdicts['anonymous'][$index] : array('cache_state' => 'unknown', 'verdict' => 'probe_inconclusive');
+            $returning = array('verdict' => 'not_needed', 'cache_state' => 'not_needed', 'layer' => '', 'statuses' => array());
+            if ($r1 && $r2 && empty($r1['skipped'])) {
+                $rows = array($r1, $r2);
+                if (self::failed_rows($rows)) {
+                    $verdict = 'probe_inconclusive';
+                } else {
+                    $verdict = self::status_verdict(self::served_statuses($rows)) ?: 'cache_layer_unidentified';
+                }
+                $returning = array('verdict' => $verdict, 'cache_state' => self::cache_state($verdict), 'layer' => self::served_layer($rows),
+                    'statuses' => array(self::row_status($r1), self::row_status($r2)));
+            }
+            $pages[] = array(
+                'page_key' => $target['page_key'],
+                'url' => $target['url'],
+                'cookies' => $cookies,
+                'new_visitor_statuses' => array(self::row_status($first), self::row_status($second)),
+                'second_new_visitor_cookies' => $second ? array_values((array) $second['application_cookie_names']) : array(),
+                'new_visitor_cache_state' => $anonymous['cache_state'],
+                'new_visitor_verdict' => $anonymous['verdict'],
+                'returning_visitor' => $returning,
+            );
+        }
+
+        $attribution = array();
+        foreach (array_keys($names) as $name) {
+            $matched = false;
+            foreach ((array) ($assessment['set_cookie_attribution'] ?? array()) as $row) {
+                if (sanitize_key((string) $row['name']) === $name) {
+                    $matched = true;
+                    $attribution[] = array_intersect_key($row, array_flip(array('name', 'component', 'type', 'component_name', 'version', 'hook', 'callback', 'attribution', 'detected_at')));
+                }
+            }
+            if (!$matched) {
+                $attribution[] = array('name' => $name, 'component' => null, 'type' => null, 'component_name' => null, 'version' => null,
+                    'hook' => null, 'callback' => null, 'attribution' => 'not_in_analysis', 'detected_at' => null);
+            }
+        }
+
+        $with_cookie = array_filter($pages, function ($page) { return (bool) $page['cookies']; });
+        if (!$with_cookie) {
+            $status = 'no_cookie_set';
+        } elseif (array_filter($with_cookie, function ($page) {
+            // A cache was seen working here: it reported a status without reusing the page for a
+            // new visitor, or it served the returning visitor.
+            return 'cached' !== $page['new_visitor_cache_state']
+                && (in_array($page['new_visitor_verdict'], array('reuse_not_observed', 'bypass_confirmed'), true)
+                    || 'cached' === $page['returning_visitor']['cache_state']);
+        })) {
+            $status = 'not_cached_for_new_visitors';
+        } elseif (!array_filter($with_cookie, function ($page) { return 'cached' !== $page['new_visitor_cache_state']; })) {
+            $status = 'cached_despite_cookie';
+        } else {
+            // A cookie is set, but no cache was seen storing anything, so the cookie is not shown
+            // to be the reason.
+            $status = 'cookie_set_no_cache_observed';
+        }
+        $out = array('status' => $status, 'pages' => $pages, 'cookies' => $attribution, 'headline' => '', 'detail' => '');
+        if ('no_cookie_set' !== $status) {
+            $parts = array();
+            foreach ($attribution as $row) {
+                if (!empty($row['component'])) {
+                    $who = trim((!empty($row['component_name']) ? $row['component_name'] : $row['component']) . (!empty($row['version']) ? ' ' . $row['version'] : ''));
+                    /* translators: 1: cookie name, 2: plugin or theme name and version */
+                    $parts[] = sprintf(__('%1$s set by %2$s', 'super-speedy-performance-analysis'), $row['name'], $who);
+                } elseif ('not_in_analysis' === $row['attribution']) {
+                    /* translators: %s: cookie name */
+                    $parts[] = sprintf(__('%s (run an analysis to name the code that sets it)', 'super-speedy-performance-analysis'), $row['name']);
+                } else {
+                    /* translators: %s: cookie name */
+                    $parts[] = sprintf(__('%s, set outside any code the profiler could name', 'super-speedy-performance-analysis'), $row['name']);
+                }
+            }
+            $parts = array_values(array_unique($parts));
+            $out['headline'] = 'not_cached_for_new_visitors' === $status
+                /* translators: %s: cookies and who sets them, e.g. "_fbp set by Example Tracker 1.2.3" */
+                ? sprintf(__('Not cached for new visitors: %s', 'super-speedy-performance-analysis'), implode('; ', $parts))
+                /* translators: %s: cookies and who sets them */
+                : sprintf(__('Cached for new visitors although the first response sets a cookie: %s', 'super-speedy-performance-analysis'), implode('; ', $parts));
+            $out['detail'] = self::observation_sentence($out, array_keys($names));
+        }
+        return $out;
+    }
+
+    /**
+     * The sentence a finding quotes: what the latest check observed for these cookie names, or ''
+     * when it has no observation about them.
+     */
+    public static function new_visitor_observation($report, $cookie_names) {
+        if (!is_array($report) || empty($report['new_visitors']['pages'])) {
+            return '';
+        }
+        return self::observation_sentence($report['new_visitors'], array_map('sanitize_key', (array) $cookie_names));
+    }
+
+    private static function observation_sentence($new_visitors, $names) {
+        $pages = array_values(array_filter((array) $new_visitors['pages'], function ($page) use ($names) {
+            return (bool) array_intersect((array) $page['cookies'], $names);
+        }));
+        if (!$pages) {
+            return '';
+        }
+        $cookie_list = SSPA_Insights::and_list(array_values(array_unique(array_merge(...array_map(function ($page) { return (array) $page['cookies']; }, $pages)))));
+        $label = function ($rows) {
+            return SSPA_Insights::and_list(array_map(function ($page) { return self::page_label($page['page_key']); }, $rows));
+        };
+        $statuses = function ($rows, $key) {
+            $all = array();
+            foreach ($rows as $page) {
+                $values = 'returning' === $key ? (array) $page['returning_visitor']['statuses'] : (array) $page['new_visitor_statuses'];
+                foreach ($values as $value) {
+                    $all[] = '' !== $value ? $value : __('no cache status', 'super-speedy-performance-analysis');
+                }
+            }
+            return implode(', ', array_values(array_unique($all)));
+        };
+        $missed = array_values(array_filter($pages, function ($page) { return 'cached' !== $page['new_visitor_cache_state']; }));
+        $served = array_values(array_filter($pages, function ($page) { return 'cached' === $page['new_visitor_cache_state']; }));
+        $sentences = array();
+        if ($missed) {
+            $sentences[] = sprintf(
+                /* translators: 1: page list, 2: cache statuses, e.g. "MISS", 3: cookie list */
+                __('The Cache performance check observed: two cookie-less requests to %1$s were not served from cache (%2$s), and each response set %3$s.', 'super-speedy-performance-analysis'),
+                $label($missed),
+                $statuses($missed, 'new'),
+                $cookie_list
+            );
+        }
+        if ($served) {
+            $sentences[] = sprintf(
+                /* translators: 1: page list, 2: cache statuses, 3: cookie list */
+                __('The Cache performance check observed: cookie-less requests to %1$s were served from cache (%2$s) even though the first response set %3$s, so this page cache stores or strips that response.', 'super-speedy-performance-analysis'),
+                $label($served),
+                $statuses($served, 'new'),
+                $cookie_list
+            );
+        }
+        $returning_cached = array_values(array_filter($pages, function ($page) { return 'cached' === $page['returning_visitor']['cache_state']; }));
+        $returning_missed = array_values(array_filter($pages, function ($page) { return in_array($page['returning_visitor']['cache_state'], array('not_cached', 'unknown'), true); }));
+        if ($returning_cached) {
+            $sentences[] = sprintf(
+                /* translators: 1: page list, 2: cache statuses, e.g. "MISS, HIT" */
+                __('A returning visitor carrying only that cookie was served from cache on %1$s (%2$s), which is why a check from a browser that already has the cookie looks healthy.', 'super-speedy-performance-analysis'),
+                $label($returning_cached),
+                $statuses($returning_cached, 'returning')
+            );
+        }
+        if ($returning_missed) {
+            $sentences[] = sprintf(
+                /* translators: 1: page list, 2: cache statuses */
+                __('A returning visitor carrying only that cookie was not served from cache on %1$s either (%2$s).', 'super-speedy-performance-analysis'),
+                $label($returning_missed),
+                $statuses($returning_missed, 'returning')
+            );
+        }
+        return implode(' ', $sentences);
+    }
+
     private static function overall_status($values) {
         if (!$values || in_array('probe_inconclusive', $values, true)) {
             return 'inconclusive';
@@ -1226,6 +1474,9 @@ class SSPA_Cache_Delivery {
     private static function route_failures($browser, $server) {
         $failures = array();
         foreach (array_merge($browser, $server) as $row) {
+            if (!empty($row['skipped'])) {
+                continue;
+            }
             if (!empty($row['error_class']) || (int) $row['http_status'] < 200 || (int) $row['http_status'] >= 400) {
                 $failures[] = array(
                     'page_key' => $row['page_key'],

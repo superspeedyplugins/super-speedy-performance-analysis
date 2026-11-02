@@ -70,7 +70,8 @@ class SSPA_Cache_Recon {
             'run_id' => (int) $report['run_id'],
             'headline' => $report['headline'],
             'detail' => $report['detail'],
-            'assessment' => $report['assessment'],
+            // Frozen at v2: the runtime attribution added in 0.60.1 is a v3 member only.
+            'assessment' => array_diff_key((array) $report['assessment'], array('set_cookie_attribution' => true)),
         );
     }
 
@@ -215,6 +216,7 @@ class SSPA_Cache_Recon {
                 $set_cookie[] = $cookie_name;
             }
         }
+        $attribution = self::set_cookie_attribution($set_cookie, $capture);
         $cache_headers = array();
         foreach (array('cache-control', 'vary', 'age', 'x-cache', 'x-cache-status', 'x-litespeed-cache', 'cf-cache-status', 'x-fastcgi-cache') as $name) {
             if (!isset($headers[$name])) {
@@ -240,6 +242,9 @@ class SSPA_Cache_Recon {
             'partial' => (bool) $partial,
             'set_cookie_names' => array_slice($set_cookie, 0, 30),
             'infrastructure_cookie_names' => array_slice($infrastructure_cookie, 0, 30),
+            // Who set each application cookie, from the boot timer of the same profiled request.
+            // Null when the capture predates runtime attribution.
+            'set_cookie_attribution' => $attribution,
             'nonce_names' => array_map(function ($evidence) { return (int) $evidence['occurrences']; }, array_slice($nonce_evidence, 0, 30, true)),
             'nonce_evidence' => array_slice($nonce_evidence, 0, 30, true),
             'legacy_cookie_reads' => array_values(array_unique($legacy)),
@@ -326,6 +331,52 @@ class SSPA_Cache_Recon {
         }
     }
 
+    /**
+     * Join the response's application cookie names to the boot timer's record of who queued them.
+     * A name the response carried but PHP never queued while the profiler ran is reported as such
+     * (web server, proxy, or code that runs before the profiler arms), never guessed.
+     *
+     * @return array|null Rows {name, component, type, component_name, version, hook, callback,
+     *                    attribution, detected_at}; null when the capture has no attribution.
+     */
+    private static function set_cookie_attribution($names, $capture) {
+        if (!isset($capture['boot']) || !is_array($capture['boot']) || !array_key_exists('set_cookies', $capture['boot'])) {
+            return null;
+        }
+        $rows = array();
+        foreach ((array) $names as $name) {
+            $found = false;
+            $seen = array();
+            foreach ((array) $capture['boot']['set_cookies'] as $cookie) {
+                if (!is_array($cookie) || sanitize_key((string) ($cookie['name'] ?? '')) !== $name) {
+                    continue;
+                }
+                $found = true;
+                $row = array(
+                    'name' => substr(preg_replace('/[^!#$%&\'*+.^_`|~0-9A-Za-z-]/', '', (string) $cookie['name']), 0, 100),
+                    'component' => isset($cookie['component']) ? sanitize_text_field((string) $cookie['component']) : null,
+                    'type' => isset($cookie['type']) ? sanitize_key((string) $cookie['type']) : null,
+                    'component_name' => isset($cookie['component_name']) ? sanitize_text_field((string) $cookie['component_name']) : null,
+                    'version' => isset($cookie['version']) ? sanitize_text_field((string) $cookie['version']) : null,
+                    'hook' => isset($cookie['hook']) ? sanitize_text_field((string) $cookie['hook']) : null,
+                    'callback' => isset($cookie['callback']) ? substr(sanitize_text_field((string) $cookie['callback']), 0, 200) : null,
+                    'attribution' => sanitize_key((string) ($cookie['attribution'] ?? 'outside_timed_callback')),
+                    'detected_at' => isset($cookie['detected_at']) ? substr(sanitize_text_field((string) $cookie['detected_at']), 0, 200) : null,
+                );
+                $key = md5(wp_json_encode($row));
+                if (!isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $rows[] = $row;
+                }
+            }
+            if (!$found) {
+                $rows[] = array('name' => $name, 'component' => null, 'type' => null, 'component_name' => null, 'version' => null,
+                    'hook' => null, 'callback' => null, 'attribution' => 'not_set_by_profiled_php', 'detected_at' => null);
+            }
+        }
+        return array_slice($rows, 0, 30);
+    }
+
     /** Edge/security cookies do not establish that WordPress varied the cached document. */
     private static function is_infrastructure_cookie($name) {
         return (bool) preg_match('/^(?:__cf_bm|_cfuvid|cf_clearance|__cflb|__cfwaitingroom|cf_ob_info|cf_use_ob|cf_chl_[a-z0-9_]+|ak_bmsc|bm_sz|bm_sv|_abck)$/i', (string) $name);
@@ -356,6 +407,8 @@ class SSPA_Cache_Recon {
         $unique_nonces = array();
         $unique_legacy_cookies = array();
         $unique_private_surfaces = array();
+        $attribution = array();
+        $attribution_available = false;
         $totals = array(
             'set_cookie_pages' => 0,
             'infrastructure_cookie_pages' => 0,
@@ -389,6 +442,16 @@ class SSPA_Cache_Recon {
                 'coverage' => isset($scan['coverage']) ? $scan['coverage'] : array(),
             );
             $pages[] = $page;
+            if (isset($scan['set_cookie_attribution']) && is_array($scan['set_cookie_attribution'])) {
+                $attribution_available = true;
+                foreach ($scan['set_cookie_attribution'] as $row) {
+                    $key = md5(wp_json_encode($row));
+                    if (!isset($attribution[$key])) {
+                        $attribution[$key] = array_merge($row, array('pages' => array()));
+                    }
+                    $attribution[$key]['pages'][] = $page['page_key'];
+                }
+            }
 
             $totals['set_cookie_pages'] += $page['set_cookie_names'] ? 1 : 0;
             $totals['infrastructure_cookie_pages'] += $page['infrastructure_cookie_names'] ? 1 : 0;
@@ -518,6 +581,9 @@ class SSPA_Cache_Recon {
                 'private_surface_types' => array_keys($unique_private_surfaces),
             ),
             'hazards' => $hazards,
+            // Which component queued each application cookie on these cookie-less (new-visitor)
+            // profiled requests, with the pages. Null when the captures predate attribution.
+            'set_cookie_attribution' => $attribution_available ? array_slice(array_values($attribution), 0, 40) : null,
             'pages' => array_slice($pages, 0, 40),
             'candidate_components' => array_slice($candidates, 0, self::MAX_CANDIDATES),
             'source_scan' => array(

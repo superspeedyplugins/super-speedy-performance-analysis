@@ -367,6 +367,12 @@ class SSPA_Insights {
                     count((array) ($e['candidate_components'] ?? array()))
                 );
                 break;
+            case 'new_visitor_cache_blocked':
+                $headline = self::new_visitor_headline($component, $e);
+                $detail = __('A page cache that refuses responses carrying Set-Cookie will not store these pages for new visitors.', 'super-speedy-performance-analysis');
+                $observed = class_exists('SSPA_Cache_Delivery') ? SSPA_Cache_Delivery::new_visitor_observation(SSPA_Cache_Delivery::latest(), (array) ($e['cookie_names'] ?? array())) : '';
+                $detail .= ' ' . ('' !== $observed ? $observed : __('Run the Cache performance check to see what this site\'s page cache does with these pages.', 'super-speedy-performance-analysis'));
+                break;
             default:
                 $headline = $finding['finding_type'] . ($component ? ' - ' . $component : '');
         }
@@ -379,6 +385,70 @@ class SSPA_Insights {
             'rec_title' => isset($rec['title']) ? $rec['title'] : '',
             'rec_body' => isset($rec['body']) ? $rec['body'] : '',
             'rec_link' => isset($rec['link']) ? $rec['link'] : '',
+        );
+    }
+
+    /**
+     * "Example Tracker 1.2.3 sets the _fbp cookie on the first visit to home and shop (on init,
+     * in X::y)", from what the profiler observed on cookie-less requests. A cookie no timed code can
+     * be named for says so instead of guessing.
+     */
+    /** "a, b and c": a plain list, no serial comma. */
+    public static function and_list($items) {
+        $items = array_values(array_map('strval', (array) $items));
+        if (count($items) < 2) {
+            return implode('', $items);
+        }
+        $last = array_pop($items);
+        /* translators: 1: comma-separated items, 2: the last item */
+        return sprintf(__('%1$s and %2$s', 'super-speedy-performance-analysis'), implode(', ', $items), $last);
+    }
+
+    public static function new_visitor_headline($component, $e) {
+        $names = array_map(function ($name) { return (string) $name; }, (array) ($e['cookie_names'] ?? array()));
+        $cookies = 1 === count($names)
+            /* translators: %s: cookie name, e.g. "_fbp" */
+            ? sprintf(__('the %s cookie', 'super-speedy-performance-analysis'), $names[0])
+            /* translators: %s: list of cookie names, e.g. "_fbp and _fbc" */
+            : sprintf(__('the %s cookies', 'super-speedy-performance-analysis'), self::and_list($names));
+        $pages = self::and_list((array) ($e['pages'] ?? array()));
+        $first = isset($e['cookies'][0]) && is_array($e['cookies'][0]) ? $e['cookies'][0] : array();
+        $how = isset($first['attribution']) ? (string) $first['attribution'] : '';
+        if (!$component) {
+            if ('not_set_by_profiled_php' === $how) {
+                return sprintf(
+                    /* translators: 1: "the _fbp cookie", 2: page list */
+                    __('Responses to the first visit to %2$s carry %1$s, but no PHP code the profiler observed set it (it may come from the web server, a proxy or code that runs before the profiler starts)', 'super-speedy-performance-analysis'),
+                    $cookies,
+                    $pages
+                );
+            }
+            return sprintf(
+                /* translators: 1: "the _fbp cookie", 2: page list, 3: where it was noticed, e.g. "before wp" */
+                __('%1$s is set on the first visit to %2$s outside a timed callback (noticed %3$s)', 'super-speedy-performance-analysis'),
+                ucfirst($cookies),
+                $pages,
+                isset($first['detected_at']) ? (string) $first['detected_at'] : __('at the end of the request', 'super-speedy-performance-analysis')
+            );
+        }
+        $name = trim((!empty($e['component_name']) ? $e['component_name'] : $component) . (!empty($e['version']) ? ' ' . $e['version'] : ''));
+        if ('callback' === $how) {
+            $where = sprintf(
+                /* translators: 1: hook name, 2: callback name */
+                __('on %1$s, in %2$s', 'super-speedy-performance-analysis'),
+                (string) $first['hook'],
+                (string) $first['callback']
+            );
+        } else {
+            $where = __('while its code file loads', 'super-speedy-performance-analysis');
+        }
+        return sprintf(
+            /* translators: 1: component name and version, 2: "the _fbp cookie", 3: page list, 4: where, e.g. "on init, in X::y" */
+            __('%1$s sets %2$s on the first visit to %3$s (%4$s)', 'super-speedy-performance-analysis'),
+            $name,
+            $cookies,
+            $pages,
+            $where
         );
     }
 

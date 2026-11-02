@@ -28,8 +28,12 @@ sspa_ce_t(!array_filter($basket, function ($row) { return 'cached' !== $row['cac
 sspa_ce_t(!array_filter($customer, function ($row) { return 'reuse_not_observed' !== $row['verdict'] || 'anonymous_cache_layer_not_used_for_this_audience' !== $row['reason']; }), 'logged-in customers: the cache that served visitors did not serve them (' . wp_json_encode(array_column($customer, 'verdict')) . ')');
 sspa_ce_t(!array_filter($customer, function ($row) { return !$row['logged_in_markers_seen']; }), 'the customer requests really were logged in (WordPress logged-in body class seen)');
 sspa_ce_t('cached' === $report['audiences']['anonymous']['headline'] && 'cached' === $report['audiences']['basket']['headline'] && 'not_cached' === $report['audiences']['customer']['headline'], 'audience headlines: Cached, Cached, Not cached');
-$ttfb_sources = array_unique(array_column($report['delivery_path_observations']['server']['requests'], 'ttfb_source'));
-sspa_ce_t(array('curl_starttransfer_time') === array_values($ttfb_sources), 'server time to first byte is cURL starttransfer_time on every server request');
+// Returning-visitor legs are recorded without a request when the first visit set no cookie.
+$sent_rows = array_filter($report['delivery_path_observations']['server']['requests'], function ($row) { return empty($row['skipped']); });
+$ttfb_sources = array_unique(array_column($sent_rows, 'ttfb_source'));
+sspa_ce_t(array('curl_starttransfer_time') === array_values($ttfb_sources), 'server time to first byte is cURL starttransfer_time on every server request sent');
+$skipped = array_filter($report['delivery_path_observations']['server']['requests'], function ($row) { return !empty($row['skipped']); });
+sspa_ce_t(8 === count($skipped) && !array_filter($skipped, function ($row) { return 'returning' !== $row['audience'] || 'not_needed' !== $row['error_class']; }), 'Cache Enabler sets no first-visit cookie, so the eight returning-visitor legs are recorded as not needed');
 sspa_ce_t('no_leak_observed' === $report['leak_check']['status'], 'leak check: the final anonymous request matched the earlier anonymous body (' . $report['leak_check']['status'] . ')');
 
 // Privacy of what was saved.
