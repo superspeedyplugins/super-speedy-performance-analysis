@@ -92,7 +92,9 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     try {
         // 1. Discovery.
         let caps = await call('get-capabilities', {}, { read: true });
-        assert.ok(caps.abilities.length >= 56, 'discovery lists every ability');
+        assert.equal(caps.abilities.length, 57, 'discovery lists every ability');
+        assert.ok(caps.abilities.includes('sspa/profile-admin-save'), 'discovery lists profile-admin-save');
+        assert.equal(caps.prerequisites.loopback.checked, 'not checked', 'loopback is not probed while the profiler is off');
         assert.equal(caps.prerequisites.profiler.enabled, false, 'entry state: profiler off');
         assert.equal(caps.prerequisites.wp_cron.disabled, true, 'entry state: WP-Cron disabled');
         assert.ok(caps.page_catalogue.some(p => p.page_key === 'shop'), 'the catalogue offers shop');
@@ -182,6 +184,20 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
         await call('get-history-series', { after_run_id: started.run_id }, { read: true });
         console.log('PASS Markdown, settings round trip, submission queue, endpoint profiles, save targets, history series');
 
+        // 8b. Editor saves without a browser: a block editor REST save and a classic form save.
+        for (const [objectType, transport, code] of [['post', 'rest', 200], ['product', 'classic', 302]]) {
+            const targets = await call('get-admin-save-targets', { object_type: objectType }, { read: true });
+            assert.ok(targets.transports.some(t => t.key === transport), `${objectType} offers ${transport}`);
+            const saved = await call('profile-admin-save', { object_type: objectType, transport });
+            fs.writeFileSync(`${out}/admin-save-${objectType}-${transport}.json`, JSON.stringify(saved, null, 1));
+            assert.equal(saved.response_code, code, `${objectType} ${transport} save answered ${code}`);
+            assert.equal(saved.temporary_object_removed, true, 'the temporary object was removed');
+            const saveProfile = await call('get-page-profile', { profile_id: saved.profile_id }, { read: true });
+            assert.equal(saveProfile.profile.page_key, `admin-save-${objectType}-${transport}`);
+            assert.ok(Number(saveProfile.profile.sql_count) > 0, 'the save profile carries its queries');
+            console.log(`PASS profile-admin-save ${objectType} over ${transport}: HTTP ${saved.response_code}, ${saved.wall_ms} ms, profile ${saved.profile_id}`);
+        }
+
         // 9. Run control and the destructive gates.
         await call('run-analysis', { type: 'spot', pages: ['home'] });
         const cancelled = await call('cancel-run', {});
@@ -215,11 +231,14 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
         await call('get-capabilities', {}, { read: true, as: subscriber, expectError: 'rest_ability_cannot_execute' });
         await call('advance-run', {}, { as: subscriber, expectError: 'rest_ability_cannot_execute' });
         await call('set-profiler', { enabled: false }, { as: subscriber, expectError: 'rest_ability_cannot_execute' });
+        await call('profile-admin-save', { object_type: 'post' }, { as: subscriber, expectError: 'rest_ability_cannot_execute' });
         console.log('PASS a subscriber is refused reads and actions');
 
         caps = await call('get-capabilities', {}, { read: true });
         assert.equal(caps.prerequisites.profiler.enabled, true);
         assert.equal(caps.prerequisites.active_run, null);
+        assert.equal(caps.prerequisites.loopback.healthy, true, 'loopback healthy: ' + caps.prerequisites.loopback.reason);
+        assert.equal(caps.prerequisites.loopback.route, 'public', 'an unblocked site uses the public route');
         console.log('PASS discovery reflects the new state');
     } catch (error) {
         failed = true;

@@ -113,6 +113,11 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.59.2 (2nd November 2026) =
+* AI assistants connected over MCP can now analyse sites that block their own requests: Performance Analysis connects direct to the origin server when a firewall or CDN refuses it, and `get-capabilities` reports which route works and why.
+* Added the `loopback_origin` and `loopback_credentials` settings to `update-settings`, for an origin server not on 127.0.0.1 and for staging sites behind HTTP basic auth; credentials are never returned.
+* Added the `profile-admin-save` ability, which profiles a block editor or classic editor save over MCP without a browser.
+
 = 0.59.1 (2nd November 2026) =
 * Fixed the active theme and MU plugins appearing on the Plugins tab as plugins with a Measure button.
 * The Plugins tab's public rankings link now goes to the superspeedy.org plugin leaderboards.

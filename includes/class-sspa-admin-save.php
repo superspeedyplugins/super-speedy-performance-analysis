@@ -293,6 +293,341 @@ class SSPA_Admin_Save {
         return array('profile_id' => $profile_id, 'run_id' => $run_id);
     }
 
+    /* ---------------- server-side replay (profile-admin-save) ---------------- */
+
+    /**
+     * Profile an editor save without a browser: the Workflows tab's flow, with the requests the
+     * editor's JavaScript would send built and sent here over loopback.
+     *
+     * 1. Create the marked temporary object (SSPA_Workflow_Analysis::launch()).
+     * 2. Load its edit screen with the acting user's login cookies, as the browser does.
+     * 3. Build the editor's save request: REST, what apiFetch sends with the screen's nonce;
+     *    classic, the editor form serialised as a browser submits it, with its save control.
+     * 4. prepare() mints the token for that exact URL, the request is sent once with it, and
+     *    finish() stores the profile and completes the run, which removes the object.
+     *
+     * Nothing is retried: any failure after the object exists cancels the run, removes the
+     * object and returns the real error.
+     *
+     * @return array|WP_Error
+     */
+    public static function replay($object_type, $transport = '') {
+        $object_type = sanitize_key((string) $object_type);
+        if ('shop_order' === $object_type) {
+            $object_type = 'order';
+        }
+        if (SSPA_Run_Controller::active_run_id()) {
+            return new WP_Error('sspa_run_active', __('An analysis is already running.', 'super-speedy-performance-analysis'));
+        }
+        if (!SSPA_Helper_Files::health()['mu']) {
+            return new WP_Error('sspa_no_mu', __('The profiler is off. Enable it (set-profiler) before profiling a save.', 'super-speedy-performance-analysis'));
+        }
+        $transports = wp_list_pluck(SSPA_Workflow_Analysis::transports($object_type), 'key');
+        $transport = '' === (string) $transport ? (string) reset($transports) : sanitize_key((string) $transport);
+
+        $probe = SSPA_Run_Controller::loopback_preflight();
+        if (!$probe['healthy']) {
+            return new WP_Error('sspa_loopback_blocked', sprintf(
+                /* translators: %s: preflight failure reason */
+                __('This site cannot fetch its own pages: %s. A save is replayed over loopback, so nothing was created.', 'super-speedy-performance-analysis'),
+                $probe['reason']
+            ));
+        }
+
+        $launched = SSPA_Workflow_Analysis::launch($object_type, 0, $transport);
+        if (is_wp_error($launched)) {
+            return $launched;
+        }
+        $object_id = (int) $launched['object_id'];
+        $run_id = 0;
+        try {
+            $result = self::replay_owned($object_type, $object_id, $transport, $launched['editor_url'], $run_id);
+        } catch (Throwable $error) {
+            $result = new WP_Error('sspa_admin_save_replay', $error->getMessage());
+        }
+        if (is_wp_error($result)) {
+            if ($run_id) {
+                SSPA_Run_Controller::cancel($run_id);
+            }
+            SSPA_Workflow_Analysis::cleanup();
+            return $result;
+        }
+        $result['temporary_object_removed'] = !self::object_exists($object_type, $object_id);
+        return $result;
+    }
+
+    private static function object_exists($object_type, $object_id) {
+        if ('order' === $object_type) {
+            return function_exists('wc_get_order') && (bool) wc_get_order($object_id);
+        }
+        return (bool) get_post($object_id);
+    }
+
+    private static function replay_owned($object_type, $object_id, $transport, $editor_url, &$run_id) {
+        // The workflow arguments drive the browser script, which is not running here.
+        $editor_url = remove_query_arg(array('sspa_workflow', 'sspa_workflow_transport', 'sspa_workflow_mail', 'sspa_workflow_nonce'), $editor_url);
+        $cookies = SSPA_Auth::cookies_for('admin', get_current_user_id());
+        if (!$cookies) {
+            return new WP_Error('sspa_admin_save_user', __('The acting user has no login that the editor would accept.', 'super-speedy-performance-analysis'));
+        }
+
+        $started = microtime(true);
+        $editor = SSPA_Crawler::request($editor_url, array('redirection' => 0, 'sslverify' => true, 'cookies' => $cookies));
+        $editor_load_ms = round((microtime(true) - $started) * 1000, 1);
+        $editor_error = self::http_failure($editor, array(200), __('Loading the editor', 'super-speedy-performance-analysis'));
+        if ($editor_error) {
+            return $editor_error;
+        }
+        $html = (string) wp_remote_retrieve_body($editor);
+
+        if ('rest' === $transport) {
+            if (!preg_match('/createNonceMiddleware\(\s*"([A-Za-z0-9]+)"\s*\)/', $html, $nonce)) {
+                return new WP_Error('sspa_admin_save_nonce', __('The editor screen did not include the REST nonce its save would use.', 'super-speedy-performance-analysis'));
+            }
+            $rest_url = SSPA_Workflow_Analysis::rest_url_for($object_type, $object_id);
+            if (!$rest_url) {
+                return new WP_Error('sspa_admin_save_target', __('This object type has no REST route to save through.', 'super-speedy-performance-analysis'));
+            }
+            // apiFetch({url, method: 'POST', data: {}}): its locale middleware adds _locale=user,
+            // its nonce middleware the screen's nonce, and the body is the JSON of {}.
+            $url = add_query_arg('_locale', 'user', $rest_url);
+            $request = array(
+                'body' => '{}',
+                'headers' => array('Accept' => 'application/json, */*;q=0.1', 'Content-Type' => 'application/json', 'X-WP-Nonce' => $nonce[1]),
+            );
+            $expected = array(200);
+        } else {
+            $form = self::classic_form($html, $editor_url);
+            if (is_wp_error($form)) {
+                return $form;
+            }
+            $url = $form['action'];
+            $request = array(
+                'fields' => $form['fields'],
+                'headers' => array('Content-Type' => 'application/x-www-form-urlencoded', 'Referer' => $editor_url),
+            );
+            $expected = array(302);
+        }
+
+        $prepared = self::prepare($url, 'POST', array(
+            'screen_id' => self::screen_id($object_type),
+            'object_type' => $object_type,
+            'object_id' => $object_id,
+        ), array('trigger' => 'workflow', 'workflow_transport' => $transport));
+        if (is_wp_error($prepared)) {
+            return $prepared;
+        }
+        $run_id = (int) $prepared['run_id'];
+
+        $headers = $request['headers'];
+        if ('rest' === $transport) {
+            $headers[$prepared['header_name']] = $prepared['token'];
+            $body = $request['body'];
+        } else {
+            $fields = $request['fields'];
+            $fields[] = array($prepared['field_name'], $prepared['token']);
+            $body = implode('&', array_map(static function ($pair) {
+                return urlencode($pair[0]) . '=' . urlencode($pair[1]);
+            }, $fields));
+        }
+        $started = microtime(true);
+        $response = SSPA_Crawler::request($url, array(
+            'method' => 'POST',
+            'redirection' => 0,
+            'sslverify' => true,
+            'headers' => $headers,
+            'body' => $body,
+            'cookies' => $cookies,
+        ));
+        $wall_ms = round((microtime(true) - $started) * 1000, 1);
+        $save_error = self::http_failure($response, $expected, __('The save request', 'super-speedy-performance-analysis'));
+        if ($save_error) {
+            return $save_error;
+        }
+        $code = (int) wp_remote_retrieve_response_code($response);
+
+        // The capture is written as the save request shuts down; wait as the browser does.
+        for ($attempt = 0; ; $attempt++) {
+            $finished = self::finish($run_id, $prepared['token_id'], array('code' => $code, 'duration_ms' => $wall_ms));
+            if (!is_wp_error($finished) || 'sspa_admin_save_pending' !== $finished->get_error_code() || $attempt >= 12) {
+                break;
+            }
+            usleep(250000);
+        }
+        if (is_wp_error($finished)) {
+            return $finished;
+        }
+        return array(
+            'run_id' => (int) $finished['run_id'],
+            'profile_id' => (int) $finished['profile_id'],
+            'page_key' => (string) $prepared['page_key'],
+            'object_type' => $object_type,
+            'transport' => $transport,
+            'response_code' => $code,
+            'wall_ms' => $wall_ms,
+            'editor_load_ms' => $editor_load_ms,
+        );
+    }
+
+    private static function screen_id($object_type) {
+        if ('order' === $object_type && class_exists('\\Automattic\\WooCommerce\\Utilities\\OrderUtil')) {
+            return sanitize_key(\Automattic\WooCommerce\Utilities\OrderUtil::get_order_admin_screen());
+        }
+        return $object_type;
+    }
+
+    /** @return WP_Error|null The request's failure, with its status and a body excerpt. */
+    private static function http_failure($response, $expected, $label) {
+        if (is_wp_error($response)) {
+            /* translators: 1: which request, 2: transport error */
+            return new WP_Error('sspa_admin_save_http', sprintf(__('%1$s failed before reaching the site: %2$s', 'super-speedy-performance-analysis'), $label, $response->get_error_message()));
+        }
+        $code = (int) wp_remote_retrieve_response_code($response);
+        $location = (string) wp_remote_retrieve_header($response, 'location');
+        if (in_array($code, $expected, true) && false === strpos($location, 'wp-login.php')) {
+            return null;
+        }
+        $excerpt = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) wp_remote_retrieve_body($response))));
+        return new WP_Error('sspa_admin_save_http', sprintf(
+            /* translators: 1: which request, 2: HTTP status, 3: redirect target or body excerpt */
+            __('%1$s answered HTTP %2$d: %3$s', 'super-speedy-performance-analysis'),
+            $label,
+            $code,
+            '' !== $location ? 'redirect to ' . $location : substr($excerpt, 0, 300)
+        ), array('status' => $code));
+    }
+
+    /**
+     * The classic editor form, serialised the way a browser submits it when the save control
+     * the Workflows script clicks is clicked: named, enabled controls; checked boxes and radios;
+     * selected options; textareas; then the submit control's own name and value.
+     *
+     * @return array{action:string,fields:array}|WP_Error
+     */
+    public static function classic_form($html, $page_url) {
+        if (!class_exists('DOMDocument')) {
+            return new WP_Error('sspa_admin_save_dom', __('PHP\'s DOM extension is needed to read the editor form.', 'super-speedy-performance-analysis'));
+        }
+        $document = new DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOWARNING | LIBXML_NOERROR);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new DOMXPath($document);
+
+        // The same controls, in the same order, as classicControl() in sspa-admin-save.js.
+        $submitter = null;
+        foreach (array(
+            '//*[@id="publish"]',
+            '//button[contains(concat(" ", normalize-space(@class), " "), " save_order ")]',
+            '//button[@name="save"]',
+            '//input[@name="save"]',
+        ) as $query) {
+            foreach ($xpath->query($query) as $node) {
+                if (!$node->hasAttribute('disabled') && self::form_of($node)) {
+                    $submitter = $node;
+                    break 2;
+                }
+            }
+        }
+        if (!$submitter) {
+            return new WP_Error('sspa_admin_save_control', __('No supported Update/Save control was found on this editor.', 'super-speedy-performance-analysis'));
+        }
+        $form = self::form_of($submitter);
+        $form_id = $form->getAttribute('id');
+
+        $fields = array();
+        foreach ($xpath->query('//input | //select | //textarea | //button') as $control) {
+            $owner = $control->hasAttribute('form')
+                ? ($control->getAttribute('form') === $form_id && '' !== $form_id)
+                : (self::form_of($control) === $form);
+            $name = $control->getAttribute('name');
+            if (!$owner || '' === $name || $control->hasAttribute('disabled') || self::in_disabled_fieldset($control)) {
+                continue;
+            }
+            $tag = strtolower($control->nodeName);
+            if ('textarea' === $tag) {
+                $fields[] = array($name, str_replace(array("\r\n", "\r"), "\n", $control->textContent));
+            } elseif ('select' === $tag) {
+                $options = $xpath->query('.//option', $control);
+                $chosen = array();
+                foreach ($options as $option) {
+                    if ($option->hasAttribute('selected') && !$option->hasAttribute('disabled')) {
+                        $chosen[] = $option;
+                    }
+                }
+                if (!$chosen && !$control->hasAttribute('multiple') && $options->length) {
+                    $chosen[] = $options->item(0);
+                }
+                foreach ($chosen as $option) {
+                    $fields[] = array($name, $option->hasAttribute('value') ? $option->getAttribute('value') : trim($option->textContent));
+                }
+            } elseif ('button' === $tag) {
+                continue; // only the submitter's own pair is sent, below
+            } else {
+                $type = strtolower($control->getAttribute('type') ? $control->getAttribute('type') : 'text');
+                if (in_array($type, array('submit', 'image', 'button', 'reset', 'file'), true)) {
+                    continue;
+                }
+                if (in_array($type, array('checkbox', 'radio'), true)) {
+                    if ($control->hasAttribute('checked')) {
+                        $fields[] = array($name, $control->hasAttribute('value') ? $control->getAttribute('value') : 'on');
+                    }
+                    continue;
+                }
+                $fields[] = array($name, $control->getAttribute('value'));
+            }
+        }
+        if ('' !== $submitter->getAttribute('name')) {
+            $fields[] = array($submitter->getAttribute('name'), $submitter->getAttribute('value'));
+        }
+
+        $action = $submitter->hasAttribute('formaction') ? $submitter->getAttribute('formaction') : $form->getAttribute('action');
+        return array('action' => self::resolve_url($action, $page_url), 'fields' => $fields);
+    }
+
+    private static function form_of($node) {
+        for ($parent = $node->parentNode; $parent; $parent = $parent->parentNode) {
+            if ($parent instanceof DOMElement && 'form' === strtolower($parent->nodeName)) {
+                return $parent;
+            }
+        }
+        return null;
+    }
+
+    private static function in_disabled_fieldset($node) {
+        for ($parent = $node->parentNode; $parent; $parent = $parent->parentNode) {
+            if ($parent instanceof DOMElement && 'fieldset' === strtolower($parent->nodeName) && $parent->hasAttribute('disabled')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Resolve a form action against the page URL, as a browser does. */
+    private static function resolve_url($action, $page_url) {
+        $action = trim((string) $action);
+        if ('' === $action) {
+            return $page_url;
+        }
+        if (preg_match('#^https?://#i', $action)) {
+            return $action;
+        }
+        $base = wp_parse_url($page_url);
+        $origin = $base['scheme'] . '://' . $base['host'] . (isset($base['port']) ? ':' . $base['port'] : '');
+        if (0 === strpos($action, '//')) {
+            return $base['scheme'] . ':' . $action;
+        }
+        if ('/' === $action[0]) {
+            return $origin . $action;
+        }
+        if ('?' === $action[0]) {
+            return $origin . (isset($base['path']) ? $base['path'] : '/') . $action;
+        }
+        $dir = isset($base['path']) ? preg_replace('#/[^/]*$#', '/', $base['path']) : '/';
+        return $origin . $dir . $action;
+    }
+
     private static function guard() {
         if (!current_user_can('manage_options')) {
             wp_send_json_error('forbidden', 403);

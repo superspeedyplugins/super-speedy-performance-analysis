@@ -227,25 +227,27 @@ class SSPA_Workflow_Analysis {
             return array('active' => false);
         }
 
-        $rest_url = '';
-        if ('rest' === $transport) {
-            if ('order' === $object_type) {
-                $rest_url = rest_url('wc/v3/orders/' . $object_id);
-            } else {
-                $object = get_post_type_object($object_type);
-                if ($object) {
-                    $namespace = $object->rest_namespace ? $object->rest_namespace : 'wp/v2';
-                    $base = $object->rest_base ? $object->rest_base : $object->name;
-                    $rest_url = rest_url(trim($namespace, '/') . '/' . trim($base, '/') . '/' . $object_id);
-                }
-            }
-        }
+        $rest_url = 'rest' === $transport ? self::rest_url_for($object_type, $object_id) : '';
         return array(
             'active' => true,
             'transport' => $transport,
             'mail_mode' => $mail_mode,
             'rest_url' => $rest_url,
         );
+    }
+
+    /** The REST route the editor saves this object through ('' when it has none). */
+    public static function rest_url_for($object_type, $object_id) {
+        if ('order' === $object_type) {
+            return rest_url('wc/v3/orders/' . (int) $object_id);
+        }
+        $object = get_post_type_object($object_type);
+        if (!$object) {
+            return '';
+        }
+        $namespace = $object->rest_namespace ? $object->rest_namespace : 'wp/v2';
+        $base = $object->rest_base ? $object->rest_base : $object->name;
+        return rest_url(trim($namespace, '/') . '/' . trim($base, '/') . '/' . (int) $object_id);
     }
 
     private static function nonce_action($object_type, $object_id, $transport, $mail_mode) {

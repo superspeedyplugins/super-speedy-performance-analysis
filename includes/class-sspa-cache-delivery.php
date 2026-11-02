@@ -507,7 +507,9 @@ class SSPA_Cache_Delivery {
                 'sslverify' => true,
                 'limit_response_size' => self::MAX_BODY_BYTES,
                 'user-agent' => 'Super Speedy Performance Analysis/' . SSPA_VERSION . ' cache-delivery-probe',
-                'headers' => array('Accept' => 'text/html,application/xhtml+xml'),
+                // A basic-auth staging site answers 401 to every visitor, so the stored loopback
+                // credentials go with it. Never the direct route: this measures the visitor path.
+                'headers' => SSPA_Loopback_Route::with_credentials($url, array('Accept' => 'text/html,application/xhtml+xml')),
                 'cookies' => $cookies,
             ));
             if (is_wp_error($response)) {

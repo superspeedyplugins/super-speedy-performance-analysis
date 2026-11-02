@@ -152,7 +152,7 @@ class SSPA_Abilities_Control {
             ),
             'get-settings' => self::ability(
                 __('Get Performance Analysis settings', 'super-speedy-performance-analysis'),
-                __('Sharing state, enabled publishers, plugin-update detection, stored-capture retention, whether data is removed on uninstall, the profiler state and the submission queue counts.', 'super-speedy-performance-analysis'),
+                __('Sharing state, enabled publishers, plugin-update detection, stored-capture retention, whether data is removed on uninstall, the profiler state, the submission queue counts, the loopback origin address and whether loopback credentials are stored (never the credentials).', 'super-speedy-performance-analysis'),
                 'read', 'exec_get_settings'
             ),
             'get-submission-queue' => self::ability(
@@ -179,7 +179,7 @@ class SSPA_Abilities_Control {
             ),
             'get-admin-save-targets' => self::ability(
                 __('Get save-profiling targets', 'super-speedy-performance-analysis'),
-                __('The object types whose save can be profiled, and for object_type, the editor transports available.', 'super-speedy-performance-analysis'),
+                __('The object types whose save can be profiled, and for object_type, the editor transports available. Pass one to profile-admin-save.', 'super-speedy-performance-analysis'),
                 'read', 'exec_admin_save_targets',
                 self::input(array('object_type' => $string))
             ),
@@ -213,6 +213,15 @@ class SSPA_Abilities_Control {
                     'all_hooks' => array('type' => 'boolean'),
                     'raw_streams' => array('type' => 'boolean'),
                 ), array('url'))
+            ),
+            'profile-admin-save' => self::ability(
+                __('Profile an editor save', 'super-speedy-performance-analysis'),
+                __('Profile the save request of an editor, as the Workflows tab does, without a browser: a temporary object of object_type (from get-admin-save-targets) is created, its edit screen loaded with the agent user\'s login, and the editor\'s real save request sent once with the profiler token (transport rest: the block editor\'s REST update; classic: the editor form submitted with its save button). Normal save hooks, emails and integrations run; emails go to the site administrator. The temporary object is deleted afterwards. Synchronous: read the result with get-page-profile (profile_id).', 'super-speedy-performance-analysis'),
+                'act', 'exec_profile_admin_save',
+                self::input(array(
+                    'object_type' => $string,
+                    'transport' => array('type' => 'string', 'enum' => array('rest', 'classic')),
+                ), array('object_type'))
             ),
             'run-cache-check' => self::ability(
                 __('Start the cache performance check', 'super-speedy-performance-analysis'),
@@ -273,12 +282,18 @@ class SSPA_Abilities_Control {
             ),
             'update-settings' => self::ability(
                 __('Change Performance Analysis settings', 'super-speedy-performance-analysis'),
-                __('Change any of: plugin_update_detection (notice and quick comparison after plugin changes), remove_data_on_uninstall, and publishers ({slug: true|false}, which publishers\' recommendations may be shown). Sharing itself is not changed here.', 'super-speedy-performance-analysis'),
+                __('Change any of: plugin_update_detection (notice and quick comparison after plugin changes), remove_data_on_uninstall, publishers ({slug: true|false}, which publishers\' recommendations may be shown), loopback_origin (the origin server address PA connects to when its own requests are blocked in front of the site, e.g. 127.0.0.1 or 10.0.0.5:8080; "" clears) and loopback_credentials ({user, password} for a site behind HTTP basic auth, or {clear: true}; stored, sent only to this site, never returned). Sharing itself is not changed here.', 'super-speedy-performance-analysis'),
                 'act_idempotent', 'exec_update_settings',
                 self::input(array(
                     'plugin_update_detection' => array('type' => 'boolean'),
                     'remove_data_on_uninstall' => array('type' => 'boolean'),
                     'publishers' => array('type' => 'object', 'additionalProperties' => array('type' => 'boolean')),
+                    'loopback_origin' => $string,
+                    'loopback_credentials' => array(
+                        'type' => 'object',
+                        'properties' => array('user' => $string, 'password' => $string, 'clear' => array('type' => 'boolean')),
+                        'additionalProperties' => false,
+                    ),
                 ))
             ),
             'prepare-quote-request' => self::ability(
@@ -369,6 +384,10 @@ class SSPA_Abilities_Control {
         if (!SSPA_Report::latest_done_run_id()) {
             $notes[] = __('No analysis has finished yet: start with run-analysis (type baseline), loop advance-run, then read get-report.', 'super-speedy-performance-analysis');
         }
+        $loopback = self::loopback_state($health, $active);
+        if ($health['mu'] && !$loopback['healthy'] && !$active) {
+            $notes[] = __('This site cannot fetch its own pages (prerequisites.loopback.reason), so nothing can be measured over MCP yet. If a firewall or CDN in front of the site blocks it, set update-settings loopback_origin to the origin server\'s address (ask the host); if the site is behind HTTP basic auth, set loopback_credentials. Then call get-capabilities again.', 'super-speedy-performance-analysis');
+        }
         $notes[] = __('Always loop advance-run after starting a run: it does not rely on WP-Cron.', 'super-speedy-performance-analysis');
         return array(
             'plugin_version' => SSPA_VERSION,
@@ -382,6 +401,7 @@ class SSPA_Abilities_Control {
                 array('name' => 'plugin culprits', 'steps' => array('get-impact-plan', 'run-deep-analysis', 'advance-run', 'get-plugin-impacts', 'get-plugin-impact-detail')),
                 array('name' => 'page cache', 'steps' => array('run-cache-check', 'advance-cache-check', 'get-cache-optimisation-analysis', 'get-cache-safety-report')),
                 array('name' => 'checkout', 'steps' => array('run-checkout-flow (dry_run first)', 'advance-run', 'get-checkout-flow')),
+                array('name' => 'editor save', 'steps' => array('get-admin-save-targets', 'profile-admin-save', 'get-page-profile')),
                 array('name' => 'AJAX and REST', 'steps' => array('start-ajax-window', 'stop-ajax-window', 'get-endpoint-profiles', 'profile-endpoint', 'advance-run', 'compare-ajax-windows')),
                 array('name' => 'real traffic', 'steps' => array('start-traffic-collection', 'get-traffic-collection-status', 'stop-traffic-collection', 'get-traffic-observations', 'compare-traffic-collections')),
                 array('name' => 'history', 'steps' => array('list-runs', 'get-run', 'compare-history', 'get-history-series', 'set-history-expectation')),
@@ -397,6 +417,7 @@ class SSPA_Abilities_Control {
                 'capabilities' => $capabilities,
                 'object_cache' => SSPA_Object_Cache_Capability::inspect(),
                 'woocommerce' => class_exists('WooCommerce'),
+                'loopback' => $loopback,
                 'wp_cron' => array(
                     'disabled' => (bool) $cron_disabled,
                     'note' => $cron_disabled
@@ -414,6 +435,59 @@ class SSPA_Abilities_Control {
             ),
             'notes' => $notes,
         );
+    }
+
+    /**
+     * Can PA reach its own site, over which route, and why. Probed live (30-second probes) so
+     * the first call an agent makes tells the truth; while a run is active the stored choice
+     * from its start is reported instead, because a probe could change the route under it.
+     */
+    private static function loopback_state($health, $active) {
+        $credentials = SSPA_Loopback_Route::credentials_state();
+        $state = array(
+            'healthy' => false,
+            'transport' => 'unavailable',
+            'route' => null,
+            'origin_address' => null,
+            'credentials_set' => $credentials['set'],
+            'configured_origin' => SSPA_Loopback_Route::configured_origin(),
+            'reason' => '',
+            'attempts' => array(),
+            'checked' => 'live',
+            'browser_fallback' => __('When loopback is blocked, the Performance Analysis screen can measure pages through the administrator\'s browser instead. That needs a person in wp-admin and cannot be driven over MCP.', 'super-speedy-performance-analysis'),
+        );
+        if (!$health['mu']) {
+            $state['checked'] = 'not checked';
+            $state['reason'] = __('Not checked: the profiler is off, and the check needs it to recognise its own answer. Enable it with set-profiler, then call get-capabilities again.', 'super-speedy-performance-analysis');
+            return $state;
+        }
+        if ($active) {
+            $stored = SSPA_Loopback_Route::last_selection();
+            $probe = array(
+                'healthy' => !empty($stored['healthy']),
+                'reason' => (string) ($stored['reason'] ?? ''),
+                'route' => isset($stored['route']) ? $stored['route'] : null,
+                'origin_address' => isset($stored['address']) ? $stored['address'] : null,
+                'attempts' => isset($stored['attempts']) ? (array) $stored['attempts'] : array(),
+            );
+            $state['checked'] = 'stored at run start';
+        } else {
+            $probe = SSPA_Run_Controller::loopback_preflight('', 'anon', 30);
+        }
+        $state['healthy'] = (bool) $probe['healthy'];
+        $state['transport'] = $probe['healthy'] ? 'loopback' : 'unavailable';
+        $state['route'] = $probe['route'];
+        $state['origin_address'] = $probe['origin_address'];
+        $state['attempts'] = $probe['attempts'];
+        if (!$probe['healthy']) {
+            $state['reason'] = (string) $probe['reason'];
+        } elseif ('direct' === $probe['route']) {
+            /* translators: 1: origin address, 2: why the public route failed */
+            $state['reason'] = sprintf(__('Loopback works direct to the origin server at %1$s. The public route failed: %2$s.', 'super-speedy-performance-analysis'), $probe['origin_address'], $probe['attempts'][0]['reason']);
+        } else {
+            $state['reason'] = __('Loopback works over the public route: the site reached itself at its own URL.', 'super-speedy-performance-analysis');
+        }
+        return $state;
     }
 
     public static function exec_list_runs($input) {
@@ -594,6 +668,8 @@ class SSPA_Abilities_Control {
             'remove_data_on_uninstall' => (bool) sspa_get_option('remove_data_on_uninstall'),
             'profiler_enabled' => (bool) $health['mu'],
             'submission_counts' => SSPA_Community_Outbox::counts(),
+            'loopback_origin' => SSPA_Loopback_Route::configured_origin(),
+            'loopback_credentials' => SSPA_Loopback_Route::credentials_state(),
         );
     }
 
@@ -699,6 +775,10 @@ class SSPA_Abilities_Control {
             return $run_id;
         }
         return array('run_id' => (int) $run_id, 'page_key' => (string) $job['page_key'], 'variant' => (string) $job['variant']);
+    }
+
+    public static function exec_profile_admin_save($input) {
+        return SSPA_Admin_Save::replay((string) ($input['object_type'] ?? ''), (string) ($input['transport'] ?? ''));
     }
 
     public static function exec_run_cache_check($input) {
@@ -827,6 +907,15 @@ class SSPA_Abilities_Control {
     }
 
     public static function exec_update_settings($input) {
+        // Validate the loopback fields before changing anything, so a bad value changes nothing.
+        if (isset($input['loopback_origin']) && is_wp_error($origin = SSPA_Loopback_Route::normalise_origin($input['loopback_origin']))) {
+            return $origin;
+        }
+        $credentials = isset($input['loopback_credentials']) ? (array) $input['loopback_credentials'] : null;
+        if (null !== $credentials && empty($credentials['clear'])
+            && is_wp_error($valid = SSPA_Loopback_Route::validate_credentials((string) ($credentials['user'] ?? ''), (string) ($credentials['password'] ?? '')))) {
+            return $valid;
+        }
         if (isset($input['plugin_update_detection'])) {
             sspa_update_option('plugin_update_detection', (bool) $input['plugin_update_detection']);
             if (!$input['plugin_update_detection']) {
@@ -838,6 +927,16 @@ class SSPA_Abilities_Control {
         }
         foreach ((array) ($input['publishers'] ?? array()) as $slug => $enabled) {
             SSPA_Community_State::set_enabled(sanitize_text_field((string) $slug), (bool) $enabled);
+        }
+        if (isset($input['loopback_origin'])) {
+            SSPA_Loopback_Route::set_origin($input['loopback_origin']);
+        }
+        if (null !== $credentials) {
+            if (!empty($credentials['clear'])) {
+                SSPA_Loopback_Route::clear_credentials();
+            } else {
+                SSPA_Loopback_Route::set_credentials((string) ($credentials['user'] ?? ''), (string) $credentials['password']);
+            }
         }
         return self::exec_get_settings(array());
     }

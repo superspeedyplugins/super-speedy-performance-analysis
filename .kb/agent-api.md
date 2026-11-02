@@ -24,8 +24,9 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   `profile-url`, `run-cache-check`, `advance-cache-check`, `start-ajax-window`, `stop-ajax-window`,
   `compare-ajax-windows`, `profile-endpoint`, `set-history-expectation`, `process-submissions`,
   `manage-submission`, `update-settings`, `prepare-quote-request`, `prune-stored-captures`,
-  `delete-traffic-collection`, `cleanup-workflow-objects` and `send-quote-request`. Readonly ones
-  answer GET at `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
+  `delete-traffic-collection`, `cleanup-workflow-objects` and `send-quote-request`, and since
+  0.59.2 `profile-admin-save`. Readonly ones answer GET at
+  `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
   `sspa-get-report`). The plugin registers no dedicated MCP server.
@@ -35,6 +36,24 @@ false. Polling `get-status` alone moves a run only when WP-Cron fires, which a s
 `DISABLE_WP_CRON` and no system cron never does. The cache check is the same pattern:
 `run-cache-check`, then `advance-cache-check` until `done`.
 `wp sspa run` is synchronous and drives the batches itself.
+
+`profile-admin-save` (input `object_type`, optional `transport` `rest|classic`) is synchronous: it
+creates a temporary object, loads its editor as the acting user, sends the editor's save request
+once with the profiler token and returns `run_id`, `profile_id`, `page_key`
+(`admin-save-<type>-<transport>`), `object_type`, `transport`, `response_code`, `wall_ms`,
+`editor_load_ms` and `temporary_object_removed`. Read the profile with `get-page-profile`.
+
+### Loopback route (`get-capabilities` `prerequisites.loopback`)
+
+`healthy`, `transport` (`loopback` | `unavailable`), `route` (`public` | `direct` | null),
+`origin_address` (the address a direct route connects to, for example `127.0.0.1` or
+`10.0.0.5:8080`), `credentials_set`, `configured_origin`, `reason` (one sentence), `attempts`
+(`[{route, address, healthy, reason}]`, public first), `checked` (`live`, `stored at run start`
+while a run is active, or `not checked` while the profiler is off) and `browser_fallback`. A direct
+route keeps the URL, Host header and TLS certificate check and only changes the TCP destination
+(cURL `CURLOPT_CONNECT_TO`). `update-settings` accepts `loopback_origin` (string, `""` clears) and
+`loopback_credentials` (`{user, password}` or `{clear: true}`); `get-settings` returns
+`loopback_origin` and `loopback_credentials: {set, user_set}`, never the credentials.
 
 ## Performance history comparison
 

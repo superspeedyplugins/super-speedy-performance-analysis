@@ -20,6 +20,9 @@ function sspa_default_options() {
         // existing sspa_options row inherit this new default through sspa_get_option();
         // an explicitly saved false remains authoritative.
         'plugin_update_detection' => true,
+        // Origin server address for the direct loopback route ('' = try 127.0.0.1 and the
+        // server's own address). See SSPA_Loopback_Route.
+        'loopback_origin' => '',
 
         // Checkout flow profiling. All defaults work unconfigured, so the button does
         // something sensible on a store that has never opened these settings.

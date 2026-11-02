@@ -11,10 +11,13 @@ class SSPA_Crawler {
     const WARMUPS = 1;
     const SAMPLES = 3;
 
-    /** Send one bounded measurement request. */
+    /**
+     * Send one bounded measurement request over the loopback route SSPA_Loopback_Route chose
+     * (public, or direct to the origin server), with any stored basic-auth credentials.
+     */
     public static function request($url, $args = array()) {
         $args['timeout'] = isset($args['timeout']) ? max(1, (int) $args['timeout']) : 120;
-        return wp_remote_request($url, $args);
+        return SSPA_Loopback_Route::send($url, $args);
     }
 
     /**

@@ -73,6 +73,8 @@ function toolText(response) {
             const declared = caps.data.abilities;
             const missing = declared.filter(name => !sspa.includes(name));
             assert.deepEqual(missing, [], 'every declared ability is discoverable over MCP');
+            assert.equal(declared.length, 57, 'the plugin declares 57 abilities');
+            assert.ok(sspa.includes('sspa/profile-admin-save'), 'profile-admin-save is discoverable over MCP');
             console.log('PASS get-capabilities over MCP: all ' + declared.length + ' declared abilities discoverable');
         } else {
             console.log('INFO sspa/get-capabilities is not available in this version');

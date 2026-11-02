@@ -1130,17 +1130,33 @@ class SSPA_Run_Controller {
      * is a cache, a WAF interstitial or a different vhost answering, all of which
      * previously produced a full sheet of blind rows.
      *
-     * @return array {healthy:bool, reason:string}
+     * The route is chosen here too (SSPA_Loopback_Route::select()): the public route first,
+     * then direct to each origin address. The first healthy route is stored and used by every
+     * later loopback; when none is healthy the reason names every attempt.
+     *
+     * @param int $timeout Seconds per probe request; 0 keeps the measurement default.
+     * @return array {healthy:bool, reason:string, route:?string, origin_address:?string, attempts:array}
      */
-    public static function loopback_preflight($target_url = '', $variant = 'anon') {
+    public static function loopback_preflight($target_url = '', $variant = 'anon', $timeout = 0) {
+        return SSPA_Loopback_Route::select(static function () use ($target_url, $variant, $timeout) {
+            return self::loopback_probe($target_url, $variant, $timeout);
+        }, $target_url);
+    }
+
+    /** One preflight request over whichever route SSPA_Loopback_Route currently forces. */
+    private static function loopback_probe($target_url, $variant, $timeout) {
         $url = $target_url ? (string) $target_url : home_url('/');
         $url .= (strpos($url, '?') === false ? '?' : '&') . 'sspa_nc=' . bin2hex(random_bytes(6));
         $token = SSPA_Token::mint($url, array('bl' => '1', 'v' => $variant));
-        $response = SSPA_Crawler::request($url, array(
+        $args = array(
             'redirection' => 0,
             'sslverify' => true,
             'headers' => array('Cache-Control' => 'no-cache', SSPA_Token::HEADER => $token['header']),
-        ));
+        );
+        if ($timeout > 0) {
+            $args['timeout'] = (int) $timeout;
+        }
+        $response = SSPA_Crawler::request($url, $args);
 
         if (is_wp_error($response)) {
             return array('healthy' => false, 'reason' => sprintf(

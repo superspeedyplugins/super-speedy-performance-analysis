@@ -81,6 +81,10 @@ if (is_file($sspa_traffic_config)) {
 delete_option('sspa_profiler_enabled');
 delete_option('sspa_dropin_restore_notice');
 delete_option('sspa_traffic_authority');
+// Loopback basic-auth credentials are a secret, and the chosen route names a server address:
+// neither survives uninstall, whether or not analysis data is kept.
+delete_option('sspa_loopback_auth');
+delete_option('sspa_loopback_route');
 // Our own folder only: the lock file and the direct-access guards written by SSPA_Traffic_Helper::data_dir().
 foreach (array('sspa-traffic.lock', '.htaccess', 'index.html') as $sspa_data_file) {
     $sspa_own_file = $sspa_uploads['basedir'] . '/super-speedy-performance-analysis/' . $sspa_data_file;
