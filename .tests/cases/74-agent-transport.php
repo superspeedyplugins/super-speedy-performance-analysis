@@ -26,9 +26,16 @@ $request = static function ($identity, $path, $input = null, $method = 'GET') us
     if (is_wp_error($response)) throw new RuntimeException($response->get_error_message());
     return array(wp_remote_retrieve_response_code($response), json_decode(wp_remote_retrieve_body($response), true));
 };
-$discovery = $request('reader', '');
-sspa_fleet_assert($discovery[0] === 200, 'authenticated HTTP tool inventory succeeds');
-$names = array_column($discovery[1], 'name');
+// The inventory is paged (50 per page by default); read every page, as a client must.
+$names = array();
+for ($page = 1; $page <= 20; $page++) {
+    $discovery = $request('reader', '?per_page=100&page=' . $page);
+    sspa_fleet_assert($discovery[0] === 200, 'authenticated HTTP tool inventory page ' . $page . ' succeeds');
+    $names = array_merge($names, array_column((array) $discovery[1], 'name'));
+    if (count((array) $discovery[1]) < 100) {
+        break;
+    }
+}
 foreach (SSPA_Abilities::ability_names() as $name) sspa_fleet_assert(in_array($name, $names, true), 'HTTP inventory exposes ' . $name);
 $prefix = '/sspa/';
 $guest = wp_remote_get(rest_url('wp-abilities/v1/abilities' . $prefix . 'get-status/run'));

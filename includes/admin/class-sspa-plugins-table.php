@@ -121,12 +121,18 @@ class SSPA_Plugins_Table {
     }
 
     /**
+     * The Plugins tab's data: one entry per component with its attribution totals (for one
+     * page or all), version, measured-impact verdict and staleness, in the default order.
+     * Shared by render() and the get-plugins-table ability.
+     *
      * @param int    $run_id Attribution run.
      * @param string $mode   Attribution mode.
      * @param string $page   One page key, or '' for every profiled page. A key that is not
      *                       among this run's pages or the measured impacts falls back to ''.
+     * @return array page, mode, pages (key => true), profiles (page key => profile id),
+     *               components, cache (component => cache-impact notes).
      */
-    public static function render($run_id, $mode, $page = '') {
+    public static function rows($run_id, $mode, $page = '') {
         global $wpdb;
 
         $run_id = (int) $run_id;
@@ -218,6 +224,25 @@ class SSPA_Plugins_Table {
             }
             return $b['total_sql_ms'] <=> $a['total_sql_ms'];
         });
+
+        return array(
+            'page' => $page,
+            'mode' => $mode,
+            'pages' => $pages,
+            'profiles' => $profiles,
+            'components' => $grouped,
+            'cache' => $cache,
+        );
+    }
+
+    public static function render($run_id, $mode, $page = '') {
+        $run_id = (int) $run_id;
+        $data = self::rows($run_id, $mode, $page);
+        $page = $data['page'];
+        $pages = $data['pages'];
+        $profiles = $data['profiles'];
+        $grouped = $data['components'];
+        $cache = $data['cache'];
 
         ob_start();
         ?>

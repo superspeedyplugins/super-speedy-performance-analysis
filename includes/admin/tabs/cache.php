@@ -222,6 +222,9 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
             }
             ?>
             <h3><?php esc_html_e('Results by page', 'super-speedy-performance-analysis'); ?></h3>
+            <?php if (isset($sspa_cache_report['delivery_path_observations']['browser']['measured']) && !$sspa_cache_report['delivery_path_observations']['browser']['measured']) : ?>
+                <p class="description"><?php esc_html_e('This check was started without a browser (for example by an AI agent over MCP), so your browser\'s first-byte times were not measured. Every server-side request below was made.', 'super-speedy-performance-analysis'); ?></p>
+            <?php endif; ?>
             <table class="widefat striped sspa-cache-results sspa-stack-table">
                 <thead><tr>
                     <th scope="col"><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?></th>

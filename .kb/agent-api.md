@@ -15,13 +15,25 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   `get-status`, `get-report`, `compare-history`, `get-cache-safety-report`, `get-cache-optimisation-analysis`, `get-findings`, `get-plugin-impacts`, `get-site-metrics`,
   `get-archive-profile`, `get-http-calls`, `run-analysis`, `run-deep-analysis`, `run-checkout-flow`,
   `get-checkout-flow`, `start-traffic-collection`, `get-traffic-collection-status`,
-  `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`. Readonly ones answer GET at
-  `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
+  `stop-traffic-collection`, `get-traffic-observations`, `compare-traffic-collections`, `submit-results`,
+  and since 0.58.2 everything else the admin screens do: `get-capabilities` (discovery, call first),
+  `list-runs`, `get-run`, `list-page-profiles`, `get-page-profile`, `get-plugins-table`,
+  `get-plugin-impact-detail`, `get-impact-plan`, `get-markdown-report`, `get-history-series`,
+  `get-settings`, `get-submission-queue`, `get-payload-preview`, `get-community-figures`,
+  `get-endpoint-profiles`, `get-admin-save-targets`, `advance-run`, `cancel-run`, `set-profiler`,
+  `profile-url`, `run-cache-check`, `advance-cache-check`, `start-ajax-window`, `stop-ajax-window`,
+  `compare-ajax-windows`, `profile-endpoint`, `set-history-expectation`, `process-submissions`,
+  `manage-submission`, `update-settings`, `prepare-quote-request`, `prune-stored-captures`,
+  `delete-traffic-collection`, `cleanup-workflow-objects` and `send-quote-request`. Readonly ones
+  answer GET at `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
   `sspa-get-report`). The plugin registers no dedicated MCP server.
 
-Runs started via abilities are asynchronous: poll `get-status` until `active` is false.
+Runs started via abilities are asynchronous: call `advance-run` in a loop until `active` is
+false. Polling `get-status` alone moves a run only when WP-Cron fires, which a site with
+`DISABLE_WP_CRON` and no system cron never does. The cache check is the same pattern:
+`run-cache-check`, then `advance-cache-check` until `done`.
 `wp sspa run` is synchronous and drives the batches itself.
 
 ## Performance history comparison

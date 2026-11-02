@@ -22,7 +22,7 @@ class SSPA_Abilities {
     }
 
     public static function ability_names() {
-        return array(
+        return array_merge(array(
             self::CATEGORY . '/get-status',
             self::CATEGORY . '/get-report',
             self::CATEGORY . '/compare-history',
@@ -44,7 +44,7 @@ class SSPA_Abilities {
             self::CATEGORY . '/get-traffic-observations',
             self::CATEGORY . '/compare-traffic-collections',
             self::CATEGORY . '/submit-results',
-        );
+        ), SSPA_Abilities_Control::ability_names());
     }
 
     public static function can_manage() {
@@ -498,6 +498,10 @@ class SSPA_Abilities {
             'execute_callback' => array(__CLASS__, 'exec_submit'),
             'meta' => $active,
         ));
+
+        // The rest of the admin screens: discovery, run control, page profiles, the cache
+        // check, AJAX profiling, settings and evidence management.
+        SSPA_Abilities_Control::register_abilities();
     }
 
     /* ---------------- executors (cast every scalar - $wpdb returns strings) ---------------- */

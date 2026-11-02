@@ -71,27 +71,42 @@ class SSPA_Quote_Request {
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('You are not allowed to request a quote from this site.', 'super-speedy-performance-analysis')), 403);
         }
-        $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
-        $source = isset($_POST['source']) ? sanitize_key(wp_unslash($_POST['source'])) : '';
-        if (!in_array($source, self::SOURCES, true)) {
-            wp_send_json_error(array('message' => __('Unknown request source.', 'super-speedy-performance-analysis')), 400);
+        $draft = self::prepare_draft(
+            isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0,
+            isset($_POST['source']) ? sanitize_key(wp_unslash($_POST['source'])) : ''
+        );
+        if (is_wp_error($draft)) {
+            wp_send_json_error(array('message' => $draft->get_error_message()), 'sspa_quote_source' === $draft->get_error_code() ? 400 : 200);
         }
-        $built = SSPA_Markdown_Export::build('page', $profile_id);
+        wp_send_json_success(array(
+            'request_uuid' => $draft['request_uuid'],
+            'html' => self::dialog_html($draft['request_uuid'], $draft['markdown']),
+        ));
+    }
+
+    /**
+     * Build the Markdown a quote request would send and hold it as a draft for this user.
+     * Shared by the dialog and the prepare-quote-request ability.
+     *
+     * @return array|WP_Error request_uuid and markdown.
+     */
+    public static function prepare_draft($profile_id, $source) {
+        if (!in_array($source, self::SOURCES, true)) {
+            return new WP_Error('sspa_quote_source', __('Unknown request source.', 'super-speedy-performance-analysis'));
+        }
+        $built = SSPA_Markdown_Export::build('page', (int) $profile_id);
         if (is_wp_error($built)) {
-            wp_send_json_error(array('message' => $built->get_error_message()));
+            return $built;
         }
         $request_uuid = wp_generate_uuid4();
         set_transient(self::draft_key($request_uuid), array(
             'user_id' => get_current_user_id(),
-            'profile_id' => $profile_id,
+            'profile_id' => (int) $profile_id,
             'source' => $source,
             'markdown' => $built['markdown'],
             'sha256' => hash('sha256', $built['markdown']),
         ), self::DRAFT_TTL);
-        wp_send_json_success(array(
-            'request_uuid' => $request_uuid,
-            'html' => self::dialog_html($request_uuid, $built['markdown']),
-        ));
+        return array('request_uuid' => $request_uuid, 'markdown' => $built['markdown']);
     }
 
     /** The dialog. Every choice starts unticked; the Markdown is shown in full and read-only. */
@@ -146,34 +161,54 @@ class SSPA_Quote_Request {
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('You are not allowed to request a quote from this site.', 'super-speedy-performance-analysis')), 403);
         }
-        $request_uuid = isset($_POST['request_uuid']) ? sanitize_text_field(wp_unslash($_POST['request_uuid'])) : '';
-        $draft = $request_uuid ? get_transient(self::draft_key($request_uuid)) : false;
-        if (!is_array($draft) || (int) $draft['user_id'] !== get_current_user_id()) {
-            wp_send_json_error(array('code' => 'expired', 'message' => __('This request has expired. Close it and open Request a fix quote again.', 'super-speedy-performance-analysis')));
-        }
-        if (!isset($_POST['consent']) || '1' !== sanitize_text_field(wp_unslash($_POST['consent']))) {
-            wp_send_json_error(array('code' => 'consent_required', 'message' => __('Tick the consent box to send the request. Nothing has been sent.', 'super-speedy-performance-analysis')));
-        }
-        $site_url = isset($_POST['site_url']) ? trim(sanitize_text_field(wp_unslash($_POST['site_url']))) : '';
-        $body = array(
-            'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '',
-            'email' => isset($_POST['email']) ? trim(sanitize_text_field(wp_unslash($_POST['email']))) : '',
-            'site_url' => '' === $site_url ? '' : esc_url_raw($site_url, array('http', 'https')),
-            'markdown' => $draft['markdown'],
-            'source' => $draft['source'],
-            'ongoing_care' => isset($_POST['ongoing_care']) && '1' === sanitize_text_field(wp_unslash($_POST['ongoing_care'])),
-            'marketing_opt_in' => isset($_POST['marketing_opt_in']) && '1' === sanitize_text_field(wp_unslash($_POST['marketing_opt_in'])),
-            'consent' => true,
-            'consent_version' => self::CONSENT_VERSION,
-            'pa_version' => SSPA_VERSION,
-            'message' => isset($_POST['message']) ? sanitize_textarea_field(wp_unslash($_POST['message'])) : '',
-            'request_uuid' => $request_uuid,
+        $result = self::send_draft(
+            isset($_POST['request_uuid']) ? sanitize_text_field(wp_unslash($_POST['request_uuid'])) : '',
+            array(
+                'consent' => isset($_POST['consent']) && '1' === sanitize_text_field(wp_unslash($_POST['consent'])),
+                'site_url' => isset($_POST['site_url']) ? sanitize_text_field(wp_unslash($_POST['site_url'])) : '',
+                'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '',
+                'email' => isset($_POST['email']) ? sanitize_text_field(wp_unslash($_POST['email'])) : '',
+                'ongoing_care' => isset($_POST['ongoing_care']) && '1' === sanitize_text_field(wp_unslash($_POST['ongoing_care'])),
+                'marketing_opt_in' => isset($_POST['marketing_opt_in']) && '1' === sanitize_text_field(wp_unslash($_POST['marketing_opt_in'])),
+                'message' => isset($_POST['message']) ? sanitize_textarea_field(wp_unslash($_POST['message'])) : '',
+            )
         );
-        $result = self::send($body);
         if (is_wp_error($result)) {
             wp_send_json_error(array('code' => $result->get_error_code(), 'message' => $result->get_error_message()));
         }
         wp_send_json_success($result);
+    }
+
+    /**
+     * Send a prepared draft. Shared by the dialog and the send-quote-request ability; the
+     * fields arrive already sanitised as text.
+     *
+     * @return array|WP_Error
+     */
+    public static function send_draft($request_uuid, $fields) {
+        $draft = $request_uuid ? get_transient(self::draft_key($request_uuid)) : false;
+        if (!is_array($draft) || (int) $draft['user_id'] !== get_current_user_id()) {
+            return new WP_Error('expired', __('This request has expired. Close it and open Request a fix quote again.', 'super-speedy-performance-analysis'));
+        }
+        if (empty($fields['consent'])) {
+            return new WP_Error('consent_required', __('Tick the consent box to send the request. Nothing has been sent.', 'super-speedy-performance-analysis'));
+        }
+        $site_url = trim((string) ($fields['site_url'] ?? ''));
+        $body = array(
+            'name' => (string) ($fields['name'] ?? ''),
+            'email' => trim((string) ($fields['email'] ?? '')),
+            'site_url' => '' === $site_url ? '' : esc_url_raw($site_url, array('http', 'https')),
+            'markdown' => $draft['markdown'],
+            'source' => $draft['source'],
+            'ongoing_care' => !empty($fields['ongoing_care']),
+            'marketing_opt_in' => !empty($fields['marketing_opt_in']),
+            'consent' => true,
+            'consent_version' => self::CONSENT_VERSION,
+            'pa_version' => SSPA_VERSION,
+            'message' => (string) ($fields['message'] ?? ''),
+            'request_uuid' => $request_uuid,
+        );
+        return self::send($body);
     }
 
     /**

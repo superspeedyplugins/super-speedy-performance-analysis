@@ -115,6 +115,30 @@ class SSPA_Profile_Panel {
     }
 
     /**
+     * The Pages tab's rows: the last full analysis's profiles plus every completed one-page
+     * check of a catalogue page, oldest first, so the last row per page key is the newest.
+     * One-off URLs (url-<hash>) are left out. Shared by the Pages tab and the
+     * list-page-profiles ability.
+     *
+     * @param int $last_run_id The latest completed baseline/spot run, or 0 when none has
+     *                         finished (one-page results still show).
+     */
+    public static function current_profiles($last_run_id) {
+        global $wpdb;
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT p.*, r.run_type FROM %i p
+             INNER JOIN %i r ON r.id = p.run_id
+             WHERE r.status = 'done' AND p.plugin_set_hash = ''
+               AND (p.run_id = %d OR (r.run_type = 'adhoc' AND p.page_key NOT LIKE %s))
+             ORDER BY p.id ASC",
+            SSPA_Schema::table('profiles'),
+            SSPA_Schema::table('runs'),
+            (int) $last_run_id,
+            $wpdb->esc_like('url-') . '%'
+        ), ARRAY_A);
+    }
+
+    /**
      * The newest stored profile for a page key, whatever kind of run produced it.
      *
      * Deliberately not restricted to baseline/spot: the whole point of the ad-hoc runner is
@@ -1239,39 +1263,60 @@ class SSPA_Profile_Panel {
      * read as a bug when it was simply phase 2 starting; the fix is to say the number, and the
      * time, before the user commits to it.
      */
+
     public static function ajax_impact_plan() {
-        global $wpdb;
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
+        $plan = self::impact_plan(
+            isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0,
+            isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : ''
+        );
+        if (is_wp_error($plan)) {
+            wp_send_json_error($plan->get_error_message());
+        }
+        wp_send_json_success($plan);
+    }
+
+    /**
+     * What a Plugin Impact Analysis would measure: the candidate plugins ordered by what
+     * attribution blames, their must-exclude-together groups, and what the estimate needs.
+     * Shared by the impact picker and the get-impact-plan ability.
+     *
+     * @param int    $profile_id Plan for this page profile, or 0.
+     * @param string $url        Plan for one URL when no profile id is given, or ''.
+     * @return array|WP_Error
+     */
+    public static function impact_plan($profile_id = 0, $url = '') {
+        global $wpdb;
+        $profile_id = (int) $profile_id;
 
         // Two scopes, one picker. With a profile id it plans "measure plugins on this page";
         // without one it plans the site-wide sweep - which is now reached the same way, by
         // choosing plugins one by one, rather than by a button that swept everything. The
         // page picker preselects the three highest measured suspects; the administrator
         // reviews the exclusions and starts the run explicitly.
-        $profile_id = isset($_POST['profile_id']) ? (int) $_POST['profile_id'] : 0;
         $row = null;
         if ($profile_id) {
             $row = self::profile_row($profile_id);
             if (!$row) {
-                wp_send_json_error(__('That page profile no longer exists.', 'super-speedy-performance-analysis'));
+                return new WP_Error('sspa_impact_plan', __('That page profile no longer exists.', 'super-speedy-performance-analysis'));
             }
             if (!self::is_reprofilable($row)) {
-                wp_send_json_error(__('This measurement is not a page request, so it cannot be re-measured plugin by plugin.', 'super-speedy-performance-analysis'));
+                return new WP_Error('sspa_impact_plan', __('This measurement is not a page request, so it cannot be re-measured plugin by plugin.', 'super-speedy-performance-analysis'));
             }
         }
 
-        $requested_url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
+        $requested_url = esc_url_raw((string) $url);
         if (!$row && $requested_url) {
             $job = SSPA_Adhoc::job_for($requested_url);
-            if (is_wp_error($job)) wp_send_json_error($job->get_error_message());
+            if (is_wp_error($job)) return $job;
             $existing = self::newest_profile_id_for_page($job['page_key']);
             $row = $existing ? self::profile_row($existing) : array('id' => 0, 'page_key' => $job['page_key'], 'url' => $job['url'], 'method' => 'GET');
         }
 
         $eligible = SSPA_Dependency_Map::isolation_candidates();
         if (!$eligible) {
-            wp_send_json_error(__('No plugins can be safely excluded on this site - every active plugin is either a dependency of another or on the fragile list.', 'super-speedy-performance-analysis'));
+            return new WP_Error('sspa_impact_plan', __('No plugins can be safely excluded on this site - every active plugin is either a dependency of another or on the fragile list.', 'super-speedy-performance-analysis'));
         }
 
         // What attribution blames, so the list is ordered by who is worth suspecting: SQL +
@@ -1295,7 +1340,7 @@ class SSPA_Profile_Panel {
         } else {
             $run_id = SSPA_Plugins_Table::latest_run_id();
             if (!$run_id) {
-                wp_send_json_error(__('Run a normal analysis first - plugin impact analysis re-measures the pages it profiled.', 'super-speedy-performance-analysis'));
+                return new WP_Error('sspa_impact_plan', __('Run a normal analysis first - plugin impact analysis re-measures the pages it profiled.', 'super-speedy-performance-analysis'));
             }
             foreach ($wpdb->get_results($wpdb->prepare(
                 'SELECT component, SUM(sql_ms + http_ms) cost FROM %i
@@ -1344,7 +1389,7 @@ class SSPA_Profile_Panel {
         $oc = SSPA_Object_Cache_Capability::inspect();
         $oc_capable = $oc['switchable'] && 'ours' === SSPA_Helper_Files::dropin_status();
 
-        wp_send_json_success(array(
+        return array(
             'scope' => $row ? 'page' : 'site',
             'profile_id' => $row ? (int) $row['id'] : 0,
             'page_key' => $row ? $row['page_key'] : '',
@@ -1356,7 +1401,7 @@ class SSPA_Profile_Panel {
             'oc_reason' => $oc_capable ? '' : $oc['reason'],
             'seconds_per_job' => self::seconds_per_job(),
             'rebaseline_every' => SSPA_Run_Controller::SWEEP_REBASELINE_EVERY,
-        ));
+        );
     }
 
     /**

@@ -283,7 +283,12 @@ class SSPA_Cache_Delivery {
         return array();
     }
 
-    public static function complete($assessment_id, $browser_results) {
+    /**
+     * @param bool $browser_measured False when the check was driven without a browser (over
+     *                               MCP): the visitor-path leg is then recorded as not
+     *                               measured instead of being required.
+     */
+    public static function complete($assessment_id, $browser_results, $browser_measured = true) {
         $pending = self::pending($assessment_id);
         if (is_wp_error($pending)) {
             return $pending;
@@ -292,7 +297,7 @@ class SSPA_Cache_Delivery {
         if (count($pending['server_results']) !== $expected) {
             return new WP_Error('sspa_cache_delivery_server_incomplete', __('The server-side cache checks have not finished.', 'super-speedy-performance-analysis'));
         }
-        $browser = self::normalise_browser_results($browser_results, $pending['targets']);
+        $browser = $browser_measured ? self::normalise_browser_results($browser_results, $pending['targets']) : array();
         if (is_wp_error($browser)) {
             return $browser;
         }
@@ -308,7 +313,7 @@ class SSPA_Cache_Delivery {
         $origin_profiles = self::origin_profiles($run_id, $pending['targets']);
         $server = array_values($pending['server_results']);
         $cache_system = SSPA_Cache_System::inventory();
-        $browser_verdicts = self::page_verdicts($pending['targets'], $browser);
+        $browser_verdicts = self::page_verdicts($pending['targets'], $browser, $browser_measured);
         $audience_verdicts = self::audience_verdicts($pending['targets'], $server, $cache_system);
         $page_cache_status = self::overall_status(array_column($audience_verdicts['anonymous'], 'verdict'));
         $leak_check = self::leak_check($pending['targets'], $server);
@@ -345,6 +350,7 @@ class SSPA_Cache_Delivery {
             'delivery_path_observations' => array(
                 'browser' => array(
                     'visitor_state' => 'anonymous_browser',
+                    'measured' => (bool) $browser_measured,
                     'requests' => $browser,
                 ),
                 'server' => array(
@@ -366,13 +372,13 @@ class SSPA_Cache_Delivery {
                 'points' => isset($assessment['difficulty_points']) ? (int) $assessment['difficulty_points'] : null,
             ),
             'evidence_sufficiency' => $route_failures ? 'qualification_incomplete' : 'staging_design_requires_identity_comparison',
-            'limitations' => array(
+            'limitations' => array_merge($browser_measured ? array() : array('browser_visitor_path_not_measured_started_without_a_browser'), array(
                 'basket_audience_carries_basket_cookies_without_a_basket',
                 'customer_audience_is_a_synthetic_account_without_orders',
                 'audience_comparison_uses_the_server_loopback_boundary',
                 'browser_server_and_origin_boundaries_are_not_interchangeable',
                 'anonymous_cache_proof_does_not_approve_live_customer_caching',
-            ),
+            )),
         );
         update_option(self::REPORT_OPTION, $report, false);
         delete_option(self::PENDING_OPTION);
@@ -938,12 +944,14 @@ class SSPA_Cache_Delivery {
     }
 
     /** The anonymous browser leg, one verdict per page. */
-    private static function page_verdicts($targets, $browser) {
+    private static function page_verdicts($targets, $browser, $browser_measured = true) {
         $verdicts = array();
         foreach ($targets as $target) {
             $rows = array_values(array_filter($browser, function ($row) use ($target) { return $row['page_key'] === $target['page_key']; }));
             $hash_match = count($rows) === 2 && !empty($rows[0]['body_sha256']) && hash_equals($rows[0]['body_sha256'], (string) $rows[1]['body_sha256']);
-            if (count($rows) !== 2 || self::failed_rows($rows) || !$hash_match) {
+            if (!$browser_measured) {
+                $verdict = 'browser_not_measured';
+            } elseif (count($rows) !== 2 || self::failed_rows($rows) || !$hash_match) {
                 $verdict = 'probe_inconclusive';
             } else {
                 $verdict = self::status_verdict(self::served_statuses($rows)) ?: 'cache_layer_unidentified';

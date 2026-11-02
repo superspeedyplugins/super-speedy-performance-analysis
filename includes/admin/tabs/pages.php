@@ -33,17 +33,7 @@ if (class_exists('WooCommerce')) : ?>
      * component totals on Overview and Plugins still come from baseline/spot runs only. A
      * score computed over whichever pages happened to be checked by hand is not a site score.
      */
-    $sspa_profiles = $wpdb->get_results($wpdb->prepare(
-        "SELECT p.*, r.run_type FROM %i p
-         INNER JOIN %i r ON r.id = p.run_id
-         WHERE r.status = 'done' AND p.plugin_set_hash = ''
-           AND (p.run_id = %d OR (r.run_type = 'adhoc' AND p.page_key NOT LIKE %s))
-         ORDER BY p.id ASC",
-        SSPA_Schema::table('profiles'),
-        $sspa_runs_table,
-        $sspa_last_run_id, // 0 when no full analysis has finished: one-page results still show
-        $wpdb->esc_like('url-') . '%'
-    ), ARRAY_A);
+    $sspa_profiles = SSPA_Profile_Panel::current_profiles($sspa_last_run_id);
 
 if (!$sspa_profiles) : ?>
     <div class="sspa-placeholder">

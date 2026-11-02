@@ -2737,10 +2737,24 @@ class SSPA_Run_Controller {
     }
 
     public static function ajax_prune_blobs() {
-        global $wpdb;
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
+        $result = self::prune_blobs();
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+        wp_send_json_success($result);
+    }
 
+    /**
+     * Delete the detailed capture blobs of every run outside the retention window
+     * (blob_retention_runs), preserving opted-in runs in the submission outbox first.
+     * Shared by Tools and the prune-stored-captures ability.
+     *
+     * @return array|WP_Error bytes still stored, formatted, and how many runs were kept.
+     */
+    public static function prune_blobs() {
+        global $wpdb;
         $keep = max(1, (int) sspa_get_option('blob_retention_runs'));
         $runs_table = SSPA_Schema::table('runs');
         $keep_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM %i ORDER BY id DESC LIMIT %d",
@@ -2770,7 +2784,7 @@ class SSPA_Run_Controller {
             foreach ($share_ids as $share_id) {
                 $queued = SSPA_Community_Outbox::queue_run((int) $share_id);
                 if (is_wp_error($queued)) {
-                    wp_send_json_error(sprintf(
+                    return new WP_Error('sspa_prune_preserve_failed', sprintf(
                         /* translators: 1: run ID, 2: error message */
                         __('Detailed data was not deleted because run %1$d could not be preserved for sharing: %2$s', 'super-speedy-performance-analysis'),
                         (int) $share_id,
@@ -2789,6 +2803,6 @@ class SSPA_Run_Controller {
             ));
         }
         $bytes = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(LENGTH(profile_blob)), 0) FROM %i", $profiles));
-        wp_send_json_success(array('bytes' => $bytes, 'human' => size_format($bytes)));
+        return array('bytes' => $bytes, 'human' => size_format($bytes), 'kept_runs' => count($keep_ids));
     }
 }
