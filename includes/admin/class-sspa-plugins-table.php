@@ -83,11 +83,8 @@ class SSPA_Plugins_Table {
 
     /**
      * Where the Plugins tab sends owners to compare their plugins with other sites.
-     *
-     * /categories/ is the live ranking index today. Change this one constant when
-     * superspeedy.org's /leaderboards/ hub is deployed.
      */
-    const PUBLIC_RANKINGS_URL = 'https://superspeedy.org/categories/';
+    const PUBLIC_RANKINGS_URL = 'https://superspeedy.org/leaderboards/';
 
     /**
      * An unseen summary reopens on the next visit for this long after the run finished. Past

@@ -113,6 +113,10 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.59.1 (2nd November 2026) =
+* Fixed the active theme and MU plugins appearing on the Plugins tab as plugins with a Measure button.
+* The Plugins tab's public rankings link now goes to the superspeedy.org plugin leaderboards.
+
 = 0.59.0 (2nd November 2026) =
 * Merge of 0.58.3 into the main release; no further change.
 

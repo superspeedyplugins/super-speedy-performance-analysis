@@ -187,7 +187,7 @@ class SSPA_Profile_Store {
                     'profile_id' => $profile_id,
                     'run_id' => $run_id,
                     'component' => substr($component, 0, 191),
-                    'component_type' => 'theme' === $component ? 'theme' : 'plugin',
+                    'component_type' => self::boot_component_type($median_capture, $component),
                     'query_count' => 0,
                     'sql_ms' => 0,
                     'rows_returned' => 0,
@@ -239,6 +239,22 @@ class SSPA_Profile_Store {
             $out[$component]['assets_count'] = $total;
         }
         return $out;
+    }
+
+    /**
+     * The type of a component that appears only in the boot evidence. The boot timer records the
+     * component map's classification; captures from before 0.59.1 lack it, so fall back to the
+     * 'theme' asset bucket and the 'mu:' prefix, and only then to plugin.
+     */
+    private static function boot_component_type($capture, $component) {
+        $types = isset($capture['boot']['component_types']) && is_array($capture['boot']['component_types']) ? $capture['boot']['component_types'] : array();
+        if (isset($types[$component]) && in_array($types[$component], array('plugin', 'mu-plugin', 'theme', 'core', 'other'), true)) {
+            return $types[$component];
+        }
+        if ('theme' === $component) {
+            return 'theme';
+        }
+        return 0 === strpos($component, 'mu:') ? 'mu-plugin' : 'plugin';
     }
 
     public static function median($values) {

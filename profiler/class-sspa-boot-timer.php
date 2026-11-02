@@ -321,6 +321,9 @@ if (!class_exists('SSPA_Boot_Timer')) {
             $components = $includes; // combined ranking starts from include cost
             $top = array();
             $render = array('timed_ms' => 0, 'untimed_ms' => null, 'components' => array(), 'top' => array());
+            // Each component's type as the map classified it, so a theme or MU plugin that only
+            // spends hook time is not stored as a plugin.
+            $types = array();
             foreach ($this->callbacks as $c) {
                 $hook = $c[0];
                 $callable = $c[1];
@@ -329,6 +332,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 $file = $this->callable_file($callable);
                 $cls = $file ? $map->classify_file($file) : array('component' => 'core', 'type' => 'core');
                 $component = $cls['component'];
+                $types[$component] = $cls['type'];
 
                 if (!isset($hooks[$hook])) {
                     $hooks[$hook] = array('ms' => 0, 'components' => array());
@@ -403,6 +407,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 'includes' => array_slice($includes, 0, 100, true),
                 'hooks' => $hooks,
                 'components' => array_slice($components, 0, 100, true),
+                'component_types' => $types,
                 'top_callbacks' => array_slice($top, 0, 15),
                 'render' => $render,
                 'assets' => $this->assets(),

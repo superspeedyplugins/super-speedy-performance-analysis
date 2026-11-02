@@ -26,6 +26,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/browser/run-plugins-tab.sh # own site tests-plugins-tab: Measure button, a real Plugin Impact Analysis summary (shown, reopened until seen) and the Plugins tab page/sort/show filters
 .tests/mcp/run-mcp-transport.sh # own site tests-mcp: MCP turned on as the setup page does, then initialize, tools/list, discover and execute an sspa ability over the official MCP Adapter endpoint
 .tests/mcp/run-mcp-journey.sh # own site tests-mcp, WP-Cron disabled: an agent with only an Application Password and the Abilities REST endpoints discovers, enables the profiler, analyses, isolates a plugin, profiles a URL, runs the cache check server-side and reads every result; gates refuse without confirm and refuse a subscriber
+.tests/run-tests.sh 150-component-types # a theme and an MU plugin with hook time only are stored as theme and mu-plugin, never plugin; no Measure button for the theme
 .tests/run-tests.sh 145-endpoint-profile # wc-analytics/reports profiled as the admin (REST nonce) answers 200; logged-out answers 401 with a clear explanation, never "pruned"
 .tests/run-tests.sh 146-slow-query # core-executed CTE search query: every shape (like before found_rows), a plan, runnable SQL, real caller, page_url
 .tests/run-tests.sh 147-admin-render # pending change set + a synthetic account WordPress refuses to repair: ordinary admin screens and the front end load whole, no user is written, ordinary mail keeps its recipient
