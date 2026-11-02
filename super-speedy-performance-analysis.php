@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.58.1
+ * Version: 0.58.2
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -53,8 +53,17 @@ require_once SSPA_PLUGIN_DIR . 'defines.php';
 // living here for that case is exactly what this change removes: an install that cannot
 // check for updates should be re-cloned with its submodules, not quietly served by a
 // different code path that nobody tests.
+//
+// It also loads for the MCP Adapter's routes and the Abilities API: the library is what
+// registers the MCP endpoint that Super Speedy > MCP setup hands to clients, and a REST
+// request is not an admin request, so without this the endpoint did not exist on a site
+// where this is the only Super Speedy plugin. Front-end, other REST and admin-ajax requests
+// still skip it.
+// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only substring detection decides whether to load a library; the raw URI is never rendered, persisted or used as a dispatch target.
+$sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+$sspa_mcp_request = (bool) preg_match('#/wp-json/(?:mcp|wp-abilities)/|[?&]rest_route=(?:/|%2F)(?:mcp|wp-abilities)(?:/|%2F)#i', $sspa_request_uri);
 $sspa_settings = SSPA_PLUGIN_DIR . 'super-speedy-settings/super-speedy-settings.php';
-if (is_admin() && !wp_doing_ajax() && file_exists($sspa_settings)) {
+if (((is_admin() && !wp_doing_ajax()) || $sspa_mcp_request) && file_exists($sspa_settings)) {
     require_once $sspa_settings;
     if (class_exists('SuperSpeedySettings_1_0')) {
         SuperSpeedySettings_1_0::init(array(
@@ -77,8 +86,6 @@ add_action('before_woocommerce_init', function () {
 });
 
 // Agent surfaces: Abilities API (WP 6.9+; MCP via the adapter plugin) and WP-CLI.
-// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only substring detection decides whether to register hooks; the raw URI is never rendered, persisted or used as a dispatch target.
-$sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '';
 $sspa_agent_request = (defined('WP_CLI') && WP_CLI)
     || false !== strpos($sspa_request_uri, '/wp-json/')
     || false !== strpos($sspa_request_uri, 'rest_route=');

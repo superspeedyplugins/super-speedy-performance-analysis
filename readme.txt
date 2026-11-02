@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.58.2 (2nd November 2026) =
+* The MCP endpoint from Super Speedy > MCP setup now works when Performance Analysis is the only Super Speedy plugin on the site.
+
 = 0.58.1 (29th October 2026) =
 * Updated super-speedy-settings to 1.14.3: update downloads now send the licence key in a request header instead of the download URL.
 
