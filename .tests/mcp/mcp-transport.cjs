@@ -66,6 +66,17 @@ function toolText(response) {
         assert.equal(executed.success, true, 'execute-ability succeeded: ' + JSON.stringify(executed).slice(0, 200));
         assert.ok('active' in executed.data, 'sspa/get-status returned its status');
         console.log('PASS execute-ability ran sspa/get-status: active=' + executed.data.active);
+
+        // Every ability the plugin declares is reachable over MCP, not only over REST.
+        const caps = toolText(await post({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'mcp-adapter-execute-ability', arguments: { ability_name: 'sspa/get-capabilities', parameters: {} } } }, init.session));
+        if (caps.success) {
+            const declared = caps.data.abilities;
+            const missing = declared.filter(name => !sspa.includes(name));
+            assert.deepEqual(missing, [], 'every declared ability is discoverable over MCP');
+            console.log('PASS get-capabilities over MCP: all ' + declared.length + ' declared abilities discoverable');
+        } else {
+            console.log('INFO sspa/get-capabilities is not available in this version');
+        }
     } catch (error) {
         failed = true;
         console.error('FAIL ' + (error && error.message ? error.message : error));

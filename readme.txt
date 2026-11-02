@@ -113,6 +113,11 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.58.3 (2nd November 2026) =
+* Everything the Performance Analysis screens do can now be done by an AI assistant over MCP: 35 new abilities cover discovery, page and URL profiles, the Plugins table, impact planning, the cache check, AJAX and endpoint profiling, history, settings, the submission queue and quote requests.
+* Runs started over MCP no longer depend on WP-Cron: the new `advance-run` ability moves a run on each call.
+* A cache check started without a browser records the browser timing as not measured and says so on the Cache performance tab.
+
 = 0.58.2 (2nd November 2026) =
 * The MCP endpoint from Super Speedy > MCP setup now works when Performance Analysis is the only Super Speedy plugin on the site.
 
