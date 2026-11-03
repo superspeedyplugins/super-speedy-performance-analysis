@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.61.1 (3rd November 2026) =
+* Updated super-speedy-settings to 1.14.5: creating the MCP connection now needs permission to add users, so a multisite sub-site administrator cannot create the agent account when the network does not allow it.
+
 = 0.61.0 (2nd November 2026) =
 * Merge of 0.60.1 into the main release; no further change.
 
