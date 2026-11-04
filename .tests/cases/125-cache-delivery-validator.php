@@ -28,7 +28,9 @@ sspa_cd_t(!array_filter($targets, function ($target) {
 sspa_cd_t(!array_filter($targets, function ($target) { return isset($target['facts']); }), 'rendering the targets reads no product or category facts');
 
 $prepared = SSPA_Cache_Delivery::prepare_check();
-sspa_cd_t(!is_wp_error($prepared) && 36 === $prepared['request_count'] && 8 === $prepared['browser_requests'] && 28 === $prepared['server_requests'], 'preparation declares 8 browser and 28 server requests');
+// Nine server legs per page since 0.60.1: two anonymous, two returning (skipped when no cookie was
+// set), two basket, two customer and the final anonymous request.
+sspa_cd_t(!is_wp_error($prepared) && 44 === $prepared['request_count'] && 8 === $prepared['browser_requests'] && 36 === $prepared['server_requests'] && 8 === $prepared['returning_requests'], 'preparation declares 8 browser and 36 server requests, 8 of them returning-visitor requests');
 if (is_wp_error($prepared)) {
     return;
 }

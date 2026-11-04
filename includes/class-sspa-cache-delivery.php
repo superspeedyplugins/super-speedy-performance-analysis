@@ -794,7 +794,7 @@ class SSPA_Cache_Delivery {
             'age', 'cache-control', 'vary', 'via', 'cf-cache-status', 'x-cache',
             'x-cache-status', 'x-breeze-cache', 'x-breeze-cache-write', 'x-litespeed-cache',
             'x-runcloud-cache', 'x-fastcgi-cache', 'x-proxy-cache', 'x-srcache-fetch-status',
-            'x-varnish', 'x-vercel-cache', 'x-qc-cache', 'cf-ray', 'x-cache-handler',
+            'x-varnish', 'x-vercel-cache', 'x-qc-cache', 'cf-ray', 'x-cache-handler', 'x-grid-cache',
         );
     }
 
@@ -826,6 +826,8 @@ class SSPA_Cache_Delivery {
             'x-breeze-cache-write' => array('breeze', 'wordpress_php'),
             'x-litespeed-cache' => array('litespeed', 'reverse_proxy_server'),
             'x-runcloud-cache' => array('runcloud_nginx', 'reverse_proxy_server'),
+            // GridPane's nginx FastCGI cache: more_set_headers 'X-Grid-Cache $upstream_cache_status'.
+            'x-grid-cache' => array('gridpane_nginx', 'reverse_proxy_server'),
             'x-fastcgi-cache' => array('fastcgi_cache', 'reverse_proxy_server'),
             'x-cache-status' => array('server_cache', 'reverse_proxy_server'),
             'x-proxy-cache' => array('proxy_cache', 'reverse_proxy_server'),

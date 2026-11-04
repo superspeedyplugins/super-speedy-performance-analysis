@@ -183,6 +183,7 @@ class SSPA_Offers {
             'breeze' => 'Breeze',
             'litespeed' => 'LiteSpeed',
             'runcloud_nginx' => 'RunCloud nginx',
+            'gridpane_nginx' => 'GridPane nginx',
             'fastcgi_cache' => 'nginx FastCGI',
             'server_cache' => __('server', 'super-speedy-performance-analysis'),
             'proxy_cache' => __('proxy', 'super-speedy-performance-analysis'),

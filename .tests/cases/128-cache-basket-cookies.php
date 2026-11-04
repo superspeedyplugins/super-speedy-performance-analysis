@@ -37,6 +37,12 @@ $anonymous = array(
     SSPA_Cache_Delivery::probe_server_request($id, 'shop', 'anonymous', 1),
     SSPA_Cache_Delivery::probe_server_request($id, 'shop', 'anonymous', 2),
 );
+// The returning-visitor legs come next in the fixed order. The suite's shop sets no cookie for a new
+// visitor, so they send nothing and the captured requests below stay anonymous, basket, customer.
+$returning = array(
+    SSPA_Cache_Delivery::probe_server_request($id, 'shop', 'returning', 1),
+    SSPA_Cache_Delivery::probe_server_request($id, 'shop', 'returning', 2),
+);
 $before = $count();
 $basket = array(
     SSPA_Cache_Delivery::probe_server_request($id, 'shop', 'basket', 1),
@@ -46,7 +52,8 @@ $after = $count();
 $customer = SSPA_Cache_Delivery::probe_server_request($id, 'shop', 'customer', 1);
 remove_filter('http_request_args', $capture, 10);
 
-sspa_bc_t(!array_filter(array_merge($anonymous, $basket, array($customer)), 'is_wp_error'), 'the anonymous, basket and customer requests ran in order');
+sspa_bc_t(!array_filter(array_merge($anonymous, $returning, $basket, array($customer)), 'is_wp_error'), 'the anonymous, returning, basket and customer requests ran in order');
+sspa_bc_t('not_needed' === $returning[0]['error_class'] && !empty($returning[0]['skipped']) && 'not_needed' === $returning[1]['error_class'] && 5 === count($sent), 'the returning-visitor requests send nothing when the first response set no cookie (' . wp_json_encode($returning[0]) . ')');
 sspa_bc_t(200 === $basket[0]['http_status'] && 200 === $basket[1]['http_status'], 'the shop answers the basket requests with HTTP 200');
 sspa_bc_t($before === $after, "the basket requests created no WooCommerce session or basket ($before rows before, $after after)");
 sspa_bc_t(array() === $sent[0]['cookies'] && array() === $sent[1]['cookies'], 'the anonymous requests carry no cookies');

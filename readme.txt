@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.61.2 (4th November 2026) =
+* The cache check now recognises GridPane's page cache from its `X-Grid-Cache` header.
+
 = 0.61.1 (3rd November 2026) =
 * Updated super-speedy-settings to 1.14.5: creating the MCP connection now needs permission to add users, so a multisite sub-site administrator cannot create the agent account when the network does not allow it.
 
