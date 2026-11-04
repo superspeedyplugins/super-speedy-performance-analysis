@@ -32,7 +32,7 @@ class SSPA_Install {
         wp_clear_scheduled_hook('sspa_traffic_collection_tick');
         $run_id = SSPA_Run_Controller::active_run_id();
         if ($run_id) {
-            SSPA_Run_Controller::cancel($run_id);
+            SSPA_Run_Controller::cancel($run_id, __('Cancelled because Performance Analysis was deactivated.', 'super-speedy-performance-analysis'));
         }
     }
 

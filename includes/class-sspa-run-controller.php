@@ -1313,7 +1313,7 @@ class SSPA_Run_Controller {
 
             $queue = SSPA_Run_Queue::get($run_id);
             if (!is_array($queue)) {
-                self::fail($run_id, 'queue missing', $lock_owner);
+                self::fail($run_id, __('The run\'s job queue was missing, so the analysis could not continue.', 'super-speedy-performance-analysis'), $lock_owner);
                 return;
             }
 
@@ -2073,7 +2073,13 @@ class SSPA_Run_Controller {
         }
     }
 
-    public static function cancel($run_id) {
+    /**
+     * @param int    $run_id
+     * @param string $reason Who or what cancelled the run, in a sentence. Recorded in the run
+     *                       notes as cancel_reason and returned by status() as reason. Callers
+     *                       that pass none (another plugin, say) are reported as "Cancelled".
+     */
+    public static function cancel($run_id, $reason = '') {
         global $wpdb;
         $run_id = (int) $run_id;
         if ($run_id <= 0) {
@@ -2082,11 +2088,23 @@ class SSPA_Run_Controller {
 
         // This is only cancellation intent. Queue deletion and release of shared
         // profiling state happen later, while owning the worker's one per-run lock.
-        $wpdb->query($wpdb->prepare(
+        $moved = $wpdb->query($wpdb->prepare(
             "UPDATE %i SET status='cancelling' WHERE id=%d AND status IN ('queued','crawling','running','analysing')",
             SSPA_Schema::table('runs'),
             $run_id
         ));
+        // Only the call that moved the run records why; a repeat cancel, or one on a run
+        // that already finished, leaves its notes alone.
+        $reason = trim((string) $reason);
+        if ($moved && '' !== $reason) {
+            $notes = self::run_notes($run_id);
+            $raw = (string) $wpdb->get_var($wpdb->prepare('SELECT notes FROM %i WHERE id=%d', SSPA_Schema::table('runs'), $run_id));
+            if (!$notes && '' !== trim($raw)) {
+                $notes = array('note' => $raw); // keep a plain-string note rather than lose it
+            }
+            $notes['cancel_reason'] = $reason;
+            $wpdb->update(SSPA_Schema::table('runs'), array('notes' => wp_json_encode($notes)), array('id' => $run_id));
+        }
         wp_clear_scheduled_hook('sspa_process_batch_event', array($run_id));
 
         $lock_key = self::run_lock_key($run_id);
@@ -2184,6 +2202,8 @@ class SSPA_Run_Controller {
             'current_plugin' => $current_plugin,
             'mail_warning' => SSPA_Mail::warning(),
             'customer_pages_skipped' => self::customer_skip_message(json_decode((string) $run['notes'], true)),
+            // Why a failed or cancelled run ended, in a sentence; '' for every other status.
+            'reason' => self::end_reason($run),
             'mail_mode' => 'deliver',
             'recent' => $recent,
             'phase' => (is_array($queue) && isset($queue['sweep']['phase'])) ? (int) $queue['sweep']['phase'] : null,
@@ -2193,6 +2213,56 @@ class SSPA_Run_Controller {
             // (the admin's browser drives, via SSPA_Browser_Transport).
             'transport' => (is_array($queue) && !empty($queue['transport'])) ? $queue['transport'] : 'loopback',
         );
+    }
+
+    /**
+     * Why a run ended failed or cancelled, from its recorded notes; '' for any other status.
+     *
+     * Notes are a plain string for fail() and a JSON object for checkout, Cache Impact and
+     * cancelled runs.
+     *
+     * @param array $run A runs row (status, notes).
+     * @return string
+     */
+    public static function end_reason($run) {
+        $status = is_array($run) && isset($run['status']) ? $run['status'] : '';
+        if (!in_array($status, array('failed', 'cancelled'), true)) {
+            return '';
+        }
+        $raw = trim((string) ($run['notes'] ?? ''));
+        $notes = '' !== $raw ? json_decode($raw, true) : null;
+
+        if ('cancelled' === $status) {
+            if (is_array($notes) && !empty($notes['cancel_reason'])) {
+                return (string) $notes['cancel_reason'];
+            }
+            return __('Cancelled', 'super-speedy-performance-analysis');
+        }
+
+        if ('' !== $raw && !is_array($notes)) {
+            return $raw; // fail() records its reason as a plain sentence
+        }
+        if (is_array($notes)) {
+            if (!empty($notes['flow']['error'])) {
+                return (string) $notes['flow']['error'];
+            }
+            if (isset($notes['type']) && 'checkout' === $notes['type'] && !empty($notes['outcome'])) {
+                return sprintf(
+                    /* translators: %s: checkout outcome code, for example place_order_failed. */
+                    __('The checkout flow did not complete (outcome: %s).', 'super-speedy-performance-analysis'),
+                    (string) $notes['outcome']
+                );
+            }
+            if (isset($notes['type']) && 'cache_impact' === $notes['type']) {
+                return 'failed' === ($notes['verification'] ?? '')
+                    ? __('The cache-off measurements still used a persistent object cache, so the Cache Impact Analysis could not be verified.', 'super-speedy-performance-analysis')
+                    : __('The Cache Impact Analysis could not confirm the cache was off during its cache-off measurements.', 'super-speedy-performance-analysis');
+            }
+            if (!empty($notes['error'])) {
+                return (string) $notes['error'];
+            }
+        }
+        return __('Failed', 'super-speedy-performance-analysis');
     }
 
     /** What the run screen says when the logged-in customer pages were skipped, or ''. */
@@ -2248,12 +2318,12 @@ class SSPA_Run_Controller {
             if (is_array($queue) && !empty($queue['last_progress'])) {
                 $idle = time() - (int) $queue['last_progress'];
                 if ($idle > 3 * HOUR_IN_SECONDS) {
-                    self::fail($run_id, 'stale - no progress in 3 hours');
+                    self::fail($run_id, __('The analysis made no progress for 3 hours, so it was stopped. Keep the Performance Analysis screen open while a run is in progress, or check that WP-Cron runs.', 'super-speedy-performance-analysis'));
                 } elseif ($idle > 30 * MINUTE_IN_SECONDS && !wp_next_scheduled('sspa_process_batch_event', array($run_id))) {
                     wp_schedule_single_event(time() + 5, 'sspa_process_batch_event', array($run_id));
                 }
             } elseif (strtotime($r['started'] . ' UTC') < time() - 2 * HOUR_IN_SECONDS) {
-                self::fail($run_id, 'stale - timed out');
+                self::fail($run_id, __('The analysis never recorded any progress within 2 hours of starting, so it was stopped.', 'super-speedy-performance-analysis'));
             }
         }
     }
@@ -2528,7 +2598,7 @@ class SSPA_Run_Controller {
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         $run_id = isset($_POST['run_id']) ? (int) $_POST['run_id'] : self::active_run_id();
         if ($run_id) {
-            self::cancel($run_id);
+            self::cancel($run_id, __('Cancelled from the Performance Analysis screen.', 'super-speedy-performance-analysis'));
         }
         wp_send_json_success();
     }

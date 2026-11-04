@@ -30,6 +30,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/new-visitor-cache/run.sh all # cases 151-154 on own site tests-cache-blockers: tracker, click-cookie and advanced-cache.php fixtures; runtime Set-Cookie attribution and the new_visitor_cache_blocked finding (151), cache check new visitor again + returning visitor (152), parameter check via abilities (153), its button in a browser (154)
 .tests/run-tests.sh 155-gridpane-cache-header # GridPane's X-Grid-Cache is kept and classified as a GridPane nginx HIT
 .tests/run-tests.sh 156-catalogue-skips-own-test-product # the product page measured is a real product, never the checkout flow's own hidden test product
+.tests/run-tests.sh 157-run-status-reason # status() reason for real runs cancelled from PA's screen (admin AJAX), the cancel-run ability and a bare cancel(), failed by the no-progress cron and by a checkout with no usable postcode; '' while running
 .tests/run-tests.sh 150-component-types # a theme and an MU plugin with hook time only are stored as theme and mu-plugin, never plugin; no Measure button for the theme
 .tests/run-tests.sh 145-endpoint-profile # wc-analytics/reports profiled as the admin (REST nonce) answers 200; logged-out answers 401 with a clear explanation, never "pruned"
 .tests/run-tests.sh 146-slow-query # core-executed CTE search query: every shape (like before found_rows), a plan, runnable SQL, real caller, page_url

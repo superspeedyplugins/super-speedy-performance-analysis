@@ -347,7 +347,11 @@ class SSPA_Admin_Save {
         }
         if (is_wp_error($result)) {
             if ($run_id) {
-                SSPA_Run_Controller::cancel($run_id);
+                SSPA_Run_Controller::cancel($run_id, sprintf(
+                    /* translators: %s: the replay error message. */
+                    __('Cancelled because the admin save replay failed: %s', 'super-speedy-performance-analysis'),
+                    $result->get_error_message()
+                ));
             }
             SSPA_Workflow_Analysis::cleanup();
             return $result;

@@ -278,7 +278,7 @@ class SSPA_Workflow_Analysis {
             $entry = get_option(self::TEMP_OPTION, array());
             $id = isset($_POST['object_id']) ? absint($_POST['object_id']) : 0;
             if (!$id || (int) ($entry['id'] ?? 0) !== $id) { wp_send_json_success(); }
-            if (!empty($entry['run_id'])) { SSPA_Run_Controller::cancel((int) $entry['run_id']); }
+            if (!empty($entry['run_id'])) { SSPA_Run_Controller::cancel((int) $entry['run_id'], __('Cancelled when the temporary workflow object was removed.', 'super-speedy-performance-analysis')); }
             self::cleanup();
         } catch (Throwable $error) { wp_send_json_error(array('message' => $error->getMessage())); }
         wp_send_json_success();

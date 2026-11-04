@@ -758,7 +758,7 @@ class SSPA_Abilities_Control {
     public static function exec_cancel_run($input) {
         $run_id = !empty($input['run_id']) ? (int) $input['run_id'] : SSPA_Run_Controller::active_run_id();
         if ($run_id) {
-            SSPA_Run_Controller::cancel($run_id);
+            SSPA_Run_Controller::cancel($run_id, __('Cancelled by the cancel-run ability.', 'super-speedy-performance-analysis'));
         }
         return array('cancelled_run_id' => (int) $run_id);
     }
@@ -1014,7 +1014,7 @@ class SSPA_Abilities_Control {
         }
         $entry = get_option(SSPA_Workflow_Analysis::TEMP_OPTION, array());
         if (!empty($entry['run_id'])) {
-            SSPA_Run_Controller::cancel((int) $entry['run_id']);
+            SSPA_Run_Controller::cancel((int) $entry['run_id'], __('Cancelled when the temporary workflow object was removed.', 'super-speedy-performance-analysis'));
         }
         SSPA_Workflow_Analysis::cleanup();
         return array('removed_object_id' => (int) ($entry['id'] ?? 0));
