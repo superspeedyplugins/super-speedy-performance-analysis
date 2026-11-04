@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.61.3 (4th November 2026) =
+* Analyses and the cache check no longer measure the checkout flow's hidden test product as your product page.
+
 = 0.61.2 (4th November 2026) =
 * The cache check now recognises GridPane's page cache from its `X-Grid-Cache` header.
 
