@@ -35,6 +35,14 @@ class SSPA_History_Chart {
                     </label>
                 </div>
             </div>
+            <details class="sspa-history-page-chooser">
+                <summary><?php esc_html_e('Choose pages for the chart', 'super-speedy-performance-analysis'); ?> <span class="sspa-history-page-count"></span></summary>
+                <p>
+                    <button type="button" class="button button-small sspa-history-pages-all"><?php esc_html_e('All', 'super-speedy-performance-analysis'); ?></button>
+                    <button type="button" class="button button-small sspa-history-pages-none"><?php esc_html_e('None', 'super-speedy-performance-analysis'); ?></button>
+                </p>
+                <div class="sspa-history-page-options"></div>
+            </details>
 
             <?php echo wp_kses(self::period_summary($document), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?>
             <?php if ('setup' === ($document['selection_mode'] ?? 'setup')) : ?>
@@ -71,6 +79,7 @@ class SSPA_History_Chart {
         if (!current_user_can('manage_options')) {
             wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403);
         }
+        SSPA_History_Series::$include_adhoc = !isset($_POST['include_adhoc']) || '0' !== sanitize_key(wp_unslash($_POST['include_adhoc']));
         $document = SSPA_History_Series::build(
             isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0,
             isset($_POST['metric']) ? sanitize_key(wp_unslash($_POST['metric'])) : 'request_wall_ms',
@@ -111,7 +120,7 @@ class SSPA_History_Chart {
                         $previous_values = wp_list_pluck($page['previous']['points'], 'value');
                         $current_values = wp_list_pluck($page['current']['points'], 'value');
                         ?>
-                        <tr data-page-label="<?php echo esc_attr(strtolower($page['label'] . ' ' . $page['key'])); ?>">
+                        <tr data-page-key="<?php echo esc_attr($page['key']); ?>" data-page-label="<?php echo esc_attr(strtolower($page['label'] . ' ' . $page['key'])); ?>">
                             <th scope="row">
                                 <?php echo esc_html($page['label']); ?><br>
                                 <span class="description"><?php echo esc_html($page['method'] . ' · ' . $page['variant'] . ' · ' . $page['object_cache_mode']); ?></span>

@@ -102,6 +102,7 @@ if ($sspa_comparable_runs) : ?>
                     <?php endforeach; ?>
                 </select>
             </label>
+            <label><input type="checkbox" id="sspa-history-include-adhoc" checked> <?php esc_html_e('Include pages measured with Analyse this page', 'super-speedy-performance-analysis'); ?></label>
             <button type="button" class="button button-primary" id="sspa-history-compare"><?php esc_html_e('Compare', 'super-speedy-performance-analysis'); ?></button>
             <span class="spinner" aria-hidden="true"></span>
         </div>

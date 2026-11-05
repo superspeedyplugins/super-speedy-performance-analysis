@@ -3,6 +3,19 @@
 
 	var strings = sspa_history_chart;
 	var markerVisibility = {warnings: true, errors: true};
+	// Pages chosen for the chart, by page identity; null means every page. Kept across Compare
+	// reloads and metric changes, and per browser in localStorage when it is available.
+	var pageSelection = null;
+	try {
+		var storedSelection = window.localStorage.getItem('sspa_history_pages');
+		pageSelection = storedSelection ? JSON.parse(storedSelection) : null;
+	} catch (error) { pageSelection = null; }
+	function saveSelection() {
+		try { window.localStorage.setItem('sspa_history_pages', JSON.stringify(pageSelection)); } catch (error) {}
+	}
+	function chosen(page) {
+		return !pageSelection || pageSelection.indexOf(page.key) !== -1;
+	}
 	var sprintf = wp.i18n.sprintf;
 	function escapeText(text) { return $('<span>').text(text).html(); }
 
@@ -92,9 +105,34 @@
 		}).join(', ');
 	}
 
+	function runCaption(documentData) {
+		var before = documentData.previous && documentData.previous.run_ids && documentData.previous.run_ids.length
+			? documentData.previous.run_ids[documentData.previous.run_ids.length - 1] : 0;
+		var after = documentData.anchor_run_id || 0;
+		return (before
+			? sprintf(/* translators: 1: Before analysis ID, 2: After analysis ID, 3: metric name. */ wp.i18n.__("Before #%1$d · After #%2$d · %3$s", "super-speedy-performance-analysis"), before, after, documentData.metric.label)
+			: sprintf(/* translators: 1: analysis ID, 2: metric name. */ wp.i18n.__("Analysis #%1$d · %2$s", "super-speedy-performance-analysis"), after, documentData.metric.label));
+	}
+
+	/** The checkbox list of every page in the document; ticks follow pageSelection. */
+	function renderChooser(card, documentData) {
+		var list = $(card).find('.sspa-history-page-options').empty();
+		documentData.pages.forEach(function (page) {
+			var label = $('<label class="sspa-history-page-option">');
+			$('<input type="checkbox">').attr('value', page.key).prop('checked', chosen(page)).appendTo(label);
+			label.append(document.createTextNode(' ' + axisLabel(page)));
+			if (page.relative_url && page.relative_url !== page.label) {
+				$('<span class="description">').text(' ' + page.relative_url).appendTo(label);
+			}
+			list.append(label);
+		});
+		var count = documentData.pages.filter(chosen).length;
+		$(card).find('.sspa-history-page-count').text(sprintf(/* translators: 1: pages shown, 2: pages available. */ wp.i18n.__("(%1$d of %2$d shown)", "super-speedy-performance-analysis"), count, documentData.pages.length));
+	}
+
 	function optionFor(documentData, filter, width) {
 		var pages = documentData.pages.filter(function (page) {
-			return !filter || (page.label + ' ' + page.key).toLowerCase().indexOf(filter) !== -1;
+			return chosen(page) && (!filter || (page.label + ' ' + page.key).toLowerCase().indexOf(filter) !== -1);
 		});
 		var labels = pages.map(function (page) { return page.key; });
 		var byKey = {};
@@ -132,8 +170,17 @@
 				description: sprintf(/* translators: %s: measurement metric name. */ wp.i18n.__("Comparison of every retained %s measurement for the previous and current measured setups.", "super-speedy-performance-analysis"), documentData.metric.label.toLowerCase())
 			},
 			color: ['#6b7280', '#2271b1', '#d63638'],
-			legend: {top: 0, data: [wp.i18n.__("Previous measurements", "super-speedy-performance-analysis"), wp.i18n.__("Recent measurements", "super-speedy-performance-analysis")]},
-			grid: {left: 96, right: 28, top: 54, bottom: 180},
+			// Inside the canvas, so a screenshot or saved image of the chart carries what made it.
+			title: {
+				text: strings.plugin_title,
+				subtext: runCaption(documentData),
+				left: 'center',
+				top: 0,
+				textStyle: {fontSize: 16, fontWeight: 'bold', color: '#1d2327'},
+				subtextStyle: {fontSize: 12, color: '#50575e'}
+			},
+			legend: {top: 50, data: [wp.i18n.__("Previous measurements", "super-speedy-performance-analysis"), wp.i18n.__("Recent measurements", "super-speedy-performance-analysis")]},
+			grid: {left: 96, right: 28, top: 96, bottom: 180},
 			tooltip: {
 				trigger: 'item',
 				renderMode: 'html',
@@ -219,8 +266,11 @@
 			});
 			card.querySelector('.sspa-history-evidence-source').textContent = documentData.metric.description;
 			var filter = (card.querySelector('.sspa-history-page-filter').value || '').trim().toLowerCase();
+			renderChooser(card, documentData);
 			$(card).find('.sspa-history-data-table tbody tr').each(function () {
-				this.hidden = !!filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1;
+				var key = this.getAttribute('data-page-key');
+				this.hidden = (!!filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1)
+					|| (!!pageSelection && !!key && pageSelection.indexOf(key) === -1);
 			});
 			chart.setOption(optionFor(documentData, filter, mount.clientWidth), true);
 			chart.off('click');
@@ -332,6 +382,27 @@
 		render(card, card.sspaDocument);
 	});
 
+	function rerenderAll() {
+		$('[data-sspa-history-chart]').each(function () {
+			if (this.sspaDocument) render(this, this.sspaDocument);
+		});
+	}
+
+	$(document).on('change', '.sspa-history-page-options input', function () {
+		var card = this.closest('[data-sspa-history-chart]');
+		if (!card || !card.sspaDocument) return;
+		pageSelection = $(card).find('.sspa-history-page-options input:checked').map(function () { return this.value; }).get();
+		if (pageSelection.length === card.sspaDocument.pages.length) pageSelection = null;
+		saveSelection();
+		rerenderAll();
+	});
+
+	$(document).on('click', '.sspa-history-pages-all, .sspa-history-pages-none', function () {
+		pageSelection = $(this).hasClass('sspa-history-pages-all') ? null : [];
+		saveSelection();
+		rerenderAll();
+	});
+
 	$(document).on('change', '.sspa-history-metric', function () {
 		var select = $(this).prop('disabled', true);
 		var card = this.closest('[data-sspa-history-chart]');
@@ -344,7 +415,8 @@
 			metric: select.val(),
 			after_run_id: documentData.anchor_run_id,
 			before_run_id: documentData.previous ? documentData.previous.run_ids[0] : 0,
-			selection_mode: documentData.selection_mode || 'setup'
+			selection_mode: documentData.selection_mode || 'setup',
+			include_adhoc: $('#sspa-history-include-adhoc').length && !$('#sspa-history-include-adhoc').is(':checked') ? 0 : 1
 		}).done(function (response) {
 			if (!response.success) {
 				select.val(documentData.metric.key);

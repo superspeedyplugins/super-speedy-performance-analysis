@@ -914,3 +914,9 @@
 .sspa-impact-summary .sspa-impact-saves { color: #008a20; }
 .sspa-impact-summary .sspa-impact-none { color: #646970; }
 #sspa-runner .sspa-runner-summary { max-height: 60vh; overflow: auto; }
+
+/* Compare chart: page chooser (0.61.7). */
+.sspa-history-page-chooser { margin: 8px 0 12px; }
+.sspa-history-page-chooser summary { cursor: pointer; font-weight: 600; }
+.sspa-history-page-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 16px; max-height: 320px; overflow: auto; }
+.sspa-history-page-option { overflow-wrap: anywhere; }

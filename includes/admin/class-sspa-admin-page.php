@@ -131,6 +131,7 @@ class SSPA_Admin_Page {
         wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
         wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-chart-library', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
         wp_localize_script('sspa-history-chart', 'sspa_history_chart', array(
+            'plugin_title' => 'Super Speedy Performance Analysis v' . SSPA_VERSION,
             /* translators: 1: analysis ID, 2: request sample number */
             'sample_heading' => __('Analysis #%1$d, request sample %2$d', 'super-speedy-performance-analysis'),
             /* translators: %d: analysis ID */

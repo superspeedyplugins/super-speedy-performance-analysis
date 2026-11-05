@@ -565,7 +565,8 @@ jQuery(document).on('click', '#sspa-history-compare', function () {
 	var filter = chartHost.find('.sspa-history-page-filter').val() || '';
 	var data = jQuery.extend({ action: 'sspa_history_compare', nonce: sspa_admin.nonce,
 		selection_mode: jQuery('#sspa-history-mode').val() || 'pair',
-		metric: chartHost.find('.sspa-history-metric').val() || 'request_wall_ms'
+		metric: chartHost.find('.sspa-history-metric').val() || 'request_wall_ms',
+		include_adhoc: jQuery('#sspa-history-include-adhoc').is(':checked') ? 1 : 0
 	}, sspa_history_pair());
 	chartHost.prop('hidden', true);
 	jQuery('#sspa-history-comparison').text(wp.i18n.__("Loading the selected comparison…", "super-speedy-performance-analysis"));
