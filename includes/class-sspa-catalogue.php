@@ -29,19 +29,24 @@ class SSPA_Catalogue {
      * product, and workflow saves create temporary posts. Either can be the newest published item,
      * and neither is a page a visitor sees.
      */
-    private static function not_own_object($args) {
-        $own = get_posts(array(
+    private static function first_not_own_object($args) {
+        $own = array_map('intval', get_posts(array(
             'post_type' => 'any',
             'post_status' => 'publish',
             'posts_per_page' => 100,
             'fields' => 'ids',
             'meta_key' => SSPA_Checkout_Flow::TEMP_META,
             'no_found_rows' => true,
-        ));
-        if ($own) {
-            $args['post__not_in'] = array_map('intval', $own);
+        )));
+        // One more than the plugin's own objects, skipped here rather than with post__not_in, which
+        // Plugin Check's VIP sniff refuses. There are only ever a handful of them.
+        $args['numberposts'] = 1 + count($own);
+        foreach (get_posts($args) as $post) {
+            if (!in_array((int) $post->ID, $own, true)) {
+                return array($post);
+            }
         }
-        return $args;
+        return array();
     }
 
     public static function build($only_page_keys = array()) {
@@ -71,7 +76,7 @@ class SSPA_Catalogue {
             $add('blog', get_permalink($blog_page));
         }
 
-        $post = get_posts(self::not_own_object(array('numberposts' => 1, 'post_status' => 'publish')));
+        $post = self::first_not_own_object(array('post_status' => 'publish'));
         if ($post) {
             $add('post-single', get_permalink($post[0]));
         }
@@ -93,7 +98,7 @@ class SSPA_Catalogue {
                 $add('shop', get_permalink($shop));
             }
             $add('product-cat', self::biggest_term_link('product_cat'));
-            $product = get_posts(self::not_own_object(array('numberposts' => 1, 'post_type' => 'product', 'post_status' => 'publish')));
+            $product = self::first_not_own_object(array('post_type' => 'product', 'post_status' => 'publish'));
             if ($product) {
                 $add('product-single', get_permalink($product[0]));
             }
@@ -133,7 +138,7 @@ class SSPA_Catalogue {
                 $archive = self::resolve_permastruct_tokens(get_post_type_archive_link($cpt->name));
                 $add('cpt-' . $cpt->name . '-archive', $archive);
             }
-            $single = get_posts(self::not_own_object(array('numberposts' => 1, 'post_type' => $cpt->name, 'post_status' => 'publish')));
+            $single = self::first_not_own_object(array('post_type' => $cpt->name, 'post_status' => 'publish'));
             if ($single) {
                 $add('cpt-' . $cpt->name . '-single', get_permalink($single[0]));
             }

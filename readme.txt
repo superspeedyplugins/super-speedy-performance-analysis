@@ -113,23 +113,15 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.62.1 (5th November 2026) =
+= 0.63.0 (5th November 2026) =
 * The zip now includes an `AGENTS.md` for AI agents, and `SKILL.md` explains how to measure the site before and after adding, updating or removing a plugin with `wp sspa history-compare`.
 * Requires WordPress 6.9 or later, which provides the Abilities API the plugin's agent and MCP features use.
 * Fixed the agent REST path in `SKILL.md`, which is `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 * The zip no longer includes the bundled settings library's developer notes.
-
-= 0.62.0 (5th November 2026) =
 * Fixed a page whose samples returned different status codes, such as 200 and 502, being reported with a status code that does not exist, such as HTTP 351.
-
-= 0.61.6 (5th November 2026) =
 * The Traffic collector now coordinates with database locks instead of a file in the uploads folder, which the WordPress.org Plugin Check requires.
 * A visitor request that waits more than a second for the Traffic lock is skipped and counted, and the collection export lists the count under its limitations.
-
-= 0.61.8 (5th November 2026) =
 * The Compare chart shows whole page labels and no zoom slider when only a few pages are chosen, for cleaner screenshots.
-
-= 0.61.7 (5th November 2026) =
 * Compare now includes pages measured with *Analyse this page* after each of the two runs with the same plugins, labelled by their URL, with a checkbox to leave them out.
 * Added a page chooser to the Compare chart, so you can pick which pages it shows.
 * The Compare chart now shows Super Speedy Performance Analysis, its version and the two runs inside the chart, so screenshots carry them.
