@@ -1,7 +1,7 @@
 === Super Speedy Performance Analysis ===
 Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
-Requires at least: 6.2
+Requires at least: 6.9
 Tested up to: 7.1
 Stable tag: 0.61.4
 Requires PHP: 7.4
@@ -112,6 +112,12 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.62.1 (5th November 2026) =
+* The zip now includes an `AGENTS.md` for AI agents, and `SKILL.md` explains how to measure the site before and after adding, updating or removing a plugin with `wp sspa history-compare`.
+* Requires WordPress 6.9 or later, which provides the Abilities API the plugin's agent and MCP features use.
+* Fixed the agent REST path in `SKILL.md`, which is `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
+* The zip no longer includes the bundled settings library's developer notes.
 
 = 0.62.0 (5th November 2026) =
 * Fixed a page whose samples returned different status codes, such as 200 and 502, being reported with a status code that does not exist, such as HTTP 351.

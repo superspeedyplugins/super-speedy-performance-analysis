@@ -30,7 +30,17 @@ class SSPA_Catalogue {
      * and neither is a page a visitor sees.
      */
     private static function not_own_object($args) {
-        $args['meta_query'] = array(array('key' => SSPA_Checkout_Flow::TEMP_META, 'compare' => 'NOT EXISTS'));
+        $own = get_posts(array(
+            'post_type' => 'any',
+            'post_status' => 'publish',
+            'posts_per_page' => 100,
+            'fields' => 'ids',
+            'meta_key' => SSPA_Checkout_Flow::TEMP_META,
+            'no_found_rows' => true,
+        ));
+        if ($own) {
+            $args['post__not_in'] = array_map('intval', $own);
+        }
         return $args;
     }
 

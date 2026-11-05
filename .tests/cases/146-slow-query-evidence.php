@@ -73,6 +73,9 @@ lg_t(!empty($evidence['plan_steps']), 'the CTE has a stored query plan (' . coun
 // 4: the caller is the real call site, not PA's wrapper.
 lg_t(false === strpos((string) $evidence['caller'], 'SSPA_Profiling_WPDB') && false !== strpos((string) $evidence['caller'], 'WP_Query'), 'the caller is the real call site: ' . $evidence['caller'] . ' (component ' . $finding['component'] . ')');
 // 5: the stored SQL is runnable.
-lg_t(!preg_match('/\{[0-9a-f]{64}\}/', (string) $evidence['sql']) && false !== strpos((string) $evidence['sql'], "LIKE '%Tshirts%'"), 'the stored SQL has % and no placeholder-escape hash: ' . (preg_match("/LIKE '[^']{0,90}'/", (string) $evidence['sql'], $m) ? $m[0] : '-'));
+// The term is the first word of the site's biggest category, which other retained cases change.
+parse_str((string) wp_parse_url((string) ($profile['url'] ?? ''), PHP_URL_QUERY), $search_query);
+$search_term = isset($search_query['s']) ? (string) $search_query['s'] : '';
+lg_t('' !== $search_term && !preg_match('/\{[0-9a-f]{64}\}/', (string) $evidence['sql']) && false !== strpos((string) $evidence['sql'], "LIKE '%" . $search_term . "%'"), 'the stored SQL has % and no placeholder-escape hash: ' . (preg_match("/LIKE '[^']{0,90}'/", (string) $evidence['sql'], $m) ? $m[0] : '-'));
 // 6: the measured URL is stored with the finding.
 lg_t($profile && isset($evidence['page_url']) && $evidence['page_url'] === $profile['url'], 'the finding stores the measured URL as page_url (' . ($evidence['page_url'] ?? 'none') . ')');

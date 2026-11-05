@@ -75,6 +75,13 @@ if [ "$EDITION" = "wporg" ]; then
 else
     [ -f "$ROOT/super-speedy-settings/super-speedy-settings.php" ] \
         && pass "super-speedy-settings bundled" || fail "super-speedy-settings missing from the full zip"
+    for f in AGENTS.md SKILL.md; do
+        [ -f "$ROOT/$f" ] && [ ! -L "$ROOT/$f" ] && pass "agent guide present: $f" || fail "agent guide missing: $f"
+    done
+    grep -q 'Customer agent\|instructions for AI agents' "$ROOT/AGENTS.md" 2>/dev/null \
+        && pass "AGENTS.md is the customer guide" || fail "AGENTS.md is not the customer guide"
+    [ ! -e "$ROOT/super-speedy-settings/AGENTS.md" ] && [ ! -e "$ROOT/super-speedy-settings/CLAUDE.md" ] \
+        && pass "no developer agent files from the settings submodule" || fail "super-speedy-settings developer AGENTS.md/CLAUDE.md shipped"
 fi
 
 # ---------------------------------------------------------------- runtime

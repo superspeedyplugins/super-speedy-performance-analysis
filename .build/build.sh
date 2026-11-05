@@ -132,6 +132,14 @@ ssx_assert_history_chart() {
 
 # The full edition gets the same version check; it has nothing else to verify.
 ssx_hook_full() {
+    # Customer agent instructions. The repository root AGENTS.md is the private developer guide
+    # (a gitignored symlink), so the shipped one is kept in .build and copied in here. Remove the
+    # staged symlinks first: cp would otherwise write through AGENTS.md into the private guide.
+    rm -f "$1/AGENTS.md" "$1/CLAUDE.md"
+    # The settings submodule carries its own developer AGENTS.md/CLAUDE.md; they are not for customers.
+    rm -f "$1/super-speedy-settings/AGENTS.md" "$1/super-speedy-settings/CLAUDE.md"
+    cp "$1/.build/customer-AGENTS.md" "$1/AGENTS.md" || ssx_die "customer AGENTS.md missing"
+    ssx_log "added AGENTS.md"
     ssx_assert_versions_match "$1"
     ssx_assert_history_chart "$1"
     [ -f "$1/super-speedy-settings/super-speedy-settings.php" ] \

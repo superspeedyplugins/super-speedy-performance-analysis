@@ -41,7 +41,7 @@ wp sspa report         # full JSON report of the latest run
 Via MCP/Abilities (when connected to the site's MCP server or the core abilities REST
 controller): call `run-analysis` (async), poll `get-status` until `active` is false, then
 `get-report`. Readonly abilities also answer plain GETs at
-`/wp-json/wp-abilities/v1/abilities/super-speedy-performance/<name>/run`.
+`/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 
 The first run is read-only: it sends roughly four GET requests per page profiled and
 changes nothing. Expect 1-5 minutes on a typical site.
@@ -86,7 +86,58 @@ hit the site while it runs.
 If the site has Redis/Memcached, `wp sspa run --type=cache_impact` additionally reveals
 which plugins ignore the object cache.
 
-## 5. Cache optimisation and experimental traffic evidence
+## 5. Before and after adding or updating a plugin
+
+When the owner is about to install, update or remove a plugin (or switch theme), measure the
+site either side of the change so the cost of that one change is known, not guessed.
+
+```bash
+wp sspa run --porcelain                 # Before: prints only the run id, e.g. 41
+wp plugin install some-plugin --activate   # the change itself (or update / deactivate)
+wp sspa run --porcelain                 # After: e.g. 42
+wp sspa history-compare 41 42           # privacy-safe Before/After comparison as JSON
+```
+
+Measure Before immediately before the change. An older run is only a fair Before if nothing else
+(plugins, theme, settings, content volume) has changed since; `setup_changes` in the comparison
+lists every plugin and theme change between the two runs, so check it names only the change you
+made. For a long site, `--type=spot --pages=home,shop` on both sides keeps each run to the pages
+the plugin affects, as long as Before and After use the same pages.
+
+Via MCP/Abilities: `run-analysis`, poll `get-status` until `active` is false, make the change,
+`run-analysis` again, then `compare-history` with `before_run_id` and `after_run_id`. `list-runs`
+finds earlier run ids.
+
+Reading the comparison (`schema: sspa/performance-history-comparison@1`):
+
+- `comparison.setup_changes` - what changed, e.g. `{"slug":"contact-form-7","before_version":"",
+  "after_version":"6.2.4.1","state":"added"}`.
+- `comparison.headline` - the median page generation time Before and After, with `delta` and
+  `percent`.
+- `comparison.new_diagnostics` - new PHP fatals, warnings, HTTP and transport errors, and
+  critical findings that appeared After. Any non-zero count is the first thing to report.
+- `comparison.pages[]` - per page and variant: `metrics` (`generation_ms`, `ttfb_ms`, `sql_ms`,
+  `sql_count`, `rows_fetched`, `http_ms` and more, each with before/after/delta), `response_code`
+  and `validity`. A page whose validity or response code changes from Before to After is broken by
+  the change; one that fails on both sides was already failing (a 404 test page is expected to).
+- `comparison.summary.output_changes` - pages whose output changed. Expected for a plugin that adds
+  something to pages; unexpected changes deserve a look.
+
+A single run on each side carries ordinary run-to-run noise of a few milliseconds and a few per
+cent. Before reporting a small delta as the plugin's cost, either repeat both runs, or prove it:
+
+```bash
+wp sspa run --type=deep --suspects=some-plugin   # re-measures with the plugin virtually disabled
+wp sspa impacts                                  # its measured cost, with a noise floor
+```
+
+That is the Plugin Impact Analysis from section 4 (`run-deep-analysis` and `get-plugin-impacts`
+over MCP), and it is the best evidence for what a newly added plugin costs on every page.
+
+Report: what changed, the headline delta, any new diagnostics or broken pages, and which pages
+got slower or run more queries, with the measured numbers.
+
+## 6. Cache optimisation and experimental traffic evidence
 
 The normal analysis immediately produces a cache optimisation analysis. It assesses hazards
 and likely implementation difficulty without running a traffic collector:
@@ -125,7 +176,7 @@ identified as automation as human.
 Raw deletion is deliberately not an MCP ability. After downloading the observations, the owner
 can use the Traffic tab or `wp sspa traffic delete <collection-id> --yes`.
 
-## 6. WooCommerce: measure the checkout the customer actually experiences
+## 7. WooCommerce: measure the checkout the customer actually experiences
 
 Everything above profiles pages as GETs, which for the cart and checkout means an EMPTY
 cart. On a block checkout the real cost is in POSTs a crawler never sends. The checkout flow
@@ -166,7 +217,7 @@ real fallback postcode for) reports `checkout_address_incomplete` before anythin
 the cart; relay its message, which says to set the store postcode in WooCommerce > Settings >
 General.
 
-## 7. Cautions
+## 8. Cautions
 
 - Do not enable community sharing yourself - only the site owner may opt in (Share tab).
 - If pages report `blocked_by`, a security plugin blocked the loopbacks: relay the
