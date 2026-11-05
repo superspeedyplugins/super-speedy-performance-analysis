@@ -58,6 +58,10 @@ source "$PLUGIN_DIR/.tests/local-services.sh" || exit 1
 cli option update admin_email synthetic-admin@example.invalid --quiet
 cli option update show_avatars 0 --quiet
 for vendor in woocommerce wordpress-importer redis-cache; do
+    # A link into another retained site dangles once that site is removed; relink it.
+    if [ -L "$SSPA_SITE_DIR/wp-content/plugins/$vendor" ] && [ ! -e "$SSPA_SITE_DIR/wp-content/plugins/$vendor" ]; then
+        rm "$SSPA_SITE_DIR/wp-content/plugins/$vendor"
+    fi
     if [ ! -e "$SSPA_SITE_DIR/wp-content/plugins/$vendor" ]; then
         for source in "$MAIN_SITE/wp-content/plugins/$vendor" "$SITES_ROOT/$PLUGIN_SLUG"/*/wp-content/plugins/"$vendor"; do
             if [ -d "$source" ]; then ln -s "$source" "$SSPA_SITE_DIR/wp-content/plugins/$vendor"; break; fi

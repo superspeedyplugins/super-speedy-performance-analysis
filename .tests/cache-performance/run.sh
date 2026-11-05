@@ -64,6 +64,12 @@ fetch_wporg() {
     fi
 }
 
+# A retained site can be left on another theme by other work (ColorMag's wp-admin review notice
+# overflowed the phone-width check). Start nocache and nowoo on the core default; enabler sets Neve below.
+if [ "$KIND" != enabler ]; then
+    cli theme activate twentytwentyfive --quiet || exit 1
+fi
+
 cli option delete sspa_cache_delivery_report --quiet 2>/dev/null || true
 cli option delete sspa_cache_delivery_pending --quiet 2>/dev/null || true
 
