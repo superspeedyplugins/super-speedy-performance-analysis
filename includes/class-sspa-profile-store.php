@@ -137,7 +137,7 @@ class SSPA_Profile_Store {
             'cache_misses' => $metric(array('cache', 'misses')),
             'mail_count' => $metric(array('mail', 'count')),
             'mail_ms' => $metric(array('mail', 'total_construct_ms')),
-            'response_code' => $codes ? (int) self::median($codes) : null,
+            'response_code' => $codes ? self::representative_code($codes) : null,
             'blocked_by' => $result['blocked_by'],
             'profile_blob' => $median_capture ? gzcompress(wp_json_encode($median_capture), 6) : null,
             'created' => gmdate('Y-m-d H:i:s'),
@@ -255,6 +255,17 @@ class SSPA_Profile_Store {
             return 'theme';
         }
         return 0 === strpos($component, 'mu:') ? 'mu-plugin' : 'plugin';
+    }
+
+    /**
+     * The status code to report for a page: the most common among its samples, and on a tie the
+     * highest, so an even split between success and failure reports the failure. Never a median:
+     * 200 and 502 averaged to "HTTP 351" (.docs/2026-11-05-response-code-median.md).
+     */
+    public static function representative_code($codes) {
+        $counts = array_count_values(array_map('intval', $codes));
+        $most = max($counts);
+        return max(array_keys(array_filter($counts, function ($count) use ($most) { return $count === $most; })));
     }
 
     public static function median($values) {
