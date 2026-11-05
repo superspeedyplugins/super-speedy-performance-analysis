@@ -113,7 +113,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.61.9 (5th November 2026) =
+= 0.62.0 (5th November 2026) =
 * Fixed a page whose samples returned different status codes, such as 200 and 502, being reported with a status code that does not exist, such as HTTP 351.
 
 = 0.61.5 (5th November 2026) =
