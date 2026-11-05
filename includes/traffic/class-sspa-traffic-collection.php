@@ -674,6 +674,7 @@ class SSPA_Traffic_Collection {
             (int) $status['collection']['origin_sample_modulus'],
             $duration_seconds
         );
+        $lock_skips = SSPA_Traffic_Authority::skips((string) get_option(SSPA_Traffic_Authority::option((int) $status['collection']['id']), ''));
         $payload = array(
             'schema' => SSPA_Traffic_Privacy::SCHEMA,
             'generated_at' => gmdate('c'),
@@ -712,7 +713,9 @@ class SSPA_Traffic_Collection {
                 'distinct_created_orders_with_observed_paid_event' => $linked_paid,
             ),
             'commercial_value_observations' => $values,
-            'limitations' => array(
+            // Requests not observed because every reader slot stayed busy past its timeout.
+            'observer_lock_skips' => $lock_skips,
+            'limitations' => array_merge($lock_skips ? array('requests_skipped_while_the_traffic_lock_was_busy') : array(), array(
                 'experimental_phase_3_observations_not_a_traffic_performance_report',
                 'anonymous_origin_requests_are_sampled',
                 'edge_cache_hits_are_not_visible',
@@ -721,7 +724,7 @@ class SSPA_Traffic_Collection {
                 'not_identified_as_automation_does_not_mean_human',
                 'wordpress_origin_rows_are_requests_not_served_entirely_by_an_upstream_page_cache_or_cdn',
                 'cloudflare_edge_hits_require_a_matching_cloudflare_analytics_export',
-            ),
+            )),
         );
         $problems = SSPA_Traffic_Privacy::validate_export($payload);
         if ($problems) {
