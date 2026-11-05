@@ -126,6 +126,14 @@ The chart bundle includes the licence and notice files; its reproducible source 
 * The Traffic collector now coordinates with database locks instead of a file in the uploads folder, which the WordPress.org Plugin Check requires.
 * A visitor request that waits more than a second for the Traffic lock is skipped and counted, and the collection export lists the count under its limitations.
 
+= 0.61.8 (5th November 2026) =
+* The Compare chart shows whole page labels and no zoom slider when only a few pages are chosen, for cleaner screenshots.
+
+= 0.61.7 (5th November 2026) =
+* Compare now includes pages measured with *Analyse this page* after each of the two runs with the same plugins, labelled by their URL, with a checkbox to leave them out.
+* Added a page chooser to the Compare chart, so you can pick which pages it shows.
+* The Compare chart now shows Super Speedy Performance Analysis, its version and the two runs inside the chart, so screenshots carry them.
+
 = 0.61.5 (5th November 2026) =
 * Profiling requests identify themselves to Super Speedy Filters 6.67.4 and later, so its request limiter does not slow them down.
 

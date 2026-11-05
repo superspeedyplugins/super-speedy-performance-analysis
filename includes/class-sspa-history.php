@@ -250,7 +250,16 @@ class SSPA_History {
     }
 
     public static function render($comparison) {
-        return SSPA_History_View::render($comparison);
+        // Display labels (a URL for pages measured by URL) are looked up here, never added to the
+        // comparison, whose page entries are an exact allowlist shared with the export.
+        $labels = array();
+        foreach (array('before', 'after') as $side) {
+            $run_id = isset($comparison[$side]['id']) ? (int) $comparison[$side]['id'] : 0;
+            foreach ($run_id ? SSPA_History_Series::profile_rows($run_id) : array() as $profile) {
+                $labels[SSPA_History_Series::page_identity($profile)] = SSPA_History_Series::page_label($profile['page_key'], $profile['url']);
+            }
+        }
+        return SSPA_History_View::render($comparison, $labels);
     }
 
     public static function ajax_compare() {

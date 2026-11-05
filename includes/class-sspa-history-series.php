@@ -169,15 +169,23 @@ class SSPA_History_Series {
         return hash('sha256', wp_json_encode($components));
     }
 
+    /**
+     * Whether a run's pages include those measured with "Analyse this page" after it (see
+     * adhoc_profile_rows()). On by default; Compare's "Include pages measured with Analyse this
+     * page" checkbox turns it off for one request.
+     */
+    public static $include_adhoc = true;
+
     /** Purpose-specific, bounded evidence read documented in the SQL review. */
     public static function profile_rows($run_id) {
         global $wpdb;
         static $cache = array();
         $run_id = (int) $run_id;
-        if (isset($cache[$run_id])) {
-            return $cache[$run_id];
+        $key = $run_id . (self::$include_adhoc ? '+adhoc' : '');
+        if (isset($cache[$key])) {
+            return $cache[$key];
         }
-        $cache[$run_id] = $wpdb->get_results($wpdb->prepare(
+        $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT id, page_key, url, method, variant, object_cache_mode, plugin_set_hash, samples,
                     page_gen_ms, ttfb_ms, sql_ms, sql_count, rows_returned_total,
                     http_ms, php_ms, peak_mem_bytes, dupe_query_count, mail_count,
@@ -186,7 +194,53 @@ class SSPA_History_Series {
             SSPA_Schema::table('profiles'),
             $run_id
         ), ARRAY_A);
-        return $cache[$run_id];
+        if (self::$include_adhoc) {
+            $rows = array_merge($rows, self::adhoc_profile_rows($run_id, $rows));
+        }
+        $cache[$key] = $rows;
+        return $rows;
+    }
+
+    /**
+     * Pages measured one at a time ("Analyse this page", type 'adhoc') belong with the run they
+     * followed: the completed adhoc runs after $run_id and before the next baseline or spot run,
+     * with the same plugin set. The latest profile per page identity wins, and a page the run
+     * itself measured is never replaced. SQL review: .docs/2026-11-05-compare-custom-pages-sql-review.md
+     */
+    private static function adhoc_profile_rows($run_id, $own_rows) {
+        global $wpdb;
+        $runs = SSPA_Schema::table('runs');
+        $run = $wpdb->get_row($wpdb->prepare("SELECT id, run_type, plugin_set_hash FROM %i WHERE id = %d", $runs, $run_id), ARRAY_A);
+        if (!$run || 'adhoc' === $run['run_type']) {
+            return array();
+        }
+        $next = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT MIN(id) FROM %i WHERE id > %d AND run_type IN ('baseline', 'spot')",
+            $runs,
+            $run_id
+        ));
+        $adhoc_ids = $wpdb->get_col($wpdb->prepare(
+            "SELECT id FROM %i WHERE id > %d AND id < %d AND run_type = 'adhoc' AND status = 'done' AND plugin_set_hash = %s ORDER BY id DESC",
+            $runs,
+            $run_id,
+            $next ? $next : PHP_INT_MAX,
+            (string) $run['plugin_set_hash']
+        ));
+        $taken = array();
+        foreach ($own_rows as $row) {
+            $taken[self::page_identity($row)] = true;
+        }
+        $rows = array();
+        foreach ($adhoc_ids as $adhoc_id) {
+            foreach (self::profile_rows((int) $adhoc_id) as $profile) {
+                $identity = self::page_identity($profile);
+                if (!isset($taken[$identity])) {
+                    $taken[$identity] = true;
+                    $rows[] = $profile;
+                }
+            }
+        }
+        return $rows;
     }
 
     public static function page_identity($profile) {
@@ -229,7 +283,7 @@ class SSPA_History_Series {
                             'method' => strtoupper(sanitize_key($profile['method'])),
                             'variant' => sanitize_key($profile['variant']),
                             'object_cache_mode' => sanitize_key($profile['object_cache_mode']),
-                            'label' => self::page_label($profile['page_key']),
+                            'label' => self::page_label($profile['page_key'], $profile['url']),
                             'relative_url' => self::relative_url($profile['url']),
                             'configuration' => !empty($profile['plugin_set_hash']) ? $profile['plugin_set_hash'] : '',
                             'previous' => array('points' => array(), 'faults' => array(), 'output_signatures' => array()),
@@ -476,8 +530,16 @@ class SSPA_History_Series {
         return $order;
     }
 
-    private static function page_label($page_key) {
-        return ucwords(str_replace(array('-', '_'), ' ', sanitize_key($page_key)));
+    /** Catalogue pages by name; a page measured by URL (url-*, endpoint-*) by its relative URL. */
+    public static function page_label($page_key, $url = '') {
+        $page_key = sanitize_key($page_key);
+        if ($url && preg_match('/^(url|endpoint)-/', $page_key)) {
+            $relative = self::relative_url($url);
+            if ('' !== $relative) {
+                return $relative;
+            }
+        }
+        return ucwords(str_replace(array('-', '_'), ' ', $page_key));
     }
 
     private static function relative_url($url) {

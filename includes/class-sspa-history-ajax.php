@@ -14,6 +14,7 @@ class SSPA_History_Ajax {
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
         // Resolve once so the chart and report cannot silently describe different runs.
         $mode = isset($_POST['selection_mode']) ? sanitize_key(wp_unslash($_POST['selection_mode'])) : 'pair';
+        SSPA_History_Series::$include_adhoc = !isset($_POST['include_adhoc']) || '0' !== sanitize_key(wp_unslash($_POST['include_adhoc']));
         $series = SSPA_History_Series::build(
             isset($_POST['after_run_id']) ? (int) $_POST['after_run_id'] : 0,
             isset($_POST['metric']) ? sanitize_key(wp_unslash($_POST['metric'])) : 'request_wall_ms',

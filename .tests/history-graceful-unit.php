@@ -24,6 +24,19 @@ class HistoryFixtureStorage {
     public $environments = array(1 => array('php' => '8.1'));
     public function prepare($sql, ...$args) { foreach ($args as $arg) { $sql = preg_replace('/%[id]/', (string) $arg, $sql, 1); } return $sql; }
     public function get_row($sql, $format) { preg_match('/WHERE id = (\d+)/', $sql, $m); return strpos($sql, 'sspa_runs') !== false ? ($this->runs[(int) ($m[1] ?? 0)] ?? null) : array('metrics' => json_encode($this->environments[(int) ($m[1] ?? 0)] ?? null)); }
+    /** The next baseline/spot run after an ID (0.61.7 ad hoc page lookup). */
+    public function get_var($sql) {
+        preg_match('/id > (\d+)/', $sql, $m);
+        $after = (int) ($m[1] ?? 0);
+        $next = array_filter($this->runs, function ($run) use ($after) { return $run['id'] > $after && in_array($run['run_type'], array('baseline', 'spot'), true); });
+        return $next ? min(array_keys($next)) : null;
+    }
+    /** Completed ad hoc runs between two IDs with one plugin set hash, newest first. */
+    public function get_col($sql) {
+        preg_match('/id > (\d+) AND id < (\d+)/', $sql, $m);
+        $runs = array_filter($this->runs, function ($run) use ($m) { return 'adhoc' === $run['run_type'] && 'done' === $run['status'] && $run['id'] > (int) $m[1] && $run['id'] < (int) $m[2]; });
+        return array_reverse(array_keys($runs));
+    }
     public function get_results($sql, $format) {
         if (strpos($sql, 'sspa_runs') !== false) { $rows = array_reverse(array_values($this->runs)); return strpos($sql, 'LIMIT 50') !== false ? array_slice($rows, 0, 50) : $rows; }
         preg_match('/run_id = (\d+)/', $sql, $m);
@@ -33,7 +46,7 @@ class HistoryFixtureStorage {
 }
 $wpdb = new HistoryFixtureStorage();
 for ($id = 1; $id <= 60; $id++) {
-    $wpdb->runs[$id] = array('id' => $id, 'status' => 'done', 'run_type' => 'spot', 'measurement_version' => 1,
+    $wpdb->runs[$id] = array('id' => $id, 'status' => 'done', 'run_type' => 'spot', 'measurement_version' => 1, 'plugin_set_hash' => '',
         'plugin_set' => json_encode(array('components' => array(array('type' => 'plugin', 'slug' => 'custom-fixture', 'version' => '1.0')))),
         'site_metrics_id' => 1, 'share_context' => '{}', 'started' => '2026-01-01 00:00:00', 'finished' => '2026-01-01 00:01:00');
     $wpdb->profiles[$id] = array(array('id' => $id, 'page_key' => 'home', 'url' => 'https://example.test/', 'method' => 'GET', 'variant' => 'anon', 'object_cache_mode' => 'normal',

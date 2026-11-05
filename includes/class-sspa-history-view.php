@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 /** HTML adapter for the History comparison document. */
 class SSPA_History_View {
-    public static function render($comparison) {
+    public static function render($comparison, $page_labels = array()) {
         if (is_wp_error($comparison)) {
             return '<div class="notice notice-error inline"><p>' . esc_html($comparison->get_error_message()) . '</p></div>';
         }
@@ -116,7 +116,7 @@ class SSPA_History_View {
                 <?php foreach ($comparison['pages'] as $page) :
                     $gen = $page['metrics']['generation_ms']; ?>
                     <tr>
-                        <td><code><?php echo esc_html($page['page_key']); ?></code><br><span class="description"><?php echo esc_html($page['variant']); ?></span></td>
+                        <td><?php $sspa_label = isset($page_labels[$page['key']]) ? $page_labels[$page['key']] : ''; ?><?php if ($sspa_label && 0 === strpos($sspa_label, '/')) : ?><code><?php echo esc_html($sspa_label); ?></code><?php else : ?><code><?php echo esc_html($page['page_key']); ?></code><?php endif; ?><br><span class="description"><?php echo esc_html($page['variant']); ?></span></td>
                         <td>
                             <span class="sspa-history-validity-<?php echo esc_attr($page['validity']['before']); ?>"><?php echo esc_html($page['validity']['before']); ?></span>
                             &rarr;
