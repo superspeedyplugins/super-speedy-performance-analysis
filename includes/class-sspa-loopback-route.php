@@ -173,9 +173,30 @@ class SSPA_Loopback_Route {
         return array('route' => 'public', 'address' => '');
     }
 
+    /**
+     * Add Super Speedy Filters' own-server token to an own-origin loopback, so its public rate limiter
+     * does not count profiling requests as a visitor's (Filters 6.67.4 and later exempt only requests
+     * carrying it). Never sent to another host. With an older Filters, or none, nothing is added and
+     * the loopbacks are counted like any visitor's.
+     */
+    public static function with_own_server_token($url, $headers) {
+        $headers = is_array($headers) ? $headers : array();
+        if (!self::is_own_origin($url)
+            || !function_exists('sspssf_rate_limit_own_server_token')
+            || !function_exists('sspssf_rate_limit_own_server_header')) {
+            return $headers;
+        }
+        $token = (string) sspssf_rate_limit_own_server_token();
+        if ('' !== $token) {
+            $headers[sspssf_rate_limit_own_server_header()] = $token;
+        }
+        return $headers;
+    }
+
     /** Send one loopback over the current route. Called only by SSPA_Crawler::request(). */
     public static function send($url, $args) {
         $args['headers'] = self::with_credentials($url, isset($args['headers']) ? $args['headers'] : array());
+        $args['headers'] = self::with_own_server_token($url, $args['headers']);
         $route = self::current();
         if ('direct' !== $route['route'] || !self::is_own_origin($url)) {
             return wp_remote_request($url, $args);

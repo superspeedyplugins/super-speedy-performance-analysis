@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.61.5 (5th November 2026) =
+* Profiling requests identify themselves to Super Speedy Filters 6.67.4 and later, so its request limiter does not slow them down.
+
 = 0.61.4 (5th November 2026) =
 * A failed or cancelled analysis now says why, so Scalability Pro and other callers can show the reason.
 
