@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.61.8 (5th November 2026) =
+* The Compare chart shows whole page labels and no zoom slider when only a few pages are chosen, for cleaner screenshots.
+
 = 0.61.7 (5th November 2026) =
 * Compare now includes pages measured with *Analyse this page* after each of the two runs with the same plugins, labelled by their URL, with a checkbox to leave them out.
 * Added a page chooser to the Compare chart, so you can pick which pages it shows.

@@ -180,7 +180,7 @@
 				subtextStyle: {fontSize: 12, color: '#50575e'}
 			},
 			legend: {top: 50, data: [wp.i18n.__("Previous measurements", "super-speedy-performance-analysis"), wp.i18n.__("Recent measurements", "super-speedy-performance-analysis")]},
-			grid: {left: 96, right: 28, top: 96, bottom: 180},
+			grid: {left: 96, right: 28, top: 96, bottom: labels.length <= 8 ? 310 : 180},
 			tooltip: {
 				trigger: 'item',
 				renderMode: 'html',
@@ -222,7 +222,9 @@
 				type: 'category',
 				data: labels,
 				tooltip: {show: true, formatter: function (params) { return pageTooltip(byKey[params.value]); }},
-				axisLabel: {interval: 0, rotate: 90, fontSize: 11, lineHeight: 12, width: 140,
+				// Vertical so neighbours never overlap. With a handful of chosen pages there is room
+				// below the plot for whole labels, such as long custom URLs.
+				axisLabel: {interval: 0, rotate: 90, fontSize: 11, lineHeight: 12, width: labels.length <= 8 ? 280 : 140,
 					overflow: 'truncate', margin: 12, formatter: function (key) { return axisLabel(byKey[key]); }},
 				axisTick: {alignWithLabel: false},
 				splitLine: {show: true, interval: 0, lineStyle: {color: '#e8eaed', width: 1}},
@@ -238,7 +240,7 @@
 				min: 0,
 				axisLabel: {formatter: function (value) { return unitValue(value, unit); }}
 			},
-			dataZoom: labels.length > 5 || visibleEnd < labels.length - 1 ? [
+			dataZoom: visibleEnd < labels.length - 1 ? [
 				{type: 'inside', xAxisIndex: 0, filterMode: 'filter', startValue: 0, endValue: visibleEnd},
 				{type: 'slider', xAxisIndex: 0, bottom: 14, height: 24, filterMode: 'filter', startValue: 0, endValue: visibleEnd}
 			] : [{type: 'inside', xAxisIndex: 0, filterMode: 'filter'}],
@@ -272,7 +274,14 @@
 				this.hidden = (!!filter && (this.getAttribute('data-page-label') || '').indexOf(filter) === -1)
 					|| (!!pageSelection && !!key && pageSelection.indexOf(key) === -1);
 			});
-			chart.setOption(optionFor(documentData, filter, mount.clientWidth), true);
+			var option = optionFor(documentData, filter, mount.clientWidth);
+			// A handful of chosen pages gets whole labels below the plot, so give the chart the height.
+			var tall = option.xAxis.data.length <= 8 ? '760px' : '';
+			if (mount.style.height !== tall) {
+				mount.style.height = tall;
+				chart.resize();
+			}
+			chart.setOption(option, true);
 			chart.off('click');
 			chart.on('click', function (event) {
 				if (event.data && event.data.savedPoint) inspectPoint(card, event.data.savedPoint);
