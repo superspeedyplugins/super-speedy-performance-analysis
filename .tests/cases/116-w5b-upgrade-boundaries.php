@@ -30,11 +30,17 @@ try {
 } finally { file_put_contents($path,$before); }
 $uploads=wp_upload_dir();
 $r=wp_remote_get(str_replace($uploads['basedir'],$uploads['baseurl'],SSPA_Traffic_Authority::path()),array('timeout'=>15));
-w5b_t(''===wp_remote_retrieve_body($r),'authority data cannot be read over HTTP');
-// wp.org review round 1: state lives in the database; the uploads lock file stays empty and no PHP is written there.
+w5b_t(200!==(int)wp_remote_retrieve_response_code($r)||''===wp_remote_retrieve_body($r),'authority data cannot be read over HTTP');
+// wp.org review round 1: state lives in the database and no PHP is written to uploads. Since 0.61.6 the
+// lock is MySQL GET_LOCK(), so no lock file exists either (Plugin Check refused fopen()/flock()).
 clearstatcache();
 $data_dir=dirname(SSPA_Traffic_Authority::path());
-w5b_t(is_file(SSPA_Traffic_Authority::path())&&0===filesize(SSPA_Traffic_Authority::path())&&!glob($data_dir.'/*.php'),'the authority lock file is empty and no PHP file is written to uploads');
+w5b_t(!is_file(SSPA_Traffic_Authority::path())&&!glob($data_dir.'/*.php'),'no authority lock file and no PHP file is written to uploads');
+// An upgrade from a flock() version removes the old empty lock file.
+file_put_contents(SSPA_Traffic_Authority::path(),'');
+SSPA_Traffic_Authority::migrate();
+clearstatcache();
+w5b_t(!is_file(SSPA_Traffic_Authority::path()),'migrate() removes the pre-0.61.6 empty lock file');
 w5b_t(is_array(get_option('sspa_traffic_authority'))&&is_file($data_dir.'/.htaccess')&&is_file($data_dir.'/index.html'),'authority state is a database option and the data folder is closed to direct access');
 
 // Reproduce the old disabled authority state using real deactivation state.
@@ -42,7 +48,7 @@ wp_set_current_user(1);
 SSPA_Install::deactivate();
 $state=wp_json_encode(get_option('sspa_traffic_authority'));
 $legacy=SSPA_MU_DIR.'/sspa-traffic-authority.json';
-file_put_contents($legacy,$state);delete_option('sspa_traffic_authority');unlink(SSPA_Traffic_Authority::path());
+file_put_contents($legacy,$state);delete_option('sspa_traffic_authority');
 update_option('sspa_behaviour_version','0.43.4');
 SSPA_Install::activate();SSPA_Install::maybe_upgrade();
 try {$start=SSPA_Traffic_Collection::start('1h','test');}

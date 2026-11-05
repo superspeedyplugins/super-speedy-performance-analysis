@@ -3,16 +3,29 @@ defined('ABSPATH') || exit;
 
 /**
  * Site-local collection authority. The state (generation, enabled) is a non-autoloaded
- * option; an empty lock file in this plugin's uploads folder provides the flock that
- * serialises lifecycle changes against in-flight observer writes. Nothing is written to it.
+ * option; MySQL named locks serialise lifecycle changes against in-flight observer writes.
+ *
+ * A reader-writer lock built from GET_LOCK(), which is exclusive only: a reader takes one of N
+ * slot locks at random, a writer takes the writer lock and then every slot in a fixed order, so
+ * it waits for in-flight readers and blocks new ones. Lock names are server-wide, so they carry
+ * a hash of this site's database and table prefix. Locks belong to the database connection and
+ * are released if the request dies. (Until 0.61.6 this was flock() on an empty file in uploads,
+ * which the wordpress.org Plugin Check refuses: WP_Filesystem cannot lock.)
  */
 class SSPA_Traffic_Authority {
+    /** The empty lock file used before 0.61.6, removed by migrate(). */
     const FILE = 'sspa-traffic.lock';
     const OPTION = 'sspa_traffic_authority';
     /** The state file used before 0.53.1, read once by migrate(). */
     const LEGACY_FILE = 'sspa-traffic-authority.php';
     const LEGACY_GUARD = "<?php exit; ?>\n";
-    private static $handle = null;
+    const SLOTS = 8;
+    /** A reader waits this long for its slot, then skips observing that request (counted). */
+    const READER_TIMEOUT = 1;
+    const WRITER_TIMEOUT = 30;
+    const SKIPS_PREFIX = 'sspa_traffic_lock_skips_';
+    /** @var string[] Lock names held by this request, in acquisition order. */
+    private static $held = array();
     private static $exclusive = false;
 
     public static function path() {
@@ -22,10 +35,15 @@ class SSPA_Traffic_Authority {
 
     /** True once Traffic has ever taken authority on this site. */
     public static function exists() {
-        return is_file(self::path()) || null !== self::stored();
+        return null !== self::stored();
     }
 
     public static function migrate() {
+        if (is_file(self::path())) {
+            // The pre-0.61.6 flock file. An observer still running old code may hold it for the
+            // length of one request; deleting the path does not disturb an open handle.
+            SSPA_Filesystem::direct()->delete(self::path());
+        }
         $dir = dirname(self::path());
         $files = array(
             SSPA_MU_DIR . '/sspa-traffic-authority.json',
@@ -53,36 +71,68 @@ class SSPA_Traffic_Authority {
     }
 
     public static function synchronized($exclusive, $callback) {
-        if (self::$handle) {
+        if (self::$held) {
             if ($exclusive && !self::$exclusive) {
                 throw new RuntimeException('Cannot upgrade a traffic reader lock.');
             }
             return call_user_func($callback);
         }
-        if ($exclusive && !SSPA_Traffic_Helper::data_dir()) {
-            throw new RuntimeException('Cannot create the traffic authority directory.');
+        $names = $exclusive ? self::writer_names() : array(self::reader_name());
+        $acquired = array();
+        foreach ($names as $name) {
+            if (!self::get_lock($name, $exclusive ? self::WRITER_TIMEOUT : self::READER_TIMEOUT)) {
+                self::release($acquired);
+                if (!$exclusive) {
+                    throw new SSPA_Traffic_Lock_Busy('The traffic reader slot is busy.');
+                }
+                throw new RuntimeException('Cannot lock the traffic authority.');
+            }
+            $acquired[] = $name;
         }
-        // An empty lock file: flock needs a PHP stream, which WP_Filesystem cannot provide. Mode
-        // 'c' creates it without truncating and nothing is ever written through this handle.
-        $handle = fopen(self::path(), $exclusive ? 'c' : 'r');
-        if (!$handle) {
-            throw new RuntimeException('Cannot open the traffic authority file.');
-        }
-        if (!flock($handle, $exclusive ? LOCK_EX : LOCK_SH)) {
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close the local authority flock stream; WP_Filesystem cannot manage its PHP resource.
-            fclose($handle);
-            throw new RuntimeException('Cannot lock the traffic authority file.');
-        }
-        self::$handle = $handle;
+        self::$held = $acquired;
         self::$exclusive = $exclusive;
         try {
             return call_user_func($callback);
         } finally {
-            self::$handle = null;
+            self::$held = array();
             self::$exclusive = false;
-            flock($handle, LOCK_UN);
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close the local authority flock stream after unlocking; WP_Filesystem cannot manage its PHP resource.
-            fclose($handle);
+            self::release($acquired);
+        }
+    }
+
+    /** Server-wide lock names, scoped to this site's database and table prefix (64-character limit). */
+    private static function base() {
+        global $wpdb;
+        return 'sspa_traffic_' . substr(md5(DB_NAME . '|' . $wpdb->prefix), 0, 24);
+    }
+
+    private static function slots() {
+        return max(1, min(64, (int) apply_filters('sspa_traffic_lock_slots', self::SLOTS)));
+    }
+
+    private static function reader_name() {
+        return self::base() . ':r' . random_int(0, self::slots() - 1);
+    }
+
+    /** The writer lock, then every reader slot in a fixed order, so writers cannot deadlock. */
+    private static function writer_names() {
+        $names = array(self::base() . ':w');
+        for ($slot = 0, $count = self::slots(); $slot < $count; $slot++) {
+            $names[] = self::base() . ':r' . $slot;
+        }
+        return $names;
+    }
+
+    private static function get_lock($name, $timeout) {
+        global $wpdb;
+        // 1 = acquired, 0 = timed out, NULL = error; only 1 is success.
+        return '1' === (string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, %d)', $name, $timeout));
+    }
+
+    private static function release($names) {
+        global $wpdb;
+        foreach (array_reverse($names) as $name) {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
         }
     }
 
@@ -161,20 +211,52 @@ class SSPA_Traffic_Authority {
         // request. Real deactivation revokes this durable generation under the same lock.
     }
 
-    /** The shared lock remains held through both event and endpoint writes. */
+    /**
+     * The reader lock remains held through both event and endpoint writes. A request that cannot
+     * get a reader slot within READER_TIMEOUT is not observed, and is counted for its collection
+     * so the loss is reported (skips()), never silent.
+     */
     public static function observe($config, $callback) {
-        if (empty($config['generation']) || !is_file(self::path())) {
+        if (empty($config['generation'])) {
             return false;
         }
-        return self::synchronized(false, static function() use ($config, $callback) {
-            if (!self::permits($config['generation'])) {
-                return false;
-            }
-            return call_user_func($callback);
-        });
+        try {
+            return self::synchronized(false, static function() use ($config, $callback) {
+                if (!self::permits($config['generation'])) {
+                    return false;
+                }
+                return call_user_func($callback);
+            });
+        } catch (SSPA_Traffic_Lock_Busy $busy) {
+            self::count_skip($config['generation']);
+            return false;
+        }
+    }
+
+    private static function skips_option($generation) {
+        return self::SKIPS_PREFIX . substr(md5((string) $generation), 0, 24);
+    }
+
+    /** One atomic statement, so concurrent skipped requests are all counted. */
+    private static function count_skip($generation) {
+        global $wpdb;
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, '1', 'off')
+             ON DUPLICATE KEY UPDATE option_value = option_value + 1",
+            self::skips_option($generation)
+        ));
+    }
+
+    /** Requests a collection could not observe because every attempt timed out on its reader slot. */
+    public static function skips($generation) {
+        global $wpdb;
+        return (int) $wpdb->get_var($wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", self::skips_option($generation)));
     }
 
     public static function option($collection_id) {
         return 'sspa_traffic_generation_' . (int) $collection_id;
     }
 }
+
+/** A reader could not get its slot in time: skip observing this request. */
+class SSPA_Traffic_Lock_Busy extends RuntimeException {}
