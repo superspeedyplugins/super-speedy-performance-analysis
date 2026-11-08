@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.63.1 (8th November 2026) =
+* Updated super-speedy-settings to the latest version
+
 = 0.63.0 (5th November 2026) =
 * The zip now includes an `AGENTS.md` for AI agents, and `SKILL.md` explains how to measure the site before and after adding, updating or removing a plugin with `wp sspa history-compare`.
 * Requires WordPress 6.9 or later, which provides the Abilities API the plugin's agent and MCP features use.
