@@ -55,7 +55,7 @@ class SSPA_Parameter_Check {
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('You are not allowed to run this check.', 'super-speedy-performance-analysis')), 403);
         }
-        $prepared = self::prepare();
+        $prepared = self::build_check();
         if (is_wp_error($prepared)) {
             wp_send_json_error(array('message' => $prepared->get_error_message(), 'code' => $prepared->get_error_code()));
         }
@@ -75,7 +75,7 @@ class SSPA_Parameter_Check {
         wp_send_json_success($result);
     }
 
-    public static function prepare() {
+    public static function build_check() {
         $targets = SSPA_Cache_Delivery::targets();
         if (!$targets || 'home' !== $targets[0]['page_key']) {
             return new WP_Error('sspa_parameter_check_targets', __('The check needs a public home page on this site.', 'super-speedy-performance-analysis'));

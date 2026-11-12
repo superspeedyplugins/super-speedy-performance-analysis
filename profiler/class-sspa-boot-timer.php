@@ -401,14 +401,14 @@ if (!class_exists('SSPA_Boot_Timer')) {
             if ('plugin' === $type) {
                 foreach (array_keys($this->plugin_ms) as $key) {
                     if (0 === strpos($key, $component . '/') || $key === $component . '.php') {
-                        $main = WP_PLUGIN_DIR . '/' . $key;
+                        $main = SSPA_PLUGINS_DIR . '/' . $key;
                         break;
                     }
                 }
                 if (!$main) {
                     foreach ((array) get_option('active_plugins', array()) as $key) {
                         if (0 === strpos((string) $key, $component . '/')) {
-                            $main = WP_PLUGIN_DIR . '/' . $key;
+                            $main = SSPA_PLUGINS_DIR . '/' . $key;
                             break;
                         }
                     }

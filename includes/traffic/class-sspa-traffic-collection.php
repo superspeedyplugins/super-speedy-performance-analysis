@@ -47,6 +47,9 @@ class SSPA_Traffic_Collection {
         if (SSPA_Helper_Files::file_mods_blocked()) {
             return new WP_Error('sspa_file_mods_disallowed', __('DISALLOW_FILE_MODS prevents installing the traffic observer.', 'super-speedy-performance-analysis'));
         }
+        if (!SSPA_Traffic_Authority::named_locks_supported()) {
+            return new WP_Error('sspa_traffic_no_named_locks', __('Traffic collection needs a MySQL or MariaDB database. This site uses SQLite, which has no named locks to keep visitor recording safe.', 'super-speedy-performance-analysis'));
+        }
         $durations = self::durations();
         if (!isset($durations[$duration])) {
             return new WP_Error('sspa_traffic_duration', __('Choose 15m, 1h, 2h, 4h, 24h, 72h or 7d.', 'super-speedy-performance-analysis'));

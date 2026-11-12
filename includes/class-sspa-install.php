@@ -12,7 +12,10 @@ class SSPA_Install {
         // Sites that never used Traffic need no authority state or writable MU directory.
         if (SSPA_Traffic_Authority::exists() || SSPA_Traffic_Helper::is_ours()) {
             SSPA_Traffic_Collection::deactivate();
-            SSPA_Traffic_Authority::activate();
+            // Without named locks (SQLite) Traffic cannot run, so authority stays revoked.
+            if (SSPA_Traffic_Authority::named_locks_supported()) {
+                SSPA_Traffic_Authority::activate();
+            }
         }
         SSPA_Token::secret();
         // Nothing is written to wp-content here: db.php and the MU loader arrive only with the

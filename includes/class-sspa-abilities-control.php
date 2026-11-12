@@ -860,7 +860,7 @@ class SSPA_Abilities_Control {
     /* ---------------- parameter check (0.60.1) ---------------- */
 
     public static function exec_run_parameter_check($input) {
-        $prepared = SSPA_Parameter_Check::prepare();
+        $prepared = SSPA_Parameter_Check::build_check();
         if (is_wp_error($prepared)) {
             return $prepared;
         }

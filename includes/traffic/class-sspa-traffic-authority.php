@@ -70,7 +70,28 @@ class SSPA_Traffic_Authority {
         });
     }
 
+    /**
+     * SQLite (the SQLite Database Integration plugin, as on WordPress Playground) has no named
+     * locks: GET_LOCK() comes back as neither 1 nor 0. Traffic collection is refused there (Dave,
+     * 12 November 2026), so no observer is ever admitted on such a database.
+     */
+    public static function named_locks_supported() {
+        global $wpdb;
+        if (defined('DB_ENGINE') && 'sqlite' === DB_ENGINE) {
+            return false;
+        }
+        return !(class_exists('WP_SQLite_DB', false) && $wpdb instanceof WP_SQLite_DB);
+    }
+
     public static function synchronized($exclusive, $callback) {
+        if (!self::named_locks_supported()) {
+            // No reader can be admitted on this database and no collection can start, so a
+            // writer (revocation, deactivation, clean-up) has nothing to exclude.
+            if (!$exclusive) {
+                throw new SSPA_Traffic_Lock_Unsupported('Traffic collection needs MySQL or MariaDB named locks.');
+            }
+            return call_user_func($callback);
+        }
         if (self::$held) {
             if ($exclusive && !self::$exclusive) {
                 throw new RuntimeException('Cannot upgrade a traffic reader lock.');
@@ -230,6 +251,8 @@ class SSPA_Traffic_Authority {
         } catch (SSPA_Traffic_Lock_Busy $busy) {
             self::count_skip($config['generation']);
             return false;
+        } catch (SSPA_Traffic_Lock_Unsupported $unsupported) {
+            return false;
         }
     }
 
@@ -260,3 +283,6 @@ class SSPA_Traffic_Authority {
 
 /** A reader could not get its slot in time: skip observing this request. */
 class SSPA_Traffic_Lock_Busy extends RuntimeException {}
+
+/** The database has no named locks (SQLite): Traffic collection does not run here. */
+class SSPA_Traffic_Lock_Unsupported extends RuntimeException {}

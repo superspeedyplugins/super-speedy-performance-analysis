@@ -446,16 +446,6 @@
       "reason": "Traffic recording atomically publishes private JSON under uploads and a fixed signed PHP loader under mu-plugins. Health Check & Troubleshooting also installs an MU loader for explicit diagnostic work; direct rename avoids a copy/delete interval during publication."
     },
     {
-      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fopen",
-      "file": "includes/traffic/class-sspa-traffic-authority.php",
-      "reason": "Traffic recording needs flock to stop a deactivation from completing while an observer write is in flight; flock needs a PHP stream, which WP_Filesystem cannot provide. The stream is an empty lock file in wp_upload_dir()/super-speedy-performance-analysis/, opened without truncation; nothing is ever written to it. The authority state itself is a database option."
-    },
-    {
-      "check": "WordPress.WP.AlternativeFunctions.file_system_operations_fclose",
-      "file": "includes/traffic/class-sspa-traffic-authority.php",
-      "reason": "Traffic recording needs flock to stop a deactivation from completing while an observer write is in flight; flock needs a PHP stream, which WP_Filesystem cannot provide. The stream is an empty lock file in wp_upload_dir()/super-speedy-performance-analysis/, opened without truncation; nothing is ever written to it. The authority state itself is a database option."
-    },
-    {
       "check": "WordPress.Security.ValidatedSanitizedInput.MissingUnslash",
       "file": "mu/sspa-loader.php",
       "reason": "The HMAC signature covers the exact request URI, so wp_unslash would change signed bytes. Inline filter_var validation rejects control characters without normalising the path."
@@ -549,16 +539,9 @@
       "reason": "Creates wp-content/mu-plugins only when the administrator presses Enable profiler and it does not exist yet. The profiler's MU loader must live there to arm measurement before ordinary plugins load; it is removed again when the profiler is disabled or the plugin is deactivated."
     },
     {
-      "check": "activation-writes",
-      "file": "includes/traffic/class-sspa-traffic-helper.php",
-      "match": "SSPA_Traffic_Helper::data_dir",
-      "reason": "Only on reactivation of a site upgraded from a version that kept the traffic authority in a file: the one-time migration creates this plugin's own folder wp_upload_dir()/super-speedy-performance-analysis/ (with its .htaccess and empty index.html) and moves the state into the database. Nothing is written to wp-content outside uploads on activation."
-    },
-    {
-      "check": "activation-writes",
-      "file": "includes/class-sspa-filesystem.php",
-      "match": "SSPA_Traffic_Helper::data_dir",
-      "reason": "Only on reactivation of a site upgraded from a version that kept the traffic authority in a file: the one-time migration creates this plugin's own folder wp_upload_dir()/super-speedy-performance-analysis/ (with its .htaccess and empty index.html) and moves the state into the database. Nothing is written to wp-content outside uploads on activation."
+      "check": "WordPress.WP.AlternativeFunctions.curl_curl_setopt",
+      "file": "includes/class-sspa-loopback-route.php",
+      "reason": "The measurement can send its own loopback request straight to this server, bypassing a CDN, while still verifying the site's real TLS certificate. The WordPress HTTP API makes the request; the plugin only adds CURLOPT_CONNECT_TO to WordPress's own cURL handle in the core http_api_curl action, because the HTTP API has no option for it. Without cURL the plugin reports the direct route as unavailable."
     }
   ],
   "retained_sql_statements": {
