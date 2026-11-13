@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.64.1 (13th November 2026) =
+* Updated the translation template to this version.
+
 = 0.64.0 (13th November 2026) =
 * Fixed the archive query profile reporting the time of the statement that ran after each archive query, so a slow filtered listing could be reported as taking under a millisecond.
 * The archive query profile now lists each archive's custom-field filters with their comparison and the SQL cast WordPress applied.
