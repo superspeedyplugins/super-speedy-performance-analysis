@@ -274,6 +274,10 @@ class SSPA_Archive_Profile {
             'explain' => self::explain_for($record, $sql_queries),
             'orderby' => isset($record['orderby_final']) ? $record['orderby_final'] : array(),
             'orderby_requested' => isset($record['orderby_requested']) ? $record['orderby_requested'] : array(),
+            // Each meta filter with its comparison and the cast WordPress applied, so a consumer
+            // can tie a key to the time of the archive that filtered on it. `cast` is absent on
+            // captures written before 0.63.3.
+            'meta' => isset($record['filters']['meta']) ? array_values((array) $record['filters']['meta']) : array(),
         );
     }
 

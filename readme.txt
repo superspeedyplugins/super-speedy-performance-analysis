@@ -113,6 +113,10 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.63.3 (13th November 2026) =
+* Fixed the archive query profile reporting the time of the statement that ran after each archive query, so a slow filtered listing could be reported as taking under a millisecond.
+* The archive query profile now lists each archive's custom-field filters with their comparison and the SQL cast WordPress applied.
+
 = 0.63.2 (12th November 2026) =
 * Fixed a critical error when deactivating the plugin on a site using SQLite, such as WordPress Playground.
 * Traffic collection now explains that it needs a MySQL or MariaDB database when started on SQLite.

@@ -42,6 +42,12 @@ if (!class_exists('SSPA_Capture')) {
         private $boot_timer = null;
         private $excimer = null;
         private $archives = null;
+        /**
+         * Raw query-log position => index in the capture's sql.queries, filled by collect_sql().
+         * The log still holds PA's own statements; sql.queries does not, so a position read off
+         * the log has to be translated before it can name a statement in the capture.
+         */
+        private $sql_log_index = array();
 
         public function arm() {
             // PHP does not expose the previous handler's error mask. Forwarding every
@@ -435,7 +441,7 @@ if (!class_exists('SSPA_Capture')) {
                 // Archive queries Super Speedy Archives could optimise. Passed the assembled
                 // sql section so each record can borrow the cost and component attribution
                 // already computed for the statement it matched.
-                'archives' => $this->archives ? $this->archives->report($sql) : null,
+                'archives' => $this->archives ? $this->archives->report($sql, $this->sql_log_index) : null,
                 'components' => $this->aggregate_components($sql, $http, $mail),
                 'boot' => $this->boot_timer ? $this->boot_timer->report($map) : null,
                 // Point-in-time marks in ms since $timestart, set by whatever is driving
@@ -486,6 +492,7 @@ if (!class_exists('SSPA_Capture')) {
                 foreach ($wpdb->sspa_log as $q) {
                     $attr = $map->attribute($q['frames']);
                     $entries[] = array(
+                        'log_index' => count($entries),
                         'sql' => $q['sql'],
                         'ms' => $q['ms'],
                         'rows' => $q['rows'],
@@ -510,6 +517,8 @@ if (!class_exists('SSPA_Capture')) {
                         }
                         $attr = $map->attribute_from_summary($q[2]);
                         $entries[] = array(
+                            // Counted the way SSPA_Archive_Queries::find_sql_index() counts.
+                            'log_index' => count($entries),
                             'sql' => $q[0],
                             'ms' => ((float) $q[1]) * 1000,
                             'rows' => $rows,
@@ -550,7 +559,9 @@ if (!class_exists('SSPA_Capture')) {
             $total_rows = 0;
             $dupes = array();
             $queries = array();
+            $this->sql_log_index = array();
             foreach ($entries as $i => $e) {
+                $this->sql_log_index[$e['log_index']] = $i;
                 $total_ms += $e['ms'];
                 $total_rows += (int) $e['rows'];
                 // True duplicates = byte-identical SQL. Fingerprint-identical queries with
