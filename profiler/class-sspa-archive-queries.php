@@ -463,10 +463,14 @@ if (!class_exists('SSPA_Archive_Queries')) {
                 if (empty($clause['key'])) {
                     continue;
                 }
+                $type = isset($clause['type']) ? strtoupper((string) $clause['type']) : null;
                 $out[] = array(
                     'key' => (string) $clause['key'],
                     'compare' => isset($clause['compare']) ? strtoupper((string) $clause['compare']) : '=',
-                    'type' => isset($clause['type']) ? strtoupper((string) $clause['type']) : null,
+                    'type' => $type,
+                    // The cast WP_Meta_Query writes into the SQL for this type (SIGNED for
+                    // NUMERIC, DECIMAL(10,3), CHAR when untyped), from WordPress's own mapping.
+                    'cast' => $query->meta_query->get_cast_for_type((string) $type),
                     'source' => 'postmeta',
                 );
             }
@@ -614,12 +618,20 @@ if (!class_exists('SSPA_Archive_Queries')) {
         /**
          * Called at shutdown with the assembled sql section, so each record can borrow the cost
          * and component attribution already computed for the statement it matched.
+         *
+         * $log_index translates the raw query-log position find_sql_index() returned into the
+         * statement's index in sql.queries, which has PA's own statements removed. Before 0.63.3
+         * the raw position was used directly, so every archive query took the cost of the
+         * statement after its own once PA had logged one statement earlier in the request (a
+         * 305 ms filtered shop query was reported at 0.17 ms, its FOUND_ROWS()).
          */
-        public function report($sql) {
+        public function report($sql, $log_index = array()) {
             $queries = (isset($sql['queries']) && is_array($sql['queries'])) ? $sql['queries'] : array();
 
             foreach ($this->records as $i => $record) {
-                $index = $record['sql_index'];
+                $index = (null !== $record['sql_index'] && isset($log_index[$record['sql_index']]))
+                    ? $log_index[$record['sql_index']]
+                    : null;
                 if (null !== $index && isset($queries[$index])) {
                     $this->records[$i]['ms'] = $queries[$index]['ms'];
                     $this->records[$i]['component'] = $queries[$index]['component'];
