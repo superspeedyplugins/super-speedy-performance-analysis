@@ -140,12 +140,12 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
 | `taxonomy_excluded[]` | Taxonomies that only **exclude**. See below - the distinction matters. |
 | `found_rows` | Total matching the archive, not the page size. `null` when WordPress did not compute it (`no_found_rows`). |
 | `rows_returned` | Posts this query actually returned. Always present, so there is a size signal even when `found_rows` is `null`. |
-| `ms` | Measured time of the statement this query ran, or `null` when the query was answered from the object cache. Before 0.63.3 this could hold the time of the statement that ran after it. |
+| `ms` | Measured time of the statement this query ran, or `null` when the query was answered from the object cache. Before 0.64.0 this could hold the time of the statement that ran after it. |
 | `cached` | `true` when it was served from the object cache and never reached the database. |
 | `explain` | The query plan. `null` when no plan could be read. |
 | `orderby[]` | The **resolved** ordering, in order. |
 | `orderby_requested[]` | The ordering as the query asked for it, before plugins resolved it. |
-| `meta[]` | Each custom-field (`meta_query`) filter on the query: `key`, `compare` (`=`, `BETWEEN`, ...), `type` as requested (`NUMERIC`, or `null`), `cast` (the SQL cast WordPress applied for that type: `SIGNED` for `NUMERIC`, `DECIMAL(10,3)`, `CHAR` when untyped) and `source`. Profiles recorded before 0.63.3 have no `cast`. |
+| `meta[]` | Each custom-field (`meta_query`) filter on the query: `key`, `compare` (`=`, `BETWEEN`, ...), `type` as requested (`NUMERIC`, or `null`), `cast` (the SQL cast WordPress applied for that type: `SIGNED` for `NUMERIC`, `DECIMAL(10,3)`, `CHAR` when untyped) and `source`. Profiles recorded before 0.64.0 have no `cast`. |
 | `qualifies[]` | Why this archive's plan is poor: `ms`, `filesort`, `scan`, `est_rows`. Empty is fine. |
 | `worth_indexing` | Whether an index is worth building. **Only these feed the recommendations.** |
 

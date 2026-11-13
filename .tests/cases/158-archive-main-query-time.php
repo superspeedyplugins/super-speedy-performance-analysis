@@ -2,7 +2,7 @@
 // The archive profile reports the time of the statement an archive query really ran, and the
 // cast WordPress applied to each of its meta filters.
 //
-// Before 0.63.3 every archive record took the cost, component and fingerprint of the statement
+// Before 0.64.0 every archive record took the cost, component and fingerprint of the statement
 // AFTER its own whenever PA had logged a statement of its own earlier in the request: the raw
 // log position was looked up in the SQL list after PA's own statements had been removed from
 // it. A 305 ms filtered shop query was reported at 0.17 ms (the FOUND_ROWS() that followed it).

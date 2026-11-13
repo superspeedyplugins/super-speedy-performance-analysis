@@ -620,7 +620,7 @@ if (!class_exists('SSPA_Archive_Queries')) {
          * and component attribution already computed for the statement it matched.
          *
          * $log_index translates the raw query-log position find_sql_index() returned into the
-         * statement's index in sql.queries, which has PA's own statements removed. Before 0.63.3
+         * statement's index in sql.queries, which has PA's own statements removed. Before 0.64.0
          * the raw position was used directly, so every archive query took the cost of the
          * statement after its own once PA had logged one statement earlier in the request (a
          * 305 ms filtered shop query was reported at 0.17 ms, its FOUND_ROWS()).
