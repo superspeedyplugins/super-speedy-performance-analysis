@@ -70,6 +70,8 @@ The profile carries its own `schema`, currently **1**, from `SSPA_Archive_Profil
       "explain": {
         "scan": false,
         "filesort": true,
+        "temporary": false,
+        "table": "wp_sstr_object_ancestors",
         "key": "ixAttributeTax",
         "est_rows": 67,
         "est_rows_total": 67
@@ -161,6 +163,8 @@ This is not a nicety. WooCommerce attaches a `product_visibility NOT IN` clause 
 |---|---|
 | `scan` | The plan reads the table with no usable index. |
 | `filesort` | The database sorts the matched rows. This is the thing a composite index removes. |
+| `temporary` | The plan builds a temporary table. Added in 0.64.2. |
+| `table` | The table of the worst step, the one examining most rows, or `null`. Added in 0.64.2. |
 | `key` | The index actually chosen, or `null`. |
 | `est_rows` | Rows the optimiser expects to examine on the worst table. An **estimate**, not a measurement. |
 | `est_rows_total` | The same across all tables in the plan. |
