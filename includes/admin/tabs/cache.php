@@ -23,7 +23,9 @@ $sspa_cache_audience_labels = array(
 $sspa_cache_audience_notes = array(
     'anonymous' => __('No cookies.', 'super-speedy-performance-analysis'),
     'basket' => __('A request carrying WooCommerce\'s basket cookies. No basket or session is created.', 'super-speedy-performance-analysis'),
-    'customer' => __('Logged-in customer (test account, no orders).', 'super-speedy-performance-analysis'),
+    'customer' => SSPA_Cache_Delivery::measures_customers()
+        ? __('Logged-in customer (test account, no orders).', 'super-speedy-performance-analysis')
+        : __('Not requested: measuring a logged-in customer needs a customer account\'s login, and this plugin does not create one.', 'super-speedy-performance-analysis'),
 );
 $sspa_cache_headlines = array(
     'cached' => __('Cached', 'super-speedy-performance-analysis'),
@@ -34,6 +36,7 @@ $sspa_cache_headlines = array(
 $sspa_cache_reasons = array(
     'woocommerce_not_active' => __('WooCommerce is not active, so there is no basket to represent.', 'super-speedy-performance-analysis'),
     'test_customer_unavailable' => __('The synthetic test customer account could not be created.', 'super-speedy-performance-analysis'),
+    'customer_not_measured' => __('Logged-in customers are not measured: that needs a customer account\'s login, and this plugin does not create one.', 'super-speedy-performance-analysis'),
     'application_session_cookie_set' => __('The first response set a cookie, so the page was not requested again.', 'super-speedy-performance-analysis'),
     'not_needed' => __('The first response set no cookie, so there is no returning visitor to represent.', 'super-speedy-performance-analysis'),
     'cached_bodies_differ' => __('A cache reported a hit, but the two responses differed.', 'super-speedy-performance-analysis'),
@@ -232,7 +235,15 @@ if ($sspa_cache_run_id || $sspa_cache_report) {
             </ul>
             <p class="description sspa-cache-request-plan">
                 <?php
-                if ($sspa_cache_plan['basket_requests']) {
+                if (!SSPA_Cache_Delivery::measures_customers()) {
+                    printf(
+                        /* translators: 1: total request count, 2: browser request count, 3: server request count */
+                        esc_html__('It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and up to %3$d from the server: two each as a new visitor without cookies, as a returning visitor carrying only the cookies the first response set (sent only when it sets one) and, on a WooCommerce store, as a visitor carrying WooCommerce\'s basket cookies, then one final anonymous request per page. Logged-in customers are not requested. It does not purge or change any cache and creates no basket.', 'super-speedy-performance-analysis'),
+                        (int) $sspa_cache_plan['request_count'],
+                        (int) $sspa_cache_plan['browser_requests'],
+                        (int) $sspa_cache_plan['server_requests']
+                    );
+                } elseif ($sspa_cache_plan['basket_requests']) {
                     printf(
                         /* translators: 1: total request count, 2: browser request count, 3: server request count */
                         esc_html__('It sends up to %1$d sequential GET requests to this site and nowhere else: %2$d from your browser without cookies, and up to %3$d from the server: two each as a new visitor without cookies, as a returning visitor carrying only the cookies the first response set (sent only when it sets one), as a visitor carrying WooCommerce\'s basket cookies and as the logged-in test customer, then one final anonymous request per page that checks no logged-in content reached the anonymous cache. It does not purge or change any cache and creates no basket; WooCommerce may save a session for the test account, as it does for any logged-in customer.', 'super-speedy-performance-analysis'),

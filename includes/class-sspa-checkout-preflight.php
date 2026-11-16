@@ -78,6 +78,10 @@ class SSPA_Checkout_Preflight {
         // purchase. The run marks and deletes that temporary account, while retaining the
         // refunded order in Trash, so the admin is told beforehand.
         $out['creates_account'] = 'yes' !== get_option('woocommerce_enable_guest_checkout');
+        $out['deletes_account'] = false;
+        // SSPA-PRO-START
+        $out['deletes_account'] = true;
+        // SSPA-PRO-END
         // Simple Cloudflare Turnstile exposes this documented filter for trusted
         // programmatic requests. The flow uses it only inside its signed synthetic
         // checkout, which cannot complete an interactive browser challenge.

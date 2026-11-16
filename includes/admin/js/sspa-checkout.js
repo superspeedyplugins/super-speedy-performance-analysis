@@ -107,7 +107,9 @@
 				// translators: %d is the number of additional components.
 				(inv.order_hooks_more ? esc(wp.i18n.sprintf(wp.i18n.__(' and %d more', 'super-speedy-performance-analysis'), inv.order_hooks_more)) : '') + '</li>';
 		}
-		if (inv.creates_account) html += '<li>' + wp.i18n.__('Guest checkout is disabled on this store, so the purchase <strong>creates a customer account</strong>. The account is deleted after the run.', 'super-speedy-performance-analysis') + '</li>';
+		if (inv.creates_account) html += '<li>' + (inv.deletes_account
+			? wp.i18n.__('Guest checkout is disabled on this store, so the purchase <strong>creates a customer account</strong>. The account is deleted after the run.', 'super-speedy-performance-analysis')
+			: wp.i18n.__('Guest checkout is disabled on this store, so the purchase <strong>creates a customer account</strong>. The results link to the account so you can delete it.', 'super-speedy-performance-analysis')) + '</li>';
 		if (inv.needs_payment_filtered) html += '<li class="sspa-ck-warn">' + esc(wp.i18n.__('Another plugin already filters WooCommerce\'s "needs payment" checks. This run uses those same filters to skip the gateway, so the two may interact.', 'super-speedy-performance-analysis')) + '</li>';
 		if (inv.human_verification_bypassed) html += '<li>' + wp.i18n.__('<strong>Cloudflare Turnstile stays active for real customers.</strong> This signed synthetic checkout cannot solve an interactive challenge, so Turnstile\'s documented programmatic bypass is used for the measured place-order request only.', 'super-speedy-performance-analysis') + '</li>';
 		html += '</ul><h4 class="sspa-ck-h4">' + esc(wp.i18n.__('Payment', 'super-speedy-performance-analysis')) + '</h4>';
@@ -403,6 +405,10 @@
 					// translators: %d is the number of synthetic customer accounts deleted.
 					cleanup += ' ' + esc(wp.i18n.sprintf(wp.i18n._n('%d auto-created customer account deleted.', '%d auto-created customer accounts deleted.', safety.users_deleted, 'super-speedy-performance-analysis'), safety.users_deleted));
 					if (safety.users_left) cleanup += ' <strong class="sspa-ck-warn">' + esc(wp.i18n.sprintf(/* translators: %d is the number of synthetic customer accounts that could not be removed. */ wp.i18n.__('%d could not be removed.', 'super-speedy-performance-analysis'), safety.users_left)) + '</strong>';
+				} else if (safety.users_left && safety.users_delete_url) {
+					// translators: %d is the number of customer accounts WooCommerce created for the purchase.
+					cleanup += ' ' + esc(wp.i18n.sprintf(wp.i18n._n('WooCommerce created %d customer account for this purchase because guest checkout is off.', 'WooCommerce created %d customer accounts for this purchase because guest checkout is off.', safety.users_left, 'super-speedy-performance-analysis'), safety.users_left)) +
+						' <a href="' + esc(safety.users_delete_url) + '">' + esc(wp.i18n._n('Delete the account', 'Delete the accounts', safety.users_left, 'super-speedy-performance-analysis')) + '</a>';
 				}
 			}
 			html += '<p class="sspa-adhoc-note"><strong>' + esc(wp.i18n.__('Cleanup:', 'super-speedy-performance-analysis')) + '</strong> ' + cleanup + '</p>';

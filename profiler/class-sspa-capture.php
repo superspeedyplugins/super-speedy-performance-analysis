@@ -105,9 +105,15 @@ if (!class_exists('SSPA_Capture')) {
          * promise uninterrupted coverage or count errors another handler consumed.
          */
         public function observe_php_error($type, $message, $file = '', $line = 0) {
+            $reported = true;
+            // SSPA-PRO-START
             // ini_get reads the configured mask and misses temporary @ suppression (case 66).
             // phpcs:ignore PluginCheck.CodeAnalysis.PHPErrorReporting.DirectErrorReportingCall, WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting -- zero-argument call reads the existing mask; it never changes reporting or outputs a path.
-            if (error_reporting() & $type) {
+            $reported = (bool) (error_reporting() & $type);
+            // SSPA-PRO-END
+            // Without the block above (the wordpress.org edition), every error PHP passes to
+            // this observer is counted, including ones a caller silenced with @.
+            if ($reported) {
                 $this->retain_php_error($type, $message, $file, $line);
             }
             // PHP still logs/displays/terminates according to its own configuration.

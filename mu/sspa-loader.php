@@ -131,7 +131,9 @@ if (!defined('DONOTCACHEPAGE')) {
 $sspa_variant = isset($sspa_tok['flags']['v']) ? $sspa_tok['flags']['v'] : '';
 if ('anon' === $sspa_variant) {
     add_filter('determine_current_user', '__return_zero', PHP_INT_MAX);
-} elseif ('customer' === $sspa_variant) {
+}
+// SSPA-PRO-START
+if ('customer' === $sspa_variant) {
     add_filter('determine_current_user', function () {
         $sspa_test = get_users(array(
             'meta_key' => 'sspa_test_account',
@@ -142,6 +144,7 @@ if ('anon' === $sspa_variant) {
         return $sspa_test ? (int) $sspa_test[0] : 0;
     }, PHP_INT_MAX);
 }
+// SSPA-PRO-END
 unset($sspa_variant);
 // Degraded fallback when the db.php shim is not in place: core SAVEQUERIES still gives
 // SQL + time + caller summary (no row counts). The shim defines this earlier when active.

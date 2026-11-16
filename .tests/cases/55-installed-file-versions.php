@@ -31,6 +31,7 @@ $sspa_pins = array(
             '1.0.4' => '87efea4f722d351fda9568b0f7555403101d4a7cf41a33bf5c97b130f50d27d1',
             '1.0.5' => '996e661aa4afa19fcce911a7719ea39fc06f4a33848621e148bd5e0796ed748c',
             '1.0.6' => '8f22c2c15b935e76adfbc70d93d8a75036c0fc4ec9efeddc0bb2313c6d99caf9',
+            '1.0.7' => '563b046e8f7974fdde1fb54a0a0984ad93870d96b12738176674dc8522220cf7',
         ),
     ),
     'dropins/db.php' => array(

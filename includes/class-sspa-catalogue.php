@@ -113,6 +113,7 @@ class SSPA_Catalogue {
             // speed that an anonymous measurement hides. Same URLs as the visitor pages, so
             // the only difference measured is being logged in. wc-myaccount above stays the
             // login form a visitor sees; customer-account is the account a customer sees.
+            // SSPA-PRO-START
             if (SSPA_Auth::test_customer_id()) {
                 $account = wc_get_page_id('myaccount');
                 if ($account > 0) {
@@ -126,6 +127,7 @@ class SSPA_Catalogue {
                     $add('customer-product', get_permalink($product[0]), 'customer');
                 }
             }
+            // SSPA-PRO-END
         }
 
         // --- Custom post types (public, non-builtin, excluding Woo product handled above) ---

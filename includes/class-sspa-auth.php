@@ -11,18 +11,11 @@ class SSPA_Auth {
     const TEST_ACCOUNT_META = 'sspa_test_account';
 
     /**
-     * The synthetic accounts we measure as must never be usable by a person.
-     *
-     * This works because WordPress separates the two ways of becoming a user:
-     *
-     *   - CREDENTIALS go through the `authenticate` filter - the login form, XML-RPC,
-     *     application passwords, anything calling wp_signon(). All refused below.
-     *   - A COOKIE goes through `determine_current_user` and wp_validate_auth_cookie,
-     *     which never touches `authenticate`.
-     *
-     * Our profiling requests use the cookie path (cookies_for() mints a five-minute one),
-     * so blocking the credential path costs us nothing and leaves no way in for anyone
-     * else - even if the 32-character password we never stored were somehow recovered.
+     * A synthetic measurement account (the meta-flagged test customer) must never be usable
+     * by a person: every way of signing in with credentials - the login form, XML-RPC,
+     * application passwords - is refused below, as is a password reset. The account is only
+     * ever measured as through a short-lived measurement cookie, so refusing credentials
+     * costs nothing and leaves no way in for anyone else.
      */
     public static function register() {
         add_filter('authenticate', array(__CLASS__, 'refuse_interactive_login'), 30, 3);
@@ -78,6 +71,7 @@ class SSPA_Auth {
         if ('anon' === $variant) {
             return array();
         }
+        // SSPA-PRO-START
         if ('customer' === $variant) {
             $user_id = self::test_customer_id();
         }
@@ -95,6 +89,60 @@ class SSPA_Auth {
             $cookies[AUTH_COOKIE] = wp_generate_auth_cookie($user_id, $expiry, 'auth');
         }
         return $cookies;
+        // SSPA-PRO-END
+        return 'admin' === $variant ? self::session_cookies_for($user_id) : array();
+    }
+
+    /**
+     * The administrator's OWN login cookies, taken from the request this code is running in.
+     *
+     * The wordpress.org edition never creates a login: an administrator measurement rides on
+     * the session of the administrator whose browser is driving the run, exactly as WordPress
+     * core's Site Health loopback test and the plugin and theme editors' loopback check pass
+     * the current request's cookies to their own loopback requests. Only the three WordPress
+     * login cookies are passed on, and only when they are valid for $user_id, so a run never
+     * measures as anyone else. A request with no browser behind it (WP-Cron, WP-CLI) has no
+     * session, and the caller leaves those measurements for a request that does.
+     *
+     * @return array cookie name => value, or array() when this request carries no valid login for $user_id.
+     */
+    public static function session_cookies_for($user_id) {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0 || !defined('LOGGED_IN_COOKIE') || empty($_COOKIE[LOGGED_IN_COOKIE]) || !is_string($_COOKIE[LOGGED_IN_COOKIE])) {
+            return array();
+        }
+        // A WordPress login cookie is username|expiration|token|hmac; sanitising cannot change a
+        // valid one, and one it did change fails the validation below.
+        $logged_in = sanitize_text_field(wp_unslash($_COOKIE[LOGGED_IN_COOKIE]));
+        if ((int) wp_validate_auth_cookie($logged_in, 'logged_in') !== $user_id) {
+            return array();
+        }
+        $cookies = array(LOGGED_IN_COOKIE => $logged_in);
+        foreach (array(AUTH_COOKIE => 'auth', SECURE_AUTH_COOKIE => 'secure_auth') as $name => $scheme) {
+            if (!empty($_COOKIE[$name]) && is_string($_COOKIE[$name])) {
+                $value = sanitize_text_field(wp_unslash($_COOKIE[$name]));
+                if ((int) wp_validate_auth_cookie($value, $scheme) === $user_id) {
+                    $cookies[$name] = $value;
+                }
+            }
+        }
+        return $cookies;
+    }
+
+    /**
+     * Whether a queued job measures as the administrator and so needs their login.
+     *
+     * The wordpress.org edition can only use the driving administrator's own session
+     * (session_cookies_for()), so a batch with no browser behind it must leave such a job for
+     * the next batch the Performance Analysis screen drives. The full edition mints its own
+     * five-minute login and never waits.
+     */
+    public static function job_waits_for_session($job, $user_id) {
+        // SSPA-PRO-START
+        return false;
+        // SSPA-PRO-END
+        $needs = (isset($job['variant']) && 'admin' === $job['variant']) || !empty($job['checkout']);
+        return $needs && !self::session_cookies_for($user_id);
     }
 
     /**
@@ -114,6 +162,7 @@ class SSPA_Auth {
         if (!$user_id) {
             return '';
         }
+        // SSPA-PRO-START
         $saved_cookies = $_COOKIE;
         $current_user = get_current_user_id();
         try {
@@ -125,13 +174,18 @@ class SSPA_Auth {
             $_COOKIE = $saved_cookies;
         }
         return $nonce;
+        // SSPA-PRO-END
+        // The wordpress.org edition's cookies are always this request's own login
+        // (session_cookies_for()), so the nonce is simply the current user's.
+        $own = isset($_COOKIE[LOGGED_IN_COOKIE]) && is_string($_COOKIE[LOGGED_IN_COOKIE]) && sanitize_text_field(wp_unslash($_COOKIE[LOGGED_IN_COOKIE])) === $cookies[LOGGED_IN_COOKIE];
+        return ($own && (int) $user_id === get_current_user_id()) ? wp_create_nonce('wp_rest') : '';
     }
 
     /**
      * The marked synthetic customer's id, or 0 when none exists. Read-only: it never
      * creates, edits or deletes a user, so it is safe on any request, including page
-     * rendering. Only the explicit way in to an analysis or a cache check creates the
-     * account (fresh_test_customer(), ensure_test_customer()).
+     * rendering. The full edition creates the account only on the explicit way in to an
+     * analysis or a cache check.
      */
     public static function test_customer_id() {
         $existing = get_users(array(
@@ -143,6 +197,7 @@ class SSPA_Auth {
         return $existing ? (int) $existing[0] : 0;
     }
 
+    // SSPA-PRO-START
     /**
      * The synthetic customer, created or brought to its administrator-plus address when
      * needed. Called only on the way in to work that measures as that customer.
@@ -214,4 +269,5 @@ class SSPA_Auth {
         }
         return self::create_customer();
     }
+    // SSPA-PRO-END
 }

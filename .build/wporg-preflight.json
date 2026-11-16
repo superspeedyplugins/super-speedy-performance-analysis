@@ -86,11 +86,6 @@
     },
     {
       "check": "core-files",
-      "file": "includes/class-sspa-auth.php",
-      "reason": "This file loads the local WordPress definition immediately before calling wp_delete_user to replace the synthetic customer. The API is not guaranteed to be loaded in this entry context."
-    },
-    {
-      "check": "core-files",
       "file": "includes/class-sspa-cache-delivery.php",
       "reason": "This file loads the local WordPress definition immediately before calling get_plugins to record the active plugins and their versions with each cache check. The API is not guaranteed to be loaded in this entry context."
     },
@@ -114,11 +109,6 @@
       "file": "includes/class-sspa-checkout-flow.php",
       "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner’s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
       "match": "woocommerce_cookie"
-    },
-    {
-      "check": "core-files",
-      "file": "includes/class-sspa-checkout-flow.php",
-      "reason": "This file loads the local WordPress definition immediately before calling wp_delete_user to remove marked checkout accounts. The API is not guaranteed to be loaded in this entry context."
     },
     {
       "check": "prefix",
@@ -158,11 +148,6 @@
       "check": "core-files",
       "file": "includes/class-sspa-report.php",
       "reason": "This file loads the local WordPress definition immediately before calling get_plugins to describe installed components. The API is not guaranteed to be loaded in this entry context."
-    },
-    {
-      "check": "core-files",
-      "file": "includes/class-sspa-run-controller.php",
-      "reason": "This file loads the local WordPress definition immediately before calling wp_delete_user to remove abandoned marked accounts. The API is not guaranteed to be loaded in this entry context."
     },
     {
       "check": "core-files",
@@ -265,11 +250,6 @@
       "file": "traffic-observer/class-sspa-traffic-hot-path.php",
       "reason": "WooCommerce owns woocommerce_cookie. Performance Analysis invokes the owner’s filter to discover the real store cookie name, mail/webhook delivery configuration or payment boundary; inventing a prefixed hook would not run WooCommerce integrations.",
       "match": "woocommerce_cookie"
-    },
-    {
-      "check": "core-files",
-      "file": "uninstall.php",
-      "reason": "This file loads the local WordPress definition immediately before calling wp_delete_user to remove the plugin’s marked test accounts. The API is not guaranteed to be loaded in this entry context."
     },
     {
       "check": "prefix",
@@ -489,22 +469,6 @@
       "file": "*",
       "match": "WordPress.DB.SlowDBQuery",
       "reason": "Meta-key/value reads identify owned temporary objects, measured orders and archive/query evidence through core APIs or the reviewed statements; some matches only inspect SQL text. These heuristics do not indicate unbound input, and caching mutable evidence would hide the change being measured."
-    },
-    {
-      "check": "WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting",
-      "file": "profiler/class-sspa-capture.php",
-      "reason": "The profiler reads the current PHP engine error mask with zero arguments and never changes it. A real signed-request regression proves ini_get retains suppressed warnings, whereas error_reporting() honours temporary @ suppression."
-    },
-    {
-      "check": "PluginCheck.CodeAnalysis.PHPErrorReporting.DirectErrorReportingCall",
-      "file": "profiler/class-sspa-capture.php",
-      "reason": "The profiler reads the current PHP engine error mask with zero arguments and never changes it. A real signed-request regression proves ini_get retains suppressed warnings, whereas error_reporting() honours temporary @ suppression."
-    },
-    {
-      "check": "forbidden-functions",
-      "file": "profiler/class-sspa-capture.php",
-      "reason": "The profiler reads the current PHP engine error mask with zero arguments and never changes it. A real signed-request regression proves ini_get retains suppressed warnings, whereas error_reporting() honours temporary @ suppression.",
-      "match": "error_reporting"
     },
     {
       "check": "request-unchecked",

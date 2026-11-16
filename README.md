@@ -3,10 +3,15 @@
 Free performance analysis for WordPress and WooCommerce. Finds which plugins are costing you
 SQL time, RAM and page speed, with evidence.
 
-**[Download the plugin zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip)**
+**[Download the plugin zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis-pro.zip)**
 from the [Releases page](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases).
-The GitHub release includes the Super Speedy update checker. The WordPress.org edition
-uses WordPress.org updates and omits that checker.
+The GitHub release is **Super Speedy Performance Analysis Pro**: the complete plugin, with the
+Super Speedy update checker, installed in its own `super-speedy-performance-analysis-pro` folder.
+The WordPress.org edition (`super-speedy-performance-analysis`) uses WordPress.org updates and
+leaves out what WordPress.org does not allow: measuring as a synthetic logged-in customer, a
+measurement login minted for background runs, and the MCP/REST abilities that start runs or
+change settings (it keeps the read-only ones). Both editions share one set of data, so moving
+from one to the other loses nothing; activating Pro deactivates the WordPress.org copy.
 
 ## What it does
 
@@ -69,7 +74,7 @@ scheduled events, the hidden checkout product and the low-privilege test custome
 
 ## Installation
 
-1. [Download the zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip)
+1. [Download the zip](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis-pro.zip)
    and upload it via Plugins -> Add New -> Upload, or unzip into `wp-content/plugins/`.
 2. Activate it through the Plugins menu.
 3. Open Performance Analysis in the admin menu, or Super Speedy -> Performance Analysis
@@ -78,7 +83,7 @@ scheduled events, the hidden checkout product and the low-privilege test custome
 Or install the public release zip directly over SSH with WP-CLI:
 
 ```
-wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --force --activate
+wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis-pro.zip --force --activate
 ```
 
 `--force` replaces an existing or incomplete copy. If WP-CLI is deliberately being run as
