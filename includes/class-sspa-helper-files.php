@@ -93,6 +93,24 @@ class SSPA_Helper_Files {
     }
 
     /** Refresh the database helper; the loader requires explicit consent. */
+    // SSPA-PRO-START
+    /**
+     * The mu-loader names the plugin folder of the copy that installed it. Where the administrator
+     * enabled the profiler from the wordpress.org copy, point the loader at this (Pro) copy instead:
+     * otherwise profiled requests run the other copy's profiler, and deleting it leaves none.
+     * Hooked on admin_init; does nothing unless the profiler is enabled and the loader is ours.
+     */
+    public static function repoint_loader_to_this_copy() {
+        if (!get_option('sspa_profiler_enabled') || !current_user_can('manage_options') || !self::is_ours(self::mu_path())) {
+            return;
+        }
+        $loader = (string) SSPA_Filesystem::get_contents(self::mu_path());
+        if (false === strpos($loader, addslashes(trailingslashit(SSPA_PLUGIN_DIR)) . 'profiler/bootstrap.php')) {
+            self::ensure_installed(true);
+        }
+    }
+    // SSPA-PRO-END
+
     public static function ensure_installed($enable_mu = false) {
         $results = array('mu' => false, 'dropin' => false);
 

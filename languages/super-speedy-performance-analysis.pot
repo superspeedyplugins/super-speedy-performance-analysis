@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.67.1\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.67.2\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-16T14:01:22+00:00\n"
+"POT-Creation-Date: 2026-11-16T14:15:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -6368,39 +6368,39 @@ msgstr ""
 msgid "an unknown plugin"
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:205
+#: includes/class-sspa-helper-files.php:223
 msgid "Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:206
+#: includes/class-sspa-helper-files.php:224
 msgid "Super Speedy Performance Analysis: could not restore your original db.php drop-in (db.php.sspa-hold still exists in wp-content). Please restore it manually."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:231
+#: includes/class-sspa-helper-files.php:249
 msgid "Only a network administrator may install network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:234
+#: includes/class-sspa-helper-files.php:252
 msgid "This site sets DISALLOW_FILE_MODS, which forbids installing the profiler loader."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:238
+#: includes/class-sspa-helper-files.php:256
 msgid "Could not install the profiler loader; check mu-plugins permissions and any existing file at that path."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:241
+#: includes/class-sspa-helper-files.php:259
 msgid "Could not refresh the profiler db.php; check wp-content permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:249
+#: includes/class-sspa-helper-files.php:267
 msgid "Only a network administrator may remove network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:252
+#: includes/class-sspa-helper-files.php:270
 msgid "Could not remove the profiler loader; check its file permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:255
+#: includes/class-sspa-helper-files.php:273
 msgid "Could not remove the profiler db.php; check its file permissions."
 msgstr ""
 
@@ -8307,10 +8307,23 @@ msgstr ""
 msgid "Could not activate the traffic file atomically."
 msgstr ""
 
+#: super-speedy-performance-analysis.php:47
+msgid "Super Speedy Performance Analysis Pro is active, so the free Super Speedy Performance Analysis plugin is switched off and does nothing. Please deactivate and delete the free plugin. Pro keeps all your analyses and settings."
+msgstr ""
+
 #. translators: %s: folder name of the copy that is running.
-#: super-speedy-performance-analysis.php:40
+#: super-speedy-performance-analysis.php:51
 #, php-format
-msgid "Two copies of Super Speedy Performance Analysis are active. Only the one in the %s folder is running; deactivate the other."
+msgid "Two copies of Super Speedy Performance Analysis are active. Only the one in the %s folder is running; deactivate and delete the other."
+msgstr ""
+
+#: super-speedy-performance-analysis.php:55
+#: super-speedy-performance-analysis.php:168
+msgid "Go to Plugins"
+msgstr ""
+
+#: super-speedy-performance-analysis.php:169
+msgid "The free Super Speedy Performance Analysis plugin is still installed. Pro replaces it and keeps all your analyses and settings, so please delete the free plugin."
 msgstr ""
 
 #: includes/admin/js/sspa-adhoc.js:128

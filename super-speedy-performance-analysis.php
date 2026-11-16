@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.67.1
+ * Version: 0.67.2
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -18,31 +18,50 @@
 defined('ABSPATH') || exit;
 
 // The Pro edition (folder super-speedy-performance-analysis-pro) and the wordpress.org edition
-// (folder super-speedy-performance-analysis) are the same plugin and declare the same classes,
-// so only one may run. Whichever loaded first stays; this copy stands down and says why.
-if (defined('SSPA_PLUGIN_FILE')) {
+// (folder super-speedy-performance-analysis) are the same plugin and declare the same classes, so
+// only one may run. Pro always wins: when Pro is active, the wordpress.org copy stands down before
+// it defines anything, whatever order WordPress loads them in (network-activated plugins load
+// first, for one). The copy that stands down registers no hooks at all - no activation,
+// deactivation or uninstall work - and only tells the administrator to remove it.
+$sspa_pro_main = 'super-speedy-performance-analysis-pro/super-speedy-performance-analysis.php';
+$sspa_pro_wins = 'super-speedy-performance-analysis-pro' !== basename(__DIR__)
+    && is_file(dirname(__DIR__) . '/' . $sspa_pro_main)
+    && (in_array($sspa_pro_main, (array) get_option('active_plugins', array()), true)
+        || (is_multisite() && array_key_exists($sspa_pro_main, (array) get_site_option('active_sitewide_plugins', array()))));
+if ($sspa_pro_wins || defined('SSPA_PLUGIN_FILE')) {
     // SSPA-PRO-START
-    // Activating Pro while the wordpress.org edition is active: Pro replaces it. The data is
-    // shared, so nothing is lost, and the other edition's uninstall leaves it in place.
+    // Activating Pro while another copy is loaded in the same request. Copies up to 0.65.0 have no
+    // stand-down code, so left active beside Pro they would declare every class a second time on
+    // the next request: switch that copy off now. Silently, because its deactivation hook would
+    // remove the profiler loader and db.php drop-in Pro uses too. Its data stays for Pro.
     register_activation_hook(__FILE__, static function () {
-        // Silently: the other copy's deactivation hook would remove the profiler loader and
-        // db.php drop-in that Pro uses too.
         deactivate_plugins(plugin_basename(SSPA_PLUGIN_FILE), true);
     });
     // SSPA-PRO-END
-    add_action('admin_notices', static function () {
-        global $pagenow;
-        if ('plugins.php' !== $pagenow || !current_user_can('activate_plugins')) {
+    add_action('admin_notices', static function () use ($sspa_pro_wins) {
+        global $pagenow, $plugin_page;
+        if (!current_user_can('activate_plugins') || !('plugins.php' === $pagenow || 'index.php' === $pagenow || 'sspa' === $plugin_page)) {
             return;
         }
-        echo '<div class="notice notice-warning"><p>' . esc_html(sprintf(
-            /* translators: %s: folder name of the copy that is running. */
-            __('Two copies of Super Speedy Performance Analysis are active. Only the one in the %s folder is running; deactivate the other.', 'super-speedy-performance-analysis'),
-            basename(dirname(SSPA_PLUGIN_FILE))
-        )) . '</p></div>';
+        if ($sspa_pro_wins) {
+            $message = __('Super Speedy Performance Analysis Pro is active, so the free Super Speedy Performance Analysis plugin is switched off and does nothing. Please deactivate and delete the free plugin. Pro keeps all your analyses and settings.', 'super-speedy-performance-analysis');
+        } else {
+            $message = sprintf(
+                /* translators: %s: folder name of the copy that is running. */
+                __('Two copies of Super Speedy Performance Analysis are active. Only the one in the %s folder is running; deactivate and delete the other.', 'super-speedy-performance-analysis'),
+                basename(dirname(SSPA_PLUGIN_FILE))
+            );
+        }
+        echo '<div class="notice notice-warning"><p><strong>' . esc_html($message) . '</strong>';
+        if ('plugins.php' !== $pagenow) {
+            echo ' <a href="' . esc_url(admin_url('plugins.php')) . '">' . esc_html__('Go to Plugins', 'super-speedy-performance-analysis') . '</a>';
+        }
+        echo '</p></div>';
     });
+    unset($sspa_pro_main, $sspa_pro_wins);
     return;
 }
+unset($sspa_pro_main, $sspa_pro_wins);
 
 // Read from the plugin header rather than duplicated, because the two drifted: the header
 // said 0.29.15 while this constant still said 0.29.10, and this constant is what the Markdown
@@ -134,13 +153,26 @@ if (defined('WP_CLI') && WP_CLI) {
 
 register_activation_hook(__FILE__, array('SSPA_Install', 'activate'));
 // SSPA-PRO-START
-// Pro sorts first in active_plugins, so when both editions are active Pro is the one running.
-// Retire the wordpress.org copy the first time an administrator loads wp-admin.
-add_action('admin_init', static function () {
-    $sspa_plain = 'super-speedy-performance-analysis/super-speedy-performance-analysis.php';
-    if (plugin_basename(__FILE__) !== $sspa_plain && current_user_can('activate_plugins') && is_plugin_active($sspa_plain)) {
-        deactivate_plugins($sspa_plain, true);
+// The profiler's mu-loader names the plugin folder of the copy that installed it. When that was the
+// wordpress.org copy (installed before Pro, or still beside it), profiled requests would run its
+// stripped profiler, and deleting it would leave Pro with none. Where the administrator has
+// enabled the profiler, point the loader at this copy, once, on an administrator's admin request.
+add_action('admin_init', array('SSPA_Helper_Files', 'repoint_loader_to_this_copy'));
+// The free copy, switched off but still installed: ask for it to be deleted. While it is active
+// it shows its own notice instead (the stand-down branch above).
+add_action('admin_notices', static function () {
+    global $pagenow, $plugin_page;
+    $sspa_free = 'super-speedy-performance-analysis/super-speedy-performance-analysis.php';
+    if (plugin_basename(__FILE__) === $sspa_free || !current_user_can('delete_plugins')
+        || !('plugins.php' === $pagenow || 'index.php' === $pagenow || 'sspa' === $plugin_page)
+        || !is_file(dirname(__DIR__) . '/' . $sspa_free) || is_plugin_active($sspa_free)) {
+        return;
     }
+    echo '<div class="notice notice-warning"><p><strong>' . esc_html__('The free Super Speedy Performance Analysis plugin is still installed. Pro replaces it and keeps all your analyses and settings, so please delete the free plugin.', 'super-speedy-performance-analysis') . '</strong>';
+    if ('plugins.php' !== $pagenow) {
+        echo ' <a href="' . esc_url(admin_url('plugins.php')) . '">' . esc_html__('Go to Plugins', 'super-speedy-performance-analysis') . '</a>';
+    }
+    echo '</p></div>';
 });
 // SSPA-PRO-END
 register_deactivation_hook(__FILE__, array('SSPA_Install', 'deactivate'));

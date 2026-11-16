@@ -18,8 +18,10 @@
 #   5. the cache check leaves logged-in customers out, with its reason, and sends no request;
 #   6. the checkout flow measures order management as the administrator, and with guest
 #      checkout off leaves WooCommerce's account in place with a working Delete link;
-#   7. installing and activating Pro beside it hands over without losing data, and deleting the
-#      wp.org copy while Pro stays leaves Pro's tables, options and helper files alone.
+#   7. installing and activating Pro beside it hands over without losing data; with both active
+#      (the free copy loading first) Pro runs, the free copy stands down and asks to be deleted,
+#      the profiler loader is repointed to Pro and analyses work; deleting the wp.org copy while
+#      Pro stays leaves Pro's tables, options and helper files alone.
 #
 # Nothing is torn down. The site is left as the last step leaves it.
 
@@ -127,6 +129,8 @@ profile() { # <run_id> <page_key> -> "code blocked variant"
 }
 
 # ------------------------------------------------------------------ 2. admin pages measured from the screen
+# A Pro run earlier on this retained site leaves Pro's synthetic customer behind; count from here.
+ACCOUNTS_BEFORE=$(cli user list --meta_key=sspa_test_account --meta_value=1 --format=count 2>/dev/null)
 START=$(ajax -d "action=sspa_start_run" -d "page_keys[]=home" -d "page_keys[]=admin-dashboard" -d "page_keys[]=admin-plugins" -d "page_keys[]=admin-orders")
 RUN=$(printf '%s' "$START" | run_id_of)
 [ "$RUN" -gt 0 ] 2>/dev/null && pass "spot analysis started from the screen (run $RUN)" || fail "start run: $START"
@@ -135,7 +139,7 @@ check "$(profile "$RUN" admin-dashboard)" "200 - admin" "wp-admin Dashboard meas
 check "$(profile "$RUN" admin-plugins)" "200 - admin" "wp-admin Plugins measured as the administrator"
 check "$(profile "$RUN" admin-orders)" "200 - admin" "WooCommerce Orders screen measured as the administrator"
 check "$(profile "$RUN" home)" "200 - anon" "home measured as a logged-out visitor"
-check "$(cli user list --meta_key=sspa_test_account --meta_value=1 --format=count 2>/dev/null)" "0" "no synthetic account was created"
+check "$(cli user list --meta_key=sspa_test_account --meta_value=1 --format=count 2>/dev/null)" "$ACCOUNTS_BEFORE" "the analysis created no synthetic account"
 
 # ------------------------------------------------------------------ 3. logged-in REST endpoint as the administrator
 REST_URL="$URL/wp-json/wp/v2/users/me?context=edit"
@@ -202,10 +206,43 @@ ACT_URL=$(curl -s -b "$JAR" "$URL/wp-admin/plugins.php" | grep -o 'href="plugins
 curl -s -b "$JAR" -o /dev/null "$URL/wp-admin/$ACT_URL"
 opcache_reset
 check "$(cli plugin get "$SLUG-pro" --field=status 2>/dev/null)" "active" "Pro activates from the Plugins screen"
-check "$(cli plugin get "$SLUG" --field=status 2>/dev/null)" "inactive" "activating Pro deactivated the wp.org copy"
+FREE_STATUS=$(cli plugin get "$SLUG" --field=status 2>/dev/null)
+check "$FREE_STATUS" "inactive" "activating Pro deactivated the wp.org copy"
+if [ "$FREE_STATUS" != inactive ]; then
+    echo "    diagnostic: active_plugins in the database: $(cli db query "SELECT option_value FROM wp_options WHERE option_name = 'active_plugins'" --skip-column-names 2>/dev/null)"
+    echo "    diagnostic: active_plugins through the object cache: $(cli option get active_plugins --format=json 2>/dev/null)"
+    echo "    diagnostic: cron events due: $(cli cron event list --fields=hook,next_run_relative --format=csv 2>/dev/null | grep -i sspa | tr '\n' ' ')"
+fi
 NAME=$(cli eval 'echo get_plugin_data(WP_PLUGIN_DIR . "/super-speedy-performance-analysis-pro/super-speedy-performance-analysis.php")["Name"] . "|" . SSPA_PLUGIN_FILE;' 2>&1 | tail -1)
 case "$NAME" in "Super Speedy Performance Analysis Pro|"*"-pro/"*) pass "Pro is the copy running ($NAME)" ;; *) fail "running copy: $NAME" ;; esac
 check "$(cli eval 'global $wpdb; echo (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %i", SSPA_Schema::table("runs")));' 2>&1 | tail -1)" "$RUNS_BEFORE" "Pro sees every run the wp.org edition recorded"
+# Pro, with the free copy installed but switched off, asks for it to be deleted.
+PL=$(curl -s -b "$JAR" "$URL/wp-admin/plugins.php")
+case "$PL" in *"The free Super Speedy Performance Analysis plugin is still installed"*) pass "Pro's Plugins screen asks for the free plugin to be deleted" ;; *) fail "no delete-the-free-plugin notice from Pro" ;; esac
+# The profiler loader the wp.org copy installed now names Pro's folder (that admin request repointed it).
+case "$(cat "$SITE/wp-content/mu-plugins/sspa-loader.php")" in *"super-speedy-performance-analysis-pro/profiler/bootstrap.php"*) pass "the profiler loader was repointed to Pro" ;; *) fail "the profiler loader still names the wp.org copy" ;; esac
+
+# Both active, the free copy FIRST in active_plugins: Pro must still be the one running.
+cli eval '$a = array_values(array_diff((array) get_option("active_plugins"), array("super-speedy-performance-analysis/super-speedy-performance-analysis.php"))); array_unshift($a, "super-speedy-performance-analysis/super-speedy-performance-analysis.php"); update_option("active_plugins", $a);' >/dev/null 2>&1
+opcache_reset
+check "$(cli plugin get "$SLUG" --field=status 2>/dev/null)/$(cli plugin get "$SLUG-pro" --field=status 2>/dev/null)" "active/active" "both copies active, the free copy loading first"
+check "$(cli eval 'echo basename(dirname(SSPA_PLUGIN_FILE));' 2>&1 | tail -1)" "$SLUG-pro" "Pro is the copy running (WP-CLI)"
+PL=$(curl -s -b "$JAR" -w '\nHTTP %{http_code}' "$URL/wp-admin/plugins.php")
+case "$PL" in *"critical error"*|*"Fatal error"*) fail "the Plugins screen fatals with both active" ;; *"HTTP 200") pass "the Plugins screen loads with both active" ;; *) fail "Plugins screen: ${PL: -20}" ;; esac
+case "$PL" in *"Super Speedy Performance Analysis Pro is active, so the free Super Speedy Performance Analysis plugin is switched off"*) pass "the free copy says it is switched off and asks to be deleted" ;; *) fail "no stand-down notice from the free copy" ;; esac
+case "$PL" in *"is still installed"*) fail "both notices shown at once" ;; *) pass "only one notice" ;; esac
+SP=$(curl -s -b "$JAR" "$URL/wp-admin/admin.php?page=sspa")
+case "$SP" in *"plugins/super-speedy-performance-analysis-pro/includes/admin"*) pass "Performance Analysis screen served by Pro" ;; *) fail "screen not served by Pro" ;; esac
+case "$SP" in *"plugins/super-speedy-performance-analysis/includes/admin"*) fail "the free copy's assets load too" ;; *) pass "no assets from the free copy" ;; esac
+case "$SP" in *"is switched off and does nothing"*) pass "the notice shows on the Performance Analysis screen" ;; *) fail "no notice on the Performance Analysis screen" ;; esac
+NONCE=$(printf '%s' "$SP" | grep -o 'var sspa_admin = {[^;]*' | grep -o '"nonce":"[a-f0-9]*"' | head -1 | cut -d'"' -f4)
+RUN=$(ajax -d "action=sspa_start_run" -d "page_keys[]=home" -d "page_keys[]=admin-dashboard" | run_id_of)
+check "$(pump "$RUN")" "done" "an analysis runs under Pro with the free copy still active"
+check "$(profile "$RUN" admin-dashboard)" "200 - admin" "and measures wp-admin as the administrator"
+check "$(profile "$RUN" home | cut -d' ' -f1)" "200" "and measures home"
+cli plugin deactivate "$SLUG" >/dev/null 2>&1
+RUNS_BEFORE=$((RUNS_BEFORE + 1))
+
 cli eval 'sspa_update_option("remove_data_on_uninstall", true);' >/dev/null 2>&1
 cli plugin uninstall "$SLUG" >/dev/null 2>&1
 check "$( [ -d "$PLUGINS/$SLUG" ] && echo present || echo deleted)" "deleted" "the wp.org copy is deleted through WordPress (its uninstall.php ran)"
