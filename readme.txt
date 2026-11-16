@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.63.2
+Stable tag: 0.66.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,14 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.66.1 (16th November 2026) =
+* The Super Speedy Plugins and GitHub download is now Super Speedy Performance Analysis Pro, installed in its own `super-speedy-performance-analysis-pro` folder; activating it deactivates the earlier copy and keeps all its data.
+* The WordPress.org edition measures administrator pages with your own login from the screen that starts the analysis, and creates no user accounts.
+* The WordPress.org edition's agent abilities are read-only; analyses are started and settings changed in wp-admin.
+* Deleting one edition while the other is installed no longer removes the data and profiler files the other is using.
+* With guest checkout disabled, the WordPress.org edition's checkout results link to the customer account WooCommerce created for the test purchase so you can delete it.
+* Fixed the Tools tab "Recheck" and tab refresh leaving output buffering open if a tab failed to render.
 
 = 0.66.0 (16th November 2026) =
 * Fixed the checkout flow leaving behind the customer account WooCommerce creates for its test purchase when guest checkout is off, on stores using the classic checkout.

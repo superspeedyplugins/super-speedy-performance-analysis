@@ -1,6 +1,17 @@
 <?php
 defined('WP_UNINSTALL_PLUGIN') || exit;
 defined('ABSPATH') || exit;
+
+// The wordpress.org edition (super-speedy-performance-analysis) and the Pro edition
+// (super-speedy-performance-analysis-pro) share one set of options, tables and helper files.
+// Deleting one while the other is still installed - the usual way of moving between them -
+// must leave all of it for the one that stays.
+foreach (array('super-speedy-performance-analysis', 'super-speedy-performance-analysis-pro') as $sspa_edition) {
+    if ($sspa_edition !== basename(__DIR__) && is_file(dirname(__DIR__) . '/' . $sspa_edition . '/super-speedy-performance-analysis.php')) {
+        return;
+    }
+}
+unset($sspa_edition);
 require_once __DIR__ . '/includes/class-sspa-filesystem.php';
 require_once __DIR__ . '/includes/locations.php';
 require_once __DIR__ . '/includes/class-sspa-mail.php';
@@ -27,10 +38,13 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
             if ($sspa_order && $sspa_order->get_meta('_sspa_temp', true)) {
                 $sspa_order->delete(true);
             }
-        } elseif ('user' === $sspa_entry['type'] && get_user_meta($sspa_id, '_sspa_temp', true)) {
+        }
+        // SSPA-PRO-START
+        if ('user' === $sspa_entry['type'] && get_user_meta($sspa_id, '_sspa_temp', true)) {
             if (!function_exists('wp_delete_user')) { require_once SSPA_CORE_DIR . 'wp-admin/includes/user.php'; }
             wp_delete_user($sspa_id);
         }
+        // SSPA-PRO-END
     }
 
     // The reusable hidden checkout product and low-privilege profiling customer.
@@ -45,6 +59,7 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
     foreach ($sspa_product_ids as $sspa_product_id) {
         wp_delete_post((int) $sspa_product_id, true);
     }
+    // SSPA-PRO-START
     $sspa_test_users = get_users(array('meta_key' => 'sspa_test_account', 'meta_value' => '1', 'fields' => 'ID'));
     if ($sspa_test_users) {
         foreach ($sspa_test_users as $sspa_user_id) {
@@ -52,6 +67,7 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
             wp_delete_user((int) $sspa_user_id);
         }
     }
+    // SSPA-PRO-END
 
     foreach (array('sspa_cleanup_event', 'sspa_submission_worker_event', 'sspa_traffic_collection_tick', 'sspa_process_batch_event') as $sspa_hook) {
         wp_clear_scheduled_hook($sspa_hook);

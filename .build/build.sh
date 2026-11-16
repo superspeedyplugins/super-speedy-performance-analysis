@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 # .build/build.sh - the per-plugin build MANIFEST for super-speedy-performance-analysis.
 #
-# This plugin has NO free/paid split. It is free everywhere; the only difference between the
-# two editions is the distribution channel's update mechanism:
+# Two editions from one tree, built mostly by DELETION:
 #
-#   full   - superspeedyplugins.com + the GitHub release asset. Carries the
-#            super-speedy-settings submodule, which supplies the shared Super Speedy admin
-#            menu and the plugin-update-checker (PUC) library.
-#   wporg  - full MINUS super-speedy-settings. wordpress.org forbids a bundled updater that
-#            phones home, and PUC is exactly that.
+#   pro    - superspeedyplugins.com + the GitHub release asset. Folder and zip
+#            super-speedy-performance-analysis-pro. The full tree: the synthetic test customer,
+#            minted measurement logins, every MCP/REST ability. Carries the super-speedy-settings
+#            submodule (the shared Super Speedy menu and the plugin-update-checker, PUC), whose
+#            update checker is registered under the -pro slug.
+#   wporg  - wordpress.org, folder super-speedy-performance-analysis. The pro tree MINUS
+#            super-speedy-settings (wp.org forbids a phone-home updater) and MINUS every
+#            `// SSPA-PRO-START` ... `// SSPA-PRO-END` block: the code wordpress.org's review of
+#            15 Nov 2026 refused (creating, updating, deleting and logging in users, the
+#            error_reporting() read, abilities that change the site). The replacement path
+#            follows each block and runs only once the block is gone. Guideline 5: absent,
+#            never locked. Design: .docs/2026-11-16-pro-and-wporg-editions.md.
 #
-# There is therefore no ssx_hook_free here and no edition marker: nothing is deleted for
-# feature reasons, only for wp.org policy reasons.
-#
-# The main plugin file already tolerates the submodule's absence - the require is behind
-# file_exists() and the update checker behind class_exists(PucFactory) - so the wp.org build
-# is a deletion plus assertions, with no shim required. `assert_menu_fallback` below is what
-# stops that from silently becoming untrue.
+# The main plugin file tolerates the submodule's absence - the require is behind
+# file_exists() and the update checker behind class_exists(PucFactory) - so the menu fallback
+# needs no shim. `assert_menu_fallback` below is what stops that from silently becoming untrue.
 
 set -uo pipefail
 
@@ -26,6 +28,7 @@ _bh="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_bh/lib.sh"
 
 PLUGIN_SLUG="super-speedy-performance-analysis"
+PRO_SLUG="${PLUGIN_SLUG}-pro"
 PLUGIN_MAIN="${PLUGIN_SLUG}.php"
 
 # ---------------------------------------------------------------------------
@@ -46,6 +49,9 @@ ssx_hook_wporg() {
     # Strip the marked block, which is the require + the buildUpdateChecker call.
     ssx_strip_block "$stage/$PLUGIN_MAIN" 'SSPA-SELFHOSTED-UPDATER-START' 'SSPA-SELFHOSTED-UPDATER-END'
 
+    # Everything wordpress.org refused, marked in place in the source. Deleted whole.
+    ssx_strip_pro_blocks "$stage"
+
     # The submodule pointer is meaningless without the submodule, and .gitmodules is a
     # PCP "hidden files" error in its own right. (Dot-files are stripped by ssx_build_target
     # anyway; this is belt and braces in case that ever changes.)
@@ -56,6 +62,7 @@ ssx_hook_wporg() {
     find "$stage" -depth -type d -empty -delete || ssx_die "wp.org empty-directory cleanup failed"
 
     ssx_assert_no_updater "$stage"
+    ssx_assert_no_pro_code "$stage"
     ssx_assert_menu_fallback "$stage"
     ssx_assert_history_chart "$stage"
     ssx_assert_versions_match "$stage"
@@ -78,9 +85,54 @@ ssx_strip_block() {
     ssx_log "stripped block $start..$end from $(basename "$file")"
 }
 
+# ssx_strip_pro_blocks <stage>
+# Deletes every `// SSPA-PRO-START` ... `// SSPA-PRO-END` block (marker lines included) from every
+# PHP and JS file. Blocks never nest; a file whose markers are unbalanced or nested fails the
+# build, and every touched PHP file must still parse.
+ssx_strip_pro_blocks() {
+    local stage="$1" file n=0
+    while IFS= read -r file; do
+        php -r '
+            $lines = file($argv[1]);
+            $depth = 0;
+            foreach ($lines as $i => $line) {
+                if (preg_match("#^\\s*//\\s*SSPA-PRO-START\\b#", $line)) { if ($depth) { fwrite(STDERR, "nested SSPA-PRO-START at line " . ($i + 1) . "\n"); exit(1); } $depth = 1; }
+                elseif (preg_match("#^\\s*//\\s*SSPA-PRO-END\\b#", $line)) { if (!$depth) { fwrite(STDERR, "SSPA-PRO-END without START at line " . ($i + 1) . "\n"); exit(1); } $depth = 0; }
+            }
+            if ($depth) { fwrite(STDERR, "unclosed SSPA-PRO-START\n"); exit(1); }
+        ' "$file" || ssx_die "unbalanced SSPA-PRO markers in ${file#"$stage"/}"
+        perl -i -ne 'print unless m{^\s*//\s*SSPA-PRO-START\b} .. m{^\s*//\s*SSPA-PRO-END\b}' "$file" \
+            || ssx_die "stripping SSPA-PRO blocks failed on ${file#"$stage"/}"
+        case "$file" in *.php) php -l "$file" >/dev/null || ssx_die "${file#"$stage"/} does not parse after stripping SSPA-PRO blocks" ;; esac
+        n=$((n + 1))
+    done < <(grep -rlE '^\s*//\s*SSPA-PRO-START' "$stage" --include='*.php' --include='*.js' 2>/dev/null | grep -v '/\.')
+    [ "$n" -gt 0 ] || ssx_die "no SSPA-PRO blocks found - the wp.org edition would ship the pro code"
+    ssx_log "stripped SSPA-PRO blocks from $n files"
+}
+
 # ---------------------------------------------------------------------------
 # Safety assertions - these FAIL the build rather than shipping something wrong
 # ---------------------------------------------------------------------------
+
+# What wordpress.org's review of 15 Nov 2026 refused must be absent from the wp.org zip, not
+# merely unreachable: user creation, editing, deletion and login, the error_reporting() read,
+# and every ability that changes the site.
+ssx_assert_no_pro_code() {
+    local stage="$1" hit
+    hit=$(find "$stage" -name '.*' -prune -o -type f \( -name '*.php' -o -name '*.js' \) -print 2>/dev/null \
+          | xargs grep -nE 'SSPA-PRO-(START|END)|wp_(insert|update|delete|create)_user\s*\(|wp_set_current_user\s*\(|wp_generate_auth_cookie\s*\(|wp_set_auth_cookie\s*\(|wp_signon\s*\(|[^_a-z]error_reporting\s*\(|ensure_test_customer|fresh_test_customer' 2>/dev/null || true)
+    [ -n "$hit" ] && ssx_die "pro-only code survived in the wp.org build:"$'\n'"$hit"
+    for ability in set-profiler update-settings advance-run cancel-run run-analysis run-deep-analysis run-checkout-flow \
+                   profile-url profile-admin-save run-cache-check start-ajax-window profile-endpoint process-submissions \
+                   manage-submission prune-stored-captures delete-traffic-collection cleanup-workflow-objects \
+                   send-quote-request prepare-quote-request start-traffic-collection stop-traffic-collection submit-results \
+                   run-parameter-check advance-parameter-check advance-cache-check stop-ajax-window compare-ajax-windows \
+                   set-history-expectation; do
+        grep -rqE "'$ability'" "$stage/includes/class-sspa-abilities.php" "$stage/includes/class-sspa-abilities-control.php" \
+            && ssx_die "write ability $ability survived in the wp.org build"
+    done
+    ssx_log "assert: no user creation, login, error_reporting() or write abilities"
+}
 
 # Nothing that phones home for updates may survive in the wp.org zip.
 ssx_assert_no_updater() {
@@ -130,7 +182,26 @@ ssx_assert_history_chart() {
     ssx_log "assert: local History chart bundle and licence notices present"
 }
 
-# The full edition gets the same version check; it has nothing else to verify.
+# The Pro edition: the whole tree under its own slug, plus the customer agent guide.
+ssx_hook_pro() {
+    local stage="$1" main="$1/$PLUGIN_MAIN"
+    # Its own name, so a site can tell it from the wordpress.org edition on the Plugins screen,
+    # and its own update feed (super-speedy-performance-analysis-pro.json).
+    perl -i -pe 's{^(\s*\*\s*Plugin Name:\s*Super Speedy Performance Analysis)(\r?)$}{$1 Pro$2}' "$main" \
+        || ssx_die "Plugin Name rewrite failed"
+    grep -qE '^\s*\*\s*Plugin Name:\s*Super Speedy Performance Analysis Pro\r?$' "$main" \
+        || ssx_die "Plugin Name is not 'Super Speedy Performance Analysis Pro'"
+    perl -i -pe "s{'plugin_slug' => 'super-speedy-performance-analysis',}{'plugin_slug' => '$PRO_SLUG',}" "$main" \
+        || ssx_die "updater slug rewrite failed"
+    grep -q "'plugin_slug' => '$PRO_SLUG'," "$main" || ssx_die "updater slug is not $PRO_SLUG"
+    php -l "$main" >/dev/null || ssx_die "$PLUGIN_MAIN does not parse after the Pro rewrites"
+    ssx_log "Pro name and update slug $PRO_SLUG"
+    grep -rqE '^\s*//\s*SSPA-PRO-START' "$stage/includes/class-sspa-auth.php" \
+        || ssx_die "the Pro tree has no SSPA-PRO blocks in class-sspa-auth.php - was it built from a stripped tree?"
+    ssx_hook_full "$stage"
+}
+
+# Shared by the Pro edition: the customer agent guide, version and asset checks.
 ssx_hook_full() {
     # Customer agent instructions. The repository root AGENTS.md is the private developer guide
     # (a gitignored symlink), so the shipped one is kept in .build and copied in here. Remove the

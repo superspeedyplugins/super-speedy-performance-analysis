@@ -1228,6 +1228,7 @@ class SSPA_Checkout_Flow {
         // After WooCommerce's own filter at priority 10, which would otherwise bind the
         // nonce to THIS process's cart session.
         add_filter('nonce_user_logged_out', $bind, 100, 2);
+        // SSPA-PRO-START
         try {
             foreach (array('LOGGED_IN_COOKIE', 'AUTH_COOKIE', 'SECURE_AUTH_COOKIE') as $const) {
                 if (defined($const)) {
@@ -1241,6 +1242,17 @@ class SSPA_Checkout_Flow {
             wp_set_current_user($current_user);
             $_COOKIE = $saved_cookies;
         }
+        return $nonce;
+        // SSPA-PRO-END
+        // The wordpress.org edition never switches the current user. A logged-out visitor's
+        // nonce is wp_create_nonce() with user 0 and no session token, so it is computed with
+        // the same tick, hash and filter wp_create_nonce() and wp_verify_nonce() use.
+        // The user id is the one $bind gives a logged-out visitor: the cart session's customer for
+        // WooCommerce's own actions, 0 for every other action.
+        unset($saved_cookies, $current_user);
+        remove_filter('nonce_user_logged_out', $bind, 100);
+        $uid = (int) $bind(0, $action);
+        $nonce = substr(wp_hash(wp_nonce_tick($action) . '|' . $action . '|' . $uid . '|', 'nonce'), -12, 10);
         return $nonce;
     }
 
@@ -1713,6 +1725,9 @@ class SSPA_Checkout_Flow {
         if (!$user_ids) {
             return;
         }
+        $result['notes']['users_deleted'] = 0;
+        $result['notes']['users_left'] = count(array_filter($user_ids, 'get_userdata'));
+        // SSPA-PRO-START
         $deleted = 0;
         foreach ($user_ids as $user_id) {
             if (get_user_meta($user_id, self::TEMP_META, true)) {
@@ -1726,6 +1741,13 @@ class SSPA_Checkout_Flow {
         self::forget_temp_entries('user', $user_ids);
         $result['notes']['users_deleted'] = $deleted;
         $result['notes']['users_left'] = count(array_filter($user_ids, 'get_userdata'));
+        return;
+        // SSPA-PRO-END
+        // The wordpress.org edition does not delete users. The account WooCommerce created
+        // for this purchase stays, and the results link to WordPress's own Delete Users screen
+        // for it, where the administrator confirms the deletion themselves.
+        self::forget_temp_entries('user', $user_ids);
+        $result['notes']['users_left_ids'] = array_values(array_filter(array_map('intval', $user_ids), 'get_userdata'));
     }
 
     /**
@@ -2074,6 +2096,12 @@ class SSPA_Checkout_Flow {
             return (float) $b['ms'] <=> (float) $a['ms'];
         });
 
+        // An account WooCommerce created for the purchase and this edition did not delete: link to
+        // WordPress's own Delete Users confirmation for it. The nonce is minted per view.
+        if (!empty($notes['safety']['users_left_ids']) && current_user_can('delete_users')) {
+            // A raw URL (wp_nonce_url() returns it HTML-escaped); the script escapes it once when it renders the link.
+            $notes['safety']['users_delete_url'] = add_query_arg(array('action' => 'delete', 'users' => array_map('intval', (array) $notes['safety']['users_left_ids']), '_wpnonce' => wp_create_nonce('bulk-users')), admin_url('users.php'));
+        }
         return array(
             'run_id' => (int) $run_id,
             'at_risk' => $at_risk,

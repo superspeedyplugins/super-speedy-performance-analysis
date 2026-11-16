@@ -19,9 +19,14 @@
 
 set -uo pipefail
 
-ZIP="${1:?usage: smoke-test.sh <zip> [full|wporg]}"
+ZIP="${1:?usage: smoke-test.sh <zip> [pro|wporg]}"
 EDITION="${2:-wporg}"
+# "full" is the old name of the Pro edition.
+[ "$EDITION" = "pro" ] && EDITION=full
 SLUG="super-speedy-performance-analysis"
+# The folder (and so the plugin slug) the zip installs as. The main file keeps one name.
+FOLDER="$SLUG"
+[ "$EDITION" = "full" ] && FOLDER="$SLUG-pro"
 
 pass() { echo "PASS  $*"; }
 fail() { echo "FAIL  $*"; FAILED=1; }
@@ -34,8 +39,8 @@ echo "=== smoke: $EDITION edition - $(basename "$ZIP") ==="
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 unzip -qq "$ZIP" -d "$WORK" || { echo "FAIL  unzip"; exit 1; }
-ROOT="$WORK/$SLUG"
-[ -d "$ROOT" ] || { echo "FAIL  zip does not contain a $SLUG/ folder"; exit 1; }
+ROOT="$WORK/$FOLDER"
+[ -d "$ROOT" ] || { echo "FAIL  zip does not contain a $FOLDER/ folder"; exit 1; }
 
 # Every PHP file must parse.
 LINT=$(find "$ROOT" -name '*.php' -exec php -l {} \; 2>&1 | grep -v '^No syntax errors' || true)
@@ -100,7 +105,7 @@ set -uo pipefail
 pd_smoke_start "${SSPA_SMOKE_TAG:-sspa-$EDITION}" "$SLUG" "$ZIP" || { echo "FAIL  could not start the smoke site"; exit 1; }
 pass "smoke WordPress at $PD_SMOKE_URL (left in place)"
 
-wpc plugin list --status=active --field=name 2>/dev/null | grep -q "^$SLUG$" \
+wpc plugin list --status=active --field=name 2>/dev/null | grep -q "^$FOLDER$" \
     && pass "activates" || fail "did not activate"
 
 # A fatal on activation shows up as output on any wp call.
@@ -164,7 +169,7 @@ if (PHP_VERSION_ID < 80100) {
     $checker_property->setAccessible(true);
 }
 $checkers = $checker_property->getValue($instance);
-echo isset($checkers["super-speedy-performance-analysis"]) ? "present" : "absent";
+echo isset($checkers["super-speedy-performance-analysis-pro"]) ? "present" : (isset($checkers["super-speedy-performance-analysis"]) ? "plain-slug" : "absent");
 ' 2>&1)
 if [ "$EDITION" = "full" ]; then
     wpc eval 'unlink(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php");' >/dev/null 2>&1
@@ -193,7 +198,7 @@ $u = SSPA_Auth::test_customer_id();
 sspa_update_option("remove_data_on_uninstall", true);
 update_option("sspa_uninstall_probe", "present", false);
 echo (int) $p->get_id() . ":" . (int) $u;' 2>&1)
-wpc plugin uninstall "$SLUG" --deactivate >/dev/null 2>&1
+wpc plugin uninstall "$FOLDER" --deactivate >/dev/null 2>&1
 UNINSTALL=$(wpc eval '
 global $wpdb;
 $tables = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE %s", $wpdb->esc_like($wpdb->prefix . "sspa_") . "%"));

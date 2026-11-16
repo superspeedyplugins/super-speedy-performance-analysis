@@ -153,8 +153,10 @@ class SSPA_Run_Controller {
             // real person's session, cart or history can ever be what a customer page shows.
             // If WordPress refuses the account, the analysis still runs: only the logged-in
             // customer pages cannot be measured, and the run says why (WordPress's reason).
+            // SSPA-PRO-START
             $customer = SSPA_Auth::fresh_test_customer();
             $customer_skipped = is_wp_error($customer) ? $customer->get_error_message() : '';
+            // SSPA-PRO-END
             $jobs = SSPA_Catalogue::build(!empty($args['page_keys']) ? (array) $args['page_keys'] : array());
             if ('' !== $customer_skipped) {
                 $jobs = array_values(array_filter($jobs, static function ($job) { return 'customer' !== $job['variant']; }));
@@ -165,6 +167,24 @@ class SSPA_Run_Controller {
             }
             if (!empty($args['include_writes'])) {
                 $jobs = array_merge($jobs, self::write_jobs());
+            }
+        }
+
+        // Administrator measurements ride on the starting administrator's own login in the
+        // wordpress.org edition (SSPA_Auth::session_cookies_for()). A run started with no
+        // browser behind it - WP-CLI - has none, so those pages are left out and the run says so.
+        $admin_skipped = '';
+        if ('checkout' !== $type) {
+            $without_session = array_values(array_filter($jobs, static function ($job) use ($user_id) {
+                return !SSPA_Auth::job_waits_for_session($job, $user_id);
+            }));
+            if (count($without_session) !== count($jobs) && !SSPA_Auth::session_cookies_for($user_id)) {
+                $admin_skipped = __('Administrator pages are measured with your own login, so they are measured only when the analysis is started from the Performance Analysis screen.', 'super-speedy-performance-analysis');
+                $jobs = $without_session;
+                if (!$jobs) {
+                    SSPA_Helper_Files::restore_legacy_db_hold();
+                    return new WP_Error('sspa_admin_session_required', $admin_skipped);
+                }
             }
         }
 
@@ -267,7 +287,7 @@ class SSPA_Run_Controller {
             'plugin_set_hash' => md5(wp_json_encode(get_option('active_plugins', array()))),
             'share_context' => $share_context ? wp_json_encode($share_context) : null,
             'started' => gmdate('Y-m-d H:i:s'),
-            'notes' => '' !== $customer_skipped ? wp_json_encode(array('customer_pages_skipped' => $customer_skipped)) : null,
+            'notes' => ('' !== $customer_skipped || '' !== $admin_skipped) ? wp_json_encode(array_filter(array('customer_pages_skipped' => $customer_skipped, 'admin_pages_skipped' => $admin_skipped))) : null,
         ));
         $run_id = (int) $wpdb->insert_id;
         if (!$run_id) {
@@ -293,6 +313,9 @@ class SSPA_Run_Controller {
             'last_progress' => time(),
             'transport' => $transport,
             'claim_owner' => $claim_owner,
+            // Started from the administrator's own browser session: the jobs that measure as
+            // them wait for a batch that carries it (SSPA_Auth::job_waits_for_session()).
+            'session_start' => (bool) SSPA_Auth::session_cookies_for($user_id),
         );
         if ('cache_impact' === $type) {
             $queue['oc_mode'] = $oc_mode;
@@ -929,6 +952,7 @@ class SSPA_Run_Controller {
                 'stock_restored_manually' => !empty($flow_notes['stock_restored_manually']),
                 'users_deleted' => isset($flow_notes['users_deleted']) ? (int) $flow_notes['users_deleted'] : 0,
                 'users_left' => isset($flow_notes['users_left']) ? (int) $flow_notes['users_left'] : 0,
+                'users_left_ids' => isset($flow_notes['users_left_ids']) ? array_map('intval', (array) $flow_notes['users_left_ids']) : array(),
             ),
             'inventory' => is_array($inventory) ? array(
                 'emails_deferred' => isset($inventory['emails_deferred']) ? (bool) $inventory['emails_deferred'] : null,
@@ -1334,10 +1358,19 @@ class SSPA_Run_Controller {
 
             $crawler = new SSPA_Crawler();
             $deadline = microtime(true) + self::BATCH_SECONDS;
+            $waiting_for_session = false;
 
             while ($queue['idx'] < count($queue['jobs']) && microtime(true) < $deadline) {
                 SSPA_Atomic_Claim::acquire($lock_key, 30 * MINUTE_IN_SECONDS, $lock_owner);
                 $job = $queue['jobs'][$queue['idx']];
+
+                // wordpress.org edition: this job measures as the administrator, whose own
+                // login only a batch driven from their screen carries. Leave it for that batch;
+                // the stale-run janitor re-kicks and, after 3 hours, fails with the reason.
+                if (!empty($queue['session_start']) && SSPA_Auth::job_waits_for_session($job, $queue['user_id'])) {
+                    $waiting_for_session = true;
+                    break;
+                }
 
                 // A checkout flow is one long job that can exceed BATCH_SECONDS. Already
                 // tolerated: the deadline is checked BEFORE starting a job, never during.
@@ -1410,7 +1443,7 @@ class SSPA_Run_Controller {
                 return;
             } elseif ($queue['idx'] >= count($queue['jobs'])) {
                 self::complete_run($run_id, $run['run_type']);
-            } else {
+            } elseif (!$waiting_for_session) {
                 wp_schedule_single_event(time() + 2, 'sspa_process_batch_event', array($run_id));
             }
         } catch (Throwable $error) {
@@ -1996,6 +2029,9 @@ class SSPA_Run_Controller {
             $notes['unmeasured_pages'] = $unmeasured;
         }
         $start_notes = self::run_notes($run_id);
+        if (!empty($start_notes['admin_pages_skipped'])) {
+            $notes['admin_pages_skipped'] = $start_notes['admin_pages_skipped'];
+        }
         if (!empty($start_notes['customer_pages_skipped'])) {
             $notes['customer_pages_skipped'] = $start_notes['customer_pages_skipped'];
         }
@@ -2267,6 +2303,9 @@ class SSPA_Run_Controller {
 
     /** What the run screen says when the logged-in customer pages were skipped, or ''. */
     public static function customer_skip_message($notes) {
+        if (is_array($notes) && empty($notes['customer_pages_skipped']) && !empty($notes['admin_pages_skipped'])) {
+            return (string) $notes['admin_pages_skipped'];
+        }
         if (!is_array($notes) || empty($notes['customer_pages_skipped'])) {
             return '';
         }
@@ -2355,7 +2394,9 @@ class SSPA_Run_Controller {
                 continue;
             }
             if (isset($entry['type']) && 'user' === $entry['type']) {
+                // SSPA-PRO-START
                 self::delete_marked_user((int) $entry['id']);
+                // SSPA-PRO-END
             } else {
                 self::trash_marked_order((int) $entry['id']);
             }
@@ -2394,6 +2435,7 @@ class SSPA_Run_Controller {
             self::trash_marked_order($id);
         }
 
+        // SSPA-PRO-START
         // Marked customer accounts a crash orphaned (the store auto-creates one per
         // purchase when guest checkout is disabled).
         $stale_users = get_users(array(
@@ -2407,8 +2449,10 @@ class SSPA_Run_Controller {
                 self::delete_marked_user((int) $user->ID);
             }
         }
+        // SSPA-PRO-END
     }
 
+    // SSPA-PRO-START
     /**
      * A customer account a crashed run left behind - one the store auto-created for the
      * purchase because guest checkout is disabled. Only ever one carrying our marker.
@@ -2422,6 +2466,7 @@ class SSPA_Run_Controller {
         }
         wp_delete_user($user_id);
     }
+    // SSPA-PRO-END
 
     private static function trash_marked_order($order_id) {
         $order = wc_get_order($order_id);
@@ -2543,9 +2588,14 @@ class SSPA_Run_Controller {
     public static function ajax_tools_recheck() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
+        // Closed in finally, so a template that throws or exits early cannot leave the buffer open.
         ob_start();
-        include SSPA_PLUGIN_DIR . 'includes/admin/tabs/tools.php';
-        wp_send_json_success(array('html' => ob_get_clean()));
+        try {
+            include SSPA_PLUGIN_DIR . 'includes/admin/tabs/tools.php';
+        } finally {
+            $html = ob_get_clean();
+        }
+        wp_send_json_success(array('html' => $html));
     }
 
     /**
@@ -2566,8 +2616,11 @@ class SSPA_Run_Controller {
             $file = SSPA_PLUGIN_DIR . 'includes/admin/tabs/' . $tab . '.php';
             if (file_exists($file)) {
                 ob_start();
-                include $file;
-                $html[$tab] = ob_get_clean();
+                try {
+                    include $file;
+                } finally {
+                    $html[$tab] = ob_get_clean();
+                }
             }
         }
         if (!$html) {

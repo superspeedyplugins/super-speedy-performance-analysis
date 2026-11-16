@@ -184,6 +184,7 @@ class SSPA_Abilities_Control {
                 self::input(array('object_type' => $string))
             ),
 
+            // SSPA-PRO-START
             // ---------------- act ----------------
             'advance-run' => self::ability(
                 __('Advance the active run', 'super-speedy-performance-analysis'),
@@ -350,6 +351,7 @@ class SSPA_Abilities_Control {
                 'act_idempotent', 'exec_advance_parameter_check',
                 self::input(array('check_id' => $string), array('check_id'))
             ),
+            // SSPA-PRO-END
             'get-parameter-check' => self::ability(
                 __('Get the parameter check report', 'super-speedy-performance-analysis'),
                 __('The latest ad-click and campaign parameter check: per parameter the cookies it made the site set (name, plugin or theme, version, hook, callback; never values) and how the page cache keyed it (ignored, separate_key, bypass or unknown), worst first.', 'super-speedy-performance-analysis'),
@@ -392,6 +394,9 @@ class SSPA_Abilities_Control {
         }
         $cron_disabled = defined('DISABLE_WP_CRON') && DISABLE_WP_CRON;
         $notes = array();
+        $loopback = self::loopback_state($health, $active);
+        $workflows = null;
+        // SSPA-PRO-START
         if (!$health['mu']) {
             $notes[] = __('The profiler is off. Ask the site owner, then call set-profiler with enabled:true and confirm:true; every analysis needs it.', 'super-speedy-performance-analysis');
         }
@@ -401,30 +406,58 @@ class SSPA_Abilities_Control {
         if (!SSPA_Report::latest_done_run_id()) {
             $notes[] = __('No analysis has finished yet: start with run-analysis (type baseline), loop advance-run, then read get-report.', 'super-speedy-performance-analysis');
         }
-        $loopback = self::loopback_state($health, $active);
         if ($health['mu'] && !$loopback['healthy'] && !$active) {
             $notes[] = __('This site cannot fetch its own pages (prerequisites.loopback.reason), so nothing can be measured over MCP yet. If a firewall or CDN in front of the site blocks it, set update-settings loopback_origin to the origin server\'s address (ask the host); if the site is behind HTTP basic auth, set loopback_credentials. Then call get-capabilities again.', 'super-speedy-performance-analysis');
         }
         $notes[] = __('Always loop advance-run after starting a run: it does not rely on WP-Cron.', 'super-speedy-performance-analysis');
+        $workflows = array(
+            array('name' => 'site analysis', 'steps' => array('run-analysis', 'advance-run', 'get-report', 'get-findings', 'list-page-profiles', 'get-page-profile', 'get-plugins-table')),
+            array('name' => 'one page or URL', 'steps' => array('profile-url', 'advance-run', 'get-page-profile')),
+            array('name' => 'plugin culprits', 'steps' => array('get-impact-plan', 'run-deep-analysis', 'advance-run', 'get-plugin-impacts', 'get-plugin-impact-detail')),
+            array('name' => 'page cache', 'steps' => array('run-cache-check', 'advance-cache-check', 'get-cache-optimisation-analysis', 'get-cache-safety-report')),
+            array('name' => 'ad-click and campaign parameters', 'steps' => array('run-parameter-check', 'advance-parameter-check', 'get-parameter-check')),
+            array('name' => 'checkout', 'steps' => array('run-checkout-flow (dry_run first)', 'advance-run', 'get-checkout-flow')),
+            array('name' => 'editor save', 'steps' => array('get-admin-save-targets', 'profile-admin-save', 'get-page-profile')),
+            array('name' => 'AJAX and REST', 'steps' => array('start-ajax-window', 'stop-ajax-window', 'get-endpoint-profiles', 'profile-endpoint', 'advance-run', 'compare-ajax-windows')),
+            array('name' => 'real traffic', 'steps' => array('start-traffic-collection', 'get-traffic-collection-status', 'stop-traffic-collection', 'get-traffic-observations', 'compare-traffic-collections')),
+            array('name' => 'history', 'steps' => array('list-runs', 'get-run', 'compare-history', 'get-history-series', 'set-history-expectation')),
+            array('name' => 'reports', 'steps' => array('get-markdown-report', 'prepare-quote-request', 'send-quote-request')),
+        );
+        $cron_note = $cron_disabled
+            ? __('WP-Cron is disabled here: runs move only when advance-run is called (or a system cron runs wp-cron.php).', 'super-speedy-performance-analysis')
+            : __('WP-Cron is enabled, but it only fires on site traffic; loop advance-run anyway.', 'super-speedy-performance-analysis');
+        // SSPA-PRO-END
+        if (null === $workflows) {
+            $cron_note = $cron_disabled
+                ? __('WP-Cron is disabled here: a run moves while the Performance Analysis screen is open, or when a system cron runs wp-cron.php.', 'super-speedy-performance-analysis')
+                : __('A run moves while the Performance Analysis screen is open, and when WP-Cron fires on site traffic.', 'super-speedy-performance-analysis');
+            // The wordpress.org edition's abilities only read. Measurements are started and
+            // the profiler is switched on from the Performance Analysis screen in wp-admin.
+            if (!$health['mu']) {
+                $notes[] = __('The profiler is off. Measurements need it: the site owner turns it on in Performance Analysis > Tools.', 'super-speedy-performance-analysis');
+            }
+            if (!SSPA_Report::latest_done_run_id()) {
+                $notes[] = __('No analysis has finished yet. The site owner starts one from the Performance Analysis screen; these abilities then read every result.', 'super-speedy-performance-analysis');
+            }
+            $notes[] = __('These abilities read results only. Starting measurements, changing settings and deleting evidence happen in wp-admin.', 'super-speedy-performance-analysis');
+            $workflows = array(
+                array('name' => 'site analysis', 'steps' => array('get-report', 'get-findings', 'list-page-profiles', 'get-page-profile', 'get-plugins-table')),
+                array('name' => 'plugin culprits', 'steps' => array('get-impact-plan', 'get-plugin-impacts', 'get-plugin-impact-detail')),
+                array('name' => 'page cache', 'steps' => array('get-cache-optimisation-analysis', 'get-cache-safety-report', 'get-parameter-check')),
+                array('name' => 'checkout', 'steps' => array('get-checkout-flow')),
+                array('name' => 'AJAX and REST', 'steps' => array('get-endpoint-profiles')),
+                array('name' => 'real traffic', 'steps' => array('get-traffic-collection-status', 'get-traffic-observations', 'compare-traffic-collections')),
+                array('name' => 'history', 'steps' => array('list-runs', 'get-run', 'compare-history', 'get-history-series')),
+                array('name' => 'reports', 'steps' => array('get-markdown-report')),
+            );
+        }
         return array(
             'plugin_version' => SSPA_VERSION,
             'wordpress' => get_bloginfo('version'),
             'php' => PHP_VERSION,
             'site_url' => home_url('/'),
             'abilities' => array_merge(SSPA_Abilities::ability_names()),
-            'workflows' => array(
-                array('name' => 'site analysis', 'steps' => array('run-analysis', 'advance-run', 'get-report', 'get-findings', 'list-page-profiles', 'get-page-profile', 'get-plugins-table')),
-                array('name' => 'one page or URL', 'steps' => array('profile-url', 'advance-run', 'get-page-profile')),
-                array('name' => 'plugin culprits', 'steps' => array('get-impact-plan', 'run-deep-analysis', 'advance-run', 'get-plugin-impacts', 'get-plugin-impact-detail')),
-                array('name' => 'page cache', 'steps' => array('run-cache-check', 'advance-cache-check', 'get-cache-optimisation-analysis', 'get-cache-safety-report')),
-                array('name' => 'ad-click and campaign parameters', 'steps' => array('run-parameter-check', 'advance-parameter-check', 'get-parameter-check')),
-                array('name' => 'checkout', 'steps' => array('run-checkout-flow (dry_run first)', 'advance-run', 'get-checkout-flow')),
-                array('name' => 'editor save', 'steps' => array('get-admin-save-targets', 'profile-admin-save', 'get-page-profile')),
-                array('name' => 'AJAX and REST', 'steps' => array('start-ajax-window', 'stop-ajax-window', 'get-endpoint-profiles', 'profile-endpoint', 'advance-run', 'compare-ajax-windows')),
-                array('name' => 'real traffic', 'steps' => array('start-traffic-collection', 'get-traffic-collection-status', 'stop-traffic-collection', 'get-traffic-observations', 'compare-traffic-collections')),
-                array('name' => 'history', 'steps' => array('list-runs', 'get-run', 'compare-history', 'get-history-series', 'set-history-expectation')),
-                array('name' => 'reports', 'steps' => array('get-markdown-report', 'prepare-quote-request', 'send-quote-request')),
-            ),
+            'workflows' => $workflows,
             'prerequisites' => array(
                 'profiler' => array(
                     'enabled' => (bool) $health['mu'],
@@ -438,9 +471,7 @@ class SSPA_Abilities_Control {
                 'loopback' => $loopback,
                 'wp_cron' => array(
                     'disabled' => (bool) $cron_disabled,
-                    'note' => $cron_disabled
-                        ? __('WP-Cron is disabled here: runs move only when advance-run is called (or a system cron runs wp-cron.php).', 'super-speedy-performance-analysis')
-                        : __('WP-Cron is enabled, but it only fires on site traffic; loop advance-run anyway.', 'super-speedy-performance-analysis'),
+                    'note' => $cron_note,
                 ),
                 'active_run' => $active ? SSPA_Run_Controller::status($active) : null,
                 'latest_done_run_id' => (int) SSPA_Report::latest_done_run_id(),
@@ -736,6 +767,7 @@ class SSPA_Abilities_Control {
         return $out;
     }
 
+    // SSPA-PRO-START
     /* ---------------- act executors ---------------- */
 
     public static function exec_advance_run($input) {
@@ -878,6 +910,8 @@ class SSPA_Abilities_Control {
         return SSPA_Parameter_Check::advance(sanitize_text_field((string) ($input['check_id'] ?? '')));
     }
 
+    // SSPA-PRO-END
+
     public static function exec_get_parameter_check($input) {
         $report = SSPA_Parameter_Check::latest();
         if (!$report) {
@@ -886,6 +920,7 @@ class SSPA_Abilities_Control {
         return $report;
     }
 
+    // SSPA-PRO-START
     public static function exec_start_ajax_window($input) {
         return SSPA_Ajax_Profile::start(array(
             'scenario' => sanitize_text_field((string) ($input['scenario'] ?? '')),
@@ -1034,4 +1069,5 @@ class SSPA_Abilities_Control {
             'message' => sanitize_textarea_field((string) ($input['message'] ?? '')),
         ));
     }
+    // SSPA-PRO-END
 }

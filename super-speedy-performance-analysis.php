@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.66.0
+ * Version: 0.66.1
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -16,6 +16,33 @@
  */
 
 defined('ABSPATH') || exit;
+
+// The Pro edition (folder super-speedy-performance-analysis-pro) and the wordpress.org edition
+// (folder super-speedy-performance-analysis) are the same plugin and declare the same classes,
+// so only one may run. Whichever loaded first stays; this copy stands down and says why.
+if (defined('SSPA_PLUGIN_FILE')) {
+    // SSPA-PRO-START
+    // Activating Pro while the wordpress.org edition is active: Pro replaces it. The data is
+    // shared, so nothing is lost, and the other edition's uninstall leaves it in place.
+    register_activation_hook(__FILE__, static function () {
+        // Silently: the other copy's deactivation hook would remove the profiler loader and
+        // db.php drop-in that Pro uses too.
+        deactivate_plugins(plugin_basename(SSPA_PLUGIN_FILE), true);
+    });
+    // SSPA-PRO-END
+    add_action('admin_notices', static function () {
+        global $pagenow;
+        if ('plugins.php' !== $pagenow || !current_user_can('activate_plugins')) {
+            return;
+        }
+        echo '<div class="notice notice-warning"><p>' . esc_html(sprintf(
+            /* translators: %s: folder name of the copy that is running. */
+            __('Two copies of Super Speedy Performance Analysis are active. Only the one in the %s folder is running; deactivate the other.', 'super-speedy-performance-analysis'),
+            basename(dirname(SSPA_PLUGIN_FILE))
+        )) . '</p></div>';
+    });
+    return;
+}
 
 // Read from the plugin header rather than duplicated, because the two drifted: the header
 // said 0.29.15 while this constant still said 0.29.10, and this constant is what the Markdown
@@ -106,6 +133,16 @@ if (defined('WP_CLI') && WP_CLI) {
 }
 
 register_activation_hook(__FILE__, array('SSPA_Install', 'activate'));
+// SSPA-PRO-START
+// Pro sorts first in active_plugins, so when both editions are active Pro is the one running.
+// Retire the wordpress.org copy the first time an administrator loads wp-admin.
+add_action('admin_init', static function () {
+    $sspa_plain = 'super-speedy-performance-analysis/super-speedy-performance-analysis.php';
+    if (plugin_basename(__FILE__) !== $sspa_plain && current_user_can('activate_plugins') && is_plugin_active($sspa_plain)) {
+        deactivate_plugins($sspa_plain, true);
+    }
+});
+// SSPA-PRO-END
 register_deactivation_hook(__FILE__, array('SSPA_Install', 'deactivate'));
 
 if (is_admin()) {

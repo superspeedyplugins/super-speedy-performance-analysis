@@ -7,7 +7,7 @@ Download the zip from the [latest release](https://github.com/superspeedyplugins
 Or over SSH:
 
 ```
-wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis.zip --force --activate
+wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis-pro.zip --force --activate
 ```
 
 `--force` replaces an existing or incomplete copy. Add `--allow-root` if you're deliberately running WP-CLI as root.

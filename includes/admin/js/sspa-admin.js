@@ -958,6 +958,12 @@ jQuery(document).on('click', '.sspa-cache-safety-download', function () {
 						audience: prepared.server_legs[leg].audience,
 						request_number: prepared.server_legs[leg].request_number
 					});
+					// Where logged-in customers are not measured the server answers these legs
+					// without a request, and request_count leaves them out.
+					if (prepared.customer_requests === false && prepared.server_legs[leg].audience === 'customer') {
+						updateProgress(shell, completed, prepared.request_count, wp.i18n.__('Logged-in customers are not measured', "super-speedy-performance-analysis"));
+						continue;
+					}
 					completed++;
 					updateProgress(shell, completed, prepared.request_count, audienceMessage(prepared.server_legs[leg].audience));
 				}

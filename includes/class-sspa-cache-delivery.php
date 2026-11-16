@@ -47,6 +47,14 @@ class SSPA_Cache_Delivery {
         );
     }
 
+    /** Whether the two logged-in customer requests per page are sent (the full edition's synthetic customer). */
+    public static function measures_customers() {
+        // SSPA-PRO-START
+        return true;
+        // SSPA-PRO-END
+        return false;
+    }
+
     public static function ajax_prepare() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) {
@@ -168,7 +176,7 @@ class SSPA_Cache_Delivery {
      * many of them depend on that.
      */
     public static function request_plan($target_count) {
-        $server_per_page = count(self::server_legs()) - (self::woocommerce_active() ? 0 : 2);
+        $server_per_page = count(self::server_legs()) - (self::woocommerce_active() ? 0 : 2) - (self::measures_customers() ? 0 : 2);
         return array(
             'browser_requests' => $target_count * self::REQUESTS_PER_URL,
             'server_requests' => $target_count * $server_per_page,
@@ -183,11 +191,13 @@ class SSPA_Cache_Delivery {
         if (!$targets || 'home' !== $targets[0]['page_key']) {
             return new WP_Error('sspa_cache_delivery_targets', __('The check needs a public home page on this site.', 'super-speedy-performance-analysis'));
         }
+        // SSPA-PRO-START
         // The customer audience measures as the synthetic account, created on the way in.
         $customer = SSPA_Auth::ensure_test_customer();
         if (is_wp_error($customer)) {
             return $customer;
         }
+        // SSPA-PRO-END
         $assessment_id = wp_generate_uuid4();
         $pending = array(
             'assessment_id' => $assessment_id,
@@ -207,6 +217,7 @@ class SSPA_Cache_Delivery {
         return array_merge(array(
             'assessment_id' => $assessment_id,
             'targets' => $client_targets,
+            'customer_requests' => self::measures_customers(),
             'server_legs' => array_map(function ($leg) {
                 return array('audience' => $leg[0], 'request_number' => $leg[1]);
             }, self::server_legs()),
@@ -295,7 +306,10 @@ class SSPA_Cache_Delivery {
         if ('customer' === $audience) {
             $cookies = SSPA_Auth::cookies_for('customer', 0);
             if (!$cookies) {
+                // SSPA-PRO-START
                 return new WP_Error('test_customer_unavailable', __('The synthetic test customer account could not be created.', 'super-speedy-performance-analysis'));
+                // SSPA-PRO-END
+                return new WP_Error('customer_not_measured', __('Logged-in customers are not measured: that needs a customer account\'s login, and this plugin does not create one.', 'super-speedy-performance-analysis'));
             }
             return $cookies;
         }

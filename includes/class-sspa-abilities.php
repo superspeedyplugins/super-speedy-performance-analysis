@@ -34,16 +34,28 @@ class SSPA_Abilities {
             self::CATEGORY . '/get-plugin-impacts',
             self::CATEGORY . '/get-page-plugin-usage',
             self::CATEGORY . '/get-site-metrics',
+            // SSPA-PRO-START
             self::CATEGORY . '/run-analysis',
+            // SSPA-PRO-END
+            // SSPA-PRO-START
             self::CATEGORY . '/run-deep-analysis',
+            // SSPA-PRO-END
+            // SSPA-PRO-START
             self::CATEGORY . '/run-checkout-flow',
+            // SSPA-PRO-END
             self::CATEGORY . '/get-checkout-flow',
+            // SSPA-PRO-START
             self::CATEGORY . '/start-traffic-collection',
+            // SSPA-PRO-END
             self::CATEGORY . '/get-traffic-collection-status',
+            // SSPA-PRO-START
             self::CATEGORY . '/stop-traffic-collection',
+            // SSPA-PRO-END
             self::CATEGORY . '/get-traffic-observations',
             self::CATEGORY . '/compare-traffic-collections',
+            // SSPA-PRO-START
             self::CATEGORY . '/submit-results',
+            // SSPA-PRO-END
         ), SSPA_Abilities_Control::ability_names());
     }
 
@@ -298,6 +310,7 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        // SSPA-PRO-START
         wp_register_ability(self::CATEGORY . '/run-analysis', array(
             'label' => __('Run performance analysis', 'super-speedy-performance-analysis'),
             'description' => __('Start an analysis (asynchronous - poll get-status, then read get-report). type=baseline profiles every key page; type=spot with pages=[...] profiles specific pages; type=cache_impact compares object-cache on/off. Read-only against the site unless include_writes is true.', 'super-speedy-performance-analysis'),
@@ -378,6 +391,7 @@ class SSPA_Abilities {
                 'show_in_rest' => true,
                 'mcp' => array('public' => true),            ),
         ));
+        // SSPA-PRO-END
 
         wp_register_ability(self::CATEGORY . '/get-checkout-flow', array(
             'label' => __('Get checkout flow result', 'super-speedy-performance-analysis'),
@@ -397,6 +411,7 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        // SSPA-PRO-START
         wp_register_ability(self::CATEGORY . '/start-traffic-collection', array(
             'label' => __('Start experimental traffic collection', 'super-speedy-performance-analysis'),
             'description' => __('Start the lightweight WooCommerce traffic observer for 1, 2, 4, 24 or 72 hours, or 7 days. Exact origin requests are retained for logged-in visitors and visitors with non-empty baskets; broad anonymous origin traffic is sampled. Returns the existing collection unchanged when the same duration is already active.', 'super-speedy-performance-analysis'),
@@ -414,6 +429,7 @@ class SSPA_Abilities {
             'execute_callback' => array(__CLASS__, 'exec_start_traffic_collection'),
             'meta' => $idempotent_control,
         ));
+        // SSPA-PRO-END
 
         wp_register_ability(self::CATEGORY . '/get-traffic-collection-status', array(
             'label' => __('Get experimental traffic collection status', 'super-speedy-performance-analysis'),
@@ -431,6 +447,7 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        // SSPA-PRO-START
         wp_register_ability(self::CATEGORY . '/stop-traffic-collection', array(
             'label' => __('Stop experimental traffic collection', 'super-speedy-performance-analysis'),
             'description' => __('Stop request collection while retaining the bounded 72-hour order-outcome observer. emergency=true removes the observer immediately. Collected data is retained.', 'super-speedy-performance-analysis'),
@@ -449,6 +466,7 @@ class SSPA_Abilities {
             'execute_callback' => array(__CLASS__, 'exec_stop_traffic_collection'),
             'meta' => $idempotent_control,
         ));
+        // SSPA-PRO-END
 
         wp_register_ability(self::CATEGORY . '/get-traffic-observations', array(
             'label' => __('Get experimental traffic observations', 'super-speedy-performance-analysis'),
@@ -485,6 +503,7 @@ class SSPA_Abilities {
             'meta' => $readonly,
         ));
 
+        // SSPA-PRO-START
         wp_register_ability(self::CATEGORY . '/submit-results', array(
             'label' => __('Queue anonymised results for superspeedy.org', 'super-speedy-performance-analysis'),
             'description' => __('Save the latest run to the durable local submission queue. Background delivery retries automatically. Only works when the site owner has opted in on the Share tab - agents cannot enable sharing.', 'super-speedy-performance-analysis'),
@@ -498,6 +517,7 @@ class SSPA_Abilities {
             'execute_callback' => array(__CLASS__, 'exec_submit'),
             'meta' => $active,
         ));
+        // SSPA-PRO-END
 
         // The rest of the admin screens: discovery, run control, page profiles, the cache
         // check, AJAX profiling, settings and evidence management.
@@ -570,6 +590,7 @@ class SSPA_Abilities {
         return array('sector' => (string) $demo['sector'], 'metrics' => $demo['metrics']);
     }
 
+    // SSPA-PRO-START
     public static function exec_run_analysis($input) {
         $args = array(
             'type' => (!empty($input['type']) && 'cache_impact' === $input['type']) ? 'cache_impact' : ((!empty($input['type']) && 'spot' === $input['type']) ? 'spot' : 'baseline'),
@@ -648,6 +669,7 @@ class SSPA_Abilities {
         $status = SSPA_Run_Controller::status($run_id);
         return array('run_id' => (int) $run_id, 'status' => (string) $status['status'], 'dry_run' => false, 'note' => isset($input['mail_mode']) ? 'mail_mode was ignored; emails are delivered to the administrator.' : '');
     }
+    // SSPA-PRO-END
 
     public static function exec_get_checkout_flow($input) {
         global $wpdb;
@@ -666,20 +688,24 @@ class SSPA_Abilities {
         return $waterfall;
     }
 
+    // SSPA-PRO-START
     public static function exec_start_traffic_collection($input) {
         return SSPA_Traffic_Collection::start(!empty($input['duration']) ? (string) $input['duration'] : '24h', 'mcp');
     }
+    // SSPA-PRO-END
 
     public static function exec_get_traffic_collection_status($input) {
         return SSPA_Traffic_Collection::status(!empty($input['collection_id']) ? (int) $input['collection_id'] : 0);
     }
 
+    // SSPA-PRO-START
     public static function exec_stop_traffic_collection($input) {
         return SSPA_Traffic_Collection::stop(
             !empty($input['collection_id']) ? (int) $input['collection_id'] : 0,
             !empty($input['emergency'])
         );
     }
+    // SSPA-PRO-END
 
     public static function exec_get_traffic_observations($input) {
         return SSPA_Traffic_Collection::observations(!empty($input['collection_id']) ? (int) $input['collection_id'] : 0);
@@ -692,6 +718,7 @@ class SSPA_Abilities {
         );
     }
 
+    // SSPA-PRO-START
     public static function exec_submit($input) {
         $result = SSPA_Submitter::submit();
         if (is_wp_error($result)) {
@@ -699,5 +726,6 @@ class SSPA_Abilities {
         }
         return array('queued' => true);
     }
+    // SSPA-PRO-END
 
 }
