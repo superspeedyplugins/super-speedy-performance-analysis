@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.66.1\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.67.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-16T13:25:29+00:00\n"
+"POT-Creation-Date: 2026-11-16T13:29:46+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -6086,76 +6086,76 @@ msgstr ""
 msgid "place order: after payment"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2150
+#: includes/class-sspa-checkout-flow.php:2151
 msgid "Single measured purchase, server time only. Two consecutive runs can differ - first-run effects such as a cold opcache land in the measurement."
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2153
+#: includes/class-sspa-checkout-flow.php:2154
 msgid "Your payment provider's own latency is not included: this run skipped the gateway. Everything the store does around the payment IS measured."
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2159
+#: includes/class-sspa-checkout-flow.php:2160
 msgid "pre-flight inventory"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2160
+#: includes/class-sspa-checkout-flow.php:2161
 msgid "view product"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2161
+#: includes/class-sspa-checkout-flow.php:2162
 msgid "add to cart"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2162
+#: includes/class-sspa-checkout-flow.php:2163
 msgid "view cart"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2163
+#: includes/class-sspa-checkout-flow.php:2164
 msgid "load cart data"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2164
 #: includes/class-sspa-checkout-flow.php:2165
+#: includes/class-sspa-checkout-flow.php:2166
 msgid "enter address (tax + shipping)"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2166
+#: includes/class-sspa-checkout-flow.php:2167
 msgid "select shipping"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2167
+#: includes/class-sspa-checkout-flow.php:2168
 msgid "view checkout"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2168
+#: includes/class-sspa-checkout-flow.php:2169
 msgid "create draft order"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2169
+#: includes/class-sspa-checkout-flow.php:2170
 msgid "place order"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2170
+#: includes/class-sspa-checkout-flow.php:2171
 msgid "order received"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2171
+#: includes/class-sspa-checkout-flow.php:2172
 msgid "view order (wp-admin)"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2172
+#: includes/class-sspa-checkout-flow.php:2173
 msgid "mark order completed"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2173
+#: includes/class-sspa-checkout-flow.php:2174
 msgid "refund order in full"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2174
+#: includes/class-sspa-checkout-flow.php:2175
 msgid "move order to Trash"
 msgstr ""
 
-#: includes/class-sspa-checkout-flow.php:2175
+#: includes/class-sspa-checkout-flow.php:2176
 msgid "delete order (admin cleanup)"
 msgstr ""
 

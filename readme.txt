@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.66.1
+Stable tag: 0.67.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -113,7 +113,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.66.1 (16th November 2026) =
+= 0.67.0 (16th November 2026) =
 * The Super Speedy Plugins and GitHub download is now Super Speedy Performance Analysis Pro, installed in its own `super-speedy-performance-analysis-pro` folder; activating it deactivates the earlier copy and keeps all its data.
 * The WordPress.org edition measures administrator pages with your own login from the screen that starts the analysis, and creates no user accounts.
 * The WordPress.org edition's agent abilities are read-only; analyses are started and settings changed in wp-admin.
