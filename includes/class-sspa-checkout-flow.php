@@ -1556,7 +1556,9 @@ class SSPA_Checkout_Flow {
         }
         $result['order_ids'][] = $order_id;
 
-        $temp = get_option(self::TEMP_OPTION, array());
+        // The place-order request may have just appended the account it created, from its own
+        // process, so read the ledger fresh rather than this process's cached copy.
+        $temp = self::fresh_temp_registry();
         $temp = is_array($temp) ? $temp : array();
         $temp[] = array('type' => 'order', 'id' => $order_id, 'ts' => time());
         update_option(self::TEMP_OPTION, $temp, false);
@@ -1654,12 +1656,26 @@ class SSPA_Checkout_Flow {
     }
 
     /** Type-aware: a user entry must never be dropped by an order id collision. */
-    private static function forget_temp_entries($type, $ids) {
-        // The registry is shared with the loopback place-order request, which appends the
-        // auto-created customer from its own process. Read it fresh before rewriting it, or
-        // this process's cached copy silently drops that entry and the account outlives the run.
+    /**
+     * The ledger as the database holds it now. It is shared with the loopback place-order
+     * request, which appends the auto-created customer from its own process, so this process's
+     * cache can be stale in two ways: an old value, or a cached "does not exist" from before
+     * the other process created the option. Both are cleared before reading.
+     */
+    private static function fresh_temp_registry() {
         wp_cache_delete(self::TEMP_OPTION, 'options');
-        $temp = get_option(self::TEMP_OPTION, array());
+        $notoptions = wp_cache_get('notoptions', 'options');
+        if (is_array($notoptions) && isset($notoptions[self::TEMP_OPTION])) {
+            unset($notoptions[self::TEMP_OPTION]);
+            wp_cache_set('notoptions', $notoptions, 'options');
+        }
+        return get_option(self::TEMP_OPTION, array());
+    }
+
+    private static function forget_temp_entries($type, $ids) {
+        // Read it fresh before rewriting it, or this process's cached copy silently drops the
+        // place-order request's entry and the account outlives the run.
+        $temp = self::fresh_temp_registry();
         if (!is_array($temp)) {
             delete_option(self::TEMP_OPTION);
             return;
@@ -1687,8 +1703,7 @@ class SSPA_Checkout_Flow {
     private static function delete_temp_users(&$result) {
         // The entries were written by the loopback place-order request; make sure this
         // process reads them fresh rather than from its own options cache.
-        wp_cache_delete(self::TEMP_OPTION, 'options');
-        $temp = get_option(self::TEMP_OPTION, array());
+        $temp = self::fresh_temp_registry();
         $user_ids = array();
         foreach ((array) $temp as $entry) {
             if (isset($entry['type'], $entry['id']) && 'user' === $entry['type']) {
