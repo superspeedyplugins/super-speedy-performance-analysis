@@ -228,10 +228,15 @@ class SSPA_Community_Figures {
     // ---------------- rendering ----------------
 
     public static function render($result) {
-        ob_start();
         $sspa_figures = $result;
-        include SSPA_PLUGIN_DIR . 'includes/admin/partials/community-figures.php';
-        return wp_kses(ob_get_clean(), self::allowed_html());
+        // Closed in finally, so a partial that throws cannot leave the buffer open.
+        ob_start();
+        try {
+            include SSPA_PLUGIN_DIR . 'includes/admin/partials/community-figures.php';
+        } finally {
+            $html = ob_get_clean();
+        }
+        return wp_kses($html, self::allowed_html());
     }
 
     public static function allowed_html() {
