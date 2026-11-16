@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.67.3\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.68.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-16T15:15:09+00:00\n"
+"POT-Creation-Date: 2026-11-16T15:39:41+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -2468,7 +2468,7 @@ msgid "You can browse what superspeedy.org already publishes:"
 msgstr ""
 
 #: includes/admin/partials/community-figures.php:20
-#: includes/admin/js/sspa-admin.js:1919
+#: includes/admin/js/sspa-admin.js:1921
 msgid "The community figures could not be loaded."
 msgstr ""
 
@@ -6368,39 +6368,39 @@ msgstr ""
 msgid "an unknown plugin"
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:243
+#: includes/class-sspa-helper-files.php:247
 msgid "Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:244
+#: includes/class-sspa-helper-files.php:248
 msgid "Super Speedy Performance Analysis: could not restore your original db.php drop-in (db.php.sspa-hold still exists in wp-content). Please restore it manually."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:269
+#: includes/class-sspa-helper-files.php:273
 msgid "Only a network administrator may install network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:272
+#: includes/class-sspa-helper-files.php:276
 msgid "This site sets DISALLOW_FILE_MODS, which forbids installing the profiler loader."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:276
+#: includes/class-sspa-helper-files.php:280
 msgid "Could not install the profiler loader; check mu-plugins permissions and any existing file at that path."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:279
+#: includes/class-sspa-helper-files.php:283
 msgid "Could not refresh the profiler db.php; check wp-content permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:289
+#: includes/class-sspa-helper-files.php:293
 msgid "Only a network administrator may remove network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:292
+#: includes/class-sspa-helper-files.php:296
 msgid "Could not remove the profiler loader; check its file permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:295
+#: includes/class-sspa-helper-files.php:299
 msgid "Could not remove the profiler db.php; check its file permissions."
 msgstr ""
 
@@ -8016,84 +8016,84 @@ msgid "The community payload identity is invalid."
 msgstr ""
 
 #. translators: 1: URL, 2: error message
-#: includes/community/class-sspa-community-figures.php:79
+#: includes/community/class-sspa-community-figures.php:96
 #, php-format
 msgid "%1$s could not be reached: %2$s"
 msgstr ""
 
 #. translators: 1: URL, 2: HTTP status code
-#: includes/community/class-sspa-community-figures.php:88
+#: includes/community/class-sspa-community-figures.php:105
 #, php-format
 msgid "%1$s answered HTTP %2$d."
 msgstr ""
 
 #. translators: %s: URL
-#: includes/community/class-sspa-community-figures.php:92
+#: includes/community/class-sspa-community-figures.php:109
 #, php-format
 msgid "%s did not return a figures document this version understands."
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:263
+#: includes/community/class-sspa-community-figures.php:280
 msgid "Early data"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:264
+#: includes/community/class-sspa-community-figures.php:281
 msgid "Small cohort"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:265
+#: includes/community/class-sspa-community-figures.php:282
 msgid "Descriptive"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:266
+#: includes/community/class-sspa-community-figures.php:283
 msgid "Comparison"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:267
+#: includes/community/class-sspa-community-figures.php:284
 msgid "Ranking"
 msgstr ""
 
 #. translators: 1: confidence label, 2: lowest installation count, 3: highest installation count
-#: includes/community/class-sspa-community-figures.php:277
+#: includes/community/class-sspa-community-figures.php:294
 #, php-format
 msgid "%1$s (%2$d-%3$d installations)"
 msgstr ""
 
 #. translators: 1: confidence label, 2: lowest installation count
-#: includes/community/class-sspa-community-figures.php:280
+#: includes/community/class-sspa-community-figures.php:297
 #, php-format
 msgid "%1$s (%2$d+ installations)"
 msgstr ""
 
 #. translators: %s: number of installations
-#: includes/community/class-sspa-community-figures.php:287
+#: includes/community/class-sspa-community-figures.php:304
 #, php-format
 msgid "%s installation"
 msgid_plural "%s installations"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/community/class-sspa-community-figures.php:296
+#: includes/community/class-sspa-community-figures.php:313
 msgid "site type"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:297
+#: includes/community/class-sspa-community-figures.php:314
 msgid "product count"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:298
+#: includes/community/class-sspa-community-figures.php:315
 msgid "active plugins"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:299
+#: includes/community/class-sspa-community-figures.php:316
 msgid "object cache"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:300
+#: includes/community/class-sspa-community-figures.php:317
 msgid "database"
 msgstr ""
 
-#: includes/community/class-sspa-community-figures.php:308
+#: includes/community/class-sspa-community-figures.php:325
 msgid "all sites"
 msgstr ""
 
@@ -8874,7 +8874,7 @@ msgid "Downloading the public figures from superspeedy.org…"
 msgstr ""
 
 #. translators: %s: HTTP or network error detail.
-#: includes/admin/js/sspa-admin.js:1922
+#: includes/admin/js/sspa-admin.js:1924
 #, js-format
 msgid "The community figures could not be loaded: %s"
 msgstr ""

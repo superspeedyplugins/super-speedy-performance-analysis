@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.67.3
+Stable tag: 0.68.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -113,7 +113,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.67.3 (16th November 2026) =
+= 0.68.0 (16th November 2026) =
 * Pro installs the profiler automatically on activation and when an analysis starts, and refreshes it after updates, so there is no Enable profiler step; Disable profiler in Tools keeps it off until you enable it again.
 * Pro loads the community figures as soon as you open the Compare tab.
 * Pro's page and checkout panels show the Super Speedy Plugins wordmark and credit line again.
