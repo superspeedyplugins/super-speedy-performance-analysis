@@ -2,7 +2,7 @@
 // An archive whose plan reads its table with no usable index is reported against that table,
 // with no PHP warning from the analysis.
 //
-// Before 0.64.2 the archive profile kept only five fields of the plan (scan, filesort, key,
+// Before 0.65.0 the archive profile kept only five fields of the plan (scan, filesort, key,
 // est_rows, est_rows_total) and the analysis handed that reduced copy to
 // SSPA_Explain::summarise(), which reads 'table' whenever 'scan' is set. Every archive with a
 // full-table-scan plan raised "Undefined array key "table"" at class-sspa-explain.php:208, and

@@ -163,8 +163,8 @@ This is not a nicety. WooCommerce attaches a `product_visibility NOT IN` clause 
 |---|---|
 | `scan` | The plan reads the table with no usable index. |
 | `filesort` | The database sorts the matched rows. This is the thing a composite index removes. |
-| `temporary` | The plan builds a temporary table. Added in 0.64.2. |
-| `table` | The table of the worst step, the one examining most rows, or `null`. Added in 0.64.2. |
+| `temporary` | The plan builds a temporary table. Added in 0.65.0. |
+| `table` | The table of the worst step, the one examining most rows, or `null`. Added in 0.65.0. |
 | `key` | The index actually chosen, or `null`. |
 | `est_rows` | Rows the optimiser expects to examine on the worst table. An **estimate**, not a measurement. |
 | `est_rows_total` | The same across all tables in the plan. |

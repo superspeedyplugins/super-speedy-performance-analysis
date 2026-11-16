@@ -113,7 +113,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.64.2 (16th November 2026) =
+= 0.65.0 (16th November 2026) =
 * Fixed `Undefined array key "table"` warnings in `class-sspa-explain.php` when an archive query reads its table with no usable index; the finding now names that table.
 
 = 0.64.1 (13th November 2026) =
