@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.67.2
+Stable tag: 0.67.3
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -68,7 +68,7 @@ Before queueing or sending evidence, privacy validation rejects site addresses a
 
 superspeedy.org is operated by WP Intense OÜ, which also runs superspeedyplugins.com. superspeedy.org data is never joined to leads, quote requests or customer records, and is never used for sales targeting. WP Intense OÜ stores submitted archives with Cloudflare R2 indefinitely, and may publish aggregates and anonymised individual results. Email support@superspeedyplugins.com with the installation identifier shown in Share to request deletion and recalculation of affected comparisons; uninstalling the plugin does not delete previous submissions. Submission grants WP Intense OÜ a permanent, royalty-free licence to store, process and publish that evidence in aggregated or anonymised form.
 
-Community figures on the Compare tab: only when an administrator presses "Load community figures", the plugin downloads two public, read-only documents from superspeedy.org, https://superspeedy.org/api/v1/cohorts and https://superspeedy.org/api/v1/plugin-impact, one request each. These downloads send nothing about the site: no query string, cohort, plugin list, identifier or site address, and a plugin User-Agent instead of WordPress's default, which contains the site address. The site's cohort and active plugins are matched locally. Like any server, Cloudflare and superspeedy.org see the IP address of the web server making the request, but superspeedy.org does not log it. Nothing is downloaded until the button is pressed, and sharing is not needed to load the figures.
+Community figures on the Compare tab: when an administrator opens the Compare tab (at most once an hour, from a cached copy otherwise) or presses "Load community figures", the plugin downloads two public, read-only documents from superspeedy.org, https://superspeedy.org/api/v1/cohorts and https://superspeedy.org/api/v1/plugin-impact, one request each. These downloads send nothing about the site: no query string, cohort, plugin list, identifier or site address, and a plugin User-Agent instead of WordPress's default, which contains the site address. The site's cohort and active plugins are matched locally. Like any server, Cloudflare and superspeedy.org see the IP address of the web server making the request, but superspeedy.org does not log it. Nothing is downloaded until the Compare tab is opened, and sharing is not needed to load the figures.
 
 Privacy policy: https://superspeedy.org/privacy-and-terms/
 Terms of service: https://superspeedy.org/privacy-and-terms/
@@ -90,7 +90,7 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Files outside the plugin directory ==
 
-Activation writes nothing outside the plugin folder. The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/sspa-loader.php` and, only when no drop-in exists, the conditional database drop-in `wp-content/db.php`; Disable profiler and deactivation remove both. Enable honours DISALLOW_FILE_MODS, and only files signed by this plugin are ever removed.
+The profiler is installed automatically: activation, the first analysis and the first admin page after an update install or refresh `wp-content/mu-plugins/sspa-loader.php` and, only when no drop-in exists, the conditional database drop-in `wp-content/db.php`. Disable profiler in Tools removes both and keeps them off until Enable profiler; deactivation removes both. Installation honours DISALLOW_FILE_MODS, and only files signed by this plugin are ever removed.
 Traffic recording installs the fixed `wp-content/mu-plugins/sspa-traffic-observer.php` only while recording is enabled.
 Network-wide profiler changes require a network administrator on multisite; Traffic recording is unavailable on multisite.
 
@@ -112,6 +112,12 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.67.3 (16th November 2026) =
+* Pro installs the profiler automatically on activation and when an analysis starts, and refreshes it after updates, so there is no Enable profiler step; Disable profiler in Tools keeps it off until you enable it again.
+* Pro loads the community figures as soon as you open the Compare tab.
+* Pro's page and checkout panels show the Super Speedy Plugins wordmark and credit line again.
+* Pro also shows the "plugin changes were detected" quick comparison prompt on the Dashboard.
 
 = 0.67.2 (16th November 2026) =
 * With both Super Speedy Performance Analysis Pro and the free plugin active, Pro is always the one that runs, and a notice asks you to delete the free plugin.

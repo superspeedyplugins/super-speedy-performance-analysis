@@ -82,14 +82,13 @@ async function selected(page, slug) {
     await expect(compare.locator(".sspa-share-prompt")).toBeVisible({ timeout: 60000 });
     await expect(compare.locator(".sspa-history-compare-picker")).toBeVisible();
     await expect(compare.locator("#sspa-community-figures-load")).toBeVisible();
-    await shot(page, "02-compare-before-figures");
-    let requests = apiRequests();
-    if (requests.length) throw Error("superspeedy.org was contacted before the click: " + JSON.stringify(requests));
-    pass("Compare shows the panel, the own-run comparison and a Load community figures button, with no request yet");
-
-    await Promise.all([ajax(page, "sspa_community_figures"), compare.locator("#sspa-community-figures-load").click()]);
+    // Pro loads the community figures as soon as Compare is shown; the button stays, to load them
+    // again. (The wordpress.org edition waits for the click; that code is stripped from its zip.)
     const figures = compare.locator(".sspa-community-figures-table").first();
     await expect(figures).toBeVisible({ timeout: 60000 });
+    await shot(page, "02-compare-figures-on-open");
+    pass("Compare shows the panel, the own-run comparison and the community figures, loaded on opening without a click");
+    let requests;
     const home = compare.locator('tr[data-page-class="home"][data-rung]');
     await expect(home).toContainText("612.4");
     await expect(home).toContainText("1 installation");
@@ -118,7 +117,7 @@ async function selected(page, slug) {
     if (JSON.stringify(requests) !== JSON.stringify(["GET https://superspeedy.org/api/v1/cohorts", "GET https://superspeedy.org/api/v1/plugin-impact"])) throw Error("unexpected requests: " + JSON.stringify(requests));
     await figures.scrollIntoViewIfNeeded();
     await shot(page, "03-compare-community-figures");
-    pass("one click loads both documents once each and shows figures with n and their confidence label");
+    pass("opening Compare twice (two page loads) downloads both documents once each, the second visit from Pro's hour cache, and shows figures with n and their confidence label");
 
     // Snooze: gone everywhere for 24 hours, by the stored time.
     const before = Math.floor(Date.now() / 1000);

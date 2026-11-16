@@ -51,6 +51,8 @@ ssx_hook_wporg() {
 
     # Everything wordpress.org refused, marked in place in the source. Deleted whole.
     ssx_strip_pro_blocks "$stage"
+    # Pro's panel wordmark; the wordpress.org panels carry no credit (review round 1).
+    ssx_rm "$stage" "includes/admin/img"
 
     # The submodule pointer is meaningless without the submodule, and .gitmodules is a
     # PCP "hidden files" error in its own right. (Dot-files are stripped by ssx_build_target
@@ -103,7 +105,10 @@ ssx_strip_pro_blocks() {
         ' "$file" || ssx_die "unbalanced SSPA-PRO markers in ${file#"$stage"/}"
         perl -i -ne 'print unless m{^\s*//\s*SSPA-PRO-START\b} .. m{^\s*//\s*SSPA-PRO-END\b}' "$file" \
             || ssx_die "stripping SSPA-PRO blocks failed on ${file#"$stage"/}"
-        case "$file" in *.php) php -l "$file" >/dev/null || ssx_die "${file#"$stage"/} does not parse after stripping SSPA-PRO blocks" ;; esac
+        case "$file" in
+            *.php) php -l "$file" >/dev/null || ssx_die "${file#"$stage"/} does not parse after stripping SSPA-PRO blocks" ;;
+            *.js) if command -v node >/dev/null 2>&1; then node --check "$file" || ssx_die "${file#"$stage"/} does not parse after stripping SSPA-PRO blocks"; fi ;;
+        esac
         n=$((n + 1))
     done < <(grep -rlE '^\s*//\s*SSPA-PRO-START' "$stage" --include='*.php' --include='*.js' 2>/dev/null | grep -v '/\.')
     [ "$n" -gt 0 ] || ssx_die "no SSPA-PRO blocks found - the wp.org edition would ship the pro code"
@@ -120,7 +125,7 @@ ssx_strip_pro_blocks() {
 ssx_assert_no_pro_code() {
     local stage="$1" hit
     hit=$(find "$stage" -name '.*' -prune -o -type f \( -name '*.php' -o -name '*.js' \) -print 2>/dev/null \
-          | xargs grep -nE 'SSPA-PRO-(START|END)|wp_(insert|update|delete|create)_user\s*\(|wp_set_current_user\s*\(|wp_generate_auth_cookie\s*\(|wp_set_auth_cookie\s*\(|wp_signon\s*\(|[^_a-z]error_reporting\s*\(|ensure_test_customer|fresh_test_customer' 2>/dev/null || true)
+          | xargs grep -nE 'SSPA-PRO-(START|END)|wp_(insert|update|delete|create)_user\s*\(|wp_set_current_user\s*\(|wp_generate_auth_cookie\s*\(|wp_set_auth_cookie\s*\(|wp_signon\s*\(|[^_a-z]error_reporting\s*\(|ensure_test_customer|fresh_test_customer|Powered by %1|auto_enable\(|sspa_autoload_figures' 2>/dev/null || true)
     [ -n "$hit" ] && ssx_die "pro-only code survived in the wp.org build:"$'\n'"$hit"
     for ability in set-profiler update-settings advance-run cancel-run run-analysis run-deep-analysis run-checkout-flow \
                    profile-url profile-admin-save run-cache-check start-ajax-window profile-endpoint process-submissions \

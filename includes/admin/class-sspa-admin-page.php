@@ -46,7 +46,12 @@ class SSPA_Admin_Page {
             return;
         }
         $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-        if (!$screen || !(in_array($screen->id, array('plugins', 'update-core'), true) || preg_match('/(?:^|_page_)sspa$/', $screen->id))) {
+        $screens = array('plugins', 'update-core');
+        // SSPA-PRO-START
+        // Pro also asks on the Dashboard, where an administrator lands after updating.
+        $screens[] = 'dashboard';
+        // SSPA-PRO-END
+        if (!$screen || !(in_array($screen->id, $screens, true) || preg_match('/(?:^|_page_)sspa$/', $screen->id))) {
             return;
         }
         // Keep the context until the AJAX request has created the spot-check run.

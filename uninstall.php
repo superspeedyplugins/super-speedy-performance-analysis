@@ -95,6 +95,8 @@ if (is_file($sspa_traffic_config)) {
     SSPA_Filesystem::direct()->delete($sspa_traffic_config);
 }
 delete_option('sspa_profiler_enabled');
+delete_option('sspa_profiler_switched_off');
+delete_option('sspa_profiler_auto_checked');
 delete_option('sspa_dropin_restore_notice');
 delete_option('sspa_traffic_authority');
 // Loopback basic-auth credentials are a secret, and the chosen route names a server address:

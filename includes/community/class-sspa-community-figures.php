@@ -28,7 +28,9 @@ class SSPA_Community_Figures {
     public static function ajax_load() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
-        $result = self::load();
+        // Pro loads the figures by itself whenever Compare opens; it asks for an hour-old copy rather
+        // than two new downloads per visit. A press of Load community figures always downloads.
+        $result = self::load(!empty($_POST['cached']));
         wp_send_json_success(array('state' => $result['state'], 'html' => self::render($result)));
     }
 
@@ -37,9 +39,9 @@ class SSPA_Community_Figures {
      *
      * @return array {state: available|not_published|error, ...}
      */
-    public static function load() {
-        $cohorts = self::fetch('cohorts');
-        $impact = self::fetch('plugin-impact');
+    public static function load($cached = false) {
+        $cohorts = self::fetch('cohorts', $cached);
+        $impact = self::fetch('plugin-impact', $cached);
         foreach (array($cohorts, $impact) as $document) {
             if ('error' === $document['state']) {
                 return array('state' => 'error', 'detail' => $document['detail']);
@@ -65,7 +67,22 @@ class SSPA_Community_Figures {
      * says about publication, so both are reported as "not published yet". Anything else is an
      * error and keeps its detail.
      */
-    private static function fetch($name) {
+    private static function fetch($name, $cached = false) {
+        $cache_key = 'sspa_figures_' . sanitize_key($name);
+        if ($cached) {
+            $copy = get_transient($cache_key);
+            if (is_array($copy) && isset($copy['state']) && 'available' === $copy['state']) {
+                return $copy;
+            }
+        }
+        $result = self::download($name);
+        if ($cached && 'available' === $result['state']) {
+            set_transient($cache_key, $result, HOUR_IN_SECONDS);
+        }
+        return $result;
+    }
+
+    private static function download($name) {
         $response = wp_remote_get(self::API_BASE . $name, array(
             'timeout' => 15,
             'redirection' => 0,

@@ -31,12 +31,23 @@
 		if (el.length) {
 			return el;
 		}
+		var logo = '';
+		var foot = '';
+		// SSPA-PRO-START
+		logo = sspa_checkout.logo_url
+			? '<img class="sspa-adhoc-logo" src="' + esc(sspa_checkout.logo_url) + '" alt="Super Speedy Plugins">'
+			: '<span class="sspa-adhoc-logo-text">Super Speedy Plugins</span>';
+		// The screenshot line: anyone sharing this panel shares where it came from.
+		foot = '<div class="sspa-adhoc-foot">' + wp.i18n.sprintf(/* translators: 1: linked product name, 2: linked publisher website. */ wp.i18n.__('Powered by %1$s · free from %2$s', 'super-speedy-performance-analysis'), '<strong>Super Speedy Performance Analysis</strong>', '<a href="https://www.superspeedyplugins.com/" target="_blank" rel="noopener">superspeedyplugins.com</a>') + '</div>';
+		// SSPA-PRO-END
 		el = $(
 			'<div id="sspa-adhoc-pop" style="display:none">' +
 			'<div class="sspa-adhoc-head"><span class="sspa-adhoc-title">Super Speedy Performance Analysis' +
 			'<span class="sspa-adhoc-version">v' + esc(sspa_checkout.version) + '</span></span>' +
+			logo +
 			'<button type="button" class="sspa-adhoc-close" aria-label="' + esc(wp.i18n.__('Close', 'super-speedy-performance-analysis')) + '">&times;</button></div>' +
 			'<div class="sspa-adhoc-body"></div>' +
+			foot +
 			'</div>'
 		);
 		$('body').append(el);

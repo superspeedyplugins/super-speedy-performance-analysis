@@ -95,19 +95,43 @@ class SSPA_Helper_Files {
     /** Refresh the database helper; the loader requires explicit consent. */
     // SSPA-PRO-START
     /**
-     * The mu-loader names the plugin folder of the copy that installed it. Where the administrator
-     * enabled the profiler from the wordpress.org copy, point the loader at this (Pro) copy instead:
-     * otherwise profiled requests run the other copy's profiler, and deleting it leaves none.
-     * Hooked on admin_init; does nothing unless the profiler is enabled and the loader is ours.
+     * Pro switches the profiler on without the Enable click: on activation, when an analysis
+     * starts, and once per build on an administrator's admin page. It also refreshes files an
+     * update made stale and a loader that names another copy's folder (the wordpress.org edition
+     * installed it). Never after an explicit Disable profiler; never over another plugin's
+     * db.php or mu-plugin; never where DISALLOW_FILE_MODS or multisite permissions forbid it.
+     *
+     * @return bool Whether the profiler is ready.
      */
-    public static function repoint_loader_to_this_copy() {
-        if (!get_option('sspa_profiler_enabled') || !current_user_can('manage_options') || !self::is_ours(self::mu_path())) {
+    public static function auto_enable() {
+        if (get_option('sspa_profiler_switched_off') || !(current_user_can('manage_options') || (defined('WP_CLI') && WP_CLI))) {
+            return false;
+        }
+        $health = self::health();
+        if ($health['mu']) {
+            return true;
+        }
+        if (!in_array($health['mu_reason'], array('disabled', 'stale'), true)) {
+            return false;
+        }
+        return true === self::enable_profiler();
+    }
+
+    /** admin_init: auto_enable() once per build and plugin folder, not on every admin page. */
+    public static function auto_enable_on_admin() {
+        if (!current_user_can('manage_options')) {
             return;
         }
-        $loader = (string) SSPA_Filesystem::get_contents(self::mu_path());
-        if (false === strpos($loader, addslashes(trailingslashit(SSPA_PLUGIN_DIR)) . 'profiler/bootstrap.php')) {
-            self::ensure_installed(true);
+        $key = md5(SSPA_VERSION . '|' . SSPA_MU_VERSION . '|' . SSPA_DROPIN_VERSION . '|' . SSPA_PLUGIN_DIR);
+        // Checked this build already, and any loader present is this copy's: nothing to do. A loader
+        // naming another copy's folder (the wordpress.org copy reinstalled it) is fixed straight away.
+        $loader_here = !self::is_ours(self::mu_path())
+            || false !== strpos((string) SSPA_Filesystem::get_contents(self::mu_path()), addslashes(trailingslashit(SSPA_PLUGIN_DIR)) . 'profiler/bootstrap.php');
+        if (get_option('sspa_profiler_auto_checked') === $key && $loader_here) {
+            return;
         }
+        self::auto_enable();
+        update_option('sspa_profiler_auto_checked', $key, false);
     }
     // SSPA-PRO-END
 
@@ -259,6 +283,8 @@ class SSPA_Helper_Files {
             return new WP_Error('sspa_dropin_write', __('Could not refresh the profiler db.php; check wp-content permissions.', 'super-speedy-performance-analysis'));
         }
         update_option('sspa_profiler_enabled', true, false);
+        // An explicit Disable is remembered (Pro never switches the profiler back on after it).
+        delete_option('sspa_profiler_switched_off');
         return true;
     }
 
@@ -273,6 +299,7 @@ class SSPA_Helper_Files {
             return new WP_Error('sspa_dropin_remove', __('Could not remove the profiler db.php; check its file permissions.', 'super-speedy-performance-analysis'));
         }
         update_option('sspa_profiler_enabled', false, false);
+        update_option('sspa_profiler_switched_off', true, false);
         return true;
     }
 

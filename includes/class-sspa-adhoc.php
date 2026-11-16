@@ -111,10 +111,19 @@ class SSPA_Adhoc {
             add_action('admin_enqueue_scripts', array(__CLASS__, 'lazy_loader'), 999);
         }
         wp_set_script_translations('sspa-adhoc', 'super-speedy-performance-analysis');
+        $sspa_logo = '';
+        // SSPA-PRO-START
+        // Pro's panels carry the Super Speedy Plugins wordmark and the "Powered by" line again (the
+        // wordpress.org edition may not credit itself on screens the public can reach). The current
+        // white wordmark, text only; source of truth:
+        // marketing/site/company-icons-and-logos/super-speedy-plugins-logo-white-text-only.svg
+        $sspa_logo = SSPA_PLUGIN_URL . 'includes/admin/img/super-speedy-plugins-white.svg';
+        // SSPA-PRO-END
         wp_localize_script('sspa-adhoc', 'sspa_adhoc', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
             'version' => SSPA_VERSION,
+            'logo_url' => $sspa_logo,
             'mail_warning' => SSPA_Mail::warning(),
             'download_prefix' => sspa_download_prefix(),
             'i18n' => array(
@@ -182,6 +191,7 @@ class SSPA_Adhoc {
                     ? __('Re-run with Excimer to improve this data', 'super-speedy-performance-analysis')
                     : __('Install Excimer to improve this data', 'super-speedy-performance-analysis'),
                 'version' => SSPA_VERSION,
+                'logo_url' => $sspa_logo,
             'mail_warning' => SSPA_Mail::warning(),
             ));
         }
