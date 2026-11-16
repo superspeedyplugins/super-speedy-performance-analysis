@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.67.2
+ * Version: 0.67.3
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -153,11 +153,9 @@ if (defined('WP_CLI') && WP_CLI) {
 
 register_activation_hook(__FILE__, array('SSPA_Install', 'activate'));
 // SSPA-PRO-START
-// The profiler's mu-loader names the plugin folder of the copy that installed it. When that was the
-// wordpress.org copy (installed before Pro, or still beside it), profiled requests would run its
-// stripped profiler, and deleting it would leave Pro with none. Where the administrator has
-// enabled the profiler, point the loader at this copy, once, on an administrator's admin request.
-add_action('admin_init', array('SSPA_Helper_Files', 'repoint_loader_to_this_copy'));
+// Pro installs and refreshes the profiler without the Enable click (SSPA_Helper_Files::auto_enable()),
+// including a loader the wordpress.org copy installed, which names that copy's folder.
+add_action('admin_init', array('SSPA_Helper_Files', 'auto_enable_on_admin'));
 // The free copy, switched off but still installed: ask for it to be deleted. While it is active
 // it shows its own notice instead (the stand-down branch above).
 add_action('admin_notices', static function () {

@@ -47,7 +47,7 @@ fi
 
 if [ "$PART" = all ] || [ "$PART" = journey ]; then
     # Cleared on the way in: sharing off, no prompt choices, the build's documents served.
-    cli eval 'update_option("sspa_share_optin", 0, false); delete_user_meta(1, "sspa_share_prompt_snoozed_until"); delete_user_meta(1, "sspa_share_prompt_never"); delete_option("sspa_test_ssorg_log"); update_option("sspa_test_ssorg_mode", "fixture", false);' || exit 1
+    cli eval 'update_option("sspa_share_optin", 0, false); delete_user_meta(1, "sspa_share_prompt_snoozed_until"); delete_user_meta(1, "sspa_share_prompt_never"); delete_option("sspa_test_ssorg_log"); delete_transient("sspa_figures_cohorts"); delete_transient("sspa_figures_plugin-impact"); update_option("sspa_test_ssorg_mode", "fixture", false);' || exit 1
     sleep 3 # php-fpm opcache revalidation after a new MU fixture link
     timeout 2700 node "$HERE/journey.e2e.cjs" > "$OUT/journey.log" 2>&1
     status=$?
@@ -55,7 +55,7 @@ if [ "$PART" = all ] || [ "$PART" = journey ]; then
     [ "$status" -eq 0 ] || { echo "FAIL: browser journey exited $status"; FAILED=1; }
 fi
 if [ "$PART" = live ]; then
-    cli eval 'update_option("sspa_test_ssorg_mode", "live", false); delete_option("sspa_test_ssorg_log");' || exit 1
+    cli eval 'update_option("sspa_test_ssorg_mode", "live", false); delete_option("sspa_test_ssorg_log"); delete_transient("sspa_figures_cohorts"); delete_transient("sspa_figures_plugin-impact");' || exit 1
     timeout 900 node "$HERE/journey.e2e.cjs" live > "$OUT/journey-live.log" 2>&1
     status=$?
     cat "$OUT/journey-live.log"

@@ -1911,7 +1911,9 @@ jQuery(document).on('click', '#sspa-community-figures-load', function () {
 	var result = section.find('#sspa-community-figures-result');
 	var spinner = section.find('.spinner').addClass('is-active');
 	result.text(wp.i18n.__("Downloading the public figures from superspeedy.org…", "super-speedy-performance-analysis"));
-	jQuery.post(ajaxurl, { action: 'sspa_community_figures', nonce: sspa_admin.nonce }, function (resp) {
+	var cached = button.data('sspaCached') ? 1 : 0;
+	button.removeData('sspaCached');
+	jQuery.post(ajaxurl, { action: 'sspa_community_figures', nonce: sspa_admin.nonce, cached: cached }, function (resp) {
 		if (resp && resp.success && resp.data && typeof resp.data.html === 'string') {
 			// Escaped by the server's renderer (wp_kses with a fixed allow-list).
 			result.html(resp.data.html).attr('data-state', resp.data.state);
@@ -1925,6 +1927,28 @@ jQuery(document).on('click', '#sspa-community-figures-load', function () {
 		button.prop('disabled', false);
 	});
 });
+
+// SSPA-PRO-START
+// Pro: the community figures load as soon as the Compare tab is shown, once per page load.
+// The button stays, to load them again.
+function sspa_autoload_figures() {
+	var panel = jQuery('#sspa_main .tab-contents[data-tab="compare"]');
+	var button = panel.find('#sspa-community-figures-load');
+	if (!button.length || !panel.is(':visible') || jQuery(document.body).data('sspaFiguresAutoloaded')) {
+		return;
+	}
+	jQuery(document.body).data('sspaFiguresAutoloaded', true);
+	button.data('sspaCached', true).trigger('click');
+}
+jQuery(document).on('sspa:tab-rendered', function (event, slug) {
+	if (slug === 'compare') {
+		sspa_autoload_figures();
+	}
+});
+jQuery(document).on('click', '#sspa_main .nav-tab[data-tab="compare"]', function () {
+	setTimeout(sspa_autoload_figures, 0);
+});
+// SSPA-PRO-END
 
 // "Show all N page types" under the community figures: reveals the page types after the key pages.
 jQuery(document).on('click', '.sspa-figures-show-all', function () {

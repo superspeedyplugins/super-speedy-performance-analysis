@@ -18,8 +18,13 @@ class SSPA_Install {
             }
         }
         SSPA_Token::secret();
-        // Nothing is written to wp-content here: db.php and the MU loader arrive only with the
-        // administrator's explicit Enable profiler (Tools), and leave with Disable or deactivation.
+        // The wordpress.org edition writes nothing to wp-content here: db.php and the MU loader
+        // arrive only with the administrator's explicit Enable profiler (Tools), and leave with
+        // Disable or deactivation.
+        // SSPA-PRO-START
+        // Pro installs them now, unless the administrator switched the profiler off.
+        SSPA_Helper_Files::auto_enable();
+        // SSPA-PRO-END
         if (!wp_next_scheduled('sspa_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'sspa_cleanup_event');
         }

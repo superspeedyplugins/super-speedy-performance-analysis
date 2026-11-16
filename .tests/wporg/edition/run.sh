@@ -109,6 +109,20 @@ NONCE=$(printf '%s' "$PAGE" | grep -o 'var sspa_admin = {[^;]*' | grep -o '"nonc
 [ -n "$NONCE" ] && pass "logged in as $ADMIN_USER and loaded Performance Analysis" || { fail "could not log in or read the screen's nonce"; exit 1; }
 ajax() { curl -s -b "$JAR" -c "$JAR" "$URL/wp-admin/admin-ajax.php" -d "nonce=$NONCE" "$@"; }
 
+# The profiler waits for the explicit Enable (Pro installs it on its own; that code is not here).
+cli plugin deactivate "$SLUG" >/dev/null 2>&1
+cli option delete sspa_profiler_switched_off >/dev/null 2>&1
+cli plugin activate "$SLUG" >/dev/null 2>&1
+curl -s -b "$JAR" -o /dev/null "$URL/wp-admin/index.php"
+curl -s -b "$JAR" -o /dev/null "$URL/wp-admin/admin.php?page=sspa"
+check "$( [ -e "$SITE/wp-content/mu-plugins/sspa-loader.php" ] && echo present || echo absent)" "absent" "activation and admin pages install no profiler loader"
+check "$( [ -e "$SITE/wp-content/db.php" ] && echo present || echo absent)" "absent" "nor db.php"
+REFUSED=$(ajax -d "action=sspa_start_run" -d "page_keys[]=home")
+case "$REFUSED" in *'"success":false'*"Enable profiler"*) pass "an analysis asks for Enable profiler first" ;; *) fail "analysis without the profiler: ${REFUSED:0:200}" ;; esac
+HITS=$(grep -rnE 'Powered by %1|sspa_autoload_figures|auto_enable' "$PLUGINS/$SLUG" --include='*.php' --include='*.js' | head -3)
+[ -z "$HITS" ] && [ ! -e "$PLUGINS/$SLUG/includes/admin/img" ] && pass "no panel credit, wordmark, figures autoload or automatic profiler install in the installed code" || fail "Pro-only behaviour in the zip: $HITS"
+grep -q "'dashboard'" "$PLUGINS/$SLUG/includes/admin/class-sspa-admin-page.php" && fail "the plugin-change prompt includes the Dashboard" || pass "the plugin-change prompt stays off the Dashboard"
+
 # Enable profiler, as the Tools button does.
 EN=$(ajax -d "action=sspa_profiler_toggle&enabled=1")
 case "$EN" in *'"success":true'*) pass "Enable profiler through the Tools action" ;; *) fail "enable profiler: $EN" ;; esac
