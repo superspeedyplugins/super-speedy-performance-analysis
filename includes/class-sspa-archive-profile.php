@@ -337,9 +337,13 @@ class SSPA_Archive_Profile {
         if (!is_array($plan)) {
             return null;
         }
+        // SSPA_Explain::summarise() reads table and temporary from this when the analysis
+        // reports the archive, so they are carried along with the fields the profile decides on.
         return array(
             'scan' => !empty($plan['scan']),
             'filesort' => !empty($plan['filesort']),
+            'temporary' => !empty($plan['temporary']),
+            'table' => isset($plan['table']) ? $plan['table'] : null,
             'key' => isset($plan['key']) ? $plan['key'] : null,
             'est_rows' => isset($plan['est_rows']) ? (int) $plan['est_rows'] : null,
             'est_rows_total' => isset($plan['est_rows_total']) ? (int) $plan['est_rows_total'] : null,
