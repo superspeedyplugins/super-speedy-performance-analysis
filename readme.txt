@@ -113,7 +113,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.65.1 (16th November 2026) =
+= 0.66.0 (16th November 2026) =
 * Fixed the checkout flow leaving behind the customer account WooCommerce creates for its test purchase when guest checkout is off, on stores using the classic checkout.
 
 = 0.65.0 (16th November 2026) =
