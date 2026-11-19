@@ -212,14 +212,14 @@
     {
       "check": "location-constants",
       "file": "profiler/class-sspa-component-map.php",
-      "reason": "The standalone early profiler uses WP_CONTENT_DIR to recognise files under the WordPress content directory before ordinary plugin constants exist.",
-      "match": "WP_CONTENT_DIR"
+      "reason": "The standalone early profiler uses WP_PLUGIN_DIR to recognise files under the WordPress plugin directory before ordinary plugin constants exist.",
+      "match": "WP_PLUGIN_DIR"
     },
     {
       "check": "location-constants",
-      "file": "profiler/class-sspa-component-map.php",
-      "reason": "The standalone early profiler uses WP_PLUGIN_DIR to recognise files under the WordPress plugin directory before ordinary plugin constants exist.",
-      "match": "WP_PLUGIN_DIR"
+      "file": "profiler/class-sspa-boot-timer.php",
+      "match": "ABSPATH . WPINC",
+      "reason": "ABSPATH . WPINC is WordPress core's own includes directory, wherever WPINC names it. The profiler uses it to tell a core class's method from a plugin subclass's, and no core function returns that directory."
     },
     {
       "check": "location-constants",

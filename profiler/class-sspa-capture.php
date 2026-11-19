@@ -80,7 +80,7 @@ if (!class_exists('SSPA_Capture')) {
             add_filter('pre_http_request', array($this, 'http_start'), 9999, 3);
             add_action('http_api_debug', array($this, 'http_end'), 10, 5);
             // Send through the installed mailer, redirecting recipients to the administrator.
-            require_once dirname(__DIR__) . '/includes/class-sspa-mail.php';
+            require_once plugin_dir_path(__DIR__) . 'includes/class-sspa-mail.php';
             SSPA_Mail::register();
             add_filter('wp_mail', array($this, 'mail_deliver_start'), 1);
             add_filter('pre_wp_mail', array($this, 'mail_deliver_short_circuit'), PHP_INT_MAX, 2);

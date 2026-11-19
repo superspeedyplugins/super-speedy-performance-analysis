@@ -340,7 +340,7 @@ class SSPA_Browser_Transport {
         // hops, same origin only; a login bounce goes to the blocked classifier.
         if ('' === $error && $redirected) {
             SSPA_Crawler::discard_capture($pending['token_id']);
-            $is_login = $final_url && strpos($final_url, 'wp-login.php') !== false;
+            $is_login = $final_url && sspa_is_login_url($final_url);
             $same_host = $final_url && strtolower((string) wp_parse_url($final_url, PHP_URL_HOST)) === strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
             if (!$is_login && $same_host && $bt['hops'] < 2) {
                 $bt['hops']++;

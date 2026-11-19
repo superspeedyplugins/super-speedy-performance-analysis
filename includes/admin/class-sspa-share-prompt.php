@@ -39,8 +39,12 @@ class SSPA_Share_Prompt {
             return '';
         }
         ob_start();
-        include SSPA_PLUGIN_DIR . 'includes/admin/partials/share-prompt.php';
-        return ob_get_clean();
+        try {
+            include SSPA_PLUGIN_DIR . 'includes/admin/partials/share-prompt.php';
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     public static function render() {

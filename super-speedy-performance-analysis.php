@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.68.2
+ * Version: 0.68.3
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -109,7 +109,7 @@ $sspa_request_uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SE
 // request is not an admin request, so without this the endpoint did not exist on a site
 // where this is the only Super Speedy plugin. Front-end, other REST and admin-ajax requests
 // still skip it.
-$sspa_mcp_request = (bool) preg_match('#/wp-json/(?:mcp|wp-abilities)/|[?&]rest_route=(?:/|%2F)(?:mcp|wp-abilities)(?:/|%2F)#i', $sspa_request_uri);
+$sspa_mcp_request = (bool) preg_match('#/' . preg_quote(trim(rest_get_url_prefix(), '/'), '#') . '/(?:mcp|wp-abilities)/|[?&]rest_route=(?:/|%2F)(?:mcp|wp-abilities)(?:/|%2F)#i', $sspa_request_uri);
 $sspa_settings = SSPA_PLUGIN_DIR . 'super-speedy-settings/super-speedy-settings.php';
 if (((is_admin() && !wp_doing_ajax()) || $sspa_mcp_request) && file_exists($sspa_settings)) {
     require_once $sspa_settings;
@@ -135,8 +135,7 @@ add_action('before_woocommerce_init', function () {
 
 // Agent surfaces: Abilities API (WP 6.9+; MCP via the adapter plugin) and WP-CLI.
 $sspa_agent_request = (defined('WP_CLI') && WP_CLI)
-    || false !== strpos($sspa_request_uri, '/wp-json/')
-    || false !== strpos($sspa_request_uri, 'rest_route=');
+    || sspa_is_rest_url($sspa_request_uri);
 if ($sspa_agent_request && function_exists('wp_register_ability')) {
     add_action('wp_abilities_api_categories_init', array('SSPA_Abilities', 'register_category'));
     add_action('wp_abilities_api_init', array('SSPA_Abilities', 'register_abilities'));

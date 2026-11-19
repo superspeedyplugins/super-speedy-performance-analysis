@@ -19,7 +19,7 @@
 
 set -uo pipefail
 
-ZIP="${1:?usage: smoke-test.sh <zip> [pro|wporg]}"
+ZIP="${1:?usage: smoke-test.sh <zip> [pro|wporg|github]}"
 EDITION="${2:-wporg}"
 # "full" is the old name of the Pro edition.
 [ "$EDITION" = "pro" ] && EDITION=full
@@ -27,6 +27,8 @@ SLUG="super-speedy-performance-analysis"
 # The folder (and so the plugin slug) the zip installs as. The main file keeps one name.
 FOLDER="$SLUG"
 [ "$EDITION" = "full" ] && FOLDER="$SLUG-pro"
+# "github": the GitHub release's super-speedy-performance-analysis.zip (.build/build-github.sh):
+# the whole tree in the plain folder with the plain updater slug, which installed copies update to.
 
 pass() { echo "PASS  $*"; }
 fail() { echo "FAIL  $*"; FAILED=1; }
@@ -147,7 +149,7 @@ fi
 # admin request, so the full-edition check temporarily installs a smoke-only MU bootstrap that
 # defines WP_ADMIN before normal plugins load. This exercises the real admin-gated settings and
 # updater path instead of asserting an admin global in a non-admin process.
-if [ "$EDITION" = "full" ]; then
+if [ "$EDITION" != "wporg" ]; then
     wpc eval 'wp_mkdir_p(WPMU_PLUGIN_DIR); file_put_contents(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php", "<?php if (!defined(\"WP_ADMIN\")) define(\"WP_ADMIN\", true);");' >/dev/null 2>&1
 fi
 UPD=$(wpc eval '
@@ -171,14 +173,16 @@ if (PHP_VERSION_ID < 80100) {
 $checkers = $checker_property->getValue($instance);
 echo isset($checkers["super-speedy-performance-analysis-pro"]) ? "present" : (isset($checkers["super-speedy-performance-analysis"]) ? "plain-slug" : "absent");
 ' 2>&1)
-if [ "$EDITION" = "full" ]; then
+if [ "$EDITION" != "wporg" ]; then
     wpc eval 'unlink(WPMU_PLUGIN_DIR . "/sspa-smoke-admin.php");' >/dev/null 2>&1
 fi
 case "$EDITION:$UPD" in
     wporg:absent) pass "update checker absent (correct for wp.org)" ;;
     full:present) pass "update checker built (correct for the self-hosted edition)" ;;
     wporg:*)      fail "wp.org edition must have no update checker, got: $UPD" ;;
+    github:plain-slug) pass "update checker built under the plain slug (correct for the GitHub asset)" ;;
     full:*)       fail "full edition should build an update checker, got: $UPD" ;;
+    github:*)     fail "GitHub asset should build the plain-slug update checker, got: $UPD" ;;
 esac
 
 # The real thing: a profiling run end to end against a real site.

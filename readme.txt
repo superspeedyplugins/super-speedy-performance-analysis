@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.68.1
+Stable tag: 0.68.3
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,10 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.68.3 (19th November 2026) =
+* Admin, login and REST requests are now recognised wherever the site puts them, including a renamed login page, a custom REST prefix and a moved `wp-content` folder.
+* Every output buffer now closes even when the code inside it fails.
 
 = 0.68.2 (19th November 2026) =
 * Fixed the Super Speedy MCP agent user being created with no email address, which let plugins that look up a new user's orders by billing email load every order in the store; it now gets an address on the site's own domain and WooCommerce billing details. (email support)

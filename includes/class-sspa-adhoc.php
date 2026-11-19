@@ -349,7 +349,7 @@ class SSPA_Adhoc {
             );
         }
 
-        $default_variant = (false !== strpos($path, '/wp-admin')) ? 'admin' : 'anon';
+        $default_variant = sspa_is_admin_url($path) ? 'admin' : 'anon';
         $variant = in_array($variant, array('anon', 'admin'), true) ? $variant : $default_variant;
 
         // A REST or admin-ajax endpoint gets its own key family. Unlike a one-off url-<hash>

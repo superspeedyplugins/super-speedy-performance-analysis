@@ -12,6 +12,7 @@ class SSPA_History_Chart {
         }
 
         ob_start();
+        try {
         ?>
         <section class="sspa-history-chart-card" data-sspa-history-chart>
             <div class="sspa-history-chart-heading">
@@ -71,7 +72,10 @@ class SSPA_History_Chart {
             <div class="sspa-history-chart-table"><?php echo wp_kses(self::table($document), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- method escapes fields. ?></div>
         </section>
         <?php
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     public static function ajax_series() {
@@ -101,6 +105,7 @@ class SSPA_History_Chart {
         }
         $unit = $document['metric']['unit'];
         ob_start();
+        try {
         ?>
         <details class="sspa-history-data-details">
             <summary><?php esc_html_e('View chart data', 'super-speedy-performance-analysis'); ?></summary>
@@ -173,11 +178,15 @@ class SSPA_History_Chart {
             </div>
         </details>
         <?php
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     private static function period_summary($document) {
         ob_start();
+        try {
         ?>
         <div class="sspa-history-periods">
             <div class="sspa-history-period sspa-history-period-previous">
@@ -212,7 +221,10 @@ class SSPA_History_Chart {
             </div>
         <?php endif; ?>
         <?php
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     private static function dates($period) {

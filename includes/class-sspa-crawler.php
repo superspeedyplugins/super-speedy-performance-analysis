@@ -368,7 +368,7 @@ class SSPA_Crawler {
                 break;
             }
             $location = wp_remote_retrieve_header($response, 'location');
-            if (!$location || strpos($location, 'wp-login.php') !== false) {
+            if (!$location || sspa_is_login_url($location)) {
                 break; // login bounce: hand to the blocked classifier below
             }
             $next_url = (0 === strpos($location, '/')) ? home_url($location) : $location;

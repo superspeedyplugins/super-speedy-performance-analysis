@@ -71,8 +71,10 @@ foreach ($urls as $url) {
     }
 }
 sspa_147_t($notice_seen, 'the change-set notice is still shown');
-// wp.org Guideline 11: the notice belongs on the Plugins screen, not on every admin screen.
-sspa_147_t(array(admin_url('plugins.php')) === $notice_on, 'the change-set notice is shown on the Plugins screen only (shown on: ' . implode(', ', $notice_on) . ')');
+// wp.org Guideline 11: the notice belongs on a few screens, not on every admin screen. This suite
+// runs the Pro tree, which also shows it on the Dashboard (0.68.0, case 163); the wordpress.org
+// edition's Plugins-screen-only placement is checked from its zip by .tests/wporg/edition/run.sh.
+sspa_147_t(array(admin_url('index.php'), admin_url('plugins.php')) === $notice_on, 'the change-set notice is shown on the Dashboard and Plugins screen only (shown on: ' . implode(', ', $notice_on) . ')');
 clearstatcache();
 $new_log = file_exists($log_file) ? (string) file_get_contents($log_file, false, null, $log_start) : '';
 $pa_lines = array_filter(explode("\n", $new_log), static function($line) {

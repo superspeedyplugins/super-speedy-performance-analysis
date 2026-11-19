@@ -49,7 +49,7 @@ class SSPA_Security_Detect {
         // Login bounce despite valid cookies = an auth/security layer rejected our session.
         if (!$blocked && in_array($code, array(301, 302), true) && $had_auth_cookie) {
             $location = isset($headers['location']) ? (is_array($headers['location']) ? end($headers['location']) : $headers['location']) : '';
-            if (strpos($location, 'wp-login.php') !== false) {
+            if (sspa_is_login_url($location)) {
                 $blocked = true;
                 $reason = 'Redirected to login despite authentication cookies';
             }

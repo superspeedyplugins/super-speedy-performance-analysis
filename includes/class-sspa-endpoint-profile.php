@@ -218,8 +218,12 @@ class SSPA_Endpoint_Profile {
     /** The observed-endpoints table for one window, as a string (the AJAX operation). */
     public static function table_html($uuid = '') {
         ob_start();
-        self::render_table($uuid);
-        return ob_get_clean();
+        try {
+            self::render_table($uuid);
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     /** Output the observed-endpoints table for one window: the latest one when $uuid is empty. */

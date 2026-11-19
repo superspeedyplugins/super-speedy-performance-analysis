@@ -6,7 +6,17 @@ Connect Super Speedy Performance Analysis to Codex or Claude Code to run measure
 
 ## Connect once for all Super Speedy plugins
 
-Open **Super Speedy > MCP setup**, choose execute access only if the assistant may start analyses, traffic collection, submissions or checkout runs, generate the command, paste it into your terminal and restart the client. The setup page creates or reuses a dedicated **Super Speedy Agent** user and a revocable Application Password. No Performance-specific bridge or endpoint is needed.
+1. Open **Super Speedy > MCP setup**.
+2. Tick **Allow high-impact plugin actions** only if the assistant may start analyses, traffic collection, submissions or checkout runs.
+3. Click **Generate connection configuration**. The page shows two blocks: **Codex config.toml** and **Claude Code configuration**.
+4. Copy the block for your client into its MCP configuration file: the Codex block into `~/.codex/config.toml`, the Claude Code block into the project's `.mcp.json`. Copy it straight away, because WordPress shows the password in it only once.
+5. Restart the assistant and ask it to list the Super Speedy tools.
+
+The setup page creates or reuses a dedicated **Super Speedy Agent** user and a revocable Application Password, and the configuration starts the WordPress MCP client with `npx`. No Performance-specific bridge or endpoint is needed. Generating again replaces the previous connection; **Revoke connection** removes it.
+
+:::callout{variant="note"}
+This article describes the Pro edition. The wordpress.org edition registers only the abilities under Read and interpret, and has no MCP setup page.
+:::
 
 ## The abilities
 

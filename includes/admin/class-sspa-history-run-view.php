@@ -45,6 +45,7 @@ class SSPA_History_Run_View {
         $components = SSPA_Run_Controller::decode_component_versions($run['plugin_set']);
         $notes = json_decode((string) $run['notes'], true);
         ob_start();
+        try {
         ?>
         <section class="sspa-history-saved-report" data-saved-run-id="<?php echo esc_attr($run_id); ?>">
             <p><a class="button sspa-history-back" href="<?php echo esc_url(self::url(0, $compare_page)); ?>"><?php esc_html_e('Back to Compare', 'super-speedy-performance-analysis'); ?></a></p>
@@ -94,7 +95,10 @@ class SSPA_History_Run_View {
             <?php if (is_array($notes) && $notes) : ?><details><summary><?php esc_html_e('Saved run notes and outcome', 'super-speedy-performance-analysis'); ?></summary><pre class="sspa-history-run-notes"><?php echo esc_html(wp_json_encode($notes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); ?></pre></details><?php endif; ?>
         </section>
         <?php
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     private static function measurement($value) {

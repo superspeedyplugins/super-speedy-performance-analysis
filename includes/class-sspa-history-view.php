@@ -34,6 +34,7 @@ class SSPA_History_View {
                 : __('failed declared expectations', 'super-speedy-performance-analysis'));
         }
         ob_start();
+        try {
         ?>
         <section class="sspa-history-comparison" data-before-run="<?php echo (int) $comparison['before']['id']; ?>" data-after-run="<?php echo (int) $comparison['after']['id']; ?>">
             <div class="sspa-history-summary sspa-history-status-<?php echo esc_attr($comparison['status']); ?>">
@@ -159,7 +160,10 @@ class SSPA_History_View {
             <pre class="sspa-history-export-preview" hidden></pre>
         </section>
         <?php
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
 }

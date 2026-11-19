@@ -483,8 +483,7 @@ class SSPA_Cache_Delivery {
             || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
             return false;
         }
-        $path = '/' . ltrim(isset($parts['path']) ? $parts['path'] : '/', '/');
-        if (preg_match('#^/(?:wp-admin(?:/|$)|wp-login\.php(?:/|$)|wp-json(?:/|$))#i', $path)) {
+        if (sspa_is_admin_url($url) || sspa_is_login_url($url) || sspa_is_rest_url($url)) {
             return false;
         }
         if (function_exists('wc_get_page_permalink')) {

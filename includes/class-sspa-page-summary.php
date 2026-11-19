@@ -179,10 +179,20 @@ class SSPA_Page_Summary {
 
     /** Relative evidence paths keep private absolute server paths out of Markdown. */
     public static function file($file) {
-        $file = str_replace('\\', '/', (string) $file);
-        foreach (array('/wp-content/', '/wp-includes/', '/wp-admin/') as $marker) {
-            $at = strpos($file, $marker);
-            if (false !== $at) return substr($file, $at + 1);
+        $file = wp_normalize_path((string) $file);
+        // A symlinked plugin reports its real path; show it where WordPress registered it.
+        foreach ((array) (isset($GLOBALS['wp_plugin_paths']) ? $GLOBALS['wp_plugin_paths'] : array()) as $registered => $real) {
+            $real = trailingslashit(wp_normalize_path($real));
+            if (0 === strpos($file, $real)) {
+                $file = trailingslashit(wp_normalize_path($registered)) . substr($file, strlen($real));
+                break;
+            }
+        }
+        // Relative to the content folder (named as it is on this site), else to the WordPress root.
+        $content = untrailingslashit(wp_normalize_path(SSPA_CONTENT_DIR));
+        $roots = array($content . '/' => basename($content) . '/', trailingslashit(wp_normalize_path(SSPA_CORE_DIR)) => '');
+        foreach ($roots as $root => $label) {
+            if (0 === strpos($file, $root)) return $label . substr($file, strlen($root));
         }
         return basename($file);
     }

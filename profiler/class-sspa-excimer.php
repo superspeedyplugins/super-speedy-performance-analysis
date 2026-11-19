@@ -94,8 +94,7 @@ if (!class_exists('SSPA_Excimer')) {
             }
             // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only request classification requires the actual URI; it is not rendered or executed.
             $uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '';
-            $prefix = function_exists('rest_get_url_prefix') ? rest_get_url_prefix() : 'wp-json';
-            return false !== strpos($uri, '/' . $prefix . '/');
+            return sspa_is_rest_url($uri);
         }
 
         private static function phase_for($ms, $windows) {

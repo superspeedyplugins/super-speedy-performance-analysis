@@ -262,6 +262,7 @@ class SSPA_Plugins_Table {
         $cache = $data['cache'];
 
         ob_start();
+        try {
         ?>
         <div class="sspa-plugins-toolbar">
             <label><?php esc_html_e('Page', 'super-speedy-performance-analysis'); ?>
@@ -380,7 +381,10 @@ class SSPA_Plugins_Table {
         </table>
         <p class="sspa-plugins-empty" hidden><?php esc_html_e('No plugins match these filters.', 'super-speedy-performance-analysis'); ?></p>
         <?php
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     /**
@@ -502,6 +506,7 @@ class SSPA_Plugins_Table {
         }
 
         ob_start();
+        try {
         if (null !== $v['typical']) {
             $saves = $v['typical'] < 0;
             $text = self::verdict_text($v, $page);
@@ -528,7 +533,10 @@ class SSPA_Plugins_Table {
         echo wp_kses(self::provenance($v['rows'], $c['version'], $run_id), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput
         echo '<br><a href="#" class="sspa-impact-details" data-plugin="' . esc_attr($c['component']) . '">' . esc_html__('per-page breakdown', 'super-speedy-performance-analysis') . '</a>';
 
-        return ob_get_clean();
+        } finally {
+            $sspa_buffer = ob_get_clean();
+        }
+        return $sspa_buffer;
     }
 
     /**

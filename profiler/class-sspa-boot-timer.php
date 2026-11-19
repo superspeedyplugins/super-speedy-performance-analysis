@@ -111,8 +111,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
             add_action('plugin_loaded', function ($plugin) {
                 $now = microtime(true);
                 $file = str_replace('\\', '/', (string) $plugin);
-                $pos = strpos($file, '/wp-content/plugins/');
-                $key = ($pos !== false) ? substr($file, $pos + strlen('/wp-content/plugins/')) : basename($file);
+                $key = plugin_basename($file);
                 $this->plugin_ms[$key] = round(max(0, ($now - $this->last_mark) * 1000 - ($this->callback_wall_ms - $this->last_include_callback_ms)), 2);
                 $this->cookie_check(array('kind' => 'plugin_include', 'file' => $file, 'key' => $key), 'plugin include');
                 $this->last_include_callback_ms = $this->callback_wall_ms;
@@ -277,7 +276,7 @@ if (!class_exists('SSPA_Boot_Timer')) {
                 return $original;
             }
             $file = $ref->getFileName();
-            if ($file && strpos(str_replace('\\', '/', $file), str_replace('\\', '/', dirname(__DIR__)) . '/') === 0) return $original;
+            if ($file && strpos(str_replace('\\', '/', $file), wp_normalize_path(plugin_dir_path(__DIR__))) === 0) return $original;
             $wrapper = function (...$args) use ($original, $hook, $label, $key) {
                 if (null !== $this->wall_end) return call_user_func_array($original, $args);
                 $start = microtime(true);
@@ -686,6 +685,9 @@ if (!class_exists('SSPA_Boot_Timer')) {
          */
         private function assets() {
             $out = array();
+            // Where WordPress says plugin and theme files are served from, not a literal wp-content.
+            $plugins_base = untrailingslashit(sspa_url_path(plugins_url())) . '/';
+            $themes_base = untrailingslashit(sspa_url_path(get_theme_root_uri())) . '/';
             foreach (array('scripts' => 'wp_scripts', 'styles' => 'wp_styles') as $kind => $global_key) {
                 if (empty($GLOBALS[$global_key]) || !is_object($GLOBALS[$global_key])) {
                     continue;
@@ -699,10 +701,10 @@ if (!class_exists('SSPA_Boot_Timer')) {
                     if (empty($registry->registered[$handle]) || empty($registry->registered[$handle]->src)) {
                         continue; // alias handles (dependency bundles) carry no src
                     }
-                    $src = str_replace('\\', '/', (string) $registry->registered[$handle]->src);
-                    if (preg_match('#/wp-content/plugins/([^/]+)/#', $src, $m)) {
-                        $component = $m[1];
-                    } elseif (false !== strpos($src, '/wp-content/themes/')) {
+                    $src = sspa_url_path(str_replace('\\', '/', (string) $registry->registered[$handle]->src));
+                    if (0 === strpos($src, $plugins_base) && '' !== ($slug = (string) strtok(substr($src, strlen($plugins_base)), '/'))) {
+                        $component = $slug;
+                    } elseif (0 === strpos($src, $themes_base)) {
                         $component = 'theme';
                     } else {
                         $component = 'core';
@@ -790,10 +792,11 @@ if (!class_exists('SSPA_Boot_Timer')) {
         /** Ownership can be the widget subclass; source remains the declaring method. */
         private function callable_file($callable) {
             $file = $this->callable_source($callable)['file'];
-            if ($file && is_array($callable) && is_object($callable[0]) && false !== strpos(str_replace('\\', '/', $file), '/wp-includes/')) {
+            $core = trailingslashit(wp_normalize_path(ABSPATH . WPINC));
+            if ($file && is_array($callable) && is_object($callable[0]) && 0 === strpos(wp_normalize_path($file), $core)) {
                 $ref = new ReflectionClass($callable[0]);
                 $subclass_file = $ref->getFileName();
-                if ($subclass_file && false === strpos(str_replace('\\', '/', $subclass_file), '/wp-includes/')) return $subclass_file;
+                if ($subclass_file && 0 !== strpos(wp_normalize_path($subclass_file), $core)) return $subclass_file;
             }
             return $file;
         }

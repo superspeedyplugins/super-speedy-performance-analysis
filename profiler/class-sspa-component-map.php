@@ -56,17 +56,16 @@ if (!class_exists('SSPA_Component_Map')) {
 
         public function __construct($mode = self::MODE_CODE_OWNER) {
             $this->mode = ($mode === self::MODE_CALLER) ? self::MODE_CALLER : self::MODE_CODE_OWNER;
-            $content = defined('WP_CONTENT_DIR') ? WP_CONTENT_DIR : '';
-            $this->plugin_dir = $this->norm(defined('WP_PLUGIN_DIR') ? WP_PLUGIN_DIR : $content . '/plugins');
-            $this->mu_dir = $this->norm(defined('WPMU_PLUGIN_DIR') ? WPMU_PLUGIN_DIR : $content . '/mu-plugins');
-            $this->abspath = $this->norm(defined('ABSPATH') ? ABSPATH : '');
-            $this->own_dir = $this->norm(dirname(__DIR__));
+            $this->plugin_dir = $this->norm(WP_PLUGIN_DIR);
+            $this->mu_dir = $this->norm(WPMU_PLUGIN_DIR);
+            $this->abspath = $this->norm(ABSPATH);
+            $this->own_dir = $this->norm(plugin_dir_path(__DIR__));
             if (!empty($GLOBALS['wp_theme_directories']) && is_array($GLOBALS['wp_theme_directories'])) {
                 foreach ($GLOBALS['wp_theme_directories'] as $dir) {
                     $this->theme_dirs[] = $this->norm($dir);
                 }
             } else {
-                $this->theme_dirs[] = $this->norm($content . '/themes');
+                $this->theme_dirs[] = $this->norm(get_theme_root());
             }
             // WordPress's own symlink map (wp_register_plugin_realpath): the plugins-directory
             // path a plugin was registered under => its resolved real path. PHP reports frames

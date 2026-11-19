@@ -491,7 +491,7 @@ class SSPA_Admin_Save {
         }
         $code = (int) wp_remote_retrieve_response_code($response);
         $location = (string) wp_remote_retrieve_header($response, 'location');
-        if (in_array($code, $expected, true) && false === strpos($location, 'wp-login.php')) {
+        if (in_array($code, $expected, true) && !sspa_is_login_url($location)) {
             return null;
         }
         $excerpt = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) wp_remote_retrieve_body($response))));

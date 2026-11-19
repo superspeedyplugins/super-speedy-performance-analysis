@@ -593,7 +593,7 @@ class SSPA_Traffic_Hot_Path {
         if (defined('REST_REQUEST') && REST_REQUEST) {
             return in_array($method, array('GET', 'HEAD', 'OPTIONS'), true) ? SSPA_Traffic_Codes::SURFACE_REST_READ : SSPA_Traffic_Codes::SURFACE_REST_WRITE;
         }
-        if (strpos($path, '/wp-login.php') !== false) {
+        if (sspa_is_login_url($path)) {
             return SSPA_Traffic_Codes::SURFACE_LOGIN_OR_AUTH;
         }
         if (is_admin()) {
@@ -773,7 +773,7 @@ class SSPA_Traffic_Hot_Path {
         $stopped = self::$config['stopped_path'];
         if (is_file($observer)) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- retirement path inside the observer's hot path; runs before the plugin (and WP_Filesystem) is available and must stay dependency-free.
-            require_once __DIR__ . '/../includes/class-sspa-filesystem.php';
+            require_once plugin_dir_path(__DIR__) . 'includes/class-sspa-filesystem.php';
             if (!SSPA_Filesystem::put_contents($stopped, sanitize_key($reason), 0600) || !SSPA_Filesystem::direct()->delete($observer)) {
                 update_option('sspa_traffic_retirement_error', 'Could not retire the traffic observer.', false);
             }
