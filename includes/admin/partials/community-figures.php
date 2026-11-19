@@ -12,16 +12,12 @@ if ('not_published' === $sspa_figures['state']) : ?>
         <p class="description"><?php echo esc_html($sspa_operator); ?></p>
     </div>
     <?php
-    return;
-endif;
-
-if ('error' === $sspa_figures['state']) : ?>
+elseif ('error' === $sspa_figures['state']) : ?>
     <div class="sspa-community-figures-state notice notice-error inline" role="alert">
         <p><?php esc_html_e('The community figures could not be loaded.', 'super-speedy-performance-analysis'); ?> <?php echo esc_html($sspa_figures['detail']); ?></p>
     </div>
     <?php
-    return;
-endif;
+else :
 
 $sspa_site = $sspa_figures['site'];
 $sspa_cohorts = $sspa_figures['cohorts'];
@@ -154,3 +150,4 @@ $sspa_build = $sspa_cohorts ? $sspa_cohorts['build'] : ($sspa_impact ? $sspa_imp
         <p class="description"><?php esc_html_e('Isolation evidence: each installation measured the page with and without the plugin for its own test requests. A positive number is time the plugin added; a negative one is time it saved.', 'super-speedy-performance-analysis'); ?></p>
     <?php endif; ?>
 </div>
+<?php endif;

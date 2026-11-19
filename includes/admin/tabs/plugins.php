@@ -1,9 +1,8 @@
 <?php
 defined('ABSPATH') || exit;
 
-if (!current_user_can('manage_options')) {
-    return;
-}
+// Rendered inside an output buffer: wrapped rather than returning early, so nothing can skip its close.
+if (current_user_can('manage_options')) :
 
 $sspa_last_run_id = SSPA_Plugins_Table::latest_run_id();
 if ($sspa_last_run_id) {
@@ -59,3 +58,4 @@ if (!$sspa_last_run_id) : ?>
         <?php echo wp_kses(SSPA_Plugins_Table::render($sspa_last_run_id, $sspa_attrib_mode, $sspa_plugins_page), SSPA_Admin_HTML::allowed_tags()); // phpcs:ignore WordPress.Security.EscapeOutput ?>
     </div>
 <?php endif; ?>
+<?php endif;

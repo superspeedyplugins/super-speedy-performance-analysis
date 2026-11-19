@@ -7,7 +7,7 @@ defined('ABSPATH') || exit;
 // Deleting one while the other is still installed - the usual way of moving between them -
 // must leave all of it for the one that stays.
 foreach (array('super-speedy-performance-analysis', 'super-speedy-performance-analysis-pro') as $sspa_edition) {
-    if ($sspa_edition !== basename(__DIR__) && is_file(dirname(__DIR__) . '/' . $sspa_edition . '/super-speedy-performance-analysis.php')) {
+    if ($sspa_edition !== dirname((string) WP_UNINSTALL_PLUGIN) && is_file(WP_PLUGIN_DIR . '/' . $sspa_edition . '/super-speedy-performance-analysis.php')) {
         return;
     }
 }

@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.68.0
+Stable tag: 0.68.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,10 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.68.1 (19th November 2026) =
+* Fixed the check for the other edition missing it when this plugin is installed through a symlink.
+* The Compare tab, Plugins tab and community figures templates no longer end early while their output is buffered.
 
 = 0.68.0 (16th November 2026) =
 * Pro installs the profiler automatically on activation and when an analysis starts, and refreshes it after updates, so there is no Enable profiler step; Disable profiler in Tools keeps it off until you enable it again.

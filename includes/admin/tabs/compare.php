@@ -2,9 +2,8 @@
 defined('ABSPATH') || exit;
 
 global $wpdb;
-if (!current_user_can('manage_options')) {
-    return;
-}
+// Rendered inside an output buffer: wrapped rather than returning early, so nothing can skip its close.
+if (current_user_can('manage_options')) :
 // 50 runs per page (SSPA_History_Series::PAGE_SIZE). This tab renders only through the
 // sspa_render_tab AJAX request, which carries the page number from the address bar.
 $sspa_run_total = SSPA_History_Series::run_count();
@@ -271,3 +270,4 @@ if (!$sspa_runs) : ?>
     <pre class="sspa-payload-preview" style="display:none;max-height:420px;overflow:auto;background:#fff;padding:12px;border:1px solid #dcdcde;"></pre>
 <?php endif; ?>
 </div>
+<?php endif;

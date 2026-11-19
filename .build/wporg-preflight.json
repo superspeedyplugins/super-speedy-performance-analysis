@@ -506,6 +506,18 @@
       "check": "WordPress.WP.AlternativeFunctions.curl_curl_setopt",
       "file": "includes/class-sspa-loopback-route.php",
       "reason": "The measurement can send its own loopback request straight to this server, bypassing a CDN, while still verifying the site's real TLS certificate. The WordPress HTTP API makes the request; the plugin only adds CURLOPT_CONNECT_TO to WordPress's own cURL handle in the core http_api_curl action, because the HTTP API has no option for it. Without cURL the plugin reports the direct route as unavailable."
+    },
+    {
+      "check": "location-constants",
+      "file": "super-speedy-performance-analysis.php",
+      "match": "WP_PLUGIN_DIR . '/' . $sspa_",
+      "reason": "The wordpress.org review of 19 November 2026 (round 3) asked for WP_PLUGIN_DIR here: it finds the other edition of this plugin (super-speedy-performance-analysis or super-speedy-performance-analysis-pro) under the plugins directory, which this plugin's own folder cannot do when it is symlinked elsewhere."
+    },
+    {
+      "check": "location-constants",
+      "file": "uninstall.php",
+      "match": "WP_PLUGIN_DIR . '/' . $sspa_",
+      "reason": "The wordpress.org review of 19 November 2026 (round 3) asked for WP_PLUGIN_DIR here: it finds the other edition of this plugin (super-speedy-performance-analysis or super-speedy-performance-analysis-pro) under the plugins directory, which this plugin's own folder cannot do when it is symlinked elsewhere."
     }
   ],
   "retained_sql_statements": {

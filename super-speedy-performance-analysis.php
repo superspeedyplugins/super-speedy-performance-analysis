@@ -3,7 +3,7 @@
  * Plugin Name: Super Speedy Performance Analysis
  * Plugin URI: https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/
  * Description: Analyses your site's performance the way an expert would: profiles your key pages, attributes SQL time, row counts, RAM and query counts to individual plugins and your theme, then isolates the culprits.
- * Version: 0.68.0
+ * Version: 0.68.1
  * Author: Dave Hilditch
  * Author URI: https://www.superspeedyplugins.com
  * License: GPLv3
@@ -24,8 +24,8 @@ defined('ABSPATH') || exit;
 // first, for one). The copy that stands down registers no hooks at all - no activation,
 // deactivation or uninstall work - and only tells the administrator to remove it.
 $sspa_pro_main = 'super-speedy-performance-analysis-pro/super-speedy-performance-analysis.php';
-$sspa_pro_wins = 'super-speedy-performance-analysis-pro' !== basename(__DIR__)
-    && is_file(dirname(__DIR__) . '/' . $sspa_pro_main)
+$sspa_pro_wins = 'super-speedy-performance-analysis-pro' !== dirname(plugin_basename(__FILE__))
+    && is_file(WP_PLUGIN_DIR . '/' . $sspa_pro_main)
     && (in_array($sspa_pro_main, (array) get_option('active_plugins', array()), true)
         || (is_multisite() && array_key_exists($sspa_pro_main, (array) get_site_option('active_sitewide_plugins', array()))));
 if ($sspa_pro_wins || defined('SSPA_PLUGIN_FILE')) {
@@ -163,7 +163,7 @@ add_action('admin_notices', static function () {
     $sspa_free = 'super-speedy-performance-analysis/super-speedy-performance-analysis.php';
     if (plugin_basename(__FILE__) === $sspa_free || !current_user_can('delete_plugins')
         || !('plugins.php' === $pagenow || 'index.php' === $pagenow || 'sspa' === $plugin_page)
-        || !is_file(dirname(__DIR__) . '/' . $sspa_free) || is_plugin_active($sspa_free)) {
+        || !is_file(WP_PLUGIN_DIR . '/' . $sspa_free) || is_plugin_active($sspa_free)) {
         return;
     }
     echo '<div class="notice notice-warning"><p><strong>' . esc_html__('The free Super Speedy Performance Analysis plugin is still installed. Pro replaces it and keeps all your analyses and settings, so please delete the free plugin.', 'super-speedy-performance-analysis') . '</strong>';
