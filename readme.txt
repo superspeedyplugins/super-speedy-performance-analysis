@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.68.2 (19th November 2026) =
+* Fixed the Super Speedy MCP agent user being created with no email address, which let plugins that look up a new user's orders by billing email load every order in the store; it now gets an address on the site's own domain and WooCommerce billing details. (email support)
+
 = 0.68.1 (19th November 2026) =
 * Fixed the check for the other edition missing it when this plugin is installed through a symlink.
 * The Compare tab, Plugins tab and community figures templates no longer end early while their output is buffered.
