@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, debug, woocommerce, performance, profiling
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.68.4
+Stable tag: 0.68.5
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -12,9 +12,15 @@ Find out which plugins slow your WordPress or WooCommerce site down, on which pa
 
 == Description ==
 
-Your site is slow, but which plugin is doing it? Super Speedy Performance Analysis measures your key pages and tells you, in plain English, which plugins cost the most time, queries and memory, and on which pages.
+**Your site is slow. Which plugin is doing it?**
 
-Press Run Analysis. It measures your home page, posts, archives, search and your wp-admin screens, and with WooCommerce your shop, categories, products, cart, checkout and orders. Then it lists what it found, worst first: the slowest queries and the plugin that ran them, plugins running queries in loops, queries fetching hundreds of rows, slow calls to other servers and more. Each finding links to the page it was measured on.
+Super Speedy Performance Analysis measures your real pages, on your own server, and names the plugins that cost the most time, queries and memory, page by page. No guessing, and no switching plugins off one at a time to see what happens.
+
+= One button, then answers =
+
+1. Press **Run Analysis**.
+2. It measures your home page, posts, archives, search and your wp-admin screens. With WooCommerce it adds your shop, categories, products, cart, checkout and orders.
+3. Read what it found, worst first: the slowest queries and the plugin that ran them, plugins running queries in loops, queries fetching hundreds of rows, slow calls to other servers and more. Each finding links to the page it was measured on.
 
 You do not need Query Monitor, a developer or an account. Everything runs on your own server and stays in your own database.
 
@@ -46,6 +52,10 @@ Compare can also load public figures from superspeedy.org, so you can see how si
 
 Download or copy any analysis as Markdown, ready for a support ticket, your developer or an AI assistant. WP-CLI commands run analyses from the command line, and read-only WordPress abilities let an AI agent read the results over the REST API.
 
+= Super Speedy Performance Analysis Pro =
+
+Pro is the same tool with the parts WordPress.org does not host: it measures pages as a logged-in customer, and it lets an AI agent start analyses and change settings for you. Pro is free too, from [superspeedyplugins.com](https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/). Both editions use the same saved analyses, so you can switch whenever you like.
+
 = What an analysis does on your site =
 
 Performance tests require test objects. Administrator measurements use your own login, from the browser session that starts them; the plugin never creates, edits or deletes a user account. With guest checkout disabled, WooCommerce itself creates a customer account for the checkout flow's test purchase, and the results link to WordPress's Delete Users screen for it. Opt-in write profiles create private temporary post/product objects and a temporary order with its own test product; these objects are deleted after measurement. The separate checkout flow retains its hidden test product and its refunded orders in Trash for inspection, without contacting a payment provider.
@@ -56,14 +66,13 @@ Analyses send real emails to the site administrator: three mail probes with the 
 
 1. In Plugins -> Add New, search for Super Speedy Performance Analysis and install it.
 2. Activate it through the Plugins menu.
-3. Open Performance in the admin menu, then Tools, and press Enable profiler.
-4. Go back to Overview and press Run Analysis.
+3. Open Performance in the admin menu and press Run Analysis. Your first analysis installs the profiler, and the screen shows what it adds before you press the button.
 
 == Frequently Asked Questions ==
 
 = Do I need Query Monitor or any other tool? =
 
-No. The plugin brings its own profiler. Tools -> Enable profiler installs it, and Disable profiler or deactivating the plugin removes it.
+No. The plugin brings its own profiler. Your first analysis installs it, and Disable profiler in Tools or deactivating the plugin removes it.
 
 = Does it slow down my site for visitors? =
 
@@ -132,7 +141,7 @@ The readable chart entry point, pinned dependency lockfile and build script are 
 
 == Files outside the plugin directory ==
 
-Activation writes nothing outside the plugin folder. The explicit Enable profiler action in Tools installs `wp-content/mu-plugins/sspa-loader.php` and, only when no drop-in exists, the conditional database drop-in `wp-content/db.php`; Disable profiler and deactivation remove both. Enable honours DISALLOW_FILE_MODS, and only files signed by this plugin are ever removed.
+Activation writes nothing outside the plugin folder. When an administrator starts an analysis, or presses Enable profiler in Tools, the plugin installs `wp-content/mu-plugins/sspa-loader.php` and, only when no drop-in exists, the conditional database drop-in `wp-content/db.php`. Disable profiler in Tools removes both and keeps them off until Enable profiler; deactivation removes both. Installation honours DISALLOW_FILE_MODS, and only files signed by this plugin are ever removed.
 Traffic recording installs the fixed `wp-content/mu-plugins/sspa-traffic-observer.php` only while recording is enabled.
 Network-wide profiler changes require a network administrator on multisite; Traffic recording is unavailable on multisite.
 
@@ -155,9 +164,10 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.68.4 (22nd November 2026) =
+= 0.68.5 (22nd November 2026) =
+* First release on WordPress.org.
+* Starting an analysis installs the profiler, so there is no separate Enable profiler step; Disable profiler in Tools keeps it off until you enable it again.
 * Fixed the Compare tab saying "Could not load this tab: Unexpected server response." after a site's first analysis; it now says this is the first saved point in time.
-* The wordpress.org edition's analysis panel now says administrator pages use your own login and that no user account is created.
 
 [Complete changelog](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases)
 

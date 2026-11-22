@@ -60,12 +60,7 @@ async function runAnalysis(page) {
     await page.fill('#user_pass', process.env.PD_ADMIN_PASS);
     await Promise.all([page.waitForURL(u => !u.pathname.includes('wp-login')), page.click('#wp-submit')]);
 
-    // Tools: Enable profiler, as a new user does first.
-    await tab(page, 'tools');
-    await page.getByRole('button', { name: 'Enable profiler' }).click();
-    await page.waitForTimeout(4000);
-
-    // Two analyses, so Compare has two points in time.
+    // Two analyses, so Compare has two points in time. The first installs the profiler (0.68.5).
     await runAnalysis(page);
     await runAnalysis(page);
     // The share invitation is answered the way a user answers it.

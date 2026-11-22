@@ -4,7 +4,7 @@
 #   [OUT=<dir>] .wporg/capture-screenshots.sh <super-speedy-performance-analysis-X.Y.Z-wporg.zip>
 #
 # Resets wporg-listing.super-speedy-performance-analysis.localhost:8081 on the way IN
-# (.wporg/listing-site.sh), then drives the real admin: Enable profiler, two analyses, a page
+# (.wporg/listing-site.sh), then drives the real admin: two analyses (the first installs the profiler), a page
 # profile, the cache check and Compare. Writes screenshot-N.png into $OUT (default
 # .wporg/assets/). The site is left behind for inspection.
 set -euo pipefail
