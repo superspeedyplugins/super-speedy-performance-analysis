@@ -109,24 +109,6 @@ NONCE=$(printf '%s' "$PAGE" | grep -o 'var sspa_admin = {[^;]*' | grep -o '"nonc
 [ -n "$NONCE" ] && pass "logged in as $ADMIN_USER and loaded Performance Analysis" || { fail "could not log in or read the screen's nonce"; exit 1; }
 ajax() { curl -s -b "$JAR" -c "$JAR" "$URL/wp-admin/admin-ajax.php" -d "nonce=$NONCE" "$@"; }
 
-# The profiler waits for the explicit Enable (Pro installs it on its own; that code is not here).
-cli plugin deactivate "$SLUG" >/dev/null 2>&1
-cli option delete sspa_profiler_switched_off >/dev/null 2>&1
-cli plugin activate "$SLUG" >/dev/null 2>&1
-curl -s -b "$JAR" -o /dev/null "$URL/wp-admin/index.php"
-curl -s -b "$JAR" -o /dev/null "$URL/wp-admin/admin.php?page=sspa"
-check "$( [ -e "$SITE/wp-content/mu-plugins/sspa-loader.php" ] && echo present || echo absent)" "absent" "activation and admin pages install no profiler loader"
-check "$( [ -e "$SITE/wp-content/db.php" ] && echo present || echo absent)" "absent" "nor db.php"
-REFUSED=$(ajax -d "action=sspa_start_run" -d "page_keys[]=home")
-case "$REFUSED" in *'"success":false'*"Enable profiler"*) pass "an analysis asks for Enable profiler first" ;; *) fail "analysis without the profiler: ${REFUSED:0:200}" ;; esac
-HITS=$(grep -rnE 'Powered by %1|sspa_autoload_figures|auto_enable' "$PLUGINS/$SLUG" --include='*.php' --include='*.js' | head -3)
-[ -z "$HITS" ] && [ ! -e "$PLUGINS/$SLUG/includes/admin/img" ] && pass "no panel credit, wordmark, figures autoload or automatic profiler install in the installed code" || fail "Pro-only behaviour in the zip: $HITS"
-grep -q "'dashboard'" "$PLUGINS/$SLUG/includes/admin/class-sspa-admin-page.php" && fail "the plugin-change prompt includes the Dashboard" || pass "the plugin-change prompt stays off the Dashboard"
-
-# Enable profiler, as the Tools button does.
-EN=$(ajax -d "action=sspa_profiler_toggle&enabled=1")
-case "$EN" in *'"success":true'*) pass "Enable profiler through the Tools action" ;; *) fail "enable profiler: $EN" ;; esac
-
 # Pump a run the way the screen does: sspa_process_batch until it is no longer working.
 pump() { # <run_id>
     local i out status
@@ -138,6 +120,38 @@ pump() { # <run_id>
     echo "timeout"
 }
 run_id_of() { php -r '$d = json_decode(stream_get_contents(STDIN), true); echo (int) ($d["data"]["run_id"] ?? $d["data"]["id"] ?? 0);'; }
+# Activation and admin pages install nothing; starting an analysis installs the profiler (0.68.5),
+# unless the administrator pressed Disable profiler.
+cli plugin deactivate "$SLUG" >/dev/null 2>&1
+cli option delete sspa_profiler_switched_off >/dev/null 2>&1
+cli plugin activate "$SLUG" >/dev/null 2>&1
+curl -s -b "$JAR" -o /dev/null "$URL/wp-admin/index.php"
+PANEL=$(curl -s -b "$JAR" "$URL/wp-admin/admin.php?page=sspa")
+check "$( [ -e "$SITE/wp-content/mu-plugins/sspa-loader.php" ] && echo present || echo absent)" "absent" "activation and admin pages install no profiler loader"
+check "$( [ -e "$SITE/wp-content/db.php" ] && echo present || echo absent)" "absent" "nor db.php"
+case "$PANEL" in *"Starting an analysis installs the profiler"*) pass "the screen says what starting an analysis installs" ;; *) fail "the analysis panel does not say that starting an analysis installs the profiler" ;; esac
+HITS=$(grep -rnE 'Powered by %1|sspa_autoload_figures|auto_enable' "$PLUGINS/$SLUG" --include='*.php' --include='*.js' | head -3)
+[ -z "$HITS" ] && [ ! -e "$PLUGINS/$SLUG/includes/admin/img" ] && pass "no panel credit, wordmark, figures autoload or activation-time profiler install in the installed code" || fail "Pro-only behaviour in the zip: $HITS"
+grep -q "'dashboard'" "$PLUGINS/$SLUG/includes/admin/class-sspa-admin-page.php" && fail "the plugin-change prompt includes the Dashboard" || pass "the plugin-change prompt stays off the Dashboard"
+
+FIRST=$(ajax -d "action=sspa_start_run" -d "page_keys[]=home")
+FIRST_RUN=$(printf '%s' "$FIRST" | run_id_of)
+[ "$FIRST_RUN" -gt 0 ] 2>/dev/null && pass "an analysis starts with no Enable profiler click (run $FIRST_RUN)" || fail "analysis without the Enable click: ${FIRST:0:200}"
+check "$( [ -f "$SITE/wp-content/mu-plugins/sspa-loader.php" ] && echo present || echo absent)" "present" "and starting it installed the profiler loader"
+check "$(pump "$FIRST_RUN")" "done" "and that analysis completes"
+
+# Disable profiler is remembered: the next analysis asks, and installs nothing.
+OFF=$(ajax -d "action=sspa_profiler_toggle&enabled=0")
+case "$OFF" in *'"success":true'*) pass "Disable profiler through the Tools action" ;; *) fail "disable profiler: $OFF" ;; esac
+check "$( [ -e "$SITE/wp-content/mu-plugins/sspa-loader.php" ] && echo present || echo absent)" "absent" "Disable profiler removes the loader"
+REFUSED=$(ajax -d "action=sspa_start_run" -d "page_keys[]=home")
+case "$REFUSED" in *'"success":false'*"Enable profiler"*) pass "after Disable profiler an analysis asks for Enable profiler" ;; *) fail "analysis after Disable profiler: ${REFUSED:0:200}" ;; esac
+check "$( [ -e "$SITE/wp-content/mu-plugins/sspa-loader.php" ] && echo present || echo absent)" "absent" "and installs nothing"
+
+# Enable profiler, as the Tools button does.
+EN=$(ajax -d "action=sspa_profiler_toggle&enabled=1")
+case "$EN" in *'"success":true'*) pass "Enable profiler through the Tools action" ;; *) fail "enable profiler: $EN" ;; esac
+
 profile() { # <run_id> <page_key> -> "code blocked variant"
     cli eval 'global $wpdb; $r = $wpdb->get_row($wpdb->prepare("SELECT response_code, blocked_by, variant FROM %i WHERE run_id = %d AND page_key = %s", SSPA_Schema::table("profiles"), '"$1"', "'"$2"'"), ARRAY_A); echo $r ? ((int) $r["response_code"] . " " . ($r["blocked_by"] ?: "-") . " " . $r["variant"]) : "missing";' 2>&1 | tail -1
 }

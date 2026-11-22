@@ -19,8 +19,8 @@ class SSPA_Install {
         }
         SSPA_Token::secret();
         // The wordpress.org edition writes nothing to wp-content here: db.php and the MU loader
-        // arrive only with the administrator's explicit Enable profiler (Tools), and leave with
-        // Disable or deactivation.
+        // arrive when the administrator starts an analysis or presses Enable profiler (Tools),
+        // and leave with Disable or deactivation.
         // SSPA-PRO-START
         // Pro installs them now, unless the administrator switched the profiler off.
         SSPA_Helper_Files::auto_enable();

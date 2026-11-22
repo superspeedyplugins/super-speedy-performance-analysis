@@ -494,13 +494,13 @@
       "check": "file-writes",
       "file": "includes/class-sspa-filesystem.php",
       "match": "put_contents",
-      "reason": "A thin wrapper over WP_Filesystem_Direct::put_contents. Its only callers write the profiler's db.php drop-in and MU loader (installed only when the administrator presses Enable profiler) and this plugin's own files under wp_upload_dir()/super-speedy-performance-analysis/."
+      "reason": "A thin wrapper over WP_Filesystem_Direct::put_contents. Its only callers write the profiler's db.php drop-in and MU loader (installed only when the administrator starts an analysis or presses Enable profiler) and this plugin's own files under wp_upload_dir()/super-speedy-performance-analysis/."
     },
     {
       "check": "file-writes",
       "file": "includes/class-sspa-helper-files.php",
       "match": "SSPA_MU_DIR",
-      "reason": "Creates wp-content/mu-plugins only when the administrator presses Enable profiler and it does not exist yet. The profiler's MU loader must live there to arm measurement before ordinary plugins load; it is removed again when the profiler is disabled or the plugin is deactivated."
+      "reason": "Creates wp-content/mu-plugins only when the administrator starts an analysis or presses Enable profiler and it does not exist yet. The profiler's MU loader must live there to arm measurement before ordinary plugins load; it is removed again when the profiler is disabled or the plugin is deactivated."
     },
     {
       "check": "WordPress.WP.AlternativeFunctions.curl_curl_setopt",

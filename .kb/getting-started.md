@@ -9,7 +9,7 @@ Super Speedy Performance Analysis comes in two editions built from the same code
 |  | Pro | wordpress.org edition |
 | --- | --- | --- |
 | Plugin folder | `super-speedy-performance-analysis-pro` | `super-speedy-performance-analysis` |
-| Profiler helpers | Installed automatically | Installed when you click **Enable profiler** |
+| Profiler helpers | Installed on activation | Installed when you start your first analysis |
 | AI agent control over MCP | Read and run: analyses, settings and the profiler | Read-only |
 
 1. Download `super-speedy-performance-analysis-pro.zip` from https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest
@@ -23,7 +23,7 @@ If both editions are installed, Pro runs and asks you to delete the other one. B
 Analysis needs two small helpers outside the plugin folder: an mu-plugin loader and, when no other plugin owns that file, a conditional `db.php` database drop-in. They act only on signed profiling requests; ordinary visitors are not profiled.
 
 - **Pro** installs them on activation, when an analysis starts and on the first admin page after an update.
-- **wordpress.org edition**: activating the plugin writes nothing outside its own folder. Open the Tools tab and click **Enable profiler** before your first analysis.
+- **wordpress.org edition**: activating the plugin writes nothing outside its own folder. Starting your first analysis installs the profiler helpers; the screen says so before you press **Run Analysis**.
 
 In both editions **Disable profiler** in the Tools tab removes the helpers and keeps them off until you click **Enable profiler**, and deactivating the plugin removes them. Separately, a traffic or AJAX collection window you start observes matching real requests on the site. The Overview tab's Health box shows the status of all of them.
 
@@ -65,6 +65,6 @@ AJAX windows stop after 15 minutes or 200 observations. Their data stays on your
 
 ### Database drop-in ownership
 
-SSPA installs its database drop-in only when no other drop-in exists (automatically in Pro, on **Enable profiler** in the wordpress.org edition), honours `DISALLOW_FILE_MODS`, and removes only its own file. When another plugin owns `wp-content/db.php`, ordinary analysis uses degraded capture, or Query Monitor's query log when available; per-query row counts may be unavailable. The existing file is never replaced, including a leftover Query Monitor drop-in after deactivation. Remove a leftover file manually if you want SSPA to install its own.
+SSPA installs its database drop-in only when no other drop-in exists (on activation in Pro, when an analysis starts in the wordpress.org edition), honours `DISALLOW_FILE_MODS`, and removes only its own file. When another plugin owns `wp-content/db.php`, ordinary analysis uses degraded capture, or Query Monitor's query log when available; per-query row counts may be unavailable. The existing file is never replaced, including a leftover Query Monitor drop-in after deactivation. Remove a leftover file manually if you want SSPA to install its own.
 
 Cache Impact Analysis requires SSPA's own drop-in so it can disable the object cache for the signed profiling request alone. If another plugin owns the database drop-in, the analysis returns an error naming that owner. It never renames the site's object-cache drop-in. Plugin Impact Analysis also requires SSPA's own drop-in for its destructive-query guard.

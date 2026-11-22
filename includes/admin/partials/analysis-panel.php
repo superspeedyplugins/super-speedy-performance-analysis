@@ -27,7 +27,11 @@ defined('ABSPATH') || exit;
     <?php endif; ?>
 
     <?php if (!$sspa_health['mu']) : ?>
-        <p class="notice notice-warning inline"><a href="<?php echo esc_url(admin_url('admin.php?page=sspa#tools')); ?>"><?php esc_html_e('Enable profiler in Tools before starting an analysis.', 'super-speedy-performance-analysis'); ?></a></p>
+        <?php if (!get_option('sspa_profiler_switched_off') && in_array($sspa_health['mu_reason'], array('disabled', 'stale'), true)) : ?>
+            <p class="description"><?php esc_html_e('Starting an analysis installs the profiler: wp-content/mu-plugins/sspa-loader.php and, when no other drop-in is there, wp-content/db.php. They respond only to this plugin\'s signed test requests. Disable profiler in Tools removes them.', 'super-speedy-performance-analysis'); ?></p>
+        <?php else : ?>
+            <p class="notice notice-warning inline"><a href="<?php echo esc_url(admin_url('admin.php?page=sspa#tools')); ?>"><?php esc_html_e('Enable profiler in Tools before starting an analysis.', 'super-speedy-performance-analysis'); ?></a></p>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($sspa_foreign_dropin) : ?>

@@ -319,9 +319,7 @@ class SSPA_Admin_Save {
         if (SSPA_Run_Controller::active_run_id()) {
             return new WP_Error('sspa_run_active', __('An analysis is already running.', 'super-speedy-performance-analysis'));
         }
-        // SSPA-PRO-START
-        SSPA_Helper_Files::auto_enable();
-        // SSPA-PRO-END
+        SSPA_Helper_Files::enable_for_analysis();
         if (!SSPA_Helper_Files::health()['mu']) {
             return new WP_Error('sspa_no_mu', __('The profiler is off. Enable it (set-profiler) before profiling a save.', 'super-speedy-performance-analysis'));
         }

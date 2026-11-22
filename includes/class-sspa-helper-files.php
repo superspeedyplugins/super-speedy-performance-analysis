@@ -92,18 +92,16 @@ class SSPA_Helper_Files {
         return defined('DISALLOW_FILE_MODS') && DISALLOW_FILE_MODS;
     }
 
-    /** Refresh the database helper; the loader requires explicit consent. */
-    // SSPA-PRO-START
     /**
-     * Pro switches the profiler on without the Enable click: on activation, when an analysis
-     * starts, and once per build on an administrator's admin page. It also refreshes files an
-     * update made stale and a loader that names another copy's folder (the wordpress.org edition
-     * installed it). Never after an explicit Disable profiler; never over another plugin's
-     * db.php or mu-plugin; never where DISALLOW_FILE_MODS or multisite permissions forbid it.
+     * Switch the profiler on for an analysis the administrator is starting, in both editions: the
+     * Run Analysis button, a save profile, or another plugin calling SSPA_Run_Controller::start().
+     * Installs or refreshes the loader and, when no other drop-in is there, db.php. Never after an
+     * explicit Disable profiler; never over another plugin's db.php or mu-plugin; never where
+     * DISALLOW_FILE_MODS or multisite permissions forbid it; only for an administrator or WP-CLI.
      *
      * @return bool Whether the profiler is ready.
      */
-    public static function auto_enable() {
+    public static function enable_for_analysis() {
         if (get_option('sspa_profiler_switched_off') || !(current_user_can('manage_options') || (defined('WP_CLI') && WP_CLI))) {
             return false;
         }
@@ -115,6 +113,18 @@ class SSPA_Helper_Files {
             return false;
         }
         return true === self::enable_profiler();
+    }
+
+    // SSPA-PRO-START
+    /**
+     * Pro also switches the profiler on without waiting for an analysis: on activation and once
+     * per build on an administrator's admin page. That refreshes files an update made stale and a
+     * loader that names another copy's folder (the wordpress.org edition installed it).
+     *
+     * @return bool Whether the profiler is ready.
+     */
+    public static function auto_enable() {
+        return self::enable_for_analysis();
     }
 
     /** admin_init: auto_enable() once per build and plugin folder, not on every admin page. */

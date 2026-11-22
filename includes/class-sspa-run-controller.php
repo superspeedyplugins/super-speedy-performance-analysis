@@ -57,10 +57,9 @@ class SSPA_Run_Controller {
         // Baseline the MySQL digest counters before any profiling traffic. They are
         // cumulative and server-wide, so only the delta across this run means anything.
         // Silently a no-op when the database user cannot read performance_schema.
-        // SSPA-PRO-START
-        // Pro switches the profiler on (or refreshes it) here rather than asking for Enable profiler.
-        SSPA_Helper_Files::auto_enable();
-        // SSPA-PRO-END
+        // Starting an analysis switches the profiler on (or refreshes it), unless the administrator
+        // pressed Disable profiler.
+        SSPA_Helper_Files::enable_for_analysis();
         $health = SSPA_Helper_Files::health();
         if (!$health['mu']) {
             if (!empty($health['file_mods_blocked'])) {

@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.68.4\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.68.5\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-22T14:32:02+00:00\n"
+"POT-Creation-Date: 2026-11-22T18:04:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -535,8 +535,8 @@ msgstr ""
 #: includes/admin/class-sspa-share-prompt.php:78
 #: includes/class-sspa-adhoc.php:455
 #: includes/class-sspa-adhoc.php:478
-#: includes/class-sspa-admin-save.php:646
-#: includes/class-sspa-admin-save.php:668
+#: includes/class-sspa-admin-save.php:644
+#: includes/class-sspa-admin-save.php:666
 #: includes/class-sspa-browser-transport.php:150
 #: includes/class-sspa-browser-transport.php:265
 #: includes/class-sspa-checkout-flow.php:61
@@ -551,25 +551,25 @@ msgstr ""
 #: includes/class-sspa-history.php:282
 #: includes/class-sspa-history.php:288
 #: includes/class-sspa-offers.php:454
-#: includes/class-sspa-run-controller.php:2503
-#: includes/class-sspa-run-controller.php:2560
-#: includes/class-sspa-run-controller.php:2594
-#: includes/class-sspa-run-controller.php:2615
-#: includes/class-sspa-run-controller.php:2638
-#: includes/class-sspa-run-controller.php:2648
-#: includes/class-sspa-run-controller.php:2655
-#: includes/class-sspa-run-controller.php:2665
-#: includes/class-sspa-run-controller.php:2680
-#: includes/class-sspa-run-controller.php:2704
-#: includes/class-sspa-run-controller.php:2731
-#: includes/class-sspa-run-controller.php:2772
-#: includes/class-sspa-run-controller.php:2785
-#: includes/class-sspa-run-controller.php:2812
-#: includes/class-sspa-run-controller.php:2824
-#: includes/class-sspa-run-controller.php:2838
-#: includes/class-sspa-run-controller.php:2853
-#: includes/class-sspa-run-controller.php:2863
-#: includes/class-sspa-run-controller.php:2884
+#: includes/class-sspa-run-controller.php:2502
+#: includes/class-sspa-run-controller.php:2559
+#: includes/class-sspa-run-controller.php:2593
+#: includes/class-sspa-run-controller.php:2614
+#: includes/class-sspa-run-controller.php:2637
+#: includes/class-sspa-run-controller.php:2647
+#: includes/class-sspa-run-controller.php:2654
+#: includes/class-sspa-run-controller.php:2664
+#: includes/class-sspa-run-controller.php:2679
+#: includes/class-sspa-run-controller.php:2703
+#: includes/class-sspa-run-controller.php:2730
+#: includes/class-sspa-run-controller.php:2771
+#: includes/class-sspa-run-controller.php:2784
+#: includes/class-sspa-run-controller.php:2811
+#: includes/class-sspa-run-controller.php:2823
+#: includes/class-sspa-run-controller.php:2837
+#: includes/class-sspa-run-controller.php:2852
+#: includes/class-sspa-run-controller.php:2862
+#: includes/class-sspa-run-controller.php:2883
 #: includes/class-sspa-workflow-analysis.php:265
 #: includes/class-sspa-workflow-analysis.php:289
 #: includes/community/class-sspa-community-figures.php:30
@@ -2281,45 +2281,49 @@ msgstr ""
 msgid "Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run sends page requests to your own site (roughly four per page profiled) and stores the measurements. Customer-session tests use the restricted account described below."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:30
+#: includes/admin/partials/analysis-panel.php:31
+msgid "Starting an analysis installs the profiler: wp-content/mu-plugins/sspa-loader.php and, when no other drop-in is there, wp-content/db.php. They respond only to this plugin's signed test requests. Disable profiler in Tools removes them."
+msgstr ""
+
+#: includes/admin/partials/analysis-panel.php:33
 msgid "Enable profiler in Tools before starting an analysis."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:36
+#: includes/admin/partials/analysis-panel.php:40
 msgid "Before you run:"
 msgstr ""
 
 #. translators: %s: plugin owning db.php
-#: includes/admin/partials/analysis-panel.php:40
+#: includes/admin/partials/analysis-panel.php:44
 #, php-format
 msgid "%s owns your database drop-in (wp-content/db.php). Analysis uses the existing database layer in degraded mode, without per-query row counts; Query Monitor query logs are used when available. The drop-in is never replaced."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:49
+#: includes/admin/partials/analysis-panel.php:53
 msgid "Administrator pages are measured with your own login, from the browser session that starts the analysis. No user account is created, so logged-in customer pages are not measured."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:51
+#: includes/admin/partials/analysis-panel.php:55
 msgid "Customer-session measurements create a restricted test customer account so real customer carts and sessions are not used. The account cannot be logged into and stays available for inspection until the next run replaces it. Administrator measurements use your existing account."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:58
+#: includes/admin/partials/analysis-panel.php:62
 msgid "Include write profiles (creates temporary posts/products and an order containing its own zero-price test product with separate stock; these objects are deleted after measurement, and emails go to the site administrator)"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:63
+#: includes/admin/partials/analysis-panel.php:67
 msgid "Run Analysis"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:67
+#: includes/admin/partials/analysis-panel.php:71
 msgid "Run Plugin Impact Analysis"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:71
+#: includes/admin/partials/analysis-panel.php:75
 msgid "Run Cache Impact Analysis"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:76
+#: includes/admin/partials/analysis-panel.php:80
 #: includes/class-sspa-adhoc.php:165
 #: includes/class-sspa-endpoint-profile.php:345
 #: includes/class-sspa-quote-request.php:144
@@ -2327,7 +2331,7 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:81
+#: includes/admin/partials/analysis-panel.php:85
 msgid "The Plugin Impact Analysis opens a chooser first: nothing is measured until you pick the plugins yourself, and the number of measurements and a time estimate are shown before anything starts. Each chosen plugin is then re-measured with that plugin excluded FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation or deactivation hooks. Choosing every plugin runs the two-phase sweep: a cheap screen of each plugin on its busiest pages first, then the full treatment only for the plugins that showed a measurable impact. Start it, walk away - the floating monitor shows exactly where it is up to. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic."
 msgstr ""
 
@@ -3781,8 +3785,16 @@ msgstr ""
 msgid "out of date - use Enable profiler in Tools to update the loader"
 msgstr ""
 
+#: includes/admin/tabs/overview.php:349
+msgid "out of date - the next analysis updates the loader"
+msgstr ""
+
 #: includes/admin/tabs/overview.php:351
-msgid "not enabled - use Enable profiler in Tools"
+msgid "switched off - use Enable profiler in Tools"
+msgstr ""
+
+#: includes/admin/tabs/overview.php:351
+msgid "not installed yet - starting an analysis installs it"
 msgstr ""
 
 #: includes/admin/tabs/overview.php:353
@@ -4146,7 +4158,7 @@ msgid "Profiler"
 msgstr ""
 
 #: includes/admin/tabs/tools.php:19
-msgid "Enable profiler installs the profiling loader in wp-content/mu-plugins and, when no other drop-in is there, the query-capture drop-in wp-content/db.php; Disable removes both. Analysis requires the loader."
+msgid "Starting an analysis, or pressing Enable profiler, installs the profiling loader in wp-content/mu-plugins and, when no other drop-in is there, the query-capture drop-in wp-content/db.php. Disable profiler removes both and keeps them off until you press Enable profiler."
 msgstr ""
 
 #: includes/admin/tabs/tools.php:21
@@ -4926,7 +4938,7 @@ msgid "No analysis has finished yet: call run-analysis first."
 msgstr ""
 
 #: includes/class-sspa-abilities-control.php:678
-#: includes/class-sspa-run-controller.php:2713
+#: includes/class-sspa-run-controller.php:2712
 msgid "No measured impacts for this plugin yet - run a plugin impact analysis."
 msgstr ""
 
@@ -5206,7 +5218,7 @@ msgstr ""
 
 #: includes/class-sspa-abilities.php:639
 #: includes/class-sspa-checkout-flow.php:63
-#: includes/class-sspa-run-controller.php:117
+#: includes/class-sspa-run-controller.php:116
 #: includes/admin/js/sspa-checkout.js:79
 msgid "WooCommerce is not active, so there is no checkout to profile."
 msgstr ""
@@ -5627,7 +5639,7 @@ msgid "This saves a temporary Performance Analysis object through the selected e
 msgstr ""
 
 #: includes/class-sspa-admin-save.php:96
-#: includes/class-sspa-admin-save.php:541
+#: includes/class-sspa-admin-save.php:539
 msgid "No supported Update/Save control was found on this editor."
 msgstr ""
 
@@ -5670,60 +5682,60 @@ msgstr ""
 #: includes/class-sspa-admin-save.php:320
 #: includes/class-sspa-checkout-flow.php:66
 #: includes/class-sspa-run-controller.php:54
-#: includes/class-sspa-run-controller.php:276
+#: includes/class-sspa-run-controller.php:275
 #: includes/class-sspa-workflow-analysis.php:170
 msgid "An analysis is already running."
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:326
+#: includes/class-sspa-admin-save.php:324
 msgid "The profiler is off. Enable it (set-profiler) before profiling a save."
 msgstr ""
 
 #. translators: %s: preflight failure reason
-#: includes/class-sspa-admin-save.php:335
+#: includes/class-sspa-admin-save.php:333
 #, php-format
 msgid "This site cannot fetch its own pages: %s. A save is replayed over loopback, so nothing was created."
 msgstr ""
 
 #. translators: %s: the replay error message.
-#: includes/class-sspa-admin-save.php:355
+#: includes/class-sspa-admin-save.php:353
 #, php-format
 msgid "Cancelled because the admin save replay failed: %s"
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:378
+#: includes/class-sspa-admin-save.php:376
 msgid "The acting user has no login that the editor would accept."
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:384
+#: includes/class-sspa-admin-save.php:382
 msgid "Loading the editor"
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:392
+#: includes/class-sspa-admin-save.php:390
 msgid "The editor screen did not include the REST nonce its save would use."
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:396
+#: includes/class-sspa-admin-save.php:394
 msgid "This object type has no REST route to save through."
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:450
+#: includes/class-sspa-admin-save.php:448
 msgid "The save request"
 msgstr ""
 
 #. translators: 1: which request, 2: transport error
-#: includes/class-sspa-admin-save.php:490
+#: includes/class-sspa-admin-save.php:488
 #, php-format
 msgid "%1$s failed before reaching the site: %2$s"
 msgstr ""
 
 #. translators: 1: which request, 2: HTTP status, 3: redirect target or body excerpt
-#: includes/class-sspa-admin-save.php:500
+#: includes/class-sspa-admin-save.php:498
 #, php-format
 msgid "%1$s answered HTTP %2$d: %3$s"
 msgstr ""
 
-#: includes/class-sspa-admin-save.php:516
+#: includes/class-sspa-admin-save.php:514
 msgid "PHP's DOM extension is needed to read the editor form."
 msgstr ""
 
@@ -6372,39 +6384,39 @@ msgstr ""
 msgid "an unknown plugin"
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:247
+#: includes/class-sspa-helper-files.php:257
 msgid "Super Speedy Performance Analysis: a previous analysis ended unexpectedly; your original db.php drop-in has been restored."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:248
+#: includes/class-sspa-helper-files.php:258
 msgid "Super Speedy Performance Analysis: could not restore your original db.php drop-in (db.php.sspa-hold still exists in wp-content). Please restore it manually."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:273
+#: includes/class-sspa-helper-files.php:283
 msgid "Only a network administrator may install network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:276
+#: includes/class-sspa-helper-files.php:286
 msgid "This site sets DISALLOW_FILE_MODS, which forbids installing the profiler loader."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:280
+#: includes/class-sspa-helper-files.php:290
 msgid "Could not install the profiler loader; check mu-plugins permissions and any existing file at that path."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:283
+#: includes/class-sspa-helper-files.php:293
 msgid "Could not refresh the profiler db.php; check wp-content permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:293
+#: includes/class-sspa-helper-files.php:303
 msgid "Only a network administrator may remove network-wide profiler files."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:296
+#: includes/class-sspa-helper-files.php:306
 msgid "Could not remove the profiler loader; check its file permissions."
 msgstr ""
 
-#: includes/class-sspa-helper-files.php:299
+#: includes/class-sspa-helper-files.php:309
 msgid "Could not remove the profiler db.php; check its file permissions."
 msgstr ""
 
@@ -7276,251 +7288,251 @@ msgid "No traffic collection was found."
 msgstr ""
 
 #. translators: %s: Tools tab URL.
-#: includes/class-sspa-run-controller.php:69
+#: includes/class-sspa-run-controller.php:68
 #, php-format
 msgid "DISALLOW_FILE_MODS prevents installing the profiler loader. Enable profiler in Tools after the site owner permits file changes: %s"
 msgstr ""
 
 #. translators: %s: Tools tab URL.
-#: includes/class-sspa-run-controller.php:75
+#: includes/class-sspa-run-controller.php:74
 #, php-format
 msgid "Enable profiler in Tools before starting an analysis: %s"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:170
-#: includes/class-sspa-run-controller.php:828
+#: includes/class-sspa-run-controller.php:169
+#: includes/class-sspa-run-controller.php:827
 msgid "No pages found to profile."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:186
+#: includes/class-sspa-run-controller.php:185
 msgid "Administrator pages are measured with your own login, so they are measured only when the analysis is started from the Performance Analysis screen."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:271
+#: includes/class-sspa-run-controller.php:270
 msgid "An analysis is already starting or running."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:300
+#: includes/class-sspa-run-controller.php:299
 msgid "The analysis run could not be created."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:386
+#: includes/class-sspa-run-controller.php:385
 msgid "Another plugin currently owns wp-content/db.php. Plugin Impact Analysis needs SSPA's own drop-in to guard excluded-plugin requests; the existing drop-in is never replaced."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:387
+#: includes/class-sspa-run-controller.php:386
 msgid "It is installed by Enable profiler in Tools; if Enable profiler reports an error, wp-content is not writable."
 msgstr ""
 
 #. translators: %s: what to do about the missing drop-in
-#: includes/class-sspa-run-controller.php:390
+#: includes/class-sspa-run-controller.php:389
 #, php-format
 msgid "Plugin impact analysis needs this plugin's own database drop-in in place - it is what refuses destructive database statements if a plugin reacts to another being excluded during a measurement. %s"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:406
+#: includes/class-sspa-run-controller.php:405
 msgid "Run a normal analysis first - plugin impact analysis sweeps the pages it profiled."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:415
+#: includes/class-sspa-run-controller.php:414
 msgid "That plugin cannot be safely excluded (it is a dependency of another active plugin, or on the fragile list)."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:419
+#: includes/class-sspa-run-controller.php:418
 msgid "No plugins are eligible for isolation testing."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:449
+#: includes/class-sspa-run-controller.php:448
 msgid "None of those pages were profiled by the last analysis, so there is no baseline to compare against."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:456
+#: includes/class-sspa-run-controller.php:455
 msgid "No profiled pages from the last analysis could be resolved - run a fresh analysis first."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:782
+#: includes/class-sspa-run-controller.php:781
 msgid "no plugin (db.php is absent)"
 msgstr ""
 
 #. translators: %s: owner of the database drop-in
-#: includes/class-sspa-run-controller.php:785
+#: includes/class-sspa-run-controller.php:784
 #, php-format
 msgid "Cache Impact Analysis requires SSPA's own db.php for per-request cache toggling; the current owner is %s. The existing db.php and object-cache.php will not be displaced."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:791
+#: includes/class-sspa-run-controller.php:790
 msgid "No persistent object cache detected - there is nothing to toggle. Install Redis/Memcached first."
 msgstr ""
 
 #. translators: %s: the security layer that blocked the request
-#: includes/class-sspa-run-controller.php:888
+#: includes/class-sspa-run-controller.php:887
 #, php-format
 msgid "The checkout entry point was blocked by %s before any order was created."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:889
+#: includes/class-sspa-run-controller.php:888
 msgid "The checkout pre-flight failed before any order was created."
 msgstr ""
 
 #. translators: %s: page key
-#: includes/class-sspa-run-controller.php:1039
+#: includes/class-sspa-run-controller.php:1038
 #, php-format
 msgid "%s with every plugin active"
 msgstr ""
 
 #. translators: 1: page key, 2: plugin slug
-#: includes/class-sspa-run-controller.php:1051
+#: includes/class-sspa-run-controller.php:1050
 #, php-format
 msgid "%1$s with %2$s disabled"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1058
+#: includes/class-sspa-run-controller.php:1057
 msgid "object cache off"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1059
+#: includes/class-sspa-run-controller.php:1058
 msgid "priming cache"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1060
+#: includes/class-sspa-run-controller.php:1059
 msgid "warm cache"
 msgstr ""
 
 #. translators: %s: transport error
-#: includes/class-sspa-run-controller.php:1192
+#: includes/class-sspa-run-controller.php:1191
 #, php-format
 msgid "the request failed before reaching the site (%s)"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1202
+#: includes/class-sspa-run-controller.php:1201
 msgid "the site is behind HTTP authentication (401) at the server level"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1210
+#: includes/class-sspa-run-controller.php:1209
 msgid "an unknown security layer"
 msgstr ""
 
 #. translators: %s: the security layer that refused the request
-#: includes/class-sspa-run-controller.php:1212
+#: includes/class-sspa-run-controller.php:1211
 #, php-format
 msgid "the request was refused with HTTP 403 by %s"
 msgstr ""
 
 #. translators: %d: HTTP status
-#: includes/class-sspa-run-controller.php:1216
+#: includes/class-sspa-run-controller.php:1215
 #, php-format
 msgid "the host is rate limiting the site's own requests (HTTP %d)"
 msgstr ""
 
 #. translators: 1: HTTP status, 2: redirect target
-#: includes/class-sspa-run-controller.php:1221
+#: includes/class-sspa-run-controller.php:1220
 #, php-format
 msgid "a server-level redirect (HTTP %1$d to %2$s) intercepts the request"
 msgstr ""
 
 #. translators: 1: HTTP status, 2: redirect target
-#: includes/class-sspa-run-controller.php:1221
+#: includes/class-sspa-run-controller.php:1220
 msgid "an unknown target"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1224
+#: includes/class-sspa-run-controller.php:1223
 msgid "the response came back HTTP 200 but WordPress never ran (no profiler canary) - a page cache, CDN or firewall answered instead of PHP"
 msgstr ""
 
 #. translators: %d: HTTP status
-#: includes/class-sspa-run-controller.php:1227
+#: includes/class-sspa-run-controller.php:1226
 #, php-format
 msgid "the home page returned HTTP %d"
 msgstr ""
 
 #. translators: 1: page label, 2: exact preflight failure
-#: includes/class-sspa-run-controller.php:1243
+#: includes/class-sspa-run-controller.php:1242
 #, php-format
 msgid "Plugin impact analysis did not start because the target \"%1$s\" is blocked: %2$s. No isolation measurements were queued. Whitelist this site's own loopback requests and try again."
 msgstr ""
 
 #. translators: %s: preflight failure reason
-#: includes/class-sspa-run-controller.php:1282
+#: includes/class-sspa-run-controller.php:1281
 #, php-format
 msgid "This site cannot fetch its own pages: %s. Start the analysis from the Performance Analysis screen (or the Scalability Pro popover) - your browser will make the page requests itself."
 msgstr ""
 
 #. translators: %s: preflight failure reason
-#: includes/class-sspa-run-controller.php:1284
+#: includes/class-sspa-run-controller.php:1283
 #, php-format
 msgid "This site cannot fetch its own pages: %s. This analysis type needs working loopback requests - fix the block, then run it again."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1344
+#: includes/class-sspa-run-controller.php:1343
 msgid "The run's job queue was missing, so the analysis could not continue."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1351
+#: includes/class-sspa-run-controller.php:1350
 msgid "This legacy Cache Impact Analysis used site-wide cache toggling. Site-wide toggling is no longer supported; start a new analysis using SSPA's own db.php."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2279
+#: includes/class-sspa-run-controller.php:2278
 msgid "Cancelled"
 msgstr ""
 
 #. translators: %s: checkout outcome code, for example place_order_failed.
-#: includes/class-sspa-run-controller.php:2292
+#: includes/class-sspa-run-controller.php:2291
 #, php-format
 msgid "The checkout flow did not complete (outcome: %s)."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2298
+#: includes/class-sspa-run-controller.php:2297
 msgid "The cache-off measurements still used a persistent object cache, so the Cache Impact Analysis could not be verified."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2299
+#: includes/class-sspa-run-controller.php:2298
 msgid "The Cache Impact Analysis could not confirm the cache was off during its cache-off measurements."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2305
+#: includes/class-sspa-run-controller.php:2304
 msgid "Failed"
 msgstr ""
 
 #. translators: %s: why the synthetic test customer could not be saved, including WordPress's own reason.
-#: includes/class-sspa-run-controller.php:2318
+#: includes/class-sspa-run-controller.php:2317
 #, php-format
 msgid "The logged-in customer pages were skipped; every other page was measured. %s"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2364
+#: includes/class-sspa-run-controller.php:2363
 msgid "The analysis made no progress for 3 hours, so it was stopped. Keep the Performance Analysis screen open while a run is in progress, or check that WP-Cron runs."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2369
+#: includes/class-sspa-run-controller.php:2368
 msgid "The analysis never recorded any progress within 2 hours of starting, so it was stopped."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2563
+#: includes/class-sspa-run-controller.php:2562
 msgid "Choose Enable or Disable profiler."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2582
+#: includes/class-sspa-run-controller.php:2581
 msgid "Finish or cancel the active analysis before changing the profiler."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2631
+#: includes/class-sspa-run-controller.php:2630
 msgid "No such tab."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2658
+#: includes/class-sspa-run-controller.php:2657
 msgid "Cancelled from the Performance Analysis screen."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2686
+#: includes/class-sspa-run-controller.php:2685
 msgid "There is no completed analysis to attribute yet."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2867
+#: includes/class-sspa-run-controller.php:2866
 msgid "Invalid submission action."
 msgstr ""
 
 #. translators: 1: run ID, 2: error message
-#: includes/class-sspa-run-controller.php:2932
+#: includes/class-sspa-run-controller.php:2931
 #, php-format
 msgid "Detailed data was not deleted because run %1$d could not be preserved for sharing: %2$s"
 msgstr ""

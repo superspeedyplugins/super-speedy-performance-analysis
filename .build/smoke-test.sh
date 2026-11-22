@@ -186,13 +186,12 @@ case "$EDITION:$UPD" in
 esac
 
 # The real thing: a profiling run end to end against a real site.
-# Since 0.43.x the mu-plugin loader is installed only by the explicit "Enable profiler" action in
-# Tools; do what that button does before measuring.
-ENABLE=$(wpc eval 'wp_set_current_user(1); $r = SSPA_Helper_Files::enable_profiler(); echo is_wp_error($r) ? $r->get_error_message() : "enabled";' 2>&1 | tail -1)
-[ "$ENABLE" = "enabled" ] && pass "profiler enabled through the Tools action" || fail "enable profiler failed: $ENABLE"
+# No Enable profiler step: starting the analysis installs the loader (0.68.5, every edition).
 RUN=$(wpc sspa run --type=spot --pages=home 2>&1 | tail -2)
 echo "$RUN" | grep -q 'Success' && pass "analysis run completed: $(echo "$RUN" | tail -1)" \
                                 || fail "analysis run failed:"$'\n'"$RUN"
+LOADER=$(wpc eval 'echo file_exists(WPMU_PLUGIN_DIR . "/sspa-loader.php") ? "present" : "absent";' 2>&1 | tail -1)
+[ "$LOADER" = "present" ] && pass "starting the analysis installed the profiler loader" || fail "no profiler loader after the analysis: $LOADER"
 
 # The opt-in uninstall path must remove tables and every other owned object, not row-delete
 # large tables or leave identities/test fixtures behind.

@@ -346,9 +346,9 @@ $sspa_cache_recon = $sspa_last_run ? SSPA_Insights::standalone($sspa_last_run['i
             } elseif (isset($sspa_health['mu_reason']) && 'stale' === $sspa_health['mu_reason']) {
                 // Writable, just not refreshed yet. Telling someone to chmod a directory that
                 // is already writable is the worst kind of wrong advice.
-                esc_html_e('out of date - use Enable profiler in Tools to update the loader', 'super-speedy-performance-analysis');
+                echo esc_html(get_option('sspa_profiler_switched_off') ? __('out of date - use Enable profiler in Tools to update the loader', 'super-speedy-performance-analysis') : __('out of date - the next analysis updates the loader', 'super-speedy-performance-analysis'));
             } elseif (isset($sspa_health['mu_reason']) && 'disabled' === $sspa_health['mu_reason']) {
-                esc_html_e('not enabled - use Enable profiler in Tools', 'super-speedy-performance-analysis');
+                echo esc_html(get_option('sspa_profiler_switched_off') ? __('switched off - use Enable profiler in Tools', 'super-speedy-performance-analysis') : __('not installed yet - starting an analysis installs it', 'super-speedy-performance-analysis'));
             } else {
                 esc_html_e('not installed - wp-content/mu-plugins is not writable', 'super-speedy-performance-analysis');
             }
