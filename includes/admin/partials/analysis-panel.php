@@ -45,7 +45,13 @@ defined('ABSPATH') || exit;
         </div>
     <?php endif; ?>
 
-    <p class="description"><?php esc_html_e('Customer-session measurements create a restricted test customer account so real customer carts and sessions are not used. The account cannot be logged into and stays available for inspection until the next run replaces it. Administrator measurements use your existing account.', 'super-speedy-performance-analysis'); ?></p>
+    <?php
+    $sspa_session_note = __('Administrator pages are measured with your own login, from the browser session that starts the analysis. No user account is created, so logged-in customer pages are not measured.', 'super-speedy-performance-analysis');
+    // SSPA-PRO-START
+    $sspa_session_note = __('Customer-session measurements create a restricted test customer account so real customer carts and sessions are not used. The account cannot be logged into and stays available for inspection until the next run replaces it. Administrator measurements use your existing account.', 'super-speedy-performance-analysis');
+    // SSPA-PRO-END
+    ?>
+    <p class="description"><?php echo esc_html($sspa_session_note); ?></p>
     <p>
         <label style="margin-right:1em">
             <input type="checkbox" id="sspa-include-writes" value="1">

@@ -250,6 +250,9 @@ class SSPA_History {
     }
 
     public static function render($comparison) {
+        if (is_wp_error($comparison)) {
+            return SSPA_History_View::render($comparison, array());
+        }
         // Display labels (a URL for pages measured by URL) are looked up here, never added to the
         // comparison, whose page entries are an exact allowlist shared with the export.
         $labels = array();

@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.68.3
+Stable tag: 0.68.4
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,10 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.68.4 (22nd November 2026) =
+* Fixed the Compare tab saying "Could not load this tab: Unexpected server response." after a site's first analysis; it now says this is the first saved point in time.
+* The wordpress.org edition's analysis panel now says administrator pages use your own login and that no user account is created.
 
 = 0.68.3 (19th November 2026) =
 * Admin, login and REST requests are now recognised wherever the site puts them, including a renamed login page, a custom REST prefix and a moved `wp-content` folder.

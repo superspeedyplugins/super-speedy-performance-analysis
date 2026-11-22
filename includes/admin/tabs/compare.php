@@ -82,7 +82,8 @@ SSPA_Share_Prompt::render();
     </nav>
 <?php endif; ?>
 <?php
-if ($sspa_comparable_runs) : ?>
+// The picker needs a run to compare against; a site with one saved run gets the first-run message.
+if ($sspa_before_run_id) : ?>
     <section class="sspa-history-compare-picker">
         <h3><?php esc_html_e('Compare points in time', 'super-speedy-performance-analysis'); ?></h3>
         <p class="description"><?php esc_html_e('Response time is the headline. New errors, warnings, failed validity checks, and declared expectations are shown first when they appear.', 'super-speedy-performance-analysis'); ?></p>

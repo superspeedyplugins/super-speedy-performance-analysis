@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.68.3\n"
+"Project-Id-Version: Super Speedy Performance Analysis 0.68.4\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-19T17:02:41+00:00\n"
+"POT-Creation-Date: 2026-11-22T14:32:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -383,7 +383,7 @@ msgid "Workflows"
 msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:259
-#: includes/admin/tabs/compare.php:171
+#: includes/admin/tabs/compare.php:172
 msgid "Pages"
 msgstr ""
 
@@ -397,7 +397,7 @@ msgstr ""
 
 #: includes/admin/class-sspa-admin-page.php:262
 #: includes/admin/tabs/ajax.php:57
-#: includes/admin/tabs/compare.php:105
+#: includes/admin/tabs/compare.php:106
 msgid "Compare"
 msgstr ""
 
@@ -546,10 +546,10 @@ msgstr ""
 #: includes/class-sspa-history-ajax.php:45
 #: includes/class-sspa-history-ajax.php:56
 #: includes/class-sspa-history-ajax.php:74
-#: includes/class-sspa-history.php:267
-#: includes/class-sspa-history.php:273
-#: includes/class-sspa-history.php:279
-#: includes/class-sspa-history.php:285
+#: includes/class-sspa-history.php:270
+#: includes/class-sspa-history.php:276
+#: includes/class-sspa-history.php:282
+#: includes/class-sspa-history.php:288
 #: includes/class-sspa-offers.php:454
 #: includes/class-sspa-run-controller.php:2503
 #: includes/class-sspa-run-controller.php:2560
@@ -640,13 +640,13 @@ msgstr ""
 
 #: includes/admin/class-sspa-history-chart.php:150
 #: includes/admin/tabs/ajax.php:51
-#: includes/admin/tabs/compare.php:90
+#: includes/admin/tabs/compare.php:91
 msgid "Before"
 msgstr ""
 
 #: includes/admin/class-sspa-history-chart.php:150
 #: includes/admin/tabs/ajax.php:51
-#: includes/admin/tabs/compare.php:97
+#: includes/admin/tabs/compare.php:98
 msgid "After"
 msgstr ""
 
@@ -807,7 +807,7 @@ msgid "Recorded components"
 msgstr ""
 
 #: includes/admin/class-sspa-history-run-view.php:63
-#: includes/admin/tabs/compare.php:213
+#: includes/admin/tabs/compare.php:214
 msgid "version unknown"
 msgstr ""
 
@@ -860,7 +860,7 @@ msgstr ""
 #: includes/admin/class-sspa-history-run-view.php:72
 #: includes/admin/class-sspa-history-run-view.php:84
 #: includes/admin/class-sspa-history-run-view.php:105
-#: includes/admin/tabs/compare.php:219
+#: includes/admin/tabs/compare.php:220
 msgid "not recorded"
 msgstr ""
 
@@ -1315,7 +1315,7 @@ msgid "Component"
 msgstr ""
 
 #: includes/admin/class-sspa-plugins-table.php:312
-#: includes/admin/tabs/compare.php:168
+#: includes/admin/tabs/compare.php:169
 msgid "Type"
 msgstr ""
 
@@ -1605,14 +1605,14 @@ msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:385
 #: includes/admin/partials/analysis-panel.php:21
-#: includes/admin/tabs/compare.php:225
+#: includes/admin/tabs/compare.php:226
 #: includes/admin/js/sspa-checkout.js:261
 msgid "Download Markdown"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:387
 #: includes/admin/partials/analysis-panel.php:22
-#: includes/admin/tabs/compare.php:226
+#: includes/admin/tabs/compare.php:227
 #: includes/admin/js/sspa-checkout.js:262
 msgid "Copy Markdown"
 msgstr ""
@@ -2295,27 +2295,31 @@ msgstr ""
 msgid "%s owns your database drop-in (wp-content/db.php). Analysis uses the existing database layer in degraded mode, without per-query row counts; Query Monitor query logs are used when available. The drop-in is never replaced."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:48
+#: includes/admin/partials/analysis-panel.php:49
+msgid "Administrator pages are measured with your own login, from the browser session that starts the analysis. No user account is created, so logged-in customer pages are not measured."
+msgstr ""
+
+#: includes/admin/partials/analysis-panel.php:51
 msgid "Customer-session measurements create a restricted test customer account so real customer carts and sessions are not used. The account cannot be logged into and stays available for inspection until the next run replaces it. Administrator measurements use your existing account."
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:52
+#: includes/admin/partials/analysis-panel.php:58
 msgid "Include write profiles (creates temporary posts/products and an order containing its own zero-price test product with separate stock; these objects are deleted after measurement, and emails go to the site administrator)"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:57
+#: includes/admin/partials/analysis-panel.php:63
 msgid "Run Analysis"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:61
+#: includes/admin/partials/analysis-panel.php:67
 msgid "Run Plugin Impact Analysis"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:65
+#: includes/admin/partials/analysis-panel.php:71
 msgid "Run Cache Impact Analysis"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:70
+#: includes/admin/partials/analysis-panel.php:76
 #: includes/class-sspa-adhoc.php:165
 #: includes/class-sspa-endpoint-profile.php:345
 #: includes/class-sspa-quote-request.php:144
@@ -2323,7 +2327,7 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: includes/admin/partials/analysis-panel.php:75
+#: includes/admin/partials/analysis-panel.php:81
 msgid "The Plugin Impact Analysis opens a chooser first: nothing is measured until you pick the plugins yourself, and the number of measurements and a time estimate are shown before anything starts. Each chosen plugin is then re-measured with that plugin excluded FOR THE TEST REQUESTS ONLY - your visitors always get the full site, no plugins are ever really deactivated, and nothing fires activation or deactivation hooks. Choosing every plugin runs the two-phase sweep: a cheap screen of each plugin on its busiest pages first, then the full treatment only for the plugins that showed a measurable impact. Start it, walk away - the floating monitor shows exactly where it is up to. Keeping this tab open (minimised is fine) is fastest; if you close it, WP-Cron continues the run in the background as your site receives traffic."
 msgstr ""
 
@@ -2451,7 +2455,7 @@ msgid "No traffic collector was used. This immediate report assesses implementat
 msgstr ""
 
 #: includes/admin/partials/community-figures.php:5
-#: includes/admin/tabs/compare.php:138
+#: includes/admin/tabs/compare.php:139
 msgid "superspeedy.org is operated by WP Intense OÜ, which also runs superspeedyplugins.com."
 msgstr ""
 
@@ -2607,7 +2611,7 @@ msgid "superspeedy.org is operated by WP Intense OÜ, which also runs superspeed
 msgstr ""
 
 #: includes/admin/partials/share-prompt.php:15
-#: includes/admin/tabs/compare.php:139
+#: includes/admin/tabs/compare.php:140
 msgid "Privacy policy and terms"
 msgstr ""
 
@@ -3370,145 +3374,145 @@ msgid "Delete all SSPA data when the plugin is deleted"
 msgstr ""
 
 #: includes/admin/tabs/compare.php:71
-#: includes/admin/tabs/compare.php:255
+#: includes/admin/tabs/compare.php:256
 msgid "Saved runs pages"
 msgstr ""
 
 #: includes/admin/tabs/compare.php:73
-#: includes/admin/tabs/compare.php:257
+#: includes/admin/tabs/compare.php:258
 msgid "Newer runs"
 msgstr ""
 
 #. translators: 1: current page number, 2: number of pages, 3: number of saved runs
 #: includes/admin/tabs/compare.php:77
-#: includes/admin/tabs/compare.php:261
+#: includes/admin/tabs/compare.php:262
 #, php-format
 msgid "Page %1$d of %2$d (%3$d saved runs)"
 msgstr ""
 
 #: includes/admin/tabs/compare.php:80
-#: includes/admin/tabs/compare.php:264
+#: includes/admin/tabs/compare.php:265
 msgid "Older runs"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:87
+#: includes/admin/tabs/compare.php:88
 msgid "Compare points in time"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:88
+#: includes/admin/tabs/compare.php:89
 msgid "Response time is the headline. New errors, warnings, failed validity checks, and declared expectations are shown first when they appear."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:104
+#: includes/admin/tabs/compare.php:105
 msgid "Include pages measured with Analyse this page"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:114
+#: includes/admin/tabs/compare.php:115
 msgid "This is your first saved point in time. Run another full scan or quick comparison to see what changed."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:123
+#: includes/admin/tabs/compare.php:124
 msgid "Compared with other sites"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:125
+#: includes/admin/tabs/compare.php:126
 msgid "superspeedy.org publishes performance figures from the sites that share their results, grouped into cohorts of similar sites. This plugin can download them and place this site among them."
 msgstr ""
 
 #. translators: %s: this site's cohort, for example "site type: ecommerce, product count: <100"
-#: includes/admin/tabs/compare.php:130
+#: includes/admin/tabs/compare.php:131
 #, php-format
 msgid "This site's cohort, from its latest analysis: %s."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:137
+#: includes/admin/tabs/compare.php:138
 msgid "Loading them downloads two public documents from superspeedy.org (/api/v1/cohorts and /api/v1/plugin-impact). Nothing about this site is sent: the cohort and plugins are matched here. Like any server, Cloudflare and superspeedy.org see the IP address of this web server, but superspeedy.org does not log it."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:142
+#: includes/admin/tabs/compare.php:143
 msgid "Load community figures"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:150
+#: includes/admin/tabs/compare.php:151
 msgid "Trends across analysis runs will appear here, so you can see whether your site is getting slower as it grows."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:156
+#: includes/admin/tabs/compare.php:157
 msgid "Sharing every analysis is on, so each completed run below is queued for the community database automatically."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:158
+#: includes/admin/tabs/compare.php:159
 msgid "Sharing every analysis is off. You can still contribute any single analysis below with Share this - it sends only that one run, and it does not turn on sharing for anything else."
 msgstr ""
 
-#: includes/admin/tabs/compare.php:160
+#: includes/admin/tabs/compare.php:161
 msgid "Sharing settings and privacy details"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:167
+#: includes/admin/tabs/compare.php:168
 #: includes/admin/tabs/share.php:223
 msgid "Run"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:169
+#: includes/admin/tabs/compare.php:170
 #: includes/admin/tabs/traffic.php:31
 msgid "Started"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:170
+#: includes/admin/tabs/compare.php:171
 #: includes/admin/tabs/pages.php:68
 #: includes/admin/tabs/tools.php:39
 msgid "Status"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:172
+#: includes/admin/tabs/compare.php:173
 msgid "Mean generation (ms)"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:173
+#: includes/admin/tabs/compare.php:174
 msgid "Findings"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:174
+#: includes/admin/tabs/compare.php:175
 msgid "Score"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:175
+#: includes/admin/tabs/compare.php:176
 msgid "Components measured"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:176
+#: includes/admin/tabs/compare.php:177
 msgid "LLM report"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:177
+#: includes/admin/tabs/compare.php:178
 msgid "Share with community"
 msgstr ""
 
 #. translators: %d: number of components recorded for this run
-#: includes/admin/tabs/compare.php:208
+#: includes/admin/tabs/compare.php:209
 #, php-format
 msgid "%d component"
 msgid_plural "%d components"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/tabs/compare.php:237
+#: includes/admin/tabs/compare.php:238
 msgid "(this run only)"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:240
+#: includes/admin/tabs/compare.php:241
 #: includes/admin/js/sspa-admin.js:1404
 msgid "Preview data"
 msgstr ""
 
 #. translators: %s: analysis type, e.g. "full scan"
-#: includes/admin/tabs/compare.php:243
+#: includes/admin/tabs/compare.php:244
 #, php-format
 msgid "Share this %s"
 msgstr ""
 
-#: includes/admin/tabs/compare.php:246
+#: includes/admin/tabs/compare.php:247
 msgid "Not shareable"
 msgstr ""
 

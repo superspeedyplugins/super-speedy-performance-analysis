@@ -53,6 +53,11 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
     if [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]]; then
         continue
     fi
+    # Own-site case: it clears saved runs on the way in, so it never runs on the shared site.
+    if [ "$name" = "164-compare-first-run.php" ] && [ "${SSPA_SCENARIO:-}" != "tests-compare-first-run" ]; then
+        echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-compare-first-run) ==="
+        continue
+    fi
     # These core fixtures require wasteful checkout calls / no settings publisher.
     # The integration case requires SPro loaded normally in the new CLI process.
     case "$name" in
