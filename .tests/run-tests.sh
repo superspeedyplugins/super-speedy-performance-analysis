@@ -58,6 +58,11 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
         echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-compare-first-run) ==="
         continue
     fi
+    # Own-site case: it installs an MU plugin naming its fixture DNS resolvers.
+    if [ "$name" = "165-dns-check.php" ] && [ "${SSPA_SCENARIO:-}" != "tests-dns-check" ]; then
+        echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-dns-check) ==="
+        continue
+    fi
     # These core fixtures require wasteful checkout calls / no settings publisher.
     # The integration case requires SPro loaded normally in the new CLI process.
     case "$name" in

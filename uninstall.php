@@ -95,6 +95,9 @@ if (is_file($sspa_traffic_config)) {
     SSPA_Filesystem::direct()->delete($sspa_traffic_config);
 }
 delete_option('sspa_profiler_enabled');
+// SSPA-PRO-START
+delete_option('sspa_dns_check');
+// SSPA-PRO-END
 delete_option('sspa_profiler_switched_off');
 delete_option('sspa_profiler_auto_checked');
 delete_option('sspa_dropin_restore_notice');

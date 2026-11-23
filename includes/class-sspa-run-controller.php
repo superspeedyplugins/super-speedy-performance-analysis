@@ -28,6 +28,9 @@ class SSPA_Run_Controller {
         add_action('wp_ajax_sspa_submission_tick', array(__CLASS__, 'ajax_submission_tick'));
         add_action('wp_ajax_sspa_prune_blobs', array(__CLASS__, 'ajax_prune_blobs'));
         add_action('wp_ajax_sspa_tools_recheck', array(__CLASS__, 'ajax_tools_recheck'));
+        // SSPA-PRO-START
+        add_action('wp_ajax_sspa_dns_check', array(__CLASS__, 'ajax_dns_check'));
+        // SSPA-PRO-END
         add_action('wp_ajax_sspa_share_optin', array(__CLASS__, 'ajax_share_optin'));
         add_action('wp_ajax_sspa_publisher_toggle', array(__CLASS__, 'ajax_publisher_toggle'));
         add_action('wp_ajax_sspa_payload_preview', array(__CLASS__, 'ajax_payload_preview'));
@@ -2600,6 +2603,22 @@ class SSPA_Run_Controller {
         }
         wp_send_json_success(array('html' => $html));
     }
+
+    // SSPA-PRO-START
+    /** Pro: the Tools tab's Check DNS button. Runs the check and returns the DNS section. */
+    public static function ajax_dns_check() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
+        SSPA_Dns_Check::run();
+        ob_start();
+        try {
+            include SSPA_PLUGIN_DIR . 'includes/admin/partials/dns-check.php';
+        } finally {
+            $html = ob_get_clean();
+        }
+        wp_send_json_success(array('html' => $html));
+    }
+    // SSPA-PRO-END
 
     /**
      * Re-render one or more tabs server-side.

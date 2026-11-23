@@ -132,6 +132,12 @@ $sspa_status_label = array(
     </p>
 <?php endif; ?>
 
+<?php
+// SSPA-PRO-START
+include SSPA_PLUGIN_DIR . 'includes/admin/partials/dns-check.php';
+// SSPA-PRO-END
+?>
+
 <h3><?php esc_html_e('This server', 'super-speedy-performance-analysis'); ?></h3>
 <div class="sspa-table-scroll"><table class="widefat striped sspa-env">
     <tbody>

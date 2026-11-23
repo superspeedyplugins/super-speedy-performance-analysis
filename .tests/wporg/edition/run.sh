@@ -74,6 +74,13 @@ install_zip "$ZIP" "$SLUG" || { echo "FAIL: unzip"; exit 1; }
 cli plugin activate "$SLUG" >/dev/null 2>&1
 check "$(cli plugin get "$SLUG" --field=status 2>/dev/null)" "active" "the wp.org zip installs and activates"
 [ ! -L "$PLUGINS/$SLUG" ] && [ ! -e "$PLUGINS/$SLUG/super-speedy-settings" ] && pass "the site runs the extracted zip, not a checkout" || fail "the plugin folder is not the extracted zip"
+# Pro's DNS check is absent, not locked: no files, no action, no section, no click handler.
+if [ ! -e "$PLUGINS/$SLUG/includes/class-sspa-dns-check.php" ] && [ ! -e "$PLUGINS/$SLUG/includes/admin/partials/dns-check.php" ] \
+    && ! grep -rq 'sspa_dns_check\|sspa-dns-check\|SSPA_Dns_Check' "$PLUGINS/$SLUG" --include='*.php' --include='*.js'; then
+    pass "the wp.org zip has no DNS check code"
+else
+    fail "the wp.org zip carries DNS check code: $(grep -rln 'sspa_dns_check\|sspa-dns-check\|SSPA_Dns_Check' "$PLUGINS/$SLUG" --include='*.php' --include='*.js' | head -3)"
+fi
 cp "$PLUGIN_DIR/.tests/fixtures/wporg-edition-adhoc.php" "$SITE/wp-content/mu-plugins/zz-sspa-test-admin-adhoc.php"
 cli option update woocommerce_coming_soon no >/dev/null 2>&1
 cli option update woocommerce_store_pages_only no >/dev/null 2>&1

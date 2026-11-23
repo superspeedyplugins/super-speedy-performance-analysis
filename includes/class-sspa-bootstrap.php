@@ -93,6 +93,9 @@ class SSPA_Bootstrap {
             'sspa_prune_blobs' => array('SSPA_Run_Controller', 'ajax_prune_blobs'),
             'sspa_profiler_toggle' => array('SSPA_Run_Controller', 'ajax_profiler_toggle'),
             'sspa_tools_recheck' => array('SSPA_Run_Controller', 'ajax_tools_recheck'),
+            // SSPA-PRO-START
+            'sspa_dns_check' => array('SSPA_Run_Controller', 'ajax_dns_check'),
+            // SSPA-PRO-END
             'sspa_share_optin' => array('SSPA_Run_Controller', 'ajax_share_optin'),
             'sspa_share_prompt_snooze' => array('SSPA_Share_Prompt', 'ajax_snooze'),
             'sspa_share_prompt_never' => array('SSPA_Share_Prompt', 'ajax_never'),

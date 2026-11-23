@@ -1975,3 +1975,22 @@ jQuery(window).on('popstate', function () {
 	var wanted = parseInt(new URLSearchParams(window.location.search).get('sspa_compare_page'), 10) || 1;
 	if (wanted !== (parseInt(pager.attr('data-page'), 10) || 1)) { sspa_refresh_tabs(['compare']); }
 });
+
+// SSPA-PRO-START
+// Pro: Check DNS on the Tools tab. Takes up to 25 seconds; replaces the section with the result.
+jQuery(document).on('click', '#sspa-dns-check .sspa-dns-check-run', function () {
+	var btn = jQuery(this).prop('disabled', true);
+	var status = btn.siblings('.sspa-dns-check-status').text(wp.i18n.__('Checking, this takes up to 25 seconds...', 'super-speedy-performance-analysis'));
+	jQuery.post(ajaxurl, { action: 'sspa_dns_check', nonce: sspa_admin.nonce }, function (resp) {
+		if (resp.success) {
+			jQuery('#sspa-dns-check').replaceWith(resp.data.html);
+		} else {
+			btn.prop('disabled', false);
+			status.text(resp.data || wp.i18n.__('The DNS check failed.', 'super-speedy-performance-analysis'));
+		}
+	}).fail(function (xhr) {
+		btn.prop('disabled', false);
+		status.text(xhr.statusText || wp.i18n.__('The DNS check failed.', 'super-speedy-performance-analysis'));
+	});
+});
+// SSPA-PRO-END

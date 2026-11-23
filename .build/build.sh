@@ -71,6 +71,8 @@ ssx_hook_wporg() {
     ssx_strip_pro_blocks "$stage"
     # Pro's panel wordmark; the wordpress.org panels carry no credit (review round 1).
     ssx_rm "$stage" "includes/admin/img"
+    # Pro's DNS check; its call sites are SSPA-PRO blocks.
+    ssx_rm "$stage" "includes/class-sspa-dns-check.php" "includes/admin/partials/dns-check.php"
 
     # The submodule pointer is meaningless without the submodule, and .gitmodules is a
     # PCP "hidden files" error in its own right. (Dot-files are stripped by ssx_build_target
