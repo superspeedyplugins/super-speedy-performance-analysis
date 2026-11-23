@@ -113,6 +113,12 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.69.1 (24th November 2026) =
+* The full analysis Markdown file now includes the phase breakdown, top callbacks, template residuals and render regions for every front-end page, each with a one-line verdict naming its PHP CPU share, top owner and largest untimed gap.
+* The full analysis Markdown file and the Tools tab now show which PHP serves your site: its server API, binary, php.ini, additional ini files and whether each profiling extension is loaded in it.
+* A page whose SQL or HTTP was not captured but whose time was mostly CPU is now reported as PHP CPU-bound, with SQL, HTTP and object cache bounded by the non-CPU time, instead of "dominant cost unknown".
+* The Markdown files are shorter: findings about the same query share one fingerprint, small fast archive sort notes are left out and component tables show the top 15 plus the rest.
+
 = 0.69.0 (23rd November 2026) =
 * Pro: Check DNS on the Tools tab sends 12 real lookups to each of the server's nameservers and shows any that drop lookups, which make PHP wait seconds on every licence check, update check and API call.
 

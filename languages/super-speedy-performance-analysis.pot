@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis Pro 0.68.6\n"
+"Project-Id-Version: Super Speedy Performance Analysis Pro 0.69.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-23T10:06:18+00:00\n"
+"POT-Creation-Date: 2026-11-23T23:27:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -550,25 +550,26 @@ msgstr ""
 #: includes/class-sspa-history.php:282
 #: includes/class-sspa-history.php:288
 #: includes/class-sspa-offers.php:454
-#: includes/class-sspa-run-controller.php:2502
-#: includes/class-sspa-run-controller.php:2559
-#: includes/class-sspa-run-controller.php:2593
-#: includes/class-sspa-run-controller.php:2614
-#: includes/class-sspa-run-controller.php:2637
-#: includes/class-sspa-run-controller.php:2647
-#: includes/class-sspa-run-controller.php:2654
-#: includes/class-sspa-run-controller.php:2664
-#: includes/class-sspa-run-controller.php:2679
-#: includes/class-sspa-run-controller.php:2703
-#: includes/class-sspa-run-controller.php:2730
-#: includes/class-sspa-run-controller.php:2771
-#: includes/class-sspa-run-controller.php:2784
-#: includes/class-sspa-run-controller.php:2811
-#: includes/class-sspa-run-controller.php:2823
-#: includes/class-sspa-run-controller.php:2837
-#: includes/class-sspa-run-controller.php:2852
-#: includes/class-sspa-run-controller.php:2862
-#: includes/class-sspa-run-controller.php:2883
+#: includes/class-sspa-run-controller.php:2505
+#: includes/class-sspa-run-controller.php:2562
+#: includes/class-sspa-run-controller.php:2596
+#: includes/class-sspa-run-controller.php:2611
+#: includes/class-sspa-run-controller.php:2633
+#: includes/class-sspa-run-controller.php:2656
+#: includes/class-sspa-run-controller.php:2666
+#: includes/class-sspa-run-controller.php:2673
+#: includes/class-sspa-run-controller.php:2683
+#: includes/class-sspa-run-controller.php:2698
+#: includes/class-sspa-run-controller.php:2722
+#: includes/class-sspa-run-controller.php:2749
+#: includes/class-sspa-run-controller.php:2790
+#: includes/class-sspa-run-controller.php:2803
+#: includes/class-sspa-run-controller.php:2830
+#: includes/class-sspa-run-controller.php:2842
+#: includes/class-sspa-run-controller.php:2856
+#: includes/class-sspa-run-controller.php:2871
+#: includes/class-sspa-run-controller.php:2881
+#: includes/class-sspa-run-controller.php:2902
 #: includes/class-sspa-workflow-analysis.php:265
 #: includes/class-sspa-workflow-analysis.php:289
 #: includes/community/class-sspa-community-figures.php:30
@@ -750,6 +751,8 @@ msgid "Output comparison unavailable"
 msgstr ""
 
 #: includes/admin/class-sspa-history-chart.php:294
+#: includes/admin/tabs/tools.php:148
+#: includes/class-sspa-tools.php:80
 msgid "none"
 msgstr ""
 
@@ -2103,7 +2106,8 @@ msgid "Slowest hook callbacks"
 msgstr ""
 
 #: includes/admin/class-sspa-profile-panel.php:971
-#: includes/class-sspa-page-summary.php:85
+#: includes/class-sspa-page-summary.php:81
+#: includes/class-sspa-page-summary.php:96
 msgid "SQL"
 msgstr ""
 
@@ -2591,6 +2595,82 @@ msgstr ""
 
 #: includes/admin/partials/community-figures.php:150
 msgid "Isolation evidence: each installation measured the page with and without the plugin for its own test requests. A positive number is time the plugin added; a negative one is time it saved."
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:8
+msgid "DNS"
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:9
+msgid "Every licence check, update check and API call a plugin makes starts with a DNS lookup. A resolver that drops lookups makes PHP wait seconds before it tries again, which shows up as slow admin pages. This sends 12 real lookups to each nameserver this server uses and counts the ones that fail or get no answer. It changes nothing on the server."
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:11
+msgid "Check DNS"
+msgstr ""
+
+#. translators: %s: date and time of the last check
+#: includes/admin/partials/dns-check.php:18
+#, php-format
+msgid "Last checked %s."
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:20
+msgid "The resolver configuration could not be read here, so these are lookups through PHP's own resolver."
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:26
+msgid "Nameserver"
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:27
+msgid "Result"
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:28
+msgid "Lookups"
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:29
+msgid "Typical answer"
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:30
+msgid "Slowest answer"
+msgstr ""
+
+#. translators: 1: lookups answered, 2: lookups sent
+#: includes/admin/partials/dns-check.php:46
+#, php-format
+msgid "%1$d of %2$d answered"
+msgstr ""
+
+#. translators: 1: lookups with no answer, 2: lookups sent
+#: includes/admin/partials/dns-check.php:49
+#, php-format
+msgid "%1$d of %2$d got no answer"
+msgstr ""
+
+#. translators: 1: lookups refused or failed, 2: lookups sent
+#: includes/admin/partials/dns-check.php:53
+#, php-format
+msgid "%1$d of %2$d failed"
+msgstr ""
+
+#. translators: %d: lookups not sent before the time limit
+#: includes/admin/partials/dns-check.php:57
+#, php-format
+msgid "%d not sent before the 25 second limit"
+msgstr ""
+
+#. translators: 1: resolver timeout in seconds, 2: timeout multiplied by attempts
+#: includes/admin/partials/dns-check.php:75
+#, php-format
+msgid "When a lookup gets no answer, PHP waits %1$d seconds before trying again, and up to %2$d seconds in all. That happens inside every outbound request a plugin makes, so licence checks, update checks and API calls stall for that long, on the admin pages and cron jobs that make them."
+msgstr ""
+
+#: includes/admin/partials/dns-check.php:79
+msgid "The fix is a reliable resolver, for example Cloudflare (1.1.1.1) or Google (8.8.8.8). Ask your host to change it, or change the nameserver lines in /etc/resolv.conf (or the network configuration that writes them) if you manage the server. Then check again."
 msgstr ""
 
 #: includes/admin/partials/share-prompt.php:10
@@ -4238,27 +4318,44 @@ msgstr ""
 msgid "Working out which plugin CALLED a query needs the stack to reach the calling plugin. A cut stack can hide that, so a plugin looping over another plugin's API would be missed. A low percentage here means the Caller attribution mode on the Plugins tab is seeing what it needs to."
 msgstr ""
 
-#: includes/admin/tabs/tools.php:135
+#: includes/admin/tabs/tools.php:141
 msgid "This server"
 msgstr ""
 
-#: includes/admin/tabs/tools.php:138
+#: includes/admin/tabs/tools.php:144
 msgid "Operating system"
 msgstr ""
 
-#: includes/admin/tabs/tools.php:139
+#: includes/admin/tabs/tools.php:145
 msgid "PHP"
 msgstr ""
 
-#: includes/admin/tabs/tools.php:140
-msgid "PHP ini scan directory"
+#: includes/admin/tabs/tools.php:147
+msgid "PHP binary"
 msgstr ""
 
-#: includes/admin/tabs/tools.php:140
+#: includes/admin/tabs/tools.php:147
+#: includes/admin/tabs/tools.php:149
 msgid "not reported"
 msgstr ""
 
-#: includes/admin/tabs/tools.php:141
+#: includes/admin/tabs/tools.php:148
+msgid "Loaded php.ini"
+msgstr ""
+
+#: includes/admin/tabs/tools.php:149
+msgid "PHP ini scan directory"
+msgstr ""
+
+#: includes/admin/tabs/tools.php:150
+msgid "Additional ini files"
+msgstr ""
+
+#: includes/admin/tabs/tools.php:151
+msgid "Profiling extensions"
+msgstr ""
+
+#: includes/admin/tabs/tools.php:156
 msgid "Database"
 msgstr ""
 
@@ -4937,7 +5034,7 @@ msgid "No analysis has finished yet: call run-analysis first."
 msgstr ""
 
 #: includes/class-sspa-abilities-control.php:678
-#: includes/class-sspa-run-controller.php:2712
+#: includes/class-sspa-run-controller.php:2731
 msgid "No measured impacts for this plugin yet - run a plugin impact analysis."
 msgstr ""
 
@@ -5221,7 +5318,7 @@ msgstr ""
 
 #: includes/class-sspa-abilities.php:639
 #: includes/class-sspa-checkout-flow.php:63
-#: includes/class-sspa-run-controller.php:116
+#: includes/class-sspa-run-controller.php:119
 #: includes/admin/js/sspa-checkout.js:79
 msgid "WooCommerce is not active, so there is no checkout to profile."
 msgstr ""
@@ -5684,8 +5781,8 @@ msgstr ""
 
 #: includes/class-sspa-admin-save.php:320
 #: includes/class-sspa-checkout-flow.php:66
-#: includes/class-sspa-run-controller.php:54
-#: includes/class-sspa-run-controller.php:275
+#: includes/class-sspa-run-controller.php:57
+#: includes/class-sspa-run-controller.php:278
 #: includes/class-sspa-workflow-analysis.php:170
 msgid "An analysis is already running."
 msgstr ""
@@ -6186,6 +6283,34 @@ msgstr ""
 #: includes/class-sspa-crawler.php:233
 #, php-format
 msgid "The profiler could not record this request because PHP raised %1$s: %2$s in %3$s on line %4$d."
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:165
+msgid "PHP resolver"
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:212
+msgid "Healthy"
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:213
+msgid "Dropping lookups"
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:214
+msgid "One lookup lost, check again"
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:215
+msgid "Slow"
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:216
+msgid "Not finished in time"
+msgstr ""
+
+#: includes/class-sspa-dns-check.php:217
+msgid "Could not be reached"
 msgstr ""
 
 #: includes/class-sspa-endpoint-profile.php:91
@@ -6704,23 +6829,23 @@ msgstr ""
 msgid "%s replaces wp_mail(). Administrator recipient rewriting cannot be confirmed with this mailer. The analysis will proceed and emails may reach recipients chosen by its callbacks; send/queue time is unavailable when the mailer provides no completion hook."
 msgstr ""
 
-#: includes/class-sspa-markdown-export.php:17
+#: includes/class-sspa-markdown-export.php:23
 msgid "You are not allowed to export performance data."
 msgstr ""
 
-#: includes/class-sspa-markdown-export.php:32
+#: includes/class-sspa-markdown-export.php:38
 msgid "That analysis result no longer exists."
 msgstr ""
 
-#: includes/class-sspa-markdown-export.php:43
+#: includes/class-sspa-markdown-export.php:49
 msgid "Unknown Markdown export type."
 msgstr ""
 
-#: includes/class-sspa-markdown-export.php:165
+#: includes/class-sspa-markdown-export.php:181
 msgid "That checkout analysis no longer exists."
 msgstr ""
 
-#: includes/class-sspa-markdown-export.php:169
+#: includes/class-sspa-markdown-export.php:185
 msgid "That checkout analysis contains no measured steps."
 msgstr ""
 
@@ -6957,129 +7082,139 @@ msgstr ""
 msgid "Generation time was not captured."
 msgstr ""
 
+#: includes/class-sspa-page-summary.php:82
+msgid "WordPress HTTP"
+msgstr ""
+
+#. translators: 1: generation milliseconds, 2: CPU milliseconds, 3: profiler wall milliseconds, 4: CPU share, 5: non-CPU milliseconds, 6: the uncaptured instruments, e.g. "SQL"
+#: includes/class-sspa-page-summary.php:84
+#, php-format
+msgid "%1$s ms to generate. PHP CPU-bound: CPU %2$s ms of %3$s ms wall time (%4$s). SQL, WordPress HTTP and object cache together took at most %5$s ms, the non-CPU time (%6$s not captured)."
+msgstr ""
+
 #. translators: %s: measured generation time in milliseconds.
-#: includes/class-sspa-page-summary.php:78
+#: includes/class-sspa-page-summary.php:89
 #, php-format
 msgid "%s ms to generate. SQL or HTTP coverage is unavailable; the dominant cost is unknown."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:83
+#: includes/class-sspa-page-summary.php:94
 msgid "PHP or waiting"
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:85
+#: includes/class-sspa-page-summary.php:96
 msgid "WordPress HTTP calls"
 msgstr ""
 
 #. translators: 1: milliseconds, 2: dominant share, 3: category, 4: SQL share, 5: HTTP share
-#: includes/class-sspa-page-summary.php:88
+#: includes/class-sspa-page-summary.php:99
 #, php-format
 msgid "%1$s ms to generate. %2$s is %3$s; SQL %4$s, WordPress HTTP %5$s."
 msgstr ""
 
 #. translators: 1: generation milliseconds, 2: render share, 3: SQL share, 4: WordPress HTTP share.
-#: includes/class-sspa-page-summary.php:91
+#: includes/class-sspa-page-summary.php:102
 #, php-format
 msgid "%1$s ms to generate. PHP or waiting during page render dominates (render %2$s; SQL %3$s; WordPress HTTP %4$s)."
 msgstr ""
 
 #. translators: 1: attributed render milliseconds, 2: total render milliseconds, 3: unattributed render milliseconds.
-#: includes/class-sspa-page-summary.php:98
+#: includes/class-sspa-page-summary.php:109
 #, php-format
 msgid "Attributed: %1$s ms of %2$s ms during render. Unattributed: %3$s ms during render."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:100
+#: includes/class-sspa-page-summary.php:111
 msgid "Attributed: unknown. Unattributed: unknown. This capture has no render coverage."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:102
+#: includes/class-sspa-page-summary.php:113
 msgid "Legacy callback totals can overlap; unattributed time is an estimate."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:104
+#: includes/class-sspa-page-summary.php:115
 msgid "Attribution includes residual time in bounded template loads; those windows may call other uninstrumented PHP."
 msgstr ""
 
 #. translators: %d: number of reference callbacks left intact.
-#: includes/class-sspa-page-summary.php:107
+#: includes/class-sspa-page-summary.php:118
 #, php-format
 msgid "%d reference callbacks retain native behaviour and are not individually timed."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:110
+#: includes/class-sspa-page-summary.php:121
 msgid "Opt-in HTTP/HTTPS stream wrappers ran: $http_response_header scope changes and plugins reading it may behave differently. Direct cURL remains outside named HTTP coverage."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:111
+#: includes/class-sspa-page-summary.php:122
 msgid "Raw HTTP streams and direct cURL are outside named HTTP coverage."
 msgstr ""
 
 #. translators: 1: URL without credentials, query values or private path segments, 2: milliseconds, 3: calling PHP file.
-#: includes/class-sspa-page-summary.php:117
+#: includes/class-sspa-page-summary.php:128
 #, php-format
 msgid "Raw stream %1$s: %2$s ms, caller %3$s."
 msgstr ""
 
 #. translators: %d: callback signatures that Reflection could not inspect.
-#: includes/class-sspa-page-summary.php:122
+#: includes/class-sspa-page-summary.php:133
 #, php-format
 msgid "%d callback signatures could not be inspected and remain untimed."
 msgstr ""
 
 #. translators: %s: up to ten hook and callback names, without timing claims.
-#: includes/class-sspa-page-summary.php:124
+#: includes/class-sspa-page-summary.php:135
 #, php-format
 msgid "Untimed signatures (up to ten): %s."
 msgstr ""
 
 #. translators: 1: duration, 2: template, 3: preceding event, 4: following event
-#: includes/class-sspa-page-summary.php:129
+#: includes/class-sspa-page-summary.php:140
 #, php-format
 msgid "Largest untimed gap: %1$s ms in %2$s, between %3$s and %4$s."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:159
+#: includes/class-sspa-page-summary.php:170
 msgid "Re-run this page to capture the missing timing evidence."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:161
+#: includes/class-sspa-page-summary.php:172
 msgid "Inspect the largest SQL groups and their query plans below."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:163
+#: includes/class-sspa-page-summary.php:174
 msgid "Inspect the slowest WordPress HTTP calls and their callers below."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:166
+#: includes/class-sspa-page-summary.php:177
 msgid "Inspect the template and the events around the largest untimed gap; direct network calls, disk waits and sleep may be here."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:167
+#: includes/class-sspa-page-summary.php:178
 msgid "Measure which plugins cost this page the most."
 msgstr ""
 
 #. translators: 1: process CPU milliseconds, 2: non-CPU elapsed milliseconds.
-#: includes/class-sspa-page-summary.php:172
+#: includes/class-sspa-page-summary.php:183
 #, php-format
 msgid "CPU: %1$s ms; non-CPU wall time: %2$s ms (profiler arm to request end). Non-CPU time includes waiting and scheduler delays."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:174
+#: includes/class-sspa-page-summary.php:185
 msgid "CPU time was not captured."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:207
+#: includes/class-sspa-page-summary.php:228
 msgid "Sample variance is unavailable."
 msgstr ""
 
 #. translators: 1: minimum milliseconds, 2: median milliseconds, 3: maximum milliseconds, 4: successful sample count.
-#: includes/class-sspa-page-summary.php:214
+#: includes/class-sspa-page-summary.php:235
 #, php-format
 msgid "Samples: min %1$s ms / median %2$s ms / max %3$s ms (%4$d successful samples)."
 msgstr ""
 
-#: includes/class-sspa-page-summary.php:216
+#: includes/class-sspa-page-summary.php:237
 msgid "First-sample-only cost observed; the cause is not established."
 msgstr ""
 
@@ -7291,251 +7426,251 @@ msgid "No traffic collection was found."
 msgstr ""
 
 #. translators: %s: Tools tab URL.
-#: includes/class-sspa-run-controller.php:68
+#: includes/class-sspa-run-controller.php:71
 #, php-format
 msgid "DISALLOW_FILE_MODS prevents installing the profiler loader. Enable profiler in Tools after the site owner permits file changes: %s"
 msgstr ""
 
 #. translators: %s: Tools tab URL.
-#: includes/class-sspa-run-controller.php:74
+#: includes/class-sspa-run-controller.php:77
 #, php-format
 msgid "Enable profiler in Tools before starting an analysis: %s"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:169
-#: includes/class-sspa-run-controller.php:827
+#: includes/class-sspa-run-controller.php:172
+#: includes/class-sspa-run-controller.php:830
 msgid "No pages found to profile."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:185
+#: includes/class-sspa-run-controller.php:188
 msgid "Administrator pages are measured with your own login, so they are measured only when the analysis is started from the Performance Analysis screen."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:270
+#: includes/class-sspa-run-controller.php:273
 msgid "An analysis is already starting or running."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:299
+#: includes/class-sspa-run-controller.php:302
 msgid "The analysis run could not be created."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:385
+#: includes/class-sspa-run-controller.php:388
 msgid "Another plugin currently owns wp-content/db.php. Plugin Impact Analysis needs SSPA's own drop-in to guard excluded-plugin requests; the existing drop-in is never replaced."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:386
+#: includes/class-sspa-run-controller.php:389
 msgid "It is installed by Enable profiler in Tools; if Enable profiler reports an error, wp-content is not writable."
 msgstr ""
 
 #. translators: %s: what to do about the missing drop-in
-#: includes/class-sspa-run-controller.php:389
+#: includes/class-sspa-run-controller.php:392
 #, php-format
 msgid "Plugin impact analysis needs this plugin's own database drop-in in place - it is what refuses destructive database statements if a plugin reacts to another being excluded during a measurement. %s"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:405
+#: includes/class-sspa-run-controller.php:408
 msgid "Run a normal analysis first - plugin impact analysis sweeps the pages it profiled."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:414
+#: includes/class-sspa-run-controller.php:417
 msgid "That plugin cannot be safely excluded (it is a dependency of another active plugin, or on the fragile list)."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:418
+#: includes/class-sspa-run-controller.php:421
 msgid "No plugins are eligible for isolation testing."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:448
+#: includes/class-sspa-run-controller.php:451
 msgid "None of those pages were profiled by the last analysis, so there is no baseline to compare against."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:455
+#: includes/class-sspa-run-controller.php:458
 msgid "No profiled pages from the last analysis could be resolved - run a fresh analysis first."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:781
+#: includes/class-sspa-run-controller.php:784
 msgid "no plugin (db.php is absent)"
 msgstr ""
 
 #. translators: %s: owner of the database drop-in
-#: includes/class-sspa-run-controller.php:784
+#: includes/class-sspa-run-controller.php:787
 #, php-format
 msgid "Cache Impact Analysis requires SSPA's own db.php for per-request cache toggling; the current owner is %s. The existing db.php and object-cache.php will not be displaced."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:790
+#: includes/class-sspa-run-controller.php:793
 msgid "No persistent object cache detected - there is nothing to toggle. Install Redis/Memcached first."
 msgstr ""
 
 #. translators: %s: the security layer that blocked the request
-#: includes/class-sspa-run-controller.php:887
+#: includes/class-sspa-run-controller.php:890
 #, php-format
 msgid "The checkout entry point was blocked by %s before any order was created."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:888
+#: includes/class-sspa-run-controller.php:891
 msgid "The checkout pre-flight failed before any order was created."
 msgstr ""
 
 #. translators: %s: page key
-#: includes/class-sspa-run-controller.php:1038
+#: includes/class-sspa-run-controller.php:1041
 #, php-format
 msgid "%s with every plugin active"
 msgstr ""
 
 #. translators: 1: page key, 2: plugin slug
-#: includes/class-sspa-run-controller.php:1050
+#: includes/class-sspa-run-controller.php:1053
 #, php-format
 msgid "%1$s with %2$s disabled"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1057
+#: includes/class-sspa-run-controller.php:1060
 msgid "object cache off"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1058
+#: includes/class-sspa-run-controller.php:1061
 msgid "priming cache"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1059
+#: includes/class-sspa-run-controller.php:1062
 msgid "warm cache"
 msgstr ""
 
 #. translators: %s: transport error
-#: includes/class-sspa-run-controller.php:1191
+#: includes/class-sspa-run-controller.php:1194
 #, php-format
 msgid "the request failed before reaching the site (%s)"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1201
+#: includes/class-sspa-run-controller.php:1204
 msgid "the site is behind HTTP authentication (401) at the server level"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1209
+#: includes/class-sspa-run-controller.php:1212
 msgid "an unknown security layer"
 msgstr ""
 
 #. translators: %s: the security layer that refused the request
-#: includes/class-sspa-run-controller.php:1211
+#: includes/class-sspa-run-controller.php:1214
 #, php-format
 msgid "the request was refused with HTTP 403 by %s"
 msgstr ""
 
 #. translators: %d: HTTP status
-#: includes/class-sspa-run-controller.php:1215
+#: includes/class-sspa-run-controller.php:1218
 #, php-format
 msgid "the host is rate limiting the site's own requests (HTTP %d)"
 msgstr ""
 
 #. translators: 1: HTTP status, 2: redirect target
-#: includes/class-sspa-run-controller.php:1220
+#: includes/class-sspa-run-controller.php:1223
 #, php-format
 msgid "a server-level redirect (HTTP %1$d to %2$s) intercepts the request"
 msgstr ""
 
 #. translators: 1: HTTP status, 2: redirect target
-#: includes/class-sspa-run-controller.php:1220
+#: includes/class-sspa-run-controller.php:1223
 msgid "an unknown target"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1223
+#: includes/class-sspa-run-controller.php:1226
 msgid "the response came back HTTP 200 but WordPress never ran (no profiler canary) - a page cache, CDN or firewall answered instead of PHP"
 msgstr ""
 
 #. translators: %d: HTTP status
-#: includes/class-sspa-run-controller.php:1226
+#: includes/class-sspa-run-controller.php:1229
 #, php-format
 msgid "the home page returned HTTP %d"
 msgstr ""
 
 #. translators: 1: page label, 2: exact preflight failure
-#: includes/class-sspa-run-controller.php:1242
+#: includes/class-sspa-run-controller.php:1245
 #, php-format
 msgid "Plugin impact analysis did not start because the target \"%1$s\" is blocked: %2$s. No isolation measurements were queued. Whitelist this site's own loopback requests and try again."
 msgstr ""
 
 #. translators: %s: preflight failure reason
-#: includes/class-sspa-run-controller.php:1281
+#: includes/class-sspa-run-controller.php:1284
 #, php-format
 msgid "This site cannot fetch its own pages: %s. Start the analysis from the Performance Analysis screen (or the Scalability Pro popover) - your browser will make the page requests itself."
 msgstr ""
 
 #. translators: %s: preflight failure reason
-#: includes/class-sspa-run-controller.php:1283
+#: includes/class-sspa-run-controller.php:1286
 #, php-format
 msgid "This site cannot fetch its own pages: %s. This analysis type needs working loopback requests - fix the block, then run it again."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1343
+#: includes/class-sspa-run-controller.php:1346
 msgid "The run's job queue was missing, so the analysis could not continue."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:1350
+#: includes/class-sspa-run-controller.php:1353
 msgid "This legacy Cache Impact Analysis used site-wide cache toggling. Site-wide toggling is no longer supported; start a new analysis using SSPA's own db.php."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2278
+#: includes/class-sspa-run-controller.php:2281
 msgid "Cancelled"
 msgstr ""
 
 #. translators: %s: checkout outcome code, for example place_order_failed.
-#: includes/class-sspa-run-controller.php:2291
+#: includes/class-sspa-run-controller.php:2294
 #, php-format
 msgid "The checkout flow did not complete (outcome: %s)."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2297
+#: includes/class-sspa-run-controller.php:2300
 msgid "The cache-off measurements still used a persistent object cache, so the Cache Impact Analysis could not be verified."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2298
+#: includes/class-sspa-run-controller.php:2301
 msgid "The Cache Impact Analysis could not confirm the cache was off during its cache-off measurements."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2304
+#: includes/class-sspa-run-controller.php:2307
 msgid "Failed"
 msgstr ""
 
 #. translators: %s: why the synthetic test customer could not be saved, including WordPress's own reason.
-#: includes/class-sspa-run-controller.php:2317
+#: includes/class-sspa-run-controller.php:2320
 #, php-format
 msgid "The logged-in customer pages were skipped; every other page was measured. %s"
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2363
+#: includes/class-sspa-run-controller.php:2366
 msgid "The analysis made no progress for 3 hours, so it was stopped. Keep the Performance Analysis screen open while a run is in progress, or check that WP-Cron runs."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2368
+#: includes/class-sspa-run-controller.php:2371
 msgid "The analysis never recorded any progress within 2 hours of starting, so it was stopped."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2562
+#: includes/class-sspa-run-controller.php:2565
 msgid "Choose Enable or Disable profiler."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2581
+#: includes/class-sspa-run-controller.php:2584
 msgid "Finish or cancel the active analysis before changing the profiler."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2630
+#: includes/class-sspa-run-controller.php:2649
 msgid "No such tab."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2657
+#: includes/class-sspa-run-controller.php:2676
 msgid "Cancelled from the Performance Analysis screen."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2685
+#: includes/class-sspa-run-controller.php:2704
 msgid "There is no completed analysis to attribute yet."
 msgstr ""
 
-#: includes/class-sspa-run-controller.php:2866
+#: includes/class-sspa-run-controller.php:2885
 msgid "Invalid submission action."
 msgstr ""
 
 #. translators: 1: run ID, 2: error message
-#: includes/class-sspa-run-controller.php:2931
+#: includes/class-sspa-run-controller.php:2950
 #, php-format
 msgid "Detailed data was not deleted because run %1$d could not be preserved for sharing: %2$s"
 msgstr ""
@@ -7678,185 +7813,211 @@ msgstr ""
 msgid "%s queued locally"
 msgstr ""
 
-#: includes/class-sspa-tools.php:142
+#: includes/class-sspa-tools.php:68
+msgid "loaded"
+msgstr ""
+
+#. translators: 1: PHP server API, e.g. fpm-fcgi or litespeed, 2: the php.ini file that PHP loaded
+#: includes/class-sspa-tools.php:71
+#, php-format
+msgid "not loaded in the PHP that serves your site (%1$s, %2$s)"
+msgstr ""
+
+#: includes/class-sspa-tools.php:72
+msgid "unknown server API"
+msgstr ""
+
+#: includes/class-sspa-tools.php:73
+msgid "no php.ini loaded"
+msgstr ""
+
+#. translators: 1: number of files, 2: folder, 3: comma-separated file names
+#: includes/class-sspa-tools.php:85
+#, php-format
+msgid "%1$d file in %2$s: %3$s"
+msgid_plural "%1$d files in %2$s: %3$s"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-sspa-tools.php:180
 msgid "This MySQL server does not report a performance_schema setting at all."
 msgstr ""
 
-#: includes/class-sspa-tools.php:145
+#: includes/class-sspa-tools.php:183
 msgid "performance_schema is switched off on the database server. MariaDB ships with it off by default."
 msgstr ""
 
-#: includes/class-sspa-tools.php:148
+#: includes/class-sspa-tools.php:186
 msgid "performance_schema is on, but this site's database user is not allowed to read it. One GRANT fixes this."
 msgstr ""
 
-#: includes/class-sspa-tools.php:151
+#: includes/class-sspa-tools.php:189
 msgid "performance_schema is on and readable."
 msgstr ""
 
-#: includes/class-sspa-tools.php:188
+#: includes/class-sspa-tools.php:230
 msgid "excimer (function-level profiling)"
 msgstr ""
 
-#: includes/class-sspa-tools.php:189
+#: includes/class-sspa-tools.php:231
 msgid "The one to install. Which exact FUNCTION is burning the time - including inside theme template files, which no other instrument can see - with each function attributed to its plugin, split by which plugin was driving it, and broken down per request phase. A sampling profiler with negligible overhead, maintained by the Wikimedia Foundation and run on every Wikipedia page view, so it profiles during normal measurement without distorting the numbers."
 msgstr ""
 
-#: includes/class-sspa-tools.php:193
+#: includes/class-sspa-tools.php:235
 msgid "In use: every profiled page carries the \"By function\" view, and the untimed parts of each request phase expand to the functions sampled inside them."
 msgstr ""
 
-#: includes/class-sspa-tools.php:194
+#: includes/class-sspa-tools.php:236
 msgid "Needs a one-off install by you or your host - the steps below are generated for this exact server."
 msgstr ""
 
-#: includes/class-sspa-tools.php:198
+#: includes/class-sspa-tools.php:240
 msgid "Query plans (EXPLAIN)"
 msgstr ""
 
-#: includes/class-sspa-tools.php:199
+#: includes/class-sspa-tools.php:241
 msgid "Shows WHY a query is slow: a missing index, a temporary table, a filesort. Also catches queries that are fast today but will not scale."
 msgstr ""
 
-#: includes/class-sspa-tools.php:202
+#: includes/class-sspa-tools.php:244
 msgid "Built in. Needs nothing installed and no extra database permission."
 msgstr ""
 
-#: includes/class-sspa-tools.php:206
+#: includes/class-sspa-tools.php:248
 msgid "MySQL query fingerprints"
 msgstr ""
 
-#: includes/class-sspa-tools.php:207
+#: includes/class-sspa-tools.php:249
 msgid "MySQL's own normalised query statistics: how many rows were REALLY examined per query, not the optimiser's estimate, and which queries used no index."
 msgstr ""
 
-#: includes/class-sspa-tools.php:215
+#: includes/class-sspa-tools.php:257
 msgid "tideways_xhprof (exact call counts)"
 msgstr ""
 
-#: includes/class-sspa-tools.php:216
+#: includes/class-sspa-tools.php:258
 msgid "Counts every function call exactly, which is what proves a plugin is running the same query in a loop. Higher overhead than excimer, so it is for one page at a time."
 msgstr ""
 
-#: includes/class-sspa-tools.php:220
+#: includes/class-sspa-tools.php:262
 msgid "The original xhprof is present. tideways_xhprof is the better-maintained successor. Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead."
 msgstr ""
 
-#: includes/class-sspa-tools.php:221
+#: includes/class-sspa-tools.php:263
 msgid "Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead."
 msgstr ""
 
-#: includes/class-sspa-tools.php:225
+#: includes/class-sspa-tools.php:267
 msgid "SPX (standalone profiler)"
 msgstr ""
 
-#: includes/class-sspa-tools.php:226
+#: includes/class-sspa-tools.php:268
 msgid "A self-hosted profiler with its own flamegraph and timeline interface. Nothing leaves your server. We detect it and link to it rather than rebuilding what it already does well."
 msgstr ""
 
-#: includes/class-sspa-tools.php:313
+#: includes/class-sspa-tools.php:355
 msgid "1. Switch performance_schema on"
 msgstr ""
 
-#: includes/class-sspa-tools.php:314
+#: includes/class-sspa-tools.php:356
 msgid "MariaDB ships with it off. This needs a MySQL restart, so it is the one step that causes a moment of downtime."
 msgstr ""
 
-#: includes/class-sspa-tools.php:319
+#: includes/class-sspa-tools.php:361
 msgid "1. Grant read access"
 msgstr ""
 
-#: includes/class-sspa-tools.php:319
+#: includes/class-sspa-tools.php:361
 msgid "2. Grant read access"
 msgstr ""
 
-#: includes/class-sspa-tools.php:320
+#: includes/class-sspa-tools.php:362
 msgid "Run as a database administrator. This is READ-ONLY access to performance statistics - it grants nothing over your site's data and cannot change anything."
 msgstr ""
 
-#: includes/class-sspa-tools.php:366
+#: includes/class-sspa-tools.php:408
 msgid "1. Install the package"
 msgstr ""
 
 #. translators: 1: detected operating system, 2: detected PHP version
-#: includes/class-sspa-tools.php:369
+#: includes/class-sspa-tools.php:411
 #, php-format
 msgid "Excimer is packaged for this distribution: nothing to compile, no ini file to write (the package enables itself), and it updates with the rest of the system, where a hand-compiled copy silently stops loading when PHP is upgraded. The command targets PHP %2$s because that is what this site runs - on servers carrying several PHP versions, the unversioned package installs for the newest one instead, which leaves this site without the extension. Detected: %1$s."
 msgstr ""
 
-#: includes/class-sspa-tools.php:376
+#: includes/class-sspa-tools.php:418
 msgid "2. Restart PHP"
 msgstr ""
 
 #. translators: %s: the detected PHP SAPI
-#: includes/class-sspa-tools.php:379
-#: includes/class-sspa-tools.php:471
+#: includes/class-sspa-tools.php:421
+#: includes/class-sspa-tools.php:513
 #, php-format
 msgid "A reload is not enough for a new extension. Detected SAPI: %s."
 msgstr ""
 
-#: includes/class-sspa-tools.php:385
+#: includes/class-sspa-tools.php:427
 msgid "3. Check it worked"
 msgstr ""
 
-#: includes/class-sspa-tools.php:386
+#: includes/class-sspa-tools.php:428
 msgid "The versioned binary matters: plain `php` on the command line can be a different PHP than the site runs. Then press Re-check on this page - that is the authoritative test, because it asks the exact PHP process serving this site."
 msgstr ""
 
-#: includes/class-sspa-tools.php:401
+#: includes/class-sspa-tools.php:443
 msgid "tideways_xhprof has never been on PECL, so it is built from source. It is free and open source (Apache 2.0) and sends nothing anywhere."
 msgstr ""
 
-#: includes/class-sspa-tools.php:406
+#: includes/class-sspa-tools.php:448
 msgid "SPX is not on PECL, so it is built from source. Licence: GPL-3."
 msgstr ""
 
-#: includes/class-sspa-tools.php:430
+#: includes/class-sspa-tools.php:472
 msgid "1. Install the build tools"
 msgstr ""
 
 #. translators: %s: detected operating system
-#: includes/class-sspa-tools.php:433
+#: includes/class-sspa-tools.php:475
 #, php-format
 msgid "The extension is compiled on this server, so it needs the PHP development headers. Detected: %s."
 msgstr ""
 
-#: includes/class-sspa-tools.php:441
+#: includes/class-sspa-tools.php:483
 msgid "2. Build and install"
 msgstr ""
 
-#: includes/class-sspa-tools.php:447
+#: includes/class-sspa-tools.php:489
 msgid "2. Install the extension"
 msgstr ""
 
-#: includes/class-sspa-tools.php:448
+#: includes/class-sspa-tools.php:490
 msgid "Excimer is free and open source (Apache 2.0) and sends nothing anywhere - a local extension, not a service. PECL itself is deprecated and excimer 1.2.6 is the last version published there, but on this system it is still the shortest working path (the maintained successor is PIE: pie install wikimedia/excimer). If this step fails with \"shtool ... does not exist or is not executable\", your server mounts /tmp with noexec (a common hardening default) - temporarily allow execution there for the build, then restore it."
 msgstr ""
 
-#: includes/class-sspa-tools.php:459
+#: includes/class-sspa-tools.php:501
 msgid "3. Enable it"
 msgstr ""
 
 #. translators: %s: the ini scan directory detected on this server
-#: includes/class-sspa-tools.php:462
+#: includes/class-sspa-tools.php:504
 #, php-format
 msgid "Write a dedicated ini file rather than editing php.ini, so a PHP upgrade does not wipe it. This server scans: %s. Note the web server and the command line often use SEPARATE ini directories - the extension must be enabled for the one your site runs under."
 msgstr ""
 
-#: includes/class-sspa-tools.php:468
+#: includes/class-sspa-tools.php:510
 msgid "4. Restart PHP"
 msgstr ""
 
-#: includes/class-sspa-tools.php:477
+#: includes/class-sspa-tools.php:519
 msgid "5. Check it worked"
 msgstr ""
 
-#: includes/class-sspa-tools.php:478
+#: includes/class-sspa-tools.php:520
 msgid "Then press Re-check on this page."
 msgstr ""
 
 #. translators: 1: the GRANT statement to run, 2: the MySQL version this site reports
-#: includes/class-sspa-tools.php:501
+#: includes/class-sspa-tools.php:543
 #, php-format
 msgid ""
 "Hello,\n"
@@ -7875,7 +8036,7 @@ msgid ""
 msgstr ""
 
 #. translators: 1: PHP extension name, 2: PHP version, 3: PHP interface, 4: operating system, 5: PHP configuration directory, 6: installation commands
-#: includes/class-sspa-tools.php:527
+#: includes/class-sspa-tools.php:569
 #, php-format
 msgid ""
 "Hello,\n"
@@ -8896,6 +9057,15 @@ msgstr ""
 #: includes/admin/js/sspa-admin.js:1924
 #, js-format
 msgid "The community figures could not be loaded: %s"
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:1983
+msgid "Checking, this takes up to 25 seconds..."
+msgstr ""
+
+#: includes/admin/js/sspa-admin.js:1989
+#: includes/admin/js/sspa-admin.js:1993
+msgid "The DNS check failed."
 msgstr ""
 
 #. translators: 1: percentage increase, 2: formatted added request time.

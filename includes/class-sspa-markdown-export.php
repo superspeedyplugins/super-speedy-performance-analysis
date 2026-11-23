@@ -5,6 +5,12 @@ defined('ABSPATH') || exit;
 class SSPA_Markdown_Export {
 
     const SCHEMA = 2;
+    /** Run export: callback, template and render-region rows below this share of generation are left out. */
+    const RUN_ROW_SHARE = 0.02;
+    /** Component tables show this many rows, then one "Others" row. */
+    const TOP_COMPONENTS = 15;
+    /** The analysis engine raises an archive sort note to a warning from this many rows. */
+    const ARCHIVE_NOTE_MIN_ROWS = 1000;
     const CACHE_SERVICE_URL = 'https://www.superspeedyplugins.com/product/woocommerce-full-page-caching-implementation/';
 
     public static function register() {
@@ -144,9 +150,19 @@ class SSPA_Markdown_Export {
         if (!empty($report['site']['active_plugins'])) {
             $lines[] = '- Active plugins: `' . self::code(implode('`, `', array_map(array(__CLASS__, 'component_name'), (array) $report['site']['active_plugins']))) . '`';
         }
+        // The version list once per file; the per-page sections below never repeat it.
+        $run_row = SSPA_Run_Controller::run_row($run_id);
+        $plugin_set = $run_row ? json_decode((string) $run_row['plugin_set'], true) : null;
+        if (!empty($plugin_set['components'])) {
+            $lines[] = '- Measured components: ' . self::code_list(array_map(array(__CLASS__, 'component_name'), (array) $plugin_set['components']));
+        }
+        $lines[] = '';
 
+        $profiles = self::front_end_profiles($run_id);
+        self::php_runtime_section($lines, $profiles);
         self::findings($lines, $report['findings']);
         self::pages($lines, $report['pages']);
+        self::per_page_evidence($lines, $profiles);
         self::impacts($lines, $report['impacts']);
         self::cache_safety($lines, $report['cache_safety']);
         self::cache_delivery($lines, isset($report['cache_delivery']) ? $report['cache_delivery'] : null);
@@ -235,8 +251,9 @@ class SSPA_Markdown_Export {
     private static function findings(&$lines, $findings, $minor_sql = false) {
         $lines[] = '## Findings and recommendations';
         $lines[] = '';
+        list($findings, $omitted_line) = self::without_small_archive_notes($findings);
         if (!$findings) {
-            $lines[] = 'No findings were recorded.';
+            $lines[] = $omitted_line ? $omitted_line : 'No findings were recorded.';
             $lines[] = '';
             return;
         }
@@ -245,6 +262,7 @@ class SSPA_Markdown_Export {
             return -1;
         };
         usort($findings, static function ($a, $b) use ($cost) { return $cost($b) <=> $cost($a); });
+        $findings = self::group_by_fingerprint($findings);
         $minor = array();
         if ($minor_sql) {
             foreach ($findings as $key => $finding) {
@@ -274,6 +292,15 @@ class SSPA_Markdown_Export {
                     if (!empty($finding['evidence']['plan_note'])) {
                         $lines[] = '- Query plan: ' . self::safe_detail($finding['evidence']['plan_note']);
                     }
+                    $pages = !empty($finding['page_key']) ? array($finding['page_key']) : array();
+                    foreach ($finding['also'] as $other) {
+                        $lines[] = '- Also reported for this query: **[' . strtoupper(self::plain(isset($other['severity']) ? $other['severity'] : 'info')) . '] ' . self::plain(!empty($other['headline']) ? $other['headline'] : str_replace('_', ' ', $other['type'])) . '**' . (!empty($other['component']) ? ' (`' . self::code($other['component']) . '`)' : '');
+                        if (!empty($other['page_key'])) $pages[] = $other['page_key'];
+                    }
+                    $pages = array_values(array_unique($pages));
+                    if (count($pages) > 1) {
+                        $lines[] = '- Pages: ' . self::code_list($pages);
+                    }
                 } else {
                     $lines[] = '- Evidence: ' . self::safe_detail($finding['detail']);
                 }
@@ -284,6 +311,52 @@ class SSPA_Markdown_Export {
             $lines[] = '';
         }
         if ($minor) { $lines[] = '</details>'; $lines[] = ''; }
+        if ($omitted_line) { $lines[] = $omitted_line; $lines[] = ''; }
+    }
+
+    /**
+     * Findings whose evidence carries the same normalised SQL fingerprint, as one entry: the
+     * costliest first, the others under it in 'also', so the fingerprint is printed once.
+     */
+    private static function group_by_fingerprint($findings) {
+        $out = array();
+        $index = array();
+        foreach ($findings as $finding) {
+            $sql = !empty($finding['evidence']['fp']) ? $finding['evidence']['fp'] : (!empty($finding['evidence']['sql']) ? $finding['evidence']['sql'] : '');
+            $key = '' === $sql || empty($finding['detail']) ? null : md5(self::sql_fingerprint($sql));
+            if (null !== $key && isset($index[$key])) {
+                $out[$index[$key]]['also'][] = $finding;
+                continue;
+            }
+            $finding['also'] = array();
+            if (null !== $key) $index[$key] = count($out);
+            $out[] = $finding;
+        }
+        return $out;
+    }
+
+    /**
+     * Leaves out archive sort notes on small archives that also ran fast: under the 1,000 rows at
+     * which the analysis raises the note to a warning, and under the slow-query threshold.
+     *
+     * @return array {findings kept, the "Omitted" line or ''}
+     */
+    private static function without_small_archive_notes($findings) {
+        $floor_ms = (float) SSPA_Rules::threshold('slow_query_ms');
+        $kept = array();
+        $omitted = 0;
+        foreach ((array) $findings as $finding) {
+            $evidence = isset($finding['evidence']) && is_array($finding['evidence']) ? $finding['evidence'] : array();
+            if (isset($finding['type']) && 'archive_query_unindexed' === $finding['type']
+                && isset($evidence['rows']) && (int) $evidence['rows'] < self::ARCHIVE_NOTE_MIN_ROWS
+                && (!isset($evidence['ms']) || (float) $evidence['ms'] < $floor_ms)) {
+                $omitted++;
+                continue;
+            }
+            $kept[] = $finding;
+        }
+        $line = $omitted ? '- Omitted: ' . $omitted . ' archive sort note(s) under ' . number_format(self::ARCHIVE_NOTE_MIN_ROWS) . ' rows and ' . number_format($floor_ms) . ' ms: the analysis raises one to a warning only from ' . number_format(self::ARCHIVE_NOTE_MIN_ROWS) . ' rows, and each of these queries ran under the slow-query threshold.' : '';
+        return array($kept, $line);
     }
 
     private static function components(&$lines, $components, $headline_query_count = null) {
@@ -312,9 +385,24 @@ class SSPA_Markdown_Export {
         $lines[] = '';
         $lines[] = '| Component | SQL | Queries | Rows returned | HTTP |';
         $lines[] = '|---|---:|---:|---:|---:|';
-        foreach ((array) $components as $component => $stats) {
+        $components = (array) $components;
+        uasort($components, static function ($a, $b) {
+            return ((isset($b['sql_ms']) ? (float) $b['sql_ms'] : 0) + (isset($b['http_ms']) ? (float) $b['http_ms'] : 0)) <=> ((isset($a['sql_ms']) ? (float) $a['sql_ms'] : 0) + (isset($a['http_ms']) ? (float) $a['http_ms'] : 0));
+        });
+        foreach (array_slice($components, 0, self::TOP_COMPONENTS, true) as $component => $stats) {
             $query_count = isset($stats['query_count']) ? $stats['query_count'] : (isset($stats['sql_count']) ? $stats['sql_count'] : null);
             $lines[] = '| `' . self::code($component) . '` | ' . self::ms(isset($stats['sql_ms']) ? $stats['sql_ms'] : null) . ' | ' . self::number($query_count) . ' | ' . self::number(isset($stats['rows']) ? $stats['rows'] : null) . ' | ' . self::ms(isset($stats['http_ms']) ? $stats['http_ms'] : null) . ' |';
+        }
+        $rest = array_slice($components, self::TOP_COMPONENTS, null, true);
+        if ($rest) {
+            $sum = array('sql_ms' => 0.0, 'queries' => 0, 'rows' => 0, 'http_ms' => 0.0);
+            foreach ($rest as $stats) {
+                $sum['sql_ms'] += isset($stats['sql_ms']) ? (float) $stats['sql_ms'] : 0;
+                $sum['queries'] += isset($stats['query_count']) ? (int) $stats['query_count'] : (isset($stats['sql_count']) ? (int) $stats['sql_count'] : 0);
+                $sum['rows'] += isset($stats['rows']) ? (int) $stats['rows'] : 0;
+                $sum['http_ms'] += isset($stats['http_ms']) ? (float) $stats['http_ms'] : 0;
+            }
+            $lines[] = '| Others (' . count($rest) . ' components) | ' . self::ms($sum['sql_ms']) . ' | ' . self::number($sum['queries']) . ' | ' . self::number($sum['rows']) . ' | ' . self::ms($sum['http_ms']) . ' |';
         }
         $lines[] = '';
     }
@@ -566,29 +654,158 @@ class SSPA_Markdown_Export {
         $lines[] = '|---|---:|';
         foreach ((array) (isset($boot['segments']) ? $boot['segments'] : array()) as $phase => $ms) $lines[] = '| ' . self::plain($phase) . ' | ' . self::ms($ms) . ' |';
         $lines[] = '';
+        self::boot_tables($lines, $boot, 0.0, 1.0);
+    }
+
+    /**
+     * The attribution tables of one capture's boot section: components (top 15 plus Others),
+     * top callbacks, template residuals and render regions. Rows under $floor_ms (callbacks,
+     * templates and regions) or under $region_floor_ms (regions) are left out and counted.
+     */
+    private static function boot_tables(&$lines, $boot, $floor_ms, $region_floor_ms) {
+        $components = (array) (isset($boot['components']) ? $boot['components'] : array());
+        arsort($components);
         $lines[] = '| Component | Plugin includes and callbacks (template residuals listed separately) |';
         $lines[] = '|---|---:|';
-        foreach ((array) (isset($boot['components']) ? $boot['components'] : array()) as $component => $ms) $lines[] = '| ' . self::plain($component) . ' | ' . self::ms($ms) . ' |';
+        foreach (array_slice($components, 0, self::TOP_COMPONENTS, true) as $component => $ms) $lines[] = '| ' . self::plain($component) . ' | ' . self::ms($ms) . ' |';
+        $rest = array_slice($components, self::TOP_COMPONENTS, null, true);
+        if ($rest) $lines[] = '| Others (' . count($rest) . ' components) | ' . self::ms(array_sum($rest)) . ' |';
         $lines[] = '';
+        $left_out = function ($count, $floor) use (&$lines) {
+            if ($count) { $lines[] = ''; $lines[] = $count . ' row(s) under ' . self::ms($floor) . ' left out.'; }
+        };
         $lines[] = '| Hook | Callback | Component | Self wall time | Source |';
         $lines[] = '|---|---|---|---:|---|';
+        $skipped = 0;
         foreach ((array) (isset($boot['top_callbacks']) ? $boot['top_callbacks'] : array()) as $entry) {
+            if ($entry['ms'] < $floor_ms) { $skipped++; continue; }
             $lines[] = '| ' . self::plain($entry['hook']) . ' | ' . self::plain($entry['label']) . ' | ' . self::plain($entry['component']) . ' | ' . self::ms($entry['ms']) . ' | ' . self::plain(!empty($entry['file']) ? SSPA_Page_Summary::file($entry['file']) . ':' . (int) $entry['line'] : 'not captured') . ' |';
         }
+        $left_out($skipped, $floor_ms);
         $lines[] = '';
         $lines[] = '| Loaded template | Component | Residual wall time | Loads |';
         $lines[] = '|---|---|---:|---:|';
+        $skipped = 0;
         foreach ((array) (isset($boot['template_files']) ? $boot['template_files'] : array()) as $file) {
+            if ($file['ms'] < $floor_ms) { $skipped++; continue; }
             $lines[] = '| ' . self::plain(SSPA_Page_Summary::file($file['file'])) . ' | ' . self::plain($file['component']) . ' | ' . self::ms($file['ms']) . ' | ' . (int) $file['calls'] . ' |';
         }
+        $left_out($skipped, $floor_ms);
         $lines[] = '';
         $lines[] = 'Template residuals remove timed callbacks and child template loads; they can contain other uninstrumented PHP calls. Main-template context windows below are overlapping location evidence.';
         $lines[] = '';
         $lines[] = '| Template/render boundary | Next event | Template | Wall time (overlaps callbacks) |';
         $lines[] = '|---|---|---|---:|';
+        $region_floor = max($floor_ms, $region_floor_ms);
+        $skipped = 0;
         foreach ((array) (isset($boot['render_regions']) ? $boot['render_regions'] : array()) as $region) {
-            if ($region['ms'] < 1) continue;
+            if ($region['ms'] < $region_floor) { $skipped++; continue; }
             $lines[] = '| ' . self::plain($region['after']) . ' | ' . self::plain($region['before']) . ' | ' . self::plain(SSPA_Page_Summary::file($region['template'])) . ' | ' . self::ms($region['ms']) . ' |';
+        }
+        if ($floor_ms > 0) $left_out($skipped, $region_floor);
+        $lines[] = '';
+    }
+
+    /**
+     * Every front-end profile of a run that kept a capture with phase evidence, slowest first:
+     * the stored representative (median) capture, the same data Analyse this page keeps.
+     *
+     * @return array[] {profile, capture}
+     */
+    private static function front_end_profiles($run_id) {
+        global $wpdb;
+        $out = array();
+        foreach ((array) $wpdb->get_results($wpdb->prepare('SELECT * FROM %i WHERE run_id = %d ORDER BY page_gen_ms DESC', SSPA_Schema::table('profiles'), (int) $run_id), ARRAY_A) as $row) {
+            if ('admin' === $row['variant'] || false !== strpos((string) $row['url'], '/wp-admin/')) {
+                continue;
+            }
+            $capture = SSPA_Profile_Panel::capture($row);
+            if (!is_array($capture) || empty($capture['boot'])) {
+                continue;
+            }
+            unset($row['profile_blob']);
+            $capture = SSPA_Page_Summary::site_capture($capture);
+            $out[] = array('profile' => SSPA_Page_Summary::representative($row, $capture), 'capture' => $capture);
+        }
+        return $out;
+    }
+
+    /** "X% PHP CPU, top owner Y, untimed gap Z in template T", from data the capture holds. */
+    private static function page_verdict($boot) {
+        $cpu = isset($boot['cpu']) ? $boot['cpu'] : null;
+        $parts = array(!empty($cpu['available']) && !empty($cpu['wall_ms'])
+            ? number_format($cpu['cpu_ms'] / $cpu['wall_ms'] * 100, 1) . '% PHP CPU (' . number_format($cpu['cpu_ms'], 1) . ' of ' . number_format($cpu['wall_ms'], 1) . ' ms)'
+            : 'PHP CPU not captured');
+        $components = (array) (isset($boot['components']) ? $boot['components'] : array());
+        unset($components['core']);
+        arsort($components);
+        $parts[] = $components
+            ? 'top owner `' . self::code(key($components)) . '` (' . number_format(reset($components), 1) . ' ms)'
+            : 'no component owner measured';
+        $gap = isset($boot['largest_gap']) ? $boot['largest_gap'] : null;
+        if (!empty($gap['ms'])) {
+            $parts[] = 'untimed gap ' . number_format($gap['ms'], 1) . ' ms in `' . self::code(SSPA_Page_Summary::file($gap['template'])) . '`';
+        }
+        return implode(', ', $parts);
+    }
+
+    private static function per_page_evidence(&$lines, $profiles) {
+        $lines[] = '## Per-page evidence';
+        $lines[] = '';
+        if (!$profiles) {
+            $lines[] = 'No front-end page of this run kept a capture with phase evidence.';
+            $lines[] = '';
+            return;
+        }
+        $lines[] = 'Every front-end page of this run, from its retained representative sample (the median request): the evidence the single-page export holds. Callback self wall time can contain SQL and HTTP; do not add these instruments together. Callback, template and render-region rows under ' . (self::RUN_ROW_SHARE * 100) . '% of the page\'s generation time are left out.';
+        $lines[] = '';
+        foreach ($profiles as $page) {
+            $profile = $page['profile'];
+            $capture = $page['capture'];
+            $boot = $capture['boot'];
+            $gen = isset($capture['overview']['gen_ms']) ? (float) $capture['overview']['gen_ms'] : (float) $profile['page_gen_ms'];
+            $lines[] = '### `' . self::code($profile['page_key']) . '` (' . self::plain($profile['variant']) . '): ' . number_format($gen, 1) . ' ms generation';
+            $lines[] = '';
+            $lines[] = '- Verdict: ' . self::page_verdict($boot) . '.';
+            $summary = SSPA_Page_Summary::build($profile, $capture);
+            $lines[] = '- Outcome: ' . self::plain($summary['verdict']);
+            foreach ($summary['culprits'] as $culprit) $lines[] = '- ' . self::plain($culprit);
+            $lines[] = '- ' . self::plain($summary['cpu']);
+            $lines[] = '- Next action: ' . self::plain($summary['next_action']);
+            $phases = array();
+            foreach ((array) (isset($boot['segments']) ? $boot['segments'] : array()) as $phase => $ms) $phases[] = self::plain($phase) . ' ' . self::ms($ms);
+            $lines[] = '- Phases: ' . ($phases ? implode(', ', $phases) : 'not captured');
+            $lines[] = '';
+            self::boot_tables($lines, $boot, $gen * self::RUN_ROW_SHARE, 0.0);
+        }
+    }
+
+    /** Which PHP served the run's front-end requests, as the profiler recorded it inside them. */
+    private static function php_runtime_section(&$lines, $profiles) {
+        $lines[] = '## PHP that serves your site';
+        $lines[] = '';
+        $runtime = null;
+        $page_key = '';
+        foreach ($profiles as $page) {
+            if (!empty($page['capture']['environment']['runtime'])) {
+                $runtime = $page['capture']['environment']['runtime'];
+                $page_key = $page['profile']['page_key'];
+                break;
+            }
+        }
+        if (!$runtime) {
+            $lines[] = 'Not recorded: no front-end request of this run recorded which PHP served it (captures before version 0.69.1 do not). Run the analysis again to record it.';
+            $lines[] = '';
+            return;
+        }
+        $lines[] = 'Recorded inside the measured front-end request for `' . self::code($page_key) . '`, so this is the PHP your visitors\' requests run. WP-CLI and cron can run a different PHP binary with different ini files.';
+        $lines[] = '';
+        $lines[] = '- Server API (SAPI): `' . self::code($runtime['sapi']) . '`';
+        $lines[] = '- PHP binary: `' . self::code('' !== (string) $runtime['binary'] ? $runtime['binary'] : 'not reported') . '`';
+        $lines[] = '- Loaded php.ini: `' . self::code('' !== (string) $runtime['ini_loaded'] ? $runtime['ini_loaded'] : 'none') . '`';
+        $lines[] = '- Additional ini files: ' . self::plain(SSPA_Tools::ini_scanned_summary(isset($runtime['ini_scanned']) ? $runtime['ini_scanned'] : array()));
+        foreach (array_keys((array) $runtime['extensions']) as $extension) {
+            $lines[] = '- ' . self::plain($extension) . ': ' . self::plain(SSPA_Tools::extension_state($runtime, $extension));
         }
         $lines[] = '';
     }
@@ -840,6 +1057,11 @@ class SSPA_Markdown_Export {
     private static function plain($value) {
         $value = wp_strip_all_tags((string) $value);
         return str_replace(array("\r", "\n", '|'), array('', ' ', '\\|'), trim($value));
+    }
+
+    /** Each value as its own inline code span, comma separated. */
+    private static function code_list($values) {
+        return implode(', ', array_map(function ($value) { return '`' . self::code($value) . '`'; }, (array) $values));
     }
 
     private static function code($value) {

@@ -143,7 +143,16 @@ include SSPA_PLUGIN_DIR . 'includes/admin/partials/dns-check.php';
     <tbody>
         <tr><td><?php esc_html_e('Operating system', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html($sspa_env['distro'] . ' (' . $sspa_env['uname'] . ')'); ?></td></tr>
         <tr><td><?php esc_html_e('PHP', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html($sspa_env['php'] . ' - ' . $sspa_env['sapi'] . ($sspa_env['zts'] ? ' (thread safe)' : '')); ?></td></tr>
+        <?php $sspa_runtime = SSPA_Tools::php_runtime(); ?>
+        <tr><td><?php esc_html_e('PHP binary', 'super-speedy-performance-analysis'); ?></td><td><code><?php echo esc_html('' !== $sspa_runtime['binary'] ? $sspa_runtime['binary'] : __('not reported', 'super-speedy-performance-analysis')); ?></code></td></tr>
+        <tr><td><?php esc_html_e('Loaded php.ini', 'super-speedy-performance-analysis'); ?></td><td><code><?php echo esc_html('' !== $sspa_runtime['ini_loaded'] ? $sspa_runtime['ini_loaded'] : __('none', 'super-speedy-performance-analysis')); ?></code></td></tr>
         <tr><td><?php esc_html_e('PHP ini scan directory', 'super-speedy-performance-analysis'); ?></td><td><code><?php echo esc_html($sspa_env['ini_dir'] !== '' ? $sspa_env['ini_dir'] : __('not reported', 'super-speedy-performance-analysis')); ?></code></td></tr>
+        <tr><td><?php esc_html_e('Additional ini files', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html(SSPA_Tools::ini_scanned_summary($sspa_runtime['ini_scanned'])); ?></td></tr>
+        <tr><td><?php esc_html_e('Profiling extensions', 'super-speedy-performance-analysis'); ?></td><td>
+            <?php foreach (array_keys($sspa_runtime['extensions']) as $sspa_ext) : ?>
+                <code><?php echo esc_html($sspa_ext); ?></code>: <?php echo esc_html(SSPA_Tools::extension_state($sspa_runtime, $sspa_ext)); ?><br>
+            <?php endforeach; ?>
+        </td></tr>
         <tr><td><?php esc_html_e('Database', 'super-speedy-performance-analysis'); ?></td><td><?php echo esc_html($sspa_env['mysql']); ?></td></tr>
     </tbody>
 </table></div>

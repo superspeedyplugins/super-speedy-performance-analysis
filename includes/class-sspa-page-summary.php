@@ -73,6 +73,17 @@ class SSPA_Page_Summary {
         $category = 'unknown';
         if ($gen <= 0) {
             $verdict = __('Generation time was not captured.', 'super-speedy-performance-analysis');
+        } elseif (null === $residual && ($bound = self::cpu_bound($boot))) {
+            // No SQL or HTTP ledger, but the CPU clock still bounds them: whatever SQL, HTTP and
+            // the object cache cost, it happened while this process was not on the CPU.
+            $category = 'php';
+            $missing = array();
+            if (null === $sql) $missing[] = __('SQL', 'super-speedy-performance-analysis');
+            if (null === $http) $missing[] = __('WordPress HTTP', 'super-speedy-performance-analysis');
+            /* translators: 1: generation milliseconds, 2: CPU milliseconds, 3: profiler wall milliseconds, 4: CPU share, 5: non-CPU milliseconds, 6: the uncaptured instruments, e.g. "SQL" */
+            $verdict = sprintf(__('%1$s ms to generate. PHP CPU-bound: CPU %2$s ms of %3$s ms wall time (%4$s). SQL, WordPress HTTP and object cache together took at most %5$s ms, the non-CPU time (%6$s not captured).', 'super-speedy-performance-analysis'),
+                number_format($gen, 1), number_format($bound['cpu_ms'], 1), number_format($bound['wall_ms'], 1),
+                number_format($bound['cpu_ms'] / $bound['wall_ms'] * 100, 1) . '%', number_format($bound['non_cpu_ms'], 1), implode(' / ', $missing));
         } elseif (null === $residual) {
             /* translators: %s: measured generation time in milliseconds. */
             $verdict = sprintf(__('%s ms to generate. SQL or HTTP coverage is unavailable; the dominant cost is unknown.', 'super-speedy-performance-analysis'), number_format($gen, 1));
@@ -175,6 +186,16 @@ class SSPA_Page_Summary {
         }
         return array('verdict' => $verdict, 'culprits' => $culprits, 'coverage' => $coverage, 'coverage_headline' => $coverage_headline, 'gap' => $gap, 'next_action' => $action, 'cpu' => $cpu_line, 'samples' => self::samples($row),
             'generation_ms' => $gen, 'unattributed_ms' => $untimed);
+    }
+
+    /**
+     * The capture's CPU clock when CPU time is more than half of the profiler's wall time, else
+     * null. Wall and CPU share one scope (profiler arm to request end).
+     */
+    public static function cpu_bound($boot) {
+        $cpu = isset($boot['cpu']) ? $boot['cpu'] : null;
+        if (!$cpu || empty($cpu['available']) || empty($cpu['wall_ms']) || $cpu['cpu_ms'] <= $cpu['wall_ms'] / 2) return null;
+        return $cpu;
     }
 
     /** Relative evidence paths keep private absolute server paths out of Markdown. */

@@ -59,6 +59,10 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
         continue
     fi
     # Own-site case: it installs an MU plugin naming its fixture DNS resolvers.
+    if [ "$name" = "166-one-file-report.php" ] && [ "${SSPA_SCENARIO:-}" != "tests-one-file-report" ]; then
+        echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-one-file-report) ==="
+        continue
+    fi
     if [ "$name" = "165-dns-check.php" ] && [ "${SSPA_SCENARIO:-}" != "tests-dns-check" ]; then
         echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-dns-check) ==="
         continue

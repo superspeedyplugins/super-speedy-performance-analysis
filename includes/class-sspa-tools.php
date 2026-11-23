@@ -49,6 +49,44 @@ class SSPA_Tools {
         );
     }
 
+    /**
+     * Which PHP this request runs: SAPI, binary, ini files and the profiling extensions, read
+     * the same way the profiler records them inside a measured request.
+     */
+    public static function php_runtime() {
+        require_once SSPA_PLUGIN_DIR . 'profiler/class-sspa-environment-probe.php';
+        return SSPA_Environment_Probe::php_runtime();
+    }
+
+    /**
+     * One profiling extension's state in a recorded runtime, worded for a customer: a missing
+     * extension is named as missing from the PHP that serves the site, which is not always the
+     * PHP a terminal or WP-CLI reports.
+     */
+    public static function extension_state($runtime, $extension) {
+        if (!empty($runtime['extensions'][$extension])) {
+            return __('loaded', 'super-speedy-performance-analysis');
+        }
+        /* translators: 1: PHP server API, e.g. fpm-fcgi or litespeed, 2: the php.ini file that PHP loaded */
+        return sprintf(__('not loaded in the PHP that serves your site (%1$s, %2$s)', 'super-speedy-performance-analysis'),
+            !empty($runtime['sapi']) ? $runtime['sapi'] : __('unknown server API', 'super-speedy-performance-analysis'),
+            !empty($runtime['ini_loaded']) ? $runtime['ini_loaded'] : __('no php.ini loaded', 'super-speedy-performance-analysis'));
+    }
+
+    /** The additional ini files as one line: their folder once, then their names. */
+    public static function ini_scanned_summary($files) {
+        $files = array_values((array) $files);
+        if (!$files) {
+            return __('none', 'super-speedy-performance-analysis');
+        }
+        $dirs = array_unique(array_map('dirname', $files));
+        if (1 === count($dirs)) {
+            /* translators: 1: number of files, 2: folder, 3: comma-separated file names */
+            return sprintf(_n('%1$d file in %2$s: %3$s', '%1$d files in %2$s: %3$s', count($files), 'super-speedy-performance-analysis'), count($files), reset($dirs), implode(', ', array_map('basename', $files)));
+        }
+        return implode(', ', $files);
+    }
+
     private static function distro() {
         if (PHP_OS_FAMILY !== 'Linux' || !@is_readable('/etc/os-release')) {
             return PHP_OS_FAMILY;
@@ -179,6 +217,10 @@ class SSPA_Tools {
      */
     public static function capabilities() {
         $ps = self::performance_schema();
+        $runtime = self::php_runtime();
+        $missing_here = function ($extension) use ($runtime) {
+            return ucfirst(self::extension_state($runtime, $extension)) . '. ';
+        };
 
         // Ordered by value-per-install: excimer leads because it is the single biggest
         // capability upgrade a site can make, and everything below it is either built
@@ -191,7 +233,7 @@ class SSPA_Tools {
                 'used' => extension_loaded('excimer'),
                 'detail' => extension_loaded('excimer')
                     ? __('In use: every profiled page carries the "By function" view, and the untimed parts of each request phase expand to the functions sampled inside them.', 'super-speedy-performance-analysis')
-                    : __('Needs a one-off install by you or your host - the steps below are generated for this exact server.', 'super-speedy-performance-analysis'),
+                    : $missing_here('excimer') . __('Needs a one-off install by you or your host - the steps below are generated for this exact server.', 'super-speedy-performance-analysis'),
                 'install' => 'excimer',
             ),
             'explain' => array(
@@ -218,7 +260,7 @@ class SSPA_Tools {
                 'used' => false,
                 'detail' => extension_loaded('xhprof') && !extension_loaded('tideways_xhprof')
                     ? __('The original xhprof is present. tideways_xhprof is the better-maintained successor. Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead.', 'super-speedy-performance-analysis')
-                    : __('Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead.', 'super-speedy-performance-analysis'),
+                    : ((extension_loaded('tideways_xhprof') || extension_loaded('xhprof')) ? '' : $missing_here('tideways_xhprof')) . __('Not read by the plugin: exact call counts are a planned deep-dive mode, and sampling answers most questions without the overhead.', 'super-speedy-performance-analysis'),
                 'install' => 'tideways_xhprof',
             ),
             'spx' => array(
@@ -226,7 +268,7 @@ class SSPA_Tools {
                 'adds' => __('A self-hosted profiler with its own flamegraph and timeline interface. Nothing leaves your server. We detect it and link to it rather than rebuilding what it already does well.', 'super-speedy-performance-analysis'),
                 'status' => extension_loaded('spx') ? self::STATUS_AVAILABLE : self::STATUS_MISSING,
                 'used' => false,
-                'detail' => '',
+                'detail' => extension_loaded('spx') ? '' : rtrim($missing_here('spx')),
                 'install' => 'spx',
             ),
         );

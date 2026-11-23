@@ -32,12 +32,36 @@ if (!class_exists('SSPA_Environment_Probe')) {
                 'schema' => 'sspa/environment@1',
                 'sapi' => PHP_SAPI,
                 'php' => PHP_VERSION,
+                'runtime' => self::php_runtime(),
                 'opcache' => self::opcache(),
                 'db' => self::db($wpdb),
                 'object_cache' => self::object_cache($cache),
             );
             $out['probe_ms'] = round((microtime(true) - $start) * 1000, 3);
             return $out;
+        }
+
+        /** Profiling extensions reported by name, in the order the export lists them. */
+        const PROFILING_EXTENSIONS = array('excimer', 'xhprof', 'tideways_xhprof', 'spx');
+
+        /**
+         * Which PHP this process is: SAPI, binary, ini files and each profiling extension as
+         * loaded here. Inside a profiled request that is the PHP serving the site, which a
+         * WP-CLI process (often a different binary and ini set) cannot tell you.
+         */
+        public static function php_runtime() {
+            $scanned = function_exists('php_ini_scanned_files') ? php_ini_scanned_files() : false;
+            $extensions = array();
+            foreach (self::PROFILING_EXTENSIONS as $name) {
+                $extensions[$name] = extension_loaded($name);
+            }
+            return array(
+                'sapi' => PHP_SAPI,
+                'binary' => defined('PHP_BINARY') ? (string) PHP_BINARY : '',
+                'ini_loaded' => function_exists('php_ini_loaded_file') ? (string) php_ini_loaded_file() : '',
+                'ini_scanned' => is_string($scanned) ? array_values(array_filter(array_map('trim', explode(',', $scanned)))) : array(),
+                'extensions' => $extensions,
+            );
         }
 
         private static function distribution($values) {
