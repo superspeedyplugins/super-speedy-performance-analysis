@@ -2,22 +2,21 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis 0.68.5\n"
+"Project-Id-Version: Super Speedy Performance Analysis Pro 0.68.6\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-22T18:04:02+00:00\n"
+"POT-Creation-Date: 2026-11-23T10:06:18+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
 
 #. Plugin Name of the plugin
 #: super-speedy-performance-analysis.php
-#: includes/class-sspa-abilities.php:85
-msgid "Super Speedy Performance Analysis"
+msgid "Super Speedy Performance Analysis Pro"
 msgstr ""
 
 #. Plugin URI of the plugin
@@ -4968,6 +4967,10 @@ msgstr ""
 msgid "Cancelled when the temporary workflow object was removed."
 msgstr ""
 
+#: includes/class-sspa-abilities.php:85
+msgid "Super Speedy Performance Analysis"
+msgstr ""
+
 #: includes/class-sspa-abilities.php:86
 msgid "Profile a WordPress site, attribute SQL/RAM/time to plugins, isolate culprits, read plain-English findings."
 msgstr ""
@@ -8334,11 +8337,11 @@ msgid "Two copies of Super Speedy Performance Analysis are active. Only the one 
 msgstr ""
 
 #: super-speedy-performance-analysis.php:57
-#: super-speedy-performance-analysis.php:170
+#: super-speedy-performance-analysis.php:171
 msgid "Go to Plugins"
 msgstr ""
 
-#: super-speedy-performance-analysis.php:168
+#: super-speedy-performance-analysis.php:169
 msgid "The free Super Speedy Performance Analysis plugin is still installed. Pro replaces it and keeps all your analyses and settings, so please delete the free plugin."
 msgstr ""
 

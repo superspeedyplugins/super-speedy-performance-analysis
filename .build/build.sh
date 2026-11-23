@@ -34,8 +34,26 @@ PLUGIN_MAIN="${PLUGIN_SLUG}.php"
 # ---------------------------------------------------------------------------
 # wp.org edition
 # ---------------------------------------------------------------------------
+# The source header says "... Pro". The wordpress.org edition and the GitHub plain zip carry the
+# plain name wordpress.org approved.
+ssx_plain_name() {
+    local main="$1/$PLUGIN_MAIN"
+    perl -i -pe 's{^(\s*\*\s*Plugin Name:\s*Super Speedy Performance Analysis) Pro(\r?)$}{$1$2}' "$main" \
+        || ssx_die "Plugin Name rewrite failed"
+    grep -qE '^\s*\*\s*Plugin Name:\s*Super Speedy Performance Analysis\r?$' "$main" \
+        || ssx_die "Plugin Name is not 'Super Speedy Performance Analysis'"
+    ssx_log "plain Plugin Name"
+}
+
+# The GitHub release's plain-named zip: the whole tree in the plain folder.
+ssx_hook_github() {
+    ssx_plain_name "$1"
+    ssx_hook_full "$1"
+}
+
 ssx_hook_wporg() {
     local stage="$1"
+    ssx_plain_name "$stage"
 
     # The whole reason this edition exists. The submodule carries:
     #   - plugin-update-checker (PUC)          -> a phone-home updater, banned on wp.org
@@ -191,15 +209,13 @@ ssx_assert_history_chart() {
 ssx_hook_pro() {
     local stage="$1" main="$1/$PLUGIN_MAIN"
     # Its own name, so a site can tell it from the wordpress.org edition on the Plugins screen,
-    # and its own update feed (super-speedy-performance-analysis-pro.json).
-    perl -i -pe 's{^(\s*\*\s*Plugin Name:\s*Super Speedy Performance Analysis)(\r?)$}{$1 Pro$2}' "$main" \
-        || ssx_die "Plugin Name rewrite failed"
+    # and its own update feed (super-speedy-performance-analysis-pro.json), read by folder name.
+    # The source tree is the Pro plugin since 0.68.6: nothing is rewritten here.
     grep -qE '^\s*\*\s*Plugin Name:\s*Super Speedy Performance Analysis Pro\r?$' "$main" \
         || ssx_die "Plugin Name is not 'Super Speedy Performance Analysis Pro'"
-    perl -i -pe "s{'plugin_slug' => 'super-speedy-performance-analysis',}{'plugin_slug' => '$PRO_SLUG',}" "$main" \
-        || ssx_die "updater slug rewrite failed"
-    grep -q "'plugin_slug' => '$PRO_SLUG'," "$main" || ssx_die "updater slug is not $PRO_SLUG"
-    php -l "$main" >/dev/null || ssx_die "$PLUGIN_MAIN does not parse after the Pro rewrites"
+    grep -q "'plugin_slug' => dirname(plugin_basename(__FILE__))," "$main" \
+        || ssx_die "the updater slug is not the install folder"
+    php -l "$main" >/dev/null || ssx_die "$PLUGIN_MAIN does not parse"
     ssx_log "Pro name and update slug $PRO_SLUG"
     grep -rqE '^\s*//\s*SSPA-PRO-START' "$stage/includes/class-sspa-auth.php" \
         || ssx_die "the Pro tree has no SSPA-PRO blocks in class-sspa-auth.php - was it built from a stripped tree?"
