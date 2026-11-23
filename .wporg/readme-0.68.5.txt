@@ -58,9 +58,9 @@ Press **Run Analysis**. It measures your real pages on your own server and names
 * **WP-CLI** and **read-only WordPress abilities** for scripts and AI agents
 * **Tools tab:** the profiler switch and install commands for your server's optional extras
 
-= Pro is free too =
+= Performance Analysis Pro =
 
-[Pro](https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/) adds what WordPress.org does not host: measurements as a logged-in customer, and an AI agent that can start analyses and change settings. Both editions share your saved analyses.
+[Performance Analysis Pro](https://www.superspeedyplugins.com/product/super-speedy-performance-analysis/) adds what WordPress.org does not host: measurements as a logged-in customer, checkout tests that delete the account a purchase creates, a DNS check, and an AI agent that can start analyses and change settings. Both editions share your saved analyses, so moving to Pro keeps every result.
 
 == Installation ==
 
