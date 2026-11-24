@@ -571,11 +571,11 @@ jQuery(document).on('change', '#sspa-measurement-runs', function () {
 			select.val(resp.data.measurement_runs).data('saved', resp.data.measurement_runs);
 		} else {
 			select.val(previous);
-			alert(wp.i18n.__("Could not save the measurement setting.", "super-speedy-performance-analysis"));
+			alert(SSPAFeedback.response(resp, wp.i18n.__("Could not save the measurement setting.", "super-speedy-performance-analysis")));
 		}
-	}).fail(function () {
+	}).fail(function (xhr, textStatus) {
 		select.val(previous);
-		alert(wp.i18n.__("Could not save the measurement setting.", "super-speedy-performance-analysis"));
+		alert(SSPAFeedback.xhr(xhr, wp.i18n.__("Could not save the measurement setting.", "super-speedy-performance-analysis"), textStatus));
 	}).always(function () {
 		select.prop('disabled', false);
 		spinner.removeClass('is-active');

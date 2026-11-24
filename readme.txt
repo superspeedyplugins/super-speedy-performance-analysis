@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.70.6
+Stable tag: 0.71.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,13 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.71.0 (24th November 2026) =
+* Analyses now measure each page once, cold, with no warm-up request, so Run Analysis, the quick comparison after plugin changes and Analyse this page send one request per page instead of four.
+* Added Measurement runs per page (Compare tab, Advanced settings): One run (default) or Three runs, which sends a warm-up and three measured requests per page and reports the median as before.
+* Plugin Impact Analysis, Cache Impact Analysis, Profile this endpoint and the checkout flow keep their own sampling, so with and without a plugin are still compared like for like.
+* The Markdown export, Compare, the page summary and the progress monitor now say whether each analysis used 1 measured request per page or a median of 3 after a warm-up, and Compare warns that a small difference between single requests is not evidence of a change.
+* Agents can read and change the setting as `measurement_runs` through `get-settings` and `update-settings` (Pro), and the report carries `run.measurement`.
 
 = 0.70.6 (24th November 2026) =
 * Fixed Copy Markdown failing with "The Markdown report could not be exported." when the export took longer than about five seconds; the copy now completes, and a browser that still refuses shows the report selected to copy with Ctrl+C (Cmd+C).
