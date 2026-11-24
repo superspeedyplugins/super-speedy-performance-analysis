@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.70.1 (24th November 2026) =
+* Pro: updated super-speedy-settings to 1.14.10, whose Install Performance Analysis button in the other Super Speedy plugins installs the free wordpress.org edition.
+
 = 0.70.0 (24th November 2026) =
 * The full analysis Markdown file now includes the phase breakdown, top callbacks, template residuals and render regions for every front-end page, each with a one-line verdict naming its PHP CPU share, top owner and largest untimed gap.
 * The full analysis Markdown file and the Tools tab now show which PHP serves your site: its server API, binary, php.ini, additional ini files and whether each profiling extension is loaded in it.
