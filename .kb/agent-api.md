@@ -414,6 +414,40 @@ body, URL, error message or stack trace. Each plugin entry:
   Evidence measured against a version other than `version` is stale - re-measure before
   acting on it.
 
+## Where each slow query came from (get-page-profile, since 0.71.0)
+
+Separate from the report, so `SSPA_Report::SCHEMA` does not move (`get-report` carries no
+per-query rows). `get-page-profile` and the panel's Download JSON answer
+`sspa/page-diagnostic-export@2` (was `@1`): its `capture` is capture schema 6, where each entry of
+`capture.sql.queries` that kept its full SQL (`sql` not null) carries a `context` object. A query
+without `context` was not described: its SQL was not retained, the measurement predates 0.71.0
+(capture schema 5 or older), or it ran before the profiler armed. That means "not captured",
+never "ran outside any hook". `capture.sql.context` is `{schema: 1, attached, observed, truncated,
+wp_queries}`, or null when the capture was switched off with `define('SSPA_QUERY_CONTEXT', false)`.
+
+| Field | Meaning |
+|---|---|
+| `hook_stack` | `$wp_current_filter` when the query ran, outermost first, with each open shortcode inserted as `[tag]` at its depth. `[]` = no action or filter was running |
+| `hook` | Innermost meaningful hook: generic wrappers (`the_content`, `do_shortcode_tag`, `widget_text`, `widget_block_content`, `render_block` and similar) are skipped. When nothing meaningful is running it is `area_hook` and `hook_from` is `area`; otherwise `hook_from` is `stack`. Null when neither exists |
+| `hook_path` | Display form: `area_hook` (when it is not on the stack) then the meaningful stack, joined by ` > `, e.g. `get_footer > [tdm_block_inline_text]`. The leading area hook may already have returned: the template it loaded is what was running |
+| `shortcode` | `{tag, owner, owner_type, stack}`: the innermost open shortcode, the component that registered its callback, and every open shortcode outermost first. Null when none was open |
+| `template` | The template file open at the time, relative to the WordPress root (`wp-content/themes/x/footer.php`). Null before the theme template started (the main query runs then) |
+| `area` | `header`, `content`, `sidebar`, `footer` or null, from `get_header`, `get_sidebar`, `get_footer`, `dynamic_sidebar_before/after`, the main loop's `loop_start`, and a running `wp_head` / `wp_footer`. Classic themes; a block theme reports only `wp_head` / `wp_footer` |
+| `area_hook` | The hook that opened the area (`get_footer`, `dynamic_sidebar_before`, `loop_start`, ...) |
+| `widget` | `{sidebar, id, name}` when the query ran in a widget, else null |
+| `wp_query` | When the SQL is a `WP_Query`'s own statement (its `posts_request` or split `posts_request_ids`, `role: posts`) or its `SELECT FOUND_ROWS()` (`role: found_rows`): `main`, `posts_per_page`, `per_page_from` (`posts_per_page`, `showposts`, `numberposts` or `default` = the Reading setting), `paged`, `offset`, `no_found_rows`, `fields`, `post_type`, `suppress_filters`, `tax_query` `{relation, clauses: [{taxonomy, field, operator, terms (up to 10), term_count, include_children}]}`, `meta_query` `{relation, clauses: [{key, compare, type}]}`. Null for any other SQL |
+| `found_rows` | `{calc_found_rows, total}`: whether the SQL has `SQL_CALC_FOUND_ROWS`, and the `WP_Query`'s `found_posts` when it computed one. Whether the page then used the total is not detected |
+| `spro` | Every `spro_*` query var set on that `WP_Query` with a scalar value, by name (Scalability Pro's `spro_remove_sql_calc_found_rows`, `spro_fake_total_found_posts`, `spro_mega_menu_exists`, `spro_mega_menu_refused`, and any later one). Null when none is set or there is no `WP_Query` |
+| `frames` | Up to 6 `{file, line, function}`, innermost first: the line that called wpdb, then from the first plugin, theme or MU plugin frame outwards (core frames between the two are left out). `function` is the function called at `file:line` |
+| `frames_from` | `profiling_wpdb` (PA's own wpdb took the backtrace) or `query_filter` (a foreign `db.php`; read in wpdb's `query` filter) |
+
+`wp_ajax_sspa_analyse_rows` (`profile_id`, `event_id`, admin nonce, `manage_options`) re-runs one
+retained SELECT of that profile under `ANALYZE FORMAT=JSON` (MariaDB) or `EXPLAIN ANALYZE` (MySQL
+8.0.18+), in a read-only transaction, and answers `{method, total_ms, wall_ms, tables: [{table,
+access_type, key, rows, loops, estimated_rows, filtered, time_ms}], raw}`; `rows` is the rows that
+table actually produced (all loops). Anything but a SELECT is refused unrun. There is no ability
+for it: it executes the statement again, so it stays a person's click.
+
 ## Archive profile object (get-archive-profile)
 
 Separate from the report and additive to it, so `SSPA_Report::SCHEMA` does not move. It has its

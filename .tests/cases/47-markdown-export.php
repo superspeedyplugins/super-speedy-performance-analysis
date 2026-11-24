@@ -168,7 +168,7 @@ $site = SSPA_Markdown_Export::build('run', $baseline_run);
 sspa_markdown_t(!is_wp_error($page) && '.md' === substr($page['filename'], -3), 'a page result produces a downloadable .md file');
 sspa_markdown_t(!is_wp_error($site) && '.md' === substr($site['filename'], -3), 'a complete-site run produces a downloadable .md file');
 if (!is_wp_error($page) && !is_wp_error($site)) {
-    sspa_markdown_t(false !== strpos($page['markdown'], '<!-- sspa/llm-report@2 -->'), 'the LLM report schema is explicit and structurally versioned');
+    sspa_markdown_t(false !== strpos($page['markdown'], '<!-- sspa/llm-report@3 -->'), 'the LLM report schema is explicit and structurally versioned');
     sspa_markdown_t(false !== strpos($page['markdown'], '## Diagnostic summary') && false !== strpos($page['markdown'], '## Dominant SQL groups'), 'the page document leads with a mechanical diagnosis and aggregated SQL evidence');
     sspa_markdown_t(false !== strpos($page['markdown'], '| `synthetic-slow-plugin` | 310.0 ms | 45 | 12 | 240.0 ms |'), 'component query_count and returned rows are exported');
     sspa_markdown_t(false !== strpos($page['markdown'], '| `synthetic-slow-plugin` | `SELECT * FROM wp_options WHERE option_value = ? AND option_id = ?` | 3 | 310.0 ms | 120.0 ms | 12 |'), 'matching retained queries aggregate into one group with calls, total, worst and rows');

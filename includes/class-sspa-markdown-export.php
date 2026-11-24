@@ -4,7 +4,12 @@ defined('ABSPATH') || exit;
 /** Privacy-safe Markdown reports intended for hand-off to an LLM or developer. */
 class SSPA_Markdown_Export {
 
-    const SCHEMA = 2;
+    // 3: each retained slow query says where it came from (hooks, shortcode, template and area,
+    // WP_Query facts, SQL_CALC_FOUND_ROWS, spro_* query vars, call stack), page and run exports.
+    const SCHEMA = 3;
+    /** Slow queries described one by one: page export, and per page in the run export. */
+    const ORIGIN_QUERIES_PAGE = 10;
+    const ORIGIN_QUERIES_RUN = 3;
     /** Run export: callback, template and render-region rows below this share of generation are left out. */
     const RUN_ROW_SHARE = 0.02;
     /** Component tables show this many rows, then one "Others" row. */
@@ -114,7 +119,7 @@ class SSPA_Markdown_Export {
         self::components($lines, isset($capture['components']) ? $capture['components'] : array(), isset($profile['sql_count']) ? $profile['sql_count'] : null);
         if ($minor_sql) { $lines[] = '<details><summary>Minor SQL evidence (under 5% of generation)</summary>'; $lines[] = ''; }
         self::queries($lines, $queries, $query_groups);
-        self::query_plan_evidence($lines, isset($data['findings']) ? $data['findings'] : array());
+        self::query_plan_evidence($lines, isset($data['findings']) ? $data['findings'] : array(), $queries);
         if ($minor_sql) { $lines[] = '</details>'; $lines[] = ''; }
         self::raw_http($lines, isset($capture['http']['calls']) ? $capture['http']['calls'] : array());
         self::impacts($lines, isset($data['measured_plugin_impacts']) ? $data['measured_plugin_impacts'] : array());
@@ -442,6 +447,91 @@ class SSPA_Markdown_Export {
             $lines[] = '| `' . self::code(isset($query['event_id']) ? $query['event_id'] : 'legacy-' . ($index + 1)) . '` | ' . self::ms(isset($query['ms']) ? $query['ms'] : null) . ' | ' . self::number(isset($query['rows']) ? $query['rows'] : null) . ' | `' . self::code(isset($query['component']) ? $query['component'] : 'unknown') . '` | `' . self::code(self::safe_origin(isset($query['caller']) ? $query['caller'] : 'unknown')) . '` | `' . self::code(!empty($query['via']) ? $query['via'] : '-') . '` | `' . self::code($chain ? implode(' -> ', $chain) : '-') . '` |';
         }
         $lines[] = '';
+        self::query_origins($lines, $queries, self::ORIGIN_QUERIES_PAGE, '###');
+    }
+
+    /**
+     * Where each of the slowest retained queries came from (capture schema 6). Identifiers only:
+     * hook, shortcode, template and widget names, WP_Query settings and file:line frames; never
+     * a tax_query term or meta value.
+     */
+    private static function query_origins(&$lines, $queries, $limit, $level) {
+        usort($queries, function ($a, $b) { return (float) $b['ms'] <=> (float) $a['ms']; });
+        $with = array_values(array_filter((array) $queries, function ($query) { return !empty($query['context']) && is_array($query['context']); }));
+        $lines[] = $level . ' Where the slowest queries came from';
+        $lines[] = '';
+        if (!$with) {
+            $lines[] = 'Not captured: this measurement predates per-query context (0.71.0), or no retained query had any.';
+            $lines[] = '';
+            return;
+        }
+        foreach (array_slice($with, 0, $limit) as $query) {
+            $c = $query['context'];
+            $lines[] = '- `' . self::code(isset($query['event_id']) ? $query['event_id'] : '-') . '` ' . self::ms($query['ms']) . ', ' . self::number(isset($query['rows']) ? $query['rows'] : null) . ' rows, `' . self::code($query['component']) . '`: `' . self::code(self::sql_fingerprint(!empty($query['fp']) ? $query['fp'] : (isset($query['sql']) ? $query['sql'] : ''))) . '`';
+            if (!empty($c['shortcode']['tag'])) {
+                $lines[] = '  - Shortcode: `[' . self::code($c['shortcode']['tag']) . ']`' . (!empty($c['shortcode']['owner']) ? ' (`' . self::code($c['shortcode']['owner']) . '`)' : '');
+            }
+            $lines[] = '  - Hook path: ' . ('' !== (string) $c['hook_path'] ? '`' . self::code($c['hook_path']) . '`' . (!empty($c['hook']) && $c['hook'] !== $c['hook_path'] ? ' (innermost meaningful hook `' . self::code($c['hook']) . '`)' : '') : 'ran outside any action or filter');
+            $lines[] = '  - Template: ' . (!empty($c['template']) ? '`' . self::code($c['template']) . '`' . (!empty($c['area']) ? ' (' . self::plain($c['area']) . ')' : '') : (!empty($c['area']) ? self::plain($c['area']) : 'before the theme template started'));
+            if (!empty($c['widget']['name'])) {
+                $lines[] = '  - Widget: ' . self::plain($c['widget']['name']) . (!empty($c['widget']['sidebar']) ? ' (' . self::plain($c['widget']['sidebar']) . ')' : '');
+            }
+            if (!empty($c['wp_query'])) {
+                $lines[] = '  - WP_Query: ' . self::wp_query_line($c['wp_query']);
+            }
+            $found = isset($c['found_rows']) ? (array) $c['found_rows'] : array();
+            $lines[] = '  - SQL_CALC_FOUND_ROWS: ' . (!empty($found['calc_found_rows']) ? 'yes' . (isset($found['total']) && null !== $found['total'] ? ', total ' . self::number($found['total']) : '') : 'no');
+            if (!empty($c['wp_query'])) {
+                $spro = array();
+                foreach ((array) $c['spro'] as $name => $value) {
+                    $spro[] = '`' . self::code($name) . '` = ' . self::plain(is_bool($value) ? ($value ? 'true' : 'false') : (null === $value ? 'null' : (string) $value));
+                }
+                $lines[] = '  - Scalability Pro query vars: ' . ($spro ? implode(', ', $spro) : 'none set');
+            }
+            if (!empty($c['frames'])) {
+                $frames = array();
+                foreach ($c['frames'] as $frame) {
+                    $frames[] = '`' . self::code($frame['file'] . ':' . (int) $frame['line'] . ' ' . $frame['function']) . '`';
+                }
+                $lines[] = '  - Call stack (innermost first): ' . implode(' < ', $frames);
+            }
+        }
+        $lines[] = '';
+    }
+
+    private static function wp_query_line($w) {
+        $facts = array(!empty($w['main']) ? 'main query' : 'secondary query');
+        if (isset($w['posts_per_page'])) {
+            $facts[] = 'posts_per_page ' . (int) $w['posts_per_page'] . ' set by ' . ('default' === $w['per_page_from'] ? 'the Reading setting' : '`' . self::code($w['per_page_from']) . '`');
+        }
+        if (!empty($w['paged'])) {
+            $facts[] = 'paged ' . (int) $w['paged'];
+        }
+        if (isset($w['offset'])) {
+            $facts[] = 'offset ' . (int) $w['offset'];
+        }
+        $facts[] = 'no_found_rows ' . (!empty($w['no_found_rows']) ? 'true' : 'false');
+        if (!empty($w['fields']) && 'all' !== $w['fields']) {
+            $facts[] = 'fields ' . self::plain($w['fields']);
+        }
+        $type = is_array($w['post_type']) ? implode(', ', $w['post_type']) : (string) $w['post_type'];
+        $facts[] = 'post_type ' . ('' !== $type ? self::plain($type) : 'default');
+        if (!empty($w['suppress_filters'])) {
+            $facts[] = 'suppress_filters true';
+        }
+        foreach (array('tax_query', 'meta_query') as $kind) {
+            if (empty($w[$kind]['clauses'])) {
+                continue;
+            }
+            $parts = array();
+            foreach ($w[$kind]['clauses'] as $clause) {
+                $parts[] = 'tax_query' === $kind
+                    ? self::plain($clause['taxonomy'] . ' by ' . $clause['field'] . ' ' . $clause['operator']) . ' (' . (int) $clause['term_count'] . ' term' . (1 === (int) $clause['term_count'] ? '' : 's') . ')'
+                    : '`' . self::code($clause['key']) . '` ' . self::plain($clause['compare'] . ('CHAR' !== $clause['type'] ? ' ' . $clause['type'] : ''));
+            }
+            $facts[] = $kind . ' ' . implode(' ' . self::plain($w[$kind]['relation']) . ' ', $parts);
+        }
+        return implode('; ', $facts);
     }
 
     private static function raw_http(&$lines, $calls) {
@@ -779,6 +869,7 @@ class SSPA_Markdown_Export {
             $lines[] = '- Phases: ' . ($phases ? implode(', ', $phases) : 'not captured');
             $lines[] = '';
             self::boot_tables($lines, $boot, $gen * self::RUN_ROW_SHARE, 0.0);
+            self::query_origins($lines, isset($capture['sql']['queries']) ? (array) $capture['sql']['queries'] : array(), self::ORIGIN_QUERIES_RUN, '####');
         }
     }
 
@@ -878,10 +969,9 @@ class SSPA_Markdown_Export {
         return $groups;
     }
 
-    private static function query_plan_evidence(&$lines, $findings) {
+    private static function query_plan_evidence(&$lines, $findings, $queries = array()) {
         $lines[] = '### Query-plan evidence';
         $lines[] = '';
-        $sufficiency = self::evidence_sufficiency($findings);
         $lines[] = '- SQL evidence sufficiency: **' . $sufficiency['level'] . '**. ' . $sufficiency['detail'];
         $plan = array();
         foreach ((array) $findings as $finding) {
@@ -891,12 +981,25 @@ class SSPA_Markdown_Export {
                 break;
             }
         }
+        // The source and the hook come from the measured query's own context (capture schema 6)
+        // when the finding's evidence has none: the same statement, matched by its SQL.
+        $origin = self::plan_origin($plan, $queries);
+        if ($origin && empty($plan['source_file'])) {
+            $plan['source_file'] = $origin['source_file'];
+            $plan['source_line'] = $origin['source_line'];
+            $plan['source_function'] = $origin['source_function'];
+        }
+        if ($origin && empty($plan['hook'])) {
+            $plan['hook'] = '' !== $origin['hook'] ? $origin['hook'] : 'none (ran outside any action or filter)';
+        }
+        $sufficiency = self::evidence_sufficiency($plan ? array_merge((array) $findings, array(array('evidence' => $plan))) : $findings);
+        $lines[] = '- SQL evidence sufficiency: **' . $sufficiency['level'] . '**. ' . $sufficiency['detail'];
         $lines[] = '- Confidence: measured query timing' . (!empty($plan['plan_steps']) ? '; optimiser-estimated plan rows' : '; no optimiser plan retained');
         $lines[] = '- Summary: ' . (!empty($plan['plan_note']) ? self::safe_detail($plan['plan_note']) : 'not captured');
         $lines[] = '- Relevant existing indexes: ' . (!empty($plan['relevant_indexes']) ? self::plain(self::indexes_summary($plan['relevant_indexes'])) : 'not captured');
         $lines[] = '- Complete join plan: ' . (!empty($plan['plan_steps']) ? count($plan['plan_steps']) . ' step(s) captured' : 'not captured');
         $lines[] = '- Actual rows examined: ' . (isset($plan['examined']) ? self::number($plan['examined']) . ' measured by matched performance-schema evidence' : 'not captured');
-        $lines[] = '- Source location: ' . (!empty($plan['source_file']) ? '`' . self::code(self::safe_origin($plan['source_file']) . (!empty($plan['source_line']) ? ':' . (int) $plan['source_line'] : '')) . '`' : 'not captured');
+        $lines[] = '- Source location: ' . (!empty($plan['source_file']) ? '`' . self::code((preg_match('#^(/|[A-Za-z]:)#', (string) $plan['source_file']) ? self::safe_origin($plan['source_file']) : self::plain($plan['source_file'])) . (!empty($plan['source_line']) ? ':' . (int) $plan['source_line'] : '') . (!empty($plan['source_function']) ? ' ' . $plan['source_function'] : '')) . '`' : 'not captured');
         $lines[] = '- Active hook/callback: ' . (!empty($plan['hook']) ? '`' . self::code($plan['hook']) . '`' : 'not captured');
         $lines[] = '- Next action: ' . (!empty($plan['plan_steps']) && !empty($plan['relevant_indexes']) ? 'trace the initiating callback and compare the query shape with the retained index definitions.' : 'capture the complete plan, relevant indexes and initiating callback before changing schema or query code.');
         $lines[] = '';
@@ -923,6 +1026,49 @@ class SSPA_Markdown_Export {
             }
             $lines[] = '';
         }
+    }
+
+    /**
+     * The retained query a plan's evidence describes, as {source_file, source_line,
+     * source_function, hook}: the first plugin, theme or MU plugin frame (else the first frame),
+     * and the hook path. Null when no retained query with context has that SQL.
+     */
+    private static function plan_origin($plan, $queries) {
+        $sql = isset($plan['sql']) ? trim((string) $plan['sql']) : '';
+        if ('' === $sql) {
+            return null;
+        }
+        $fp = self::sql_fingerprint($sql);
+        $match = null;
+        foreach ((array) $queries as $query) {
+            if (empty($query['context']['frames'])) {
+                continue;
+            }
+            if (isset($query['sql']) && trim((string) $query['sql']) === $sql) {
+                $match = $query;
+                break;
+            }
+            if (null === $match && self::sql_fingerprint(!empty($query['fp']) ? $query['fp'] : (string) $query['sql']) === $fp) {
+                $match = $query;
+            }
+        }
+        if (!$match) {
+            return null;
+        }
+        $frames = $match['context']['frames'];
+        $pick = $frames[0];
+        foreach ($frames as $frame) {
+            if (0 === strpos((string) $frame['file'], 'wp-content/')) {
+                $pick = $frame;
+                break;
+            }
+        }
+        return array(
+            'source_file' => $pick['file'],
+            'source_line' => (int) $pick['line'],
+            'source_function' => (string) $pick['function'],
+            'hook' => (string) $match['context']['hook_path'],
+        );
     }
 
     private static function indexes_summary($indexes) {

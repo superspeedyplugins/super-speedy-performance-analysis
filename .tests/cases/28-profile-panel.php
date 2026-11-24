@@ -113,7 +113,7 @@ sspa_panel_t(
 $sspa_export = SSPA_Profile_Panel::export_data($sspa_profile_id);
 sspa_panel_t(!is_wp_error($sspa_export), 'the page diagnostic export builds');
 if (!is_wp_error($sspa_export)) {
-    sspa_panel_t('sspa/page-diagnostic-export@1' === $sspa_export['schema'], 'the export schema is versioned');
+    sspa_panel_t('sspa/page-diagnostic-export@2' === $sspa_export['schema'], 'the export schema is versioned');
     sspa_panel_t(
         $sspa_profile_id === (int) $sspa_export['profile']['id']
         && !array_key_exists('profile_blob', $sspa_export['profile']),

@@ -113,6 +113,12 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.73.0 (25th November 2026) =
+* Each row under Slowest queries in the page panel now expands to show where the query came from: the plugin, the shortcode, the hook path, the template file and page area, the widget, the WP_Query settings, whether it uses SQL_CALC_FOUND_ROWS, any Scalability Pro query vars and the call stack with line numbers.
+* New Analyse rows button on each slow SELECT re-runs it once under the database's ANALYZE and shows how many rows each table actually read.
+* The page and site Markdown reports, the page JSON download and the `get-page-profile` ability carry the same details for each slow query.
+* The Markdown report's "Source location" and "Active hook/callback" lines are now filled from the measured query instead of "not captured", including on sites where another plugin owns the `db.php` drop-in.
+
 = 0.72.1 (25th November 2026) =
 * Changelog wording only; no code changes.
 

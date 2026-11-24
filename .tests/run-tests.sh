@@ -147,6 +147,13 @@ if [ -z "$FILTER" ] || [[ "feature-browser" == *"$FILTER"* ]]; then
         FAILED=$((FAILED + 1)); FAILED_NAMES="$FAILED_NAMES feature-browser"
     fi
 fi
+# Own site: it switches the theme and swaps db.php, so it never runs on the suite's site.
+if [ -z "$FILTER" ] || [[ "query-context" == *"$FILTER"* ]]; then
+    RAN=$((RAN + 1))
+    if ! SSPA_SCENARIO=tests-query-context SSPA_TEST_SITE_DIR= SSPA_TEST_SITE_URL= bash "$PLUGIN_DIR/.tests/query-context/run.sh"; then
+        FAILED=$((FAILED + 1)); FAILED_NAMES="$FAILED_NAMES query-context"
+    fi
+fi
 if [ "$RAN" -eq 0 ]; then echo "No cases matched: $FILTER" >&2; exit 1; fi
 echo "$RAN case file(s) run, $FAILED failed"
 [ -n "$FAILED_NAMES" ] && echo "failed:$FAILED_NAMES"

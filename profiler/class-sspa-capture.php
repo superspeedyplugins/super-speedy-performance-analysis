@@ -15,7 +15,11 @@ if (!class_exists('SSPA_Capture')) {
         // 5 adds `environment`: database connect and round trip, object-cache round trip and
         // drop-in, and the serving PHP's opcache state. A schema-4 capture has no such section,
         // which means "not measured", never "no opcache".
-        const SCHEMA_VERSION = 5;
+        // 6 adds `context` to each retained query (sql.queries[] entries with full SQL): hooks,
+        // shortcode, template, area, WP_Query facts, SQL_CALC_FOUND_ROWS, spro_* query vars and
+        // frames, plus `sql.context` saying how it was observed. A schema-5 capture has none,
+        // which means "not captured", never "ran outside any hook".
+        const SCHEMA_VERSION = 6;
         const FULL_SQL_TOP_N = 20;
         const FULL_SQL_MS = 50;
         const FULL_SQL_ROWS = 200;
@@ -42,6 +46,8 @@ if (!class_exists('SSPA_Capture')) {
         private $boot_timer = null;
         private $excimer = null;
         private $archives = null;
+        /** @var SSPA_Query_Context|null */
+        private $query_context = null;
         /**
          * Raw query-log position => index in the capture's sql.queries, filled by collect_sql().
          * The log still holds PA's own statements; sql.queries does not, so a position read off
@@ -93,6 +99,15 @@ if (!class_exists('SSPA_Capture')) {
             if (class_exists('SSPA_Archive_Queries')) {
                 $this->archives = new SSPA_Archive_Queries();
                 $this->archives->arm();
+            }
+            // Where each query came from. SSPA_QUERY_CONTEXT false switches it off (it is how
+            // its overhead is measured). Frames are read here only when PA's own wpdb, which
+            // already takes them, is not the one installed.
+            require_once __DIR__ . '/class-sspa-query-context.php';
+            if (class_exists('SSPA_Query_Context') && !(defined('SSPA_QUERY_CONTEXT') && !SSPA_QUERY_CONTEXT)) {
+                $this->query_context = new SSPA_Query_Context();
+                $this->query_context->install(!(isset($GLOBALS['wpdb']) && $GLOBALS['wpdb'] instanceof SSPA_Profiling_WPDB));
+                $GLOBALS['sspa_query_context'] = $this->query_context;
             }
             add_action('wp', array($this, 'snapshot_conditionals'));
             register_shutdown_function(array($this, 'finalize'));
@@ -508,10 +523,22 @@ if (!class_exists('SSPA_Capture')) {
                         'caller' => $attr['caller'],
                         'via' => $attr['via'],
                         'chain' => (count($attr['chain']) > 1) ? $attr['chain'] : null,
+                        'cx' => isset($q['cx']) ? $q['cx'] : null,
+                        'frames' => $q['frames'],
                     );
                 }
             } elseif (!empty($wpdb->queries) && is_array($wpdb->queries)) {
-                foreach ($wpdb->queries as $q) {
+                $matched = array();
+                if ($this->query_context) {
+                    $logged = array();
+                    foreach ($wpdb->queries as $position => $q) {
+                        if (isset($q[0], $q[1], $q[2])) {
+                            $logged[$position] = $q[0];
+                        }
+                    }
+                    $matched = $this->query_context->match($logged);
+                }
+                foreach ($wpdb->queries as $position => $q) {
                     if (isset($q[0], $q[1], $q[2])) {
                         // Standard SAVEQUERIES triple; QM's drop-in appends result/trace.
                         $rows = null;
@@ -534,6 +561,8 @@ if (!class_exists('SSPA_Capture')) {
                             'caller' => $attr['caller'],
                             'via' => $attr['via'],
                             'chain' => (count($attr['chain']) > 1) ? $attr['chain'] : null,
+                            'cx' => isset($matched[$position]) ? $matched[$position] : null,
+                            'frames' => null,
                         );
                     }
                 }
@@ -565,6 +594,7 @@ if (!class_exists('SSPA_Capture')) {
             $total_rows = 0;
             $dupes = array();
             $queries = array();
+            $context_count = 0;
             $this->sql_log_index = array();
             foreach ($entries as $i => $e) {
                 $this->sql_log_index[$e['log_index']] = $i;
@@ -579,7 +609,7 @@ if (!class_exists('SSPA_Capture')) {
                 $dupes[$fp]['count']++;
                 $dupes[$fp]['ms'] += $e['ms'];
                 $full = isset($keep_full[$i]) || $e['ms'] >= self::FULL_SQL_MS || $e['rows'] >= self::FULL_SQL_ROWS || $e['err'];
-                $queries[] = array(
+                $query = array(
                     // Stable within this capture. One execution gets one ID regardless of how
                     // many components appear in its attribution chain.
                     'event_id' => 'q-' . ($i + 1),
@@ -594,6 +624,16 @@ if (!class_exists('SSPA_Capture')) {
                     'via' => $e['via'],
                     'chain' => $e['chain'],
                 );
+                // Where it came from, for the retained statements only: those are the ones the
+                // panel, the exports and the abilities show one by one.
+                if ($full && $this->query_context && null !== $e['cx']) {
+                    $context = $this->query_context->context($e['cx'], $e['frames'], $map, $e['sql']);
+                    if ($context) {
+                        $query['context'] = $context;
+                        $context_count++;
+                    }
+                }
+                $queries[] = $query;
             }
 
             $dupe_count = 0;
@@ -629,6 +669,8 @@ if (!class_exists('SSPA_Capture')) {
                 // Diagnostic for attribution coverage, not for the user: how many queries had
                 // their stack cut at MAX_FRAMES, potentially hiding the calling component.
                 'frames_truncated' => isset($wpdb->sspa_frames_truncated) ? (int) $wpdb->sspa_frames_truncated : 0,
+                // How the per-query context was observed: null when it was switched off.
+                'context' => $this->query_context ? array_merge(array('schema' => 1, 'attached' => $context_count), $this->query_context->summary()) : null,
                 'queries' => $queries,
             );
         }

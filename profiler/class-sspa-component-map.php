@@ -243,6 +243,67 @@ if (!class_exists('SSPA_Component_Map')) {
             );
         }
 
+        /**
+         * A file as an administrator recognises it: a symlinked plugin under the plugins
+         * directory it was registered from, then relative to the WordPress root
+         * (wp-content/themes/x/footer.php), or relative to wp-content when that lives elsewhere.
+         */
+        public function display_file($file) {
+            $file = str_replace('\\', '/', (string) $file);
+            foreach ($this->plugin_realpaths as $real => $registered) {
+                if ($file === $real || strpos($file, $real . '/') === 0) {
+                    $file = $registered . substr($file, strlen($real));
+                    break;
+                }
+            }
+            $content = defined('WP_CONTENT_DIR') ? $this->norm(WP_CONTENT_DIR) : '';
+            if ($this->abspath && strpos($file, $this->abspath . '/') === 0) {
+                return substr($file, strlen($this->abspath) + 1);
+            }
+            if ($content && strpos($file, $content . '/') === 0) {
+                return 'wp-content/' . substr($file, strlen($content) + 1);
+            }
+            return basename($file);
+        }
+
+        /**
+         * The first $limit frames that are the site's code or core's, innermost first, as
+         * {file, line, function}: the profiler's own frames and wpdb's internals are dropped, so the
+         * first frame is the line that asked wpdb for the query.
+         *
+         * @param array $frames Arrays of [file, line, fn], innermost first.
+         */
+        public function display_frames($frames, $limit) {
+            $kept = array();
+            foreach ((array) $frames as $frame) {
+                if (!isset($frame[0])) {
+                    continue;
+                }
+                $file = str_replace('\\', '/', (string) $frame[0]);
+                $fn = isset($frame[2]) ? (string) $frame[2] : '';
+                // The profiler's own files, wpdb's internals, and core calling one of the
+                // profiler's wrappers (a timed shortcode or hook callback) are not the site's code.
+                if (strpos($file, $this->own_dir . '/') === 0 || preg_match('#/wp-includes/(class-wpdb|wp-db)\.php$#', $file) || 0 === strpos($fn, 'SSPA_')) {
+                    continue;
+                }
+                $kept[] = array($file, isset($frame[1]) ? (int) $frame[1] : 0, $fn, 'core' === $this->classify_file($file)['type']);
+            }
+            // Keep the line that called wpdb, then go straight to the first frame of a plugin,
+            // theme or MU plugin: WP_Query::get_posts and WP_Query::query between them say nothing.
+            $elided = 0;
+            for ($first = 1; $first < count($kept) && $kept[$first][3]; $first++) {
+            }
+            if ($first < count($kept) && $first > 1) {
+                $elided = $first - 1;
+                array_splice($kept, 1, $elided);
+            }
+            $out = array();
+            foreach (array_slice($kept, 0, $limit) as $frame) {
+                $out[] = array('file' => $this->display_file($frame[0]), 'line' => $frame[1], 'function' => $frame[2]);
+            }
+            return $out;
+        }
+
         private function first_frame_label($frames) {
             foreach ((array) $frames as $frame) {
                 if (!isset($frame[0])) {

@@ -108,7 +108,7 @@ const {
     const data = JSON.parse(
       fs.readFileSync(output + "/page-diagnostic.json", "utf8"),
     );
-    expect(data.schema).toBe("sspa/page-diagnostic-export@1");
+    expect(data.schema).toBe("sspa/page-diagnostic-export@2");
     expect(Number(data.profile.id)).toBe(id);
     expect(Number(data.profile.sql_count)).toBe(Number(saved.sql_count));
     expect(data.capture.sql.queries.length).toBeGreaterThan(0);

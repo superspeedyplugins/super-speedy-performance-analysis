@@ -219,4 +219,133 @@ class SSPA_Explain {
         }
         return $problems ? implode('; ', $problems) : null;
     }
+
+    /** Seconds the Analyse rows re-run may take before the server stops it (MariaDB). */
+    const ANALYSE_SECONDS = 60;
+
+    /**
+     * Whether Analyse rows may execute this statement: one SELECT (a WITH ... SELECT included) that
+     * cannot write, lock or export. EXPLAIN never executes; this does, once, so it is stricter.
+     */
+    public static function is_analysable($sql) {
+        if (!self::is_explainable($sql)) {
+            return false;
+        }
+        $unquoted = preg_replace("/'(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\"/s", "''", (string) $sql);
+        if (null === $unquoted) {
+            return false;
+        }
+        return !preg_match('/\b(INTO\s+(OUTFILE|DUMPFILE|@)|FOR\s+UPDATE|FOR\s+SHARE|LOCK\s+IN\s+SHARE\s+MODE|GET_LOCK|RELEASE_LOCK)\b/i', $unquoted);
+    }
+
+    /**
+     * Which statement the server offers for actual row counts: ANALYZE FORMAT=JSON (MariaDB 10.1+),
+     * EXPLAIN ANALYZE (MySQL 8.0.18+), or null.
+     */
+    public static function analyse_method() {
+        global $wpdb;
+        $info = strtolower((string) $wpdb->db_server_info());
+        if (false !== strpos($info, 'mariadb')) {
+            return 'ANALYZE FORMAT=JSON';
+        }
+        $version = preg_match('/(\d+\.\d+\.\d+)/', (string) $wpdb->db_version() . ' ' . $info, $m) ? $m[1] : '0';
+        return version_compare($version, '8.0.18', '>=') ? 'EXPLAIN ANALYZE' : null;
+    }
+
+    /**
+     * Runs the SELECT once more under the server's ANALYZE, inside a read-only transaction, and
+     * reports the rows each table actually produced. Called only from an administrator's click.
+     *
+     * @return array|WP_Error {method, total_ms, tables: [{table, rows, loops, filtered, time_ms}], raw}
+     */
+    public static function analyse_rows($sql) {
+        global $wpdb;
+        if (!self::is_analysable($sql)) {
+            return new WP_Error('sspa_analyse_refused', __('Analyse rows runs only a SELECT; this statement is not one, so it was not run.', 'super-speedy-performance-analysis'));
+        }
+        $method = self::analyse_method();
+        if (null === $method) {
+            return new WP_Error('sspa_analyse_unsupported', __('This database server has no ANALYZE statement (it needs MySQL 8.0.18 or later, or MariaDB).', 'super-speedy-performance-analysis'));
+        }
+        $statement = rtrim(trim((string) $sql), ';');
+        $run = ('ANALYZE FORMAT=JSON' === $method)
+            ? 'SET STATEMENT max_statement_time=' . (int) self::ANALYSE_SECONDS . ' FOR ANALYZE FORMAT=JSON ' . $statement
+            : 'EXPLAIN ANALYZE ' . $statement;
+        $suppress = $wpdb->suppress_errors(true);
+        $wpdb->query('START TRANSACTION READ ONLY');
+        $start = microtime(true);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $statement IS the captured SELECT being analysed; is_analysable() admits one SELECT only, and the read-only transaction refuses any write.
+        $raw = $wpdb->get_var($run);
+        $wall_ms = (microtime(true) - $start) * 1000;
+        $error = $wpdb->last_error;
+        $wpdb->query('ROLLBACK');
+        $wpdb->suppress_errors($suppress);
+        if ('' !== $error || !is_string($raw) || '' === $raw) {
+            /* translators: %s: database error message */
+            return new WP_Error('sspa_analyse_failed', sprintf(__('The database refused the analysis: %s', 'super-speedy-performance-analysis'), '' !== $error ? $error : __('no result', 'super-speedy-performance-analysis')));
+        }
+        $tables = array();
+        $total = null;
+        if ('ANALYZE FORMAT=JSON' === $method) {
+            $doc = json_decode($raw, true);
+            if (is_array($doc)) {
+                // Optimisation plus execution: a constant (one-row) derived table is read while the
+                // plan is made, so its cost is under query_optimization, not query_block.
+                if (isset($doc['query_block']['r_total_time_ms'])) {
+                    $total = (float) $doc['query_block']['r_total_time_ms'] + (isset($doc['query_optimization']['r_total_time_ms']) ? (float) $doc['query_optimization']['r_total_time_ms'] : 0.0);
+                }
+                $walk = function ($node) use (&$walk, &$tables) {
+                    if (!is_array($node)) {
+                        return;
+                    }
+                    if (isset($node['table_name']) && array_key_exists('r_rows', $node)) {
+                        $loops = isset($node['r_loops']) ? (int) $node['r_loops'] : 1;
+                        $tables[] = array(
+                            'table' => (string) $node['table_name'],
+                            'access_type' => isset($node['access_type']) ? (string) $node['access_type'] : null,
+                            'key' => isset($node['key']) ? (string) $node['key'] : null,
+                            'rows' => (int) round((float) $node['r_rows'] * max(1, $loops)),
+                            'loops' => $loops,
+                            'estimated_rows' => isset($node['rows']) ? (int) $node['rows'] : null,
+                            'filtered' => isset($node['r_filtered']) ? round((float) $node['r_filtered'], 1) : null,
+                            'time_ms' => isset($node['r_table_time_ms']) ? round((float) $node['r_table_time_ms'], 3) : null,
+                        );
+                    }
+                    foreach ($node as $child) {
+                        $walk($child);
+                    }
+                };
+                $walk($doc);
+            }
+        } else {
+            // MySQL's tree: "-> Table scan on wp_posts  (cost=..) (actual time=0.05..12.3 rows=860000 loops=1)".
+            foreach (preg_split('/\R/', $raw) as $i => $line) {
+                if (!preg_match('/actual time=([\d.]+)\.\.([\d.]+) rows=([\d.]+) loops=(\d+)/', $line, $m)) {
+                    continue;
+                }
+                if (null === $total) {
+                    $total = (float) $m[2];
+                }
+                if (preg_match('/\bon (`?[A-Za-z0-9_$]+`?)(?: using (\S+))?/', $line, $t)) {
+                    $tables[] = array(
+                        'table' => trim($t[1], '`'),
+                        'access_type' => trim(preg_replace('/^\s*->\s*/', '', strtok($line, '(')), ' '),
+                        'key' => isset($t[2]) ? $t[2] : null,
+                        'rows' => (int) round((float) $m[3] * (int) $m[4]),
+                        'loops' => (int) $m[4],
+                        'estimated_rows' => preg_match('/rows=([\d.e+]+)\)/', $line, $e) ? (int) $e[1] : null,
+                        'filtered' => null,
+                        'time_ms' => round((float) $m[2], 3),
+                    );
+                }
+            }
+        }
+        return array(
+            'method' => $method,
+            'total_ms' => round(null !== $total ? $total : $wall_ms, 3),
+            'wall_ms' => round($wall_ms, 3),
+            'tables' => $tables,
+            'raw' => (strlen($raw) <= 65536) ? $raw : substr($raw, 0, 65536),
+        );
+    }
 }

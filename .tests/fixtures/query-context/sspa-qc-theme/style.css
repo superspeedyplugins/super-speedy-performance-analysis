@@ -1,0 +1,5 @@
+/*
+Theme Name: SSPA query-context fixture
+Description: Test-only classic theme for .tests/query-context/run.sh: a header, a main loop, a widget sidebar and a footer whose shortcode runs a slow WP_Query, so each slow query has a known template, area, hook and shortcode.
+Version: 1.0
+*/

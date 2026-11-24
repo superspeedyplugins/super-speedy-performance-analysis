@@ -53,6 +53,10 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
                 return true;
             }
 
+            // SSPA_Query_Context observes this query through wpdb's `query` filter inside
+            // parent::query(); its next observation number is this query's context.
+            $context = isset($GLOBALS['sspa_query_context']) ? $GLOBALS['sspa_query_context'] : null;
+            $seq = $context ? $context->seq : 0;
             $start = microtime(true);
             $result = parent::query($query);
             $ms = (microtime(true) - $start) * 1000;
@@ -73,6 +77,7 @@ if (!class_exists('SSPA_Profiling_WPDB') && class_exists('wpdb')) {
                 'rows' => $is_write ? (int) $this->rows_affected : (int) $this->num_rows,
                 'err' => ($this->last_error !== '') ? $this->last_error : null,
                 'frames' => $frames,
+                'cx' => ($context && $context->seq > $seq) ? $seq + 1 : null,
             );
 
             return $result;

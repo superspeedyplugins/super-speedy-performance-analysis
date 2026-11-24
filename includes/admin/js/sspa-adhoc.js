@@ -571,6 +571,10 @@
 	// Click a query row: copy the FULL query (the cell only shows the start) and confirm
 	// with a small toast that rises and fades where you clicked.
 	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-qrow', function (e) {
+		// The "Where it came from" block is read, selected and clicked in; it never copies.
+		if ($(e.target).closest('.sspa-adhoc-qctx').length) {
+			return;
+		}
 		var sql = $(this).attr('data-sql') || '';
 		if (!sql) {
 			return;
@@ -584,6 +588,39 @@
 		// Copied inside the click; a refusal shows the query to copy by hand instead of nothing.
 		SSPAFeedback.copyText(sql).then(function (outcome) {
 			if (!outcome.manual) { toast(); }
+		});
+	});
+
+	// Analyse rows: the server re-runs the retained SELECT (named by profile and event id, never
+	// sent as SQL) under ANALYZE and answers with the rows each table actually read.
+	$(document).on('click', '#sspa-adhoc-pop .sspa-adhoc-analyse', function () {
+		var btn = $(this);
+		var out = btn.closest('.sspa-adhoc-qctx').find('.sspa-adhoc-analyse-result');
+		btn.prop('disabled', true);
+		out.html('<p class="sspa-adhoc-note">' + esc(wp.i18n.__('Running the query once more under ANALYZE...', 'super-speedy-performance-analysis')) + '</p>');
+		$.post(sspa_adhoc.ajaxurl, {
+			action: 'sspa_analyse_rows',
+			nonce: sspa_adhoc.nonce,
+			profile_id: btn.attr('data-profile'),
+			event_id: btn.attr('data-event')
+		}, function (resp) {
+			btn.prop('disabled', false);
+			if (!resp.success) {
+				out.html('<p class="sspa-adhoc-error">' + esc(SSPAFeedback.response(resp, wp.i18n.__('The analysis failed.', 'super-speedy-performance-analysis'))) + '</p>');
+				return;
+			}
+			var d = resp.data;
+			var rows = (d.tables || []).map(function (t) {
+				return '<tr><td><code>' + esc(t.table) + '</code></td><td>' + esc(t.access_type || '-') + (t.key ? ' <code>' + esc(t.key) + '</code>' : '') + '</td><td>' + esc(Number(t.rows).toLocaleString()) + '</td><td>' + esc(t.estimated_rows === null || t.estimated_rows === undefined ? '-' : Number(t.estimated_rows).toLocaleString()) + '</td><td>' + esc(t.loops) + '</td></tr>';
+			}).join('');
+			out.html('<p class="sspa-adhoc-note">' + esc(wp.i18n.sprintf(
+				/* translators: 1: ANALYZE statement used, 2: milliseconds */
+				wp.i18n.__('%1$s: the query took %2$s ms this time.', 'super-speedy-performance-analysis'), d.method, Number(d.total_ms).toFixed(1)
+			)) + '</p><table class="sspa-adhoc-table sspa-adhoc-analyse-table"><tr><th>' + esc(wp.i18n.__('Table', 'super-speedy-performance-analysis')) + '</th><th>' + esc(wp.i18n.__('Access', 'super-speedy-performance-analysis')) + '</th><th>' + esc(wp.i18n.__('Rows read', 'super-speedy-performance-analysis')) + '</th><th>' + esc(wp.i18n.__('Estimated', 'super-speedy-performance-analysis')) + '</th><th>' + esc(wp.i18n.__('Loops', 'super-speedy-performance-analysis')) + '</th></tr>' + rows + '</table>'
+				+ '<details><summary>' + esc(wp.i18n.__('Raw output', 'super-speedy-performance-analysis')) + '</summary><pre class="sspa-adhoc-analyse-raw">' + esc(d.raw) + '</pre></details>');
+		}).fail(function (xhr, textStatus) {
+			btn.prop('disabled', false);
+			out.html('<p class="sspa-adhoc-error">' + esc(SSPAFeedback.xhr(xhr, wp.i18n.__('The analysis failed.', 'super-speedy-performance-analysis'), textStatus)) + '</p>');
 		});
 	});
 

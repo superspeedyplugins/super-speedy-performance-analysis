@@ -134,6 +134,7 @@ class SSPA_Bootstrap {
             'sspa_profile_target' => array('SSPA_Profile_Panel', 'ajax_target'),
             'sspa_profile_export' => array('SSPA_Profile_Panel', 'ajax_export'),
             'sspa_impact_plan' => array('SSPA_Profile_Panel', 'ajax_impact_plan'),
+            'sspa_analyse_rows' => array('SSPA_Profile_Panel', 'ajax_analyse_rows'),
             'sspa_markdown_export' => array('SSPA_Markdown_Export', 'ajax_export'),
             'sspa_dismiss_offer' => array('SSPA_Offers', 'ajax_dismiss'),
             'sspa_quote_preview' => array('SSPA_Quote_Request', 'ajax_preview'),

@@ -31,6 +31,7 @@ class SSPA_Profile_Panel {
         add_action('wp_ajax_sspa_profile_panel', array(__CLASS__, 'ajax_panel'));
         add_action('wp_ajax_sspa_profile_export', array(__CLASS__, 'ajax_export'));
         add_action('wp_ajax_sspa_impact_plan', array(__CLASS__, 'ajax_impact_plan'));
+        add_action('wp_ajax_sspa_analyse_rows', array(__CLASS__, 'ajax_analyse_rows'));
     }
 
     private static function guard() {
@@ -218,7 +219,8 @@ class SSPA_Profile_Panel {
         $impacts = SSPA_Plugins_Table::latest_impacts('', (string) $row['page_key']);
 
         return array(
-            'schema' => 'sspa/page-diagnostic-export@1',
+            // @2: retained queries carry `context` (capture schema 6). See .kb/agent-api.md.
+            'schema' => 'sspa/page-diagnostic-export@2',
             'generated_at' => gmdate('c'),
             'generated_by' => array(
                 'plugin' => 'super-speedy-performance-analysis',
@@ -286,7 +288,7 @@ class SSPA_Profile_Panel {
         $html .= self::components_html($capture);
         $html .= self::functions_html($capture);
         $minor_sql = !empty($capture['overview']['gen_ms']) && isset($capture['sql']['total_ms']) && $capture['sql']['total_ms'] < $capture['overview']['gen_ms'] * .05;
-        $queries = self::queries_html($capture);
+        $queries = self::queries_html($capture, (int) $row['id']);
         $html .= $minor_sql ? '<details class="sspa-adhoc-span"><summary>' . esc_html__('Minor SQL evidence (under 5% of generation)', 'super-speedy-performance-analysis') . '</summary>' . $queries . '</details>' : $queries;
         $html .= self::http_html($capture);
         $html .= self::environment_html($capture);
@@ -1063,7 +1065,7 @@ class SSPA_Profile_Panel {
      * request, so it cannot contaminate a measurement. Only queries whose full SQL was
      * retained are eligible; a fingerprint's literals are gone and any plan would be fiction.
      */
-    private static function queries_html($capture) {
+    private static function queries_html($capture, $profile_id = 0) {
         if (!is_array($capture) || empty($capture['sql']['queries'])) {
             return '';
         }
@@ -1088,15 +1090,165 @@ class SSPA_Profile_Panel {
                 $meta[] = sprintf(__('%s rows', 'super-speedy-performance-analysis'), number_format((int) $query['rows']));
             }
             $note = SSPA_Explain::summarise(SSPA_Explain::explain($sql));
-            $html .= '<tr class="sspa-adhoc-qrow" data-sql="' . esc_attr($sql) . '" title="'
+            $html .= '<tr class="sspa-adhoc-qrow" data-sql="' . esc_attr($sql) . '" data-event="' . esc_attr(isset($query['event_id']) ? (string) $query['event_id'] : '') . '" title="'
                 . esc_attr__('Click to copy the full query', 'super-speedy-performance-analysis') . '"><td class="sspa-adhoc-sql"><code>'
                 . esc_html($shown) . '</code> <button type="button" class="sspa-adhoc-row-button">' . esc_html__('Copy query', 'super-speedy-performance-analysis') . '</button><br><small>' . esc_html(implode(' · ', $meta)) . '</small>'
                 . ($note ? '<br><small class="sspa-adhoc-explain">' . esc_html__('EXPLAIN:', 'super-speedy-performance-analysis') . ' '
                     . esc_html($note) . '</small>' : '')
+                . self::query_context_html($query, $profile_id)
                 . '</td><td>' . esc_html(number_format((float) $query['ms'], 1)) . 'ms</td></tr>';
         }
         $html .= '</table></div>';
         return $html;
+    }
+
+    /**
+     * Where one retained query came from (capture schema 6): an expandable block under the row.
+     * Captures before 0.71 carry no context; their rows show none, never "ran outside any hook".
+     */
+    private static function query_context_html($query, $profile_id) {
+        $context = isset($query['context']) && is_array($query['context']) ? $query['context'] : null;
+        $analysable = null !== $query['sql'] && SSPA_Explain::is_analysable((string) $query['sql']) && null !== SSPA_Explain::analyse_method();
+        if (!$context && !$analysable) {
+            return '';
+        }
+        $items = array();
+        $item = static function ($label, $value) {
+            return '<li><strong>' . esc_html($label) . ':</strong> ' . $value . '</li>';
+        };
+        $code = static function ($text) {
+            return '<code>' . esc_html((string) $text) . '</code>';
+        };
+        $items[] = $item(__('Plugin', 'super-speedy-performance-analysis'), $code($query['component']) . (!empty($query['via']) ? ' ' . esc_html(sprintf(/* translators: %s: component the work ran in */ __('(via %s)', 'super-speedy-performance-analysis'), $query['via'])) : ''));
+        if ($context) {
+            $items = array_merge($items, self::query_context_items($context, $item, $code));
+        }
+        $button = $analysable
+            ? '<p><button type="button" class="button sspa-adhoc-analyse" data-profile="' . (int) $profile_id . '" data-event="' . esc_attr((string) $query['event_id']) . '">'
+                . esc_html__('Analyse rows', 'super-speedy-performance-analysis') . '</button> <small>'
+                . esc_html__('runs this SELECT once more under the database\'s ANALYZE to count the rows it actually reads', 'super-speedy-performance-analysis')
+                . '</small></p><div class="sspa-adhoc-analyse-result" aria-live="polite"></div>'
+            : '';
+        return '<details class="sspa-adhoc-qctx"><summary>' . esc_html__('Where it came from', 'super-speedy-performance-analysis') . '</summary><ul>'
+            . implode('', $items) . '</ul>' . $button . '</details>';
+    }
+
+    /** The context lines, shared by every query row. */
+    private static function query_context_items($context, $item, $code) {
+        $items = array();
+        if (!empty($context['shortcode']['tag'])) {
+            $shortcode = $code('[' . $context['shortcode']['tag'] . ']');
+            if (!empty($context['shortcode']['owner'])) {
+                $shortcode .= ' ' . esc_html(sprintf(/* translators: %s: component that registered the shortcode */ __('registered by %s', 'super-speedy-performance-analysis'), $context['shortcode']['owner']));
+            }
+            $items[] = $item(__('Shortcode', 'super-speedy-performance-analysis'), $shortcode);
+        }
+        $items[] = $item(__('Hook path', 'super-speedy-performance-analysis'), '' !== (string) $context['hook_path']
+            ? $code($context['hook_path']) . (!empty($context['hook']) && $context['hook'] !== $context['hook_path'] ? ' ' . esc_html(sprintf(/* translators: %s: hook name */ __('(innermost meaningful hook: %s)', 'super-speedy-performance-analysis'), $context['hook'])) : '')
+            : esc_html__('ran outside any action or filter', 'super-speedy-performance-analysis'));
+        $areas = array(
+            'header' => __('header', 'super-speedy-performance-analysis'),
+            'content' => __('content', 'super-speedy-performance-analysis'),
+            'sidebar' => __('sidebar', 'super-speedy-performance-analysis'),
+            'footer' => __('footer', 'super-speedy-performance-analysis'),
+        );
+        $area = (!empty($context['area']) && isset($areas[$context['area']])) ? $areas[$context['area']] : null;
+        $items[] = $item(__('Template and area', 'super-speedy-performance-analysis'), !empty($context['template'])
+            ? $code($context['template']) . ($area ? ' ' . esc_html('(' . $area . ')') : '')
+            : esc_html($area ? $area : __('before the theme template started', 'super-speedy-performance-analysis')));
+        if (!empty($context['widget']['name'])) {
+            $items[] = $item(__('Widget', 'super-speedy-performance-analysis'), esc_html($context['widget']['name']) . (!empty($context['widget']['sidebar']) ? ' ' . $code($context['widget']['sidebar']) : ''));
+        }
+        if (!empty($context['wp_query'])) {
+            $items[] = $item('WP_Query', esc_html(implode('; ', self::wp_query_facts($context['wp_query']))));
+        }
+        $found = isset($context['found_rows']) ? $context['found_rows'] : array();
+        $items[] = $item('SQL_CALC_FOUND_ROWS', !empty($found['calc_found_rows'])
+            ? esc_html(null !== $found['total'] ? sprintf(/* translators: %s: number of matching rows */ __('yes, total %s', 'super-speedy-performance-analysis'), number_format((int) $found['total'])) : __('yes', 'super-speedy-performance-analysis'))
+            : esc_html__('no', 'super-speedy-performance-analysis'));
+        if (!empty($context['wp_query'])) {
+            $spro = array();
+            foreach ((array) $context['spro'] as $name => $value) {
+                $spro[] = $code($name . ' = ' . (is_bool($value) ? ($value ? 'true' : 'false') : (null === $value ? 'null' : (string) $value)));
+            }
+            $items[] = $item(__('Scalability Pro query vars', 'super-speedy-performance-analysis'), $spro ? implode(' ', $spro) : esc_html__('none set', 'super-speedy-performance-analysis'));
+        }
+        if (!empty($context['frames'])) {
+            $frames = array();
+            foreach ($context['frames'] as $frame) {
+                $frames[] = '<li>' . $code($frame['file'] . ':' . (int) $frame['line'] . ' ' . $frame['function']) . '</li>';
+            }
+            $items[] = $item(__('Call stack', 'super-speedy-performance-analysis'), '<ol class="sspa-adhoc-frames">' . implode('', $frames) . '</ol>');
+        }
+        return $items;
+    }
+
+    /** WP_Query facts as short phrases; English-only identifiers stay as WordPress names them. */
+    public static function wp_query_facts($w) {
+        $facts = array(!empty($w['main']) ? __('main query', 'super-speedy-performance-analysis') : __('secondary query', 'super-speedy-performance-analysis'));
+        if (null !== $w['posts_per_page']) {
+            $facts[] = sprintf(
+                /* translators: 1: posts per page, 2: query var or setting that set it */
+                __('posts_per_page %1$s (set by %2$s)', 'super-speedy-performance-analysis'),
+                (int) $w['posts_per_page'],
+                'default' === $w['per_page_from'] ? __('the Reading setting', 'super-speedy-performance-analysis') : $w['per_page_from']
+            );
+        }
+        if (!empty($w['paged'])) {
+            $facts[] = 'paged ' . (int) $w['paged'];
+        }
+        if (null !== $w['offset']) {
+            $facts[] = 'offset ' . (int) $w['offset'];
+        }
+        $facts[] = 'no_found_rows ' . (!empty($w['no_found_rows']) ? 'true' : 'false');
+        if ('all' !== $w['fields']) {
+            $facts[] = 'fields ' . $w['fields'];
+        }
+        $type = is_array($w['post_type']) ? implode(', ', $w['post_type']) : (string) $w['post_type'];
+        $facts[] = 'post_type ' . ('' !== $type ? $type : __('default', 'super-speedy-performance-analysis'));
+        if (!empty($w['suppress_filters'])) {
+            $facts[] = 'suppress_filters true';
+        }
+        foreach (array('tax_query', 'meta_query') as $kind) {
+            if (empty($w[$kind]['clauses'])) {
+                continue;
+            }
+            $parts = array();
+            foreach ($w[$kind]['clauses'] as $clause) {
+                $parts[] = 'tax_query' === $kind
+                    ? sprintf(/* translators: 1: taxonomy, 2: field, 3: operator, 4: number of terms */ _n('%1$s by %2$s %3$s (%4$d term)', '%1$s by %2$s %3$s (%4$d terms)', (int) $clause['term_count'], 'super-speedy-performance-analysis'), $clause['taxonomy'], $clause['field'], $clause['operator'], (int) $clause['term_count'])
+                    : trim($clause['key'] . ' ' . $clause['compare'] . ('CHAR' !== $clause['type'] ? ' ' . $clause['type'] : ''));
+            }
+            $facts[] = $kind . ' ' . implode(' ' . $w[$kind]['relation'] . ' ', $parts);
+        }
+        return $facts;
+    }
+
+    /**
+     * Analyse rows: re-runs one retained SELECT of this profile under the server's ANALYZE. The
+     * statement is read from the stored capture by event id; the browser never sends SQL.
+     */
+    public static function ajax_analyse_rows() {
+        check_ajax_referer('sspa_admin', 'nonce');
+        if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
+        $row = self::profile_row(isset($_POST['profile_id']) ? absint($_POST['profile_id']) : 0);
+        $event = isset($_POST['event_id']) ? sanitize_key(wp_unslash($_POST['event_id'])) : '';
+        $capture = $row ? SSPA_Page_Summary::site_capture(self::capture($row)) : null;
+        $sql = null;
+        foreach ((array) (is_array($capture) && isset($capture['sql']['queries']) ? $capture['sql']['queries'] : array()) as $query) {
+            if (isset($query['event_id']) && $query['event_id'] === $event) {
+                $sql = isset($query['sql']) ? $query['sql'] : null;
+                break;
+            }
+        }
+        if (null === $sql) {
+            wp_send_json_error(__('That query is not retained in this measurement, so it cannot be analysed.', 'super-speedy-performance-analysis'), 404);
+        }
+        $result = SSPA_Explain::analyse_rows((string) $sql);
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message(), 'sspa_analyse_refused' === $result->get_error_code() ? 400 : 500);
+        }
+        wp_send_json_success($result);
     }
 
     private static function http_html($capture) {

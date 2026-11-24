@@ -767,6 +767,38 @@
 	color: #8a6116;
 }
 
+/* ── Where a slow query came from ───────────────────────────────────── */
+
+#sspa-adhoc-pop .sspa-adhoc-qctx {
+	cursor: auto;
+	margin-top: 4px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-qctx summary {
+	cursor: pointer;
+	font-size: 12px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-qctx ul {
+	margin: 4px 0 4px 1em;
+	font-size: 12px;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-qctx code {
+	overflow-wrap: anywhere;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-frames {
+	margin: 2px 0 2px 1.5em;
+}
+
+#sspa-adhoc-pop .sspa-adhoc-analyse-raw {
+	max-height: 240px;
+	overflow: auto;
+	white-space: pre-wrap;
+	font-size: 11px;
+}
+
 /* ── Measured impact verdicts ───────────────────────────────────────── */
 
 #sspa-adhoc-pop .sspa-adhoc-adds {
