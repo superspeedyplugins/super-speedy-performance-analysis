@@ -43,7 +43,8 @@ const {session, admin, expect, wp, output} = require('./fleet-context.cjs');
     await expect(page.locator('#sspa-history-comparison')).toHaveText('Chargement de la comparaison…');
     await expect.poll(() => !!pending).toBe(true);
     await pending.abort('failed');
-    await expect(page.locator('#sspa-history-comparison')).toHaveText('Comparaison impossible. Réessayez.');
+    // The message names the cause (sspa-feedback.js, its own translated script handle).
+    await expect(page.locator('#sspa-history-comparison')).toHaveText('Comparaison impossible. Réessayez. La requête n\'a pas atteint le serveur.');
     await page.screenshot({path:output + '/translated-comparison.png'});
     console.log('PASS PHP AJAX controls and JavaScript comparison loading/error messages render translated text');
   } finally { await browser.close(); }

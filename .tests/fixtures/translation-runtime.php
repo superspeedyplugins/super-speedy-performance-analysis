@@ -14,6 +14,8 @@ $sspa_test_translations = array(
     'Compare' => 'Comparer',
     'Loading the selected comparison…' => 'Chargement de la comparaison…',
     'The points in time could not be compared. Please try Compare again.' => 'Comparaison impossible. Réessayez.',
+    // sspa-feedback.js (0.70.6+): the cause appended to a failed request's message.
+    'The request did not reach the server (the connection failed or was blocked).' => 'La requête n\'a pas atteint le serveur.',
 );
 add_filter('gettext', function ($translated, $text, $domain) use ($sspa_test_translations) {
     return 'super-speedy-performance-analysis' === $domain && isset($sspa_test_translations[$text]) ? $sspa_test_translations[$text] : $translated;
