@@ -519,17 +519,17 @@ class SSPA_Markdown_Export {
         if (!empty($w['suppress_filters'])) {
             $facts[] = 'suppress_filters true';
         }
-        foreach (array('tax_query', 'meta_query') as $kind) {
+        foreach (array('tax_filter' => 'tax_query', 'meta_filter' => 'meta_query') as $kind => $label) {
             if (empty($w[$kind]['clauses'])) {
                 continue;
             }
             $parts = array();
             foreach ($w[$kind]['clauses'] as $clause) {
-                $parts[] = 'tax_query' === $kind
+                $parts[] = 'tax_filter' === $kind
                     ? self::plain($clause['taxonomy'] . ' by ' . $clause['field'] . ' ' . $clause['operator']) . ' (' . (int) $clause['term_count'] . ' term' . (1 === (int) $clause['term_count'] ? '' : 's') . ')'
                     : '`' . self::code($clause['key']) . '` ' . self::plain($clause['compare'] . ('CHAR' !== $clause['type'] ? ' ' . $clause['type'] : ''));
             }
-            $facts[] = $kind . ' ' . implode(' ' . self::plain($w[$kind]['relation']) . ' ', $parts);
+            $facts[] = $label . ' ' . implode(' ' . self::plain($w[$kind]['relation']) . ' ', $parts);
         }
         return implode('; ', $facts);
     }

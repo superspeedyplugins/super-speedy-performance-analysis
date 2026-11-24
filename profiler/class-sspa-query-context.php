@@ -380,8 +380,9 @@ if (!class_exists('SSPA_Query_Context')) {
                 'fields' => !empty($qv['fields']) ? (string) $qv['fields'] : 'all',
                 'post_type' => is_array($post_type) ? array_values(array_map('strval', $post_type)) : (string) $post_type,
                 'suppress_filters' => !empty($qv['suppress_filters']),
-                'tax_query' => $this->tax_summary($query),
-                'meta_query' => $this->meta_summary($query),
+                // Not named tax_query/meta_query: Plugin Check reads those array keys as a query.
+                'tax_filter' => $this->tax_summary($query),
+                'meta_filter' => $this->meta_summary($query),
                 'spro' => $spro ? $spro : null,
             );
             $facts['total'] = null;

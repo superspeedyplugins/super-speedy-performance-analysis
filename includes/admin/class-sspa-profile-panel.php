@@ -1209,17 +1209,17 @@ class SSPA_Profile_Panel {
         if (!empty($w['suppress_filters'])) {
             $facts[] = 'suppress_filters true';
         }
-        foreach (array('tax_query', 'meta_query') as $kind) {
+        foreach (array('tax_filter' => 'tax_query', 'meta_filter' => 'meta_query') as $kind => $label) {
             if (empty($w[$kind]['clauses'])) {
                 continue;
             }
             $parts = array();
             foreach ($w[$kind]['clauses'] as $clause) {
-                $parts[] = 'tax_query' === $kind
+                $parts[] = 'tax_filter' === $kind
                     ? sprintf(/* translators: 1: taxonomy, 2: field, 3: operator, 4: number of terms */ _n('%1$s by %2$s %3$s (%4$d term)', '%1$s by %2$s %3$s (%4$d terms)', (int) $clause['term_count'], 'super-speedy-performance-analysis'), $clause['taxonomy'], $clause['field'], $clause['operator'], (int) $clause['term_count'])
                     : trim($clause['key'] . ' ' . $clause['compare'] . ('CHAR' !== $clause['type'] ? ' ' . $clause['type'] : ''));
             }
-            $facts[] = $kind . ' ' . implode(' ' . $w[$kind]['relation'] . ' ', $parts);
+            $facts[] = $label . ' ' . implode(' ' . $w[$kind]['relation'] . ' ', $parts);
         }
         return $facts;
     }
