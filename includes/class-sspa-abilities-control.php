@@ -298,6 +298,29 @@ class SSPA_Abilities_Control {
                     ),
                 ))
             ),
+            'get-watchdog-status' => self::ability(
+                __('Get the update watchdog status', 'super-speedy-performance-analysis'),
+                __('The update watchdog: its settings, whether a check is running (stage and runs), updates waiting for the next check, when the next update check and weekly check are due, and the latest verdicts with their regressions. A check measures the pages of the last full analysis after plugin, theme or core updates, re-measures anything that regressed and emails the administrator only when something got worse.', 'super-speedy-performance-analysis'),
+                'read', 'exec_watchdog_status'
+            ),
+            'update-watchdog-settings' => self::ability(
+                __('Change the update watchdog settings', 'super-speedy-performance-analysis'),
+                __('Change any of: enabled, checkout (include the checkout test, which places, completes, refunds and trashes a hidden zero-price order), recipients (comma-separated addresses; "" means the site administrator), threshold_percent and threshold_ms (a page or step counts when it is at least both slower), weekly_day (monday to sunday). An invalid value changes nothing.', 'super-speedy-performance-analysis'),
+                'act_idempotent', 'exec_update_watchdog_settings',
+                self::input(array(
+                    'enabled' => array('type' => 'boolean'),
+                    'checkout' => array('type' => 'boolean'),
+                    'recipients' => $string,
+                    'threshold_percent' => array('type' => 'integer', 'minimum' => 1, 'maximum' => 1000),
+                    'threshold_ms' => array('type' => 'integer', 'minimum' => 1, 'maximum' => 60000),
+                    'weekly_day' => array('type' => 'string', 'enum' => array('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')),
+                ))
+            ),
+            'run-watchdog-now' => self::ability(
+                __('Run the update watchdog now', 'super-speedy-performance-analysis'),
+                __('Start a watchdog check now (of the waiting updates when there are any), or, while a check runs, move it on: the current measurement\'s next batch, then its next stage. Call it in a loop until running is false, then read last for the verdict; it does not rely on WP-Cron. Emails the alert addresses only when something regressed.', 'super-speedy-performance-analysis'),
+                'act', 'exec_run_watchdog_now'
+            ),
             'prepare-quote-request' => self::ability(
                 __('Prepare a fix-quote request', 'super-speedy-performance-analysis'),
                 __('Build the Markdown a "Request a fix quote" would send for one page profile and hold it as a draft for two hours. Show the markdown to the site owner; send-quote-request sends it. source is page-analysis, cache-tab, summary or compare.', 'super-speedy-performance-analysis'),
@@ -423,6 +446,7 @@ class SSPA_Abilities_Control {
             array('name' => 'real traffic', 'steps' => array('start-traffic-collection', 'get-traffic-collection-status', 'stop-traffic-collection', 'get-traffic-observations', 'compare-traffic-collections')),
             array('name' => 'history', 'steps' => array('list-runs', 'get-run', 'compare-history', 'get-history-series', 'set-history-expectation')),
             array('name' => 'reports', 'steps' => array('get-markdown-report', 'prepare-quote-request', 'send-quote-request')),
+            array('name' => 'update watchdog', 'steps' => array('get-watchdog-status', 'update-watchdog-settings', 'run-watchdog-now (loop until running is false)')),
         );
         $cron_note = $cron_disabled
             ? __('WP-Cron is disabled here: runs move only when advance-run is called (or a system cron runs wp-cron.php).', 'super-speedy-performance-analysis')
@@ -1028,6 +1052,19 @@ class SSPA_Abilities_Control {
             }
         }
         return self::exec_get_settings(array());
+    }
+
+    public static function exec_watchdog_status($input) {
+        return SSPA_Watchdog::status();
+    }
+
+    public static function exec_update_watchdog_settings($input) {
+        $settings = SSPA_Watchdog::update_settings((array) $input);
+        return is_wp_error($settings) ? $settings : SSPA_Watchdog::status();
+    }
+
+    public static function exec_run_watchdog_now($input) {
+        return SSPA_Watchdog::run_now();
     }
 
     public static function exec_prepare_quote($input) {

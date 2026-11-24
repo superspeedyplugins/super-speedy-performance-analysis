@@ -36,6 +36,7 @@ The namespace is `sspa`; an agent configured with ability names in any other nam
 - Measure: `run-analysis`, `run-deep-analysis`, `profile-url`, `profile-admin-save`, `run-checkout-flow`, `run-cache-check`, `run-parameter-check`, `profile-endpoint`, `start-ajax-window`, `stop-ajax-window`, `compare-ajax-windows`, `start-traffic-collection`, `stop-traffic-collection`
 - Keep it moving: `advance-run`, `advance-cache-check`, `advance-parameter-check`, `cancel-run`
 - Configure: `set-profiler`, `update-settings`, `set-history-expectation`
+- Update watchdog: `get-watchdog-status`, `update-watchdog-settings`, `run-watchdog-now` (call it in a loop until `running` is false)
 - Sharing and quotes: `submit-results`, `process-submissions`, `manage-submission`, `prepare-quote-request`
 
 ### Delete or send (need `confirm: true`)

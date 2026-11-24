@@ -74,6 +74,9 @@ ssx_hook_wporg() {
     ssx_rm "$stage" "includes/admin/img"
     # Pro's DNS check; its call sites are SSPA-PRO blocks.
     ssx_rm "$stage" "includes/class-sspa-dns-check.php" "includes/admin/partials/dns-check.php"
+    # Pro's update watchdog; its call sites (bootstrap, Compare settings and badge, abilities) are
+    # SSPA-PRO blocks.
+    ssx_rm "$stage" "includes/class-sspa-watchdog.php" "includes/admin/js/sspa-watchdog.js"
 
     # The submodule pointer is meaningless without the submodule, and .gitmodules is a
     # PCP "hidden files" error in its own right. (Dot-files are stripped by ssx_build_target
@@ -86,6 +89,7 @@ ssx_hook_wporg() {
 
     ssx_assert_no_updater "$stage"
     ssx_assert_no_pro_code "$stage"
+    ssx_assert_no_watchdog "$stage"
     ssx_assert_menu_fallback "$stage"
     ssx_assert_history_chart "$stage"
     ssx_assert_versions_match "$stage"
@@ -153,11 +157,20 @@ ssx_assert_no_pro_code() {
                    manage-submission prune-stored-captures delete-traffic-collection cleanup-workflow-objects \
                    send-quote-request prepare-quote-request start-traffic-collection stop-traffic-collection submit-results \
                    run-parameter-check advance-parameter-check advance-cache-check stop-ajax-window compare-ajax-windows \
-                   set-history-expectation; do
+                   set-history-expectation update-watchdog-settings run-watchdog-now get-watchdog-status; do
         grep -rqE "'$ability'" "$stage/includes/class-sspa-abilities.php" "$stage/includes/class-sspa-abilities-control.php" \
             && ssx_die "write ability $ability survived in the wp.org build"
     done
     ssx_log "assert: no user creation, login, error_reporting() or write abilities"
+}
+
+# The update watchdog is Pro: absent from the wp.org zip, not switched off.
+ssx_assert_no_watchdog() {
+    local stage="$1" hit
+    hit=$(find "$stage" -name '.*' -prune -o -type f \( -name '*.php' -o -name '*.js' \) -print 2>/dev/null \
+          | xargs grep -nliE 'watchdog' 2>/dev/null || true)
+    [ -n "$hit" ] && ssx_die "update watchdog code survived in the wp.org build:"$'\n'"$hit"
+    ssx_log "assert: no update watchdog code"
 }
 
 # Nothing that phones home for updates may survive in the wp.org zip.

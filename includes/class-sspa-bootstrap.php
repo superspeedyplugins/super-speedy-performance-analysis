@@ -170,5 +170,13 @@ class SSPA_Bootstrap {
         add_action('admin_enqueue_scripts', array('SSPA_Adhoc', 'enqueue'));
         add_action('admin_enqueue_scripts', array('SSPA_Admin_Save', 'enqueue'));
         add_action('admin_enqueue_scripts', array('SSPA_Browser_Transport', 'register_script'));
+
+        // SSPA-PRO-START
+        // The update watchdog: measures the site after plugin, theme and core updates and emails the
+        // administrator when something got slower. Its file is deleted from the wordpress.org build.
+        if (is_file(SSPA_PLUGIN_DIR . 'includes/class-sspa-watchdog.php')) {
+            SSPA_Watchdog::register();
+        }
+        // SSPA-PRO-END
     }
 }

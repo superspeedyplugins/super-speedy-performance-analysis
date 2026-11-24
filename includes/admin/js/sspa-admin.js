@@ -449,6 +449,13 @@ function sspa_refresh_tabs(tabs, done) {
 	var request = { action: 'sspa_render_tab', nonce: sspa_admin.nonce, tabs: tabs.join(',') };
 	var comparePage = new URLSearchParams(window.location.search).get('sspa_compare_page');
 	if (comparePage && /^[1-9][0-9]*$/.test(comparePage)) { request.sspa_compare_page = comparePage; }
+	// A link naming the pair to compare (for example a link in an alert email).
+	var compareBefore = new URLSearchParams(window.location.search).get('sspa_compare_before');
+	var compareAfter = new URLSearchParams(window.location.search).get('sspa_compare_after');
+	if (compareBefore && compareAfter && /^[1-9][0-9]*$/.test(compareBefore) && /^[1-9][0-9]*$/.test(compareAfter)) {
+		request.sspa_compare_before = compareBefore;
+		request.sspa_compare_after = compareAfter;
+	}
 	var pluginsPage = new URLSearchParams(window.location.search).get('sspa_page');
 	if (pluginsPage) { request.sspa_page = pluginsPage; }
 	jQuery.post(ajaxurl, request, function (resp) {

@@ -81,6 +81,13 @@ if [ ! -e "$PLUGINS/$SLUG/includes/class-sspa-dns-check.php" ] && [ ! -e "$PLUGI
 else
     fail "the wp.org zip carries DNS check code: $(grep -rln 'sspa_dns_check\|sspa-dns-check\|SSPA_Dns_Check' "$PLUGINS/$SLUG" --include='*.php' --include='*.js' | head -3)"
 fi
+# Pro's update watchdog is absent, not locked: no files, no hooks, no settings, no abilities.
+if [ ! -e "$PLUGINS/$SLUG/includes/class-sspa-watchdog.php" ] && [ ! -e "$PLUGINS/$SLUG/includes/admin/js/sspa-watchdog.js" ] \
+    && ! grep -rqi 'watchdog' "$PLUGINS/$SLUG" --include='*.php' --include='*.js'; then
+    pass "the wp.org zip has no update watchdog code"
+else
+    fail "the wp.org zip carries update watchdog code: $(grep -rli 'watchdog' "$PLUGINS/$SLUG" --include='*.php' --include='*.js' | head -3)"
+fi
 cp "$PLUGIN_DIR/.tests/fixtures/wporg-edition-adhoc.php" "$SITE/wp-content/mu-plugins/zz-sspa-test-admin-adhoc.php"
 cli option update woocommerce_coming_soon no >/dev/null 2>&1
 cli option update woocommerce_store_pages_only no >/dev/null 2>&1
@@ -101,6 +108,7 @@ read -r ABIL_N ABIL_W ABIL_SP _ <<<"$ABIL"
 [ "${ABIL_N:-0}" -ge 30 ] && pass "$ABIL_N abilities registered" || fail "abilities registered: $ABIL"
 check "$ABIL_W" "0" "every registered ability is read-only"
 check "$ABIL_SP" "-" "sspa/set-profiler is not registered"
+check "$(cli eval 'echo (has_action("sspa_watchdog_run") || has_action("upgrader_process_complete", array("SSPA_Watchdog", "after_update")) || wp_next_scheduled("sspa_watchdog_weekly")) ? "hooked" : "-";' 2>&1 | tail -1)" "-" "no watchdog hook or weekly event in the wp.org edition"
 CAP=$(cli eval '$c = SSPA_Abilities_Control::exec_capabilities(array()); $all = wp_json_encode(array($c["workflows"], $c["notes"], $c["prerequisites"]["wp_cron"])); echo (false === strpos($all, "advance-run") && false === strpos($all, "set-profiler") && false === strpos($all, "run-analysis")) ? "clean" : $all;' 2>&1 | tail -1)
 check "$CAP" "clean" "get-capabilities names no ability this edition does not have"
 

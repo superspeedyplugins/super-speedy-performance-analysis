@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.71.0
+Stable tag: 0.72.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,16 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.72.0 (24th November 2026) =
+* Pro: the update watchdog measures the site after every plugin, theme or WordPress core update, compares it with the analysis before the update and emails you only when a page or checkout step got slower, stopped loading or gained a PHP error, naming the update, the page and the milliseconds.
+* Pro: the watchdog waits 10 minutes after the latest update, so a batch of updates gives one check, then measures the front end, the logged-in customer pages and wp-admin with nobody at the screen and runs the checkout test.
+* Pro: a page or checkout step counts only when it is at least 25% and at least 150 ms slower and is still slower when measured a second time, so one noisy request cannot send an alert.
+* Pro: a weekly check (Monday by default) runs the same comparison with no update and emails its result.
+* Pro: the watchdog's settings (on or off, alert addresses, both thresholds, the weekly day and the checkout test) are in Compare, Advanced Compare settings, with a Run watchdog now button.
+* Pro: Compare marks every run the watchdog made with its verdict, and the alert's links open Compare with the two runs selected and download each run's Markdown report.
+* Pro: added the get-watchdog-status, update-watchdog-settings and run-watchdog-now abilities for AI agents.
+* Compare opens a chosen pair of runs from a link carrying sspa_compare_before and sspa_compare_after.
 
 = 0.71.0 (24th November 2026) =
 * Analyses now measure each page once, cold, with no warm-up request, so Run Analysis, the quick comparison after plugin changes and Analyse this page send one request per page instead of four.

@@ -24,6 +24,24 @@ $sspa_comparable_runs = $sspa_runs;
 $sspa_before_options = $sspa_older_run ? array_merge($sspa_runs, array($sspa_older_run)) : $sspa_runs;
 $sspa_after_run_id = $sspa_comparable_runs ? (int) $sspa_comparable_runs[0]['id'] : 0;
 $sspa_before_run_id = isset($sspa_before_options[1]) ? (int) $sspa_before_options[1]['id'] : 0;
+// A link can name the pair to compare (sspa_compare_before and sspa_compare_after in the address
+// bar, carried by the sspa_render_tab request): both runs join the selectors if this page lacks them.
+if (isset($_POST['nonce'], $_POST['sspa_compare_before'], $_POST['sspa_compare_after']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'sspa_admin')) {
+    $sspa_linked_before = SSPA_Run_Controller::run_row(absint($_POST['sspa_compare_before']));
+    $sspa_linked_after = SSPA_Run_Controller::run_row(absint($_POST['sspa_compare_after']));
+    if ($sspa_linked_before && $sspa_linked_after) {
+        foreach (array($sspa_linked_after, $sspa_linked_before) as $sspa_linked) {
+            if (!in_array((int) $sspa_linked['id'], array_map('intval', wp_list_pluck($sspa_before_options, 'id')), true)) {
+                $sspa_before_options[] = $sspa_linked;
+            }
+            if (!in_array((int) $sspa_linked['id'], array_map('intval', wp_list_pluck($sspa_comparable_runs, 'id')), true)) {
+                $sspa_comparable_runs[] = $sspa_linked;
+            }
+        }
+        $sspa_before_run_id = (int) $sspa_linked_before['id'];
+        $sspa_after_run_id = (int) $sspa_linked_after['id'];
+    }
+}
 $sspa_history_series = $sspa_after_run_id ? SSPA_History_Series::build($sspa_after_run_id, 'request_wall_ms', $sspa_before_run_id, $sspa_before_run_id ? 'pair' : 'setup') : null;
 
 // Plain names for the analysis types, so the share control says what it would actually send.
@@ -73,6 +91,13 @@ SSPA_Share_Prompt::render();
                 <?php esc_html_e('Delete all SSPA data when the plugin is deleted', 'super-speedy-performance-analysis'); ?>
             </label>
         </p>
+        <?php
+        // SSPA-PRO-START
+        if (class_exists('SSPA_Watchdog')) {
+            SSPA_Watchdog::render_settings();
+        }
+        // SSPA-PRO-END
+        ?>
     </details>
 </div>
 <div id="sspa-history-saved-run" hidden aria-live="polite"></div>
@@ -206,7 +231,15 @@ if (!$sspa_runs) : ?>
             ?>
             <tr>
                 <td><a class="sspa-history-run-link" data-run-id="<?php echo (int) $sspa_run['id']; ?>" href="<?php echo esc_url(SSPA_History_Run_View::url((int) $sspa_run['id'], $sspa_compare_page)); ?>">#<?php echo (int) $sspa_run['id']; ?></a></td>
-                <td><?php echo esc_html($sspa_run['run_type']); ?></td>
+                <td><?php echo esc_html($sspa_run['run_type']); ?>
+                    <?php
+                    // SSPA-PRO-START
+                    if (class_exists('SSPA_Watchdog') && '' !== ($sspa_watchdog_badge = SSPA_Watchdog::run_badge($sspa_run))) {
+                        echo '<br><span class="description sspa-watchdog-badge">' . esc_html($sspa_watchdog_badge) . '</span>';
+                    }
+                    // SSPA-PRO-END
+                    ?>
+                </td>
                 <td><?php echo esc_html($sspa_run['started']); ?></td>
                 <td><?php echo esc_html($sspa_run['status']); ?></td>
                 <td><?php echo (int) $sspa_pages; ?></td>

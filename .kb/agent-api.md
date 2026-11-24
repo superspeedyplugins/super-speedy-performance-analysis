@@ -26,7 +26,8 @@ Schema version: 1 (SSPA_Report::SCHEMA). Bump on breaking changes and note here.
   `manage-submission`, `update-settings`, `prepare-quote-request`, `prune-stored-captures`,
   `delete-traffic-collection`, `cleanup-workflow-objects` and `send-quote-request`, since
   0.59.2 `profile-admin-save`, and since 0.60.1 `run-parameter-check`, `advance-parameter-check`
-  and `get-parameter-check`. Readonly ones answer GET at
+  and `get-parameter-check`, and since 0.72.0 (Pro) the update watchdog's `get-watchdog-status`,
+  `update-watchdog-settings` and `run-watchdog-now`. Readonly ones answer GET at
   `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 - **MCP**: the shared Super Speedy stdio bridge discovers the permitted abilities over core REST
   and exposes them as first-class tools (dash-joined names, for example
@@ -39,6 +40,21 @@ false. Polling `get-status` alone moves a run only when WP-Cron fires, which a s
 `run-parameter-check`, then `advance-parameter-check` with the `check_id` until `done`, then
 `get-parameter-check`.
 `wp sspa run` is synchronous and drives the batches itself.
+
+The update watchdog (Pro) runs on WP-Cron after plugin, theme and core updates and weekly.
+`get-watchdog-status` returns `enabled`, `settings` (`enabled`, `checkout`, `recipients`,
+`threshold_percent`, `threshold_ms`, `weekly_day`), `recipients` (resolved), `running`, `current`
+(`kind` update|weekly|manual, `stage` pages|confirm|checkout|checkout_confirm, `runs`,
+`baseline_run_id`, `page_keys`, `updates`), `pending_updates`, `next_update_check`,
+`next_weekly_check`, `last` (the latest verdict in full) and `recent` (the last ten, summarised).
+A verdict has `verdict` (regressed|clear|first|incomplete), `updates` (`type`, `slug`, `name`,
+`from`, `to`), `runs` (`pages`, `confirm`, `checkout`, `checkout_confirm` run ids),
+`regressions` and `unconfirmed` (each `kind` slower|failed|status|output|fatal|error|checkout_failed,
+`area` page|checkout, `page_key`, `label`, and for slower `before_ms`, `after_ms`, `delta_ms`,
+`percent`), `problems`, `thresholds` and `email` (`to`, `subject`, `sent`). `update-watchdog-settings`
+takes any of the settings and returns the status; an invalid value changes nothing.
+`run-watchdog-now` starts a check, or advances the running one by one batch and one stage per
+call: loop it until `running` is false.
 
 `profile-admin-save` (input `object_type`, optional `transport` `rest|classic`) is synchronous: it
 creates a temporary object, loads its editor as the acting user, sends the editor's save request
