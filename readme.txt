@@ -52,7 +52,7 @@ Saved analysis data is retained by default. Before deleting the plugin, enable "
 
 = Do analyses send emails? =
 
-Yes, synthetic measurements send real emails to the administrator and measure send or queue time; a baseline with the default three samples sends three probes, with additional mail from optional writes and checkout. The real Analyse update/save action preserves normal recipients.
+Yes, synthetic measurements send real emails to the administrator and measure send or queue time; a baseline sends one probe with the default one run per page, or three with Measurement runs per page set to Three runs, with additional mail from optional writes and checkout. The real Analyse update/save action preserves normal recipients.
 
 = Which requests does the Cache performance check send? =
 

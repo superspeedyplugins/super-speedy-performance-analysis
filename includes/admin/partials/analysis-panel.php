@@ -23,7 +23,11 @@ defined('ABSPATH') || exit;
             <span class="description sspa-markdown-status" aria-live="polite"></span>
         </p>
     <?php else : ?>
-        <p><?php esc_html_e('Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run sends page requests to your own site (roughly four per page profiled) and stores the measurements. Customer-session tests use the restricted account described below.', 'super-speedy-performance-analysis'); ?></p>
+        <p><?php
+        echo esc_html(SSPA_Measurement::ONE === SSPA_Measurement::mode()
+            ? __('Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run sends page requests to your own site (one per page profiled) and stores the measurements. Customer-session tests use the restricted account described below.', 'super-speedy-performance-analysis')
+            : __('Run your first analysis to profile your key pages and see which plugins are costing you SQL time, RAM and page speed. The first run sends page requests to your own site (four per page profiled) and stores the measurements. Customer-session tests use the restricted account described below.', 'super-speedy-performance-analysis'));
+        ?></p>
     <?php endif; ?>
 
     <?php if (!$sspa_health['mu']) : ?>
@@ -61,6 +65,10 @@ defined('ABSPATH') || exit;
             <input type="checkbox" id="sspa-include-writes" value="1">
             <?php esc_html_e('Include write profiles (creates temporary posts/products and an order containing its own zero-price test product with separate stock; these objects are deleted after measurement, and emails go to the site administrator)', 'super-speedy-performance-analysis'); ?>
         </label>
+    </p>
+    <p class="description sspa-measurement-note">
+        <?php echo esc_html(SSPA_Measurement::run_panel_sentence()); ?>
+        <a href="<?php echo esc_url(SSPA_Measurement::settings_url()); ?>"><?php esc_html_e('Change Measurement runs per page in Compare, Advanced settings.', 'super-speedy-performance-analysis'); ?></a>
     </p>
     <p>
         <button type="button" class="button button-primary" id="sspa-run-analysis"<?php disabled((bool) $sspa_active_run); ?>>

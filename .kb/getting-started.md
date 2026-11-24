@@ -29,9 +29,9 @@ In both editions **Disable profiler** in the Tools tab removes the helpers and k
 
 ## Your first analysis
 
-Click **Run Analysis**. The plugin visits your key pages roughly four times each: home, shop, product pages, archives, search, checkout, and the wp-admin screens you use daily. It measures page generation time, SQL time, query counts, rows fetched and peak RAM, and attributes every query to the plugin or theme that ran it.
+Click **Run Analysis**. The plugin visits each of your key pages once, cold, by default (set **Measurement runs per page** to **Three runs** under Compare, **Advanced settings**, for a warm-up and three measured requests per page, median reported): home, shop, product pages, archives, search, checkout, and the wp-admin screens you use daily. It measures page generation time, SQL time, query counts, rows fetched and peak RAM, and attributes every query to the plugin or theme that ran it.
 
-The first run creates no content and changes nothing about your site. It does send email: to time how long your site takes to send mail, it sends one test email per sample to the site administrator, and any email another plugin sends during a profiled request goes to the administrator instead of its normal recipient. It also uses server resources while it runs, so on a busy production site pick a quieter moment.
+The first run creates no content and changes nothing about your site. It does send email: to time how long your site takes to send mail, it sends one test email per measured request to the site administrator, and any email another plugin sends during a profiled request goes to the administrator instead of its normal recipient. It also uses server resources while it runs, so on a busy production site pick a quieter moment.
 
 When it finishes you get a site score and the Top Insights - plain-English findings like "plugin-x ran 70 queries on home" - each with a recommendation. [Understanding Your Results](https://www.superspeedyplugins.com/kb/super-speedy-performance-analysis/understanding-your-results/) explains what each finding type means and how to read the score.
 

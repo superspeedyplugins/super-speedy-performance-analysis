@@ -128,7 +128,9 @@ class SSPA_Adhoc {
             'download_prefix' => sspa_download_prefix(),
             'i18n' => array(
                 'running' => __('Profiling this page…', 'super-speedy-performance-analysis'),
-                'running_detail' => __('Warm-up + 3 measured samples, then analysis. Usually under a minute.', 'super-speedy-performance-analysis'),
+                'running_detail' => SSPA_Measurement::ONE === SSPA_Measurement::mode()
+                    ? __('One measured request, cold (no warm-up), then analysis. Usually under a minute. Measurement runs per page is in Compare, Advanced settings.', 'super-speedy-performance-analysis')
+                    : __('Warm-up + 3 measured samples, then analysis. Usually under a minute. Measurement runs per page is in Compare, Advanced settings.', 'super-speedy-performance-analysis'),
                 'failed' => __('The analysis failed - see the plugin page for details.', 'super-speedy-performance-analysis'),
                 'rerun' => __('Re-run', 'super-speedy-performance-analysis'),
                 'close' => __('Close', 'super-speedy-performance-analysis'),
@@ -147,7 +149,7 @@ class SSPA_Adhoc {
                 'only_page_apply' => __('Use this page', 'super-speedy-performance-analysis'),
                 'plan_title' => __('Which plugins should I measure on this page?', 'super-speedy-performance-analysis'),
                 'plan_title_site' => __('Which plugins should I measure the impact of?', 'super-speedy-performance-analysis'),
-                'plan_hint' => __('Each chosen plugin is left out of our test requests only - it is never deactivated, no activation or deactivation hook fires, and your visitors always get the full site. A measurement is a warm-up plus three samples per page.', 'super-speedy-performance-analysis'),
+                'plan_hint' => __('Each chosen plugin is left out of our test requests only - it is never deactivated, no activation or deactivation hook fires, and your visitors always get the full site. A measurement here is a warm-up plus up to three samples per page, whatever Measurement runs per page is set to, so with and without the plugin are compared like for like.', 'super-speedy-performance-analysis'),
                 'plan_risk' => __('One caution: a plugin that depends on one you choose may notice it missing during those test requests and react. Reactions we can reach are stopped - your plugin list cannot change, activation and deactivation routines are silenced, and destructive database statements are refused - and any reaction is recorded, with the pair measured together from then on. Even so, choose plugins you understand.', 'super-speedy-performance-analysis'),
                 'plan_pick' => __('On a single page, the top three measured suspects are ticked for review; change the selection before starting.', 'super-speedy-performance-analysis'),
                 'select_blamed' => __('Select blamed', 'super-speedy-performance-analysis'),

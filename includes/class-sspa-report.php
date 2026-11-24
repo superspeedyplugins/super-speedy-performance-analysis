@@ -171,6 +171,9 @@ class SSPA_Report {
                 'status' => $run['status'],
                 'started' => $run['started'],
                 'finished' => $run['finished'],
+                // {mode: one|three|custom, warmups, samples}, or null when not recorded (a
+                // failed run). Additive, so SCHEMA does not move.
+                'measurement' => SSPA_Measurement::for_run($run),
             ),
             'score' => is_array($notes) && isset($notes['score']) ? (int) $notes['score'] : null,
             'site' => array(

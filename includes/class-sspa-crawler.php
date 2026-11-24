@@ -3,8 +3,11 @@ defined('ABSPATH') || exit;
 
 /**
  * Sends the loopback requests and assembles per-page results from the captures the
- * profiler writes. Sampling discipline: 1 warm-up + 3 measured samples, medians reported,
- * spread kept. Cached responses are detected via the token canary and discarded.
+ * profiler writes. Default sampling discipline: 1 warm-up + 3 measured samples, medians
+ * reported, spread kept. Jobs override it with `samples` and `skip_warmup`: normal analyses
+ * follow Measurement runs per page (SSPA_Measurement; one cold request by default since
+ * 0.71.0), while Plugin Impact and Cache Impact Analysis keep these defaults. Cached responses
+ * are detected via the token canary and discarded (and retried).
  */
 class SSPA_Crawler {
 

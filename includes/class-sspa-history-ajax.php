@@ -43,12 +43,21 @@ class SSPA_History_Ajax {
     public static function ajax_setting() {
         check_ajax_referer('sspa_admin', 'nonce');
         if (!current_user_can('manage_options')) { wp_send_json_error(__('Permission denied.', 'super-speedy-performance-analysis'), 403); }
-        $enabled = !empty($_POST['plugin_update_detection']);
-        sspa_update_option('plugin_update_detection', $enabled);
-        if (!$enabled) {
-            SSPA_Change_Set::dismiss();
+        // Each control sends only its own setting; a key not sent is left as it is.
+        if (isset($_POST['plugin_update_detection'])) {
+            $enabled = !empty($_POST['plugin_update_detection']);
+            sspa_update_option('plugin_update_detection', $enabled);
+            if (!$enabled) {
+                SSPA_Change_Set::dismiss();
+            }
         }
-        wp_send_json_success(array('plugin_update_detection' => (bool) sspa_get_option('plugin_update_detection')));
+        if (isset($_POST['measurement_runs'])) {
+            sspa_update_option('measurement_runs', SSPA_Measurement::sanitise_mode(sanitize_key(wp_unslash($_POST['measurement_runs']))));
+        }
+        wp_send_json_success(array(
+            'plugin_update_detection' => (bool) sspa_get_option('plugin_update_detection'),
+            'measurement_runs' => SSPA_Measurement::mode(),
+        ));
     }
 
     public static function ajax_assertion() {

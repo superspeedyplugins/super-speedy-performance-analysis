@@ -56,7 +56,8 @@ while a run is active, or `not checked` while the profiler is off) and `browser_
 route keeps the URL, Host header and TLS certificate check and only changes the TCP destination
 (cURL `CURLOPT_CONNECT_TO`). `update-settings` accepts `loopback_origin` (string, `""` clears) and
 `loopback_credentials` (`{user, password}` or `{clear: true}`); `get-settings` returns
-`loopback_origin` and `loopback_credentials: {set, user_set}`, never the credentials.
+`loopback_origin` and `loopback_credentials: {set, user_set}`, never the credentials. Both also
+carry `measurement_runs` (`one` | `three`, default `one`; see `run.measurement`).
 
 ## Performance history comparison
 
@@ -69,7 +70,8 @@ remote service, which makes it the local adapter for Release Confidence and othe
 The document contains random bundle-local source identity, exact measured component versions,
 setup changes, publisher-declared privacy-checked configuration state and changes, response-time
 and other observation deltas, validity/declared cases, diagnostic counts/fingerprints, and
-hash-only output-change state. It excludes site URLs, response bodies,
+hash-only output-change state. Each side's identity carries `measurement` (as `run.measurement`
+in the report), so a comparison between a one-run and a three-run analysis says which is which. It excludes site URLs, response bodies,
 SQL text, paths, cookies, nonces, personal data, and customer/order identifiers.
 
 ## Outbound HTTP API inventory
@@ -116,7 +118,8 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
 {
   "schema": 1,
   "generated_at": "2026-07-11T12:00:00+00:00",
-  "run": {"id": 12, "type": "baseline", "status": "done", "started": "...", "finished": "..."},
+  "run": {"id": 12, "type": "baseline", "status": "done", "started": "...", "finished": "...",
+          "measurement": {"mode": "one", "warmups": 0, "samples": 1}},
   "score": 76,
   "site": {"sector": "e-commerce", "wp": "7.0.1", "php": "8.3.x",
             "object_cache": true, "active_plugins": ["woocommerce", "..."], "theme": "..."},
@@ -129,6 +132,14 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
   "impacts": [ /* measured isolation deltas, shape below */ ]
 }
 ```
+
+`run.measurement` (since 0.71.0, additive) says how each page was measured: `mode` `one`
+(the default: one request, `warmups` 0, `samples` 1, so a page's figures are that single cold
+request), `three` (`warmups` 1, `samples` 3, medians) or `custom` (Profile this endpoint's
+chosen sample count). It is `null` when not recorded, which is a failed run; a completed run
+from before 0.71.0 reports `three`. The setting is `measurement_runs` in `get-settings` and
+`update-settings` (`one` | `three`). With one sample, `pages[].output_stable` is `null` and no
+`output_signature` is given, because one response cannot show the output holds still.
 
 ### Finding
 

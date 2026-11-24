@@ -1405,13 +1405,23 @@ class SSPA_Profile_Panel {
     }
 
     /**
-     * Seconds per measurement, learned from this site's own completed runs rather than
-     * assumed. A measurement is a warm-up plus three samples of one page, so it varies by an
-     * order of magnitude between a static home page and a slow admin screen - a constant here
-     * would make the estimate fiction on exactly the sites that need it most.
+     * Seconds per Plugin Impact Analysis measurement, learned from this site's own completed
+     * runs rather than assumed. A sweep measurement is a warm-up plus up to three samples of one
+     * page, so it varies by an order of magnitude between a static home page and a slow admin
+     * screen - a constant here would make the estimate fiction on exactly the sites that need it
+     * most.
+     *
+     * Since 0.71.0 a normal analysis may measure each page once (SSPA_Measurement), so seconds
+     * per job no longer means the same thing across runs. Completed runs record seconds per
+     * REQUEST instead, and a sweep measurement is costed as four of them (1 warm-up + 3). Before
+     * any run has recorded one, every saved run used 4-request jobs and the query below holds.
      */
     public static function seconds_per_job() {
         global $wpdb;
+        $per_request = SSPA_Measurement::seconds_per_request();
+        if (null !== $per_request) {
+            return max(2, round($per_request * (SSPA_Crawler::WARMUPS + SSPA_Crawler::SAMPLES), 1));
+        }
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT r.started, r.finished, COUNT(p.id) jobs
              FROM %i r

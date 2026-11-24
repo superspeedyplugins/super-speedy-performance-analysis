@@ -109,7 +109,7 @@
 		var elapsed = status && status.elapsed_seconds ? Math.round(status.elapsed_seconds) + 's' : '';
 		var detail = sspa_adhoc.i18n.running_detail;
 		if (status && status.total) {
-			detail = status.done + ' / ' + status.total + ' measurements';
+			detail = status.done + ' / ' + status.total + ' measurements' + (status.measurement_label ? ' (' + status.measurement_label + ')' : '');
 			if (status.current) {
 				detail += ' · ' + status.current;
 			}

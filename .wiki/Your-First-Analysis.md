@@ -4,7 +4,7 @@
 
 Go to **Super Speedy, Performance Analysis** and start an analysis. It profiles your key pages: home, shop, archives, search, checkout, wp-admin lists and editors.
 
-It takes seconds to a couple of minutes depending on the site. Each page gets a warm-up request and three measured samples, and the medians are what you see.
+It takes seconds to a couple of minutes depending on the site. Each page is measured once, cold, by default, and that time is what you see. Set **Measurement runs per page** to **Three runs** (Compare tab, Advanced settings) for a warm-up and three measured samples per page, medians reported.
 
 From the command line, `wp sspa run --type=spot`.
 

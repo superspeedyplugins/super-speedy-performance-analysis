@@ -12,7 +12,7 @@ Query Monitor isn't required and isn't a dependency.
 
 ## Sampling
 
-A warm-up request, then three measured samples per page, medians reported. Every request carries a unique cache-busting argument signed into the token so it can't be stripped, which guarantees the request reaches PHP rather than being answered by nginx, Varnish, LiteSpeed or a CDN.
+By default one measured request per page, cold, with no warm-up: that request's time is reported. With **Measurement runs per page** set to **Three runs** (Compare tab, Advanced settings), a warm-up request, then three measured samples per page, medians reported. Plugin Impact and Cache Impact Analysis always use a warm-up and several samples. Every request carries a unique cache-busting argument signed into the token so it can't be stripped, which guarantees the request reaches PHP rather than being answered by nginx, Varnish, LiteSpeed or a CDN.
 
 Profiled responses send `Cache-Control: no-store`, so a measurement can never be stored and served to a real visitor. Cache-served responses are discarded via a response canary.
 

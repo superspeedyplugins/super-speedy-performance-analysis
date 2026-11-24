@@ -194,6 +194,17 @@ class SSPA_Run_Controller {
             }
         }
 
+        // Measurement runs per page (SSPA_Measurement): normal analyses measure each page once,
+        // cold, unless the site chose three runs. An explicit per-run sample count (Profile this
+        // endpoint) and the comparison run types keep their own sampling.
+        $measurement = null;
+        if (in_array($type, SSPA_Measurement::RUN_TYPES, true) && !('adhoc' === $type && isset($args['samples']))) {
+            $measurement = SSPA_Measurement::discipline();
+            $jobs = SSPA_Measurement::apply_to_jobs($jobs, $measurement);
+        } elseif ('adhoc' === $type) {
+            $measurement = array('mode' => 'custom', 'warmups' => SSPA_Crawler::WARMUPS, 'samples' => (int) $jobs[0]['samples']);
+        }
+
         $share_context = array();
         if (!empty($args['share_context']['plugin_toggle']) && is_array($args['share_context']['plugin_toggle'])) {
             $toggle = $args['share_context']['plugin_toggle'];
@@ -293,7 +304,7 @@ class SSPA_Run_Controller {
             'plugin_set_hash' => md5(wp_json_encode(get_option('active_plugins', array()))),
             'share_context' => $share_context ? wp_json_encode($share_context) : null,
             'started' => gmdate('Y-m-d H:i:s'),
-            'notes' => ('' !== $customer_skipped || '' !== $admin_skipped) ? wp_json_encode(array_filter(array('customer_pages_skipped' => $customer_skipped, 'admin_pages_skipped' => $admin_skipped))) : null,
+            'notes' => ('' !== $customer_skipped || '' !== $admin_skipped || $measurement) ? wp_json_encode(array_filter(array('customer_pages_skipped' => $customer_skipped, 'admin_pages_skipped' => $admin_skipped, 'measurement' => $measurement))) : null,
         ));
         $run_id = (int) $wpdb->insert_id;
         if (!$run_id) {
@@ -1298,6 +1309,11 @@ class SSPA_Run_Controller {
      * SSPA_Browser_Transport (which exhausts the same queue one request at a time).
      */
     public static function complete_run($run_id, $run_type) {
+        // Every crawled run teaches the Plugin Impact Analysis estimate its seconds per request.
+        // (Not an admin save: one interactive request whose timing is the editor's, not a crawl.)
+        if ('admin_save' !== $run_type) {
+            SSPA_Measurement::record_run_rate(SSPA_Run_Queue::get($run_id));
+        }
         if ('cache_impact' === $run_type) {
             self::finish_cache($run_id);
         } elseif ('checkout' === $run_type) {
@@ -2041,6 +2057,9 @@ class SSPA_Run_Controller {
         if (!empty($start_notes['customer_pages_skipped'])) {
             $notes['customer_pages_skipped'] = $start_notes['customer_pages_skipped'];
         }
+        if (!empty($start_notes['measurement'])) {
+            $notes['measurement'] = $start_notes['measurement'];
+        }
         $wpdb->update(SSPA_Schema::table('runs'), array(
             'status' => 'done',
             'finished' => gmdate('Y-m-d H:i:s'),
@@ -2244,6 +2263,9 @@ class SSPA_Run_Controller {
             'current_plugin' => $current_plugin,
             'mail_warning' => SSPA_Mail::warning(),
             'customer_pages_skipped' => self::customer_skip_message(json_decode((string) $run['notes'], true)),
+            // What one measurement is in this run, for the progress monitor; '' where the
+            // run type has its own sampling.
+            'measurement_label' => ($m = SSPA_Measurement::for_run($run)) && 'custom' !== $m['mode'] ? SSPA_Measurement::label($m) : '',
             // Why a failed or cancelled run ended, in a sentence; '' for every other status.
             'reason' => self::end_reason($run),
             'mail_mode' => 'deliver',

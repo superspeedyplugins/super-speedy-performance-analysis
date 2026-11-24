@@ -44,8 +44,8 @@ controller): call `run-analysis` (async), poll `get-status` until `active` is fa
 `get-report`. Readonly abilities also answer plain GETs at
 `/wp-json/wp-abilities/v1/abilities/sspa/<name>/run`.
 
-The first run is read-only: it sends roughly four GET requests per page profiled and
-changes nothing. Expect 1-5 minutes on a typical site.
+The first run is read-only: it sends one GET request per page profiled (four with the
+`measurement_runs` setting at `three`: a warm-up plus three, median reported) and changes nothing. Expect 1-5 minutes on a typical site.
 
 ## 3. Interpret the report
 

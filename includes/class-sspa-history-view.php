@@ -69,6 +69,19 @@ class SSPA_History_View {
             <p class="description">
                 <?php /* translators: 1: before run id, 2: after run id */ printf(esc_html__('Comparing point in time #%1$d with #%2$d. Missing evidence remains unknown rather than passing.', 'super-speedy-performance-analysis'), (int) $comparison['before']['id'], (int) $comparison['after']['id']); ?>
             </p>
+            <?php
+            $sspa_before_m = array_key_exists('measurement', $comparison['before']) ? $comparison['before']['measurement'] : null;
+            $sspa_after_m = array_key_exists('measurement', $comparison['after']) ? $comparison['after']['measurement'] : null;
+            ?>
+            <p class="description sspa-history-measurement">
+                <?php
+                /* translators: 1: before run id, 2: how the before run measured each page, 3: after run id, 4: how the after run measured each page */
+                echo esc_html(sprintf(__('Measurement: #%1$d %2$s; #%3$d %4$s.', 'super-speedy-performance-analysis'), (int) $comparison['before']['id'], SSPA_Measurement::label($sspa_before_m), (int) $comparison['after']['id'], SSPA_Measurement::label($sspa_after_m)));
+                if (SSPA_Measurement::is_single($sspa_before_m) || SSPA_Measurement::is_single($sspa_after_m)) {
+                    echo ' ' . esc_html__('A single request varies more than a median of three, so a small timing difference here is not evidence of a change, and output stability needs at least two requests. Re-run the analysis, or set Measurement runs per page to Three runs under Advanced settings, for a firmer comparison.', 'super-speedy-performance-analysis');
+                }
+                ?>
+            </p>
 
             <?php if (empty($comparison['setup_changes_available'])) : ?>
                 <p class="description"><?php esc_html_e('Setup-change evidence is unavailable for one of these older runs.', 'super-speedy-performance-analysis'); ?></p>

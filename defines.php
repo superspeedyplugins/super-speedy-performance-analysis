@@ -23,6 +23,10 @@ function sspa_default_options() {
         // Origin server address for the direct loopback route ('' = try 127.0.0.1 and the
         // server's own address). See SSPA_Loopback_Route.
         'loopback_origin' => '',
+        // Measurement runs per page for baseline, spot and Analyse this page runs: 'one' (one
+        // cold request, no warm-up; Dave, 24 November 2026) or 'three' (1 warm-up + 3, median).
+        // See SSPA_Measurement.
+        'measurement_runs' => 'one',
 
         // Checkout flow profiling. All defaults work unconfigured, so the button does
         // something sensible on a store that has never opened these settings.

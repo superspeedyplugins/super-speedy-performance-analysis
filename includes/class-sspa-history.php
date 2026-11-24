@@ -146,6 +146,10 @@ class SSPA_History {
             'type' => sanitize_key($run['run_type']),
             'status' => sanitize_key($run['status']),
             'measurement_version' => (int) $run['measurement_version'],
+            // Measurement runs per page this run used: {mode, warmups, samples}, or null when
+            // not recorded (a failed run). Shown beside the comparison so a one-request timing
+            // is never read as a median.
+            'measurement' => SSPA_Measurement::for_run($run),
             'trigger' => sanitize_key($run['trigger_source']),
             'started' => self::safe_timestamp($run['started']),
             'finished' => self::safe_timestamp($run['finished']),

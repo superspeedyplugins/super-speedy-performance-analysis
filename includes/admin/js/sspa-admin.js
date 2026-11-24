@@ -558,6 +558,30 @@ jQuery(document).on('change', '#sspa-plugin-update-detection', function () {
 	});
 });
 
+jQuery(document).on('change', '#sspa-measurement-runs', function () {
+	var select = jQuery(this).prop('disabled', true);
+	var previous = select.data('saved');
+	var spinner = select.closest('p').find('.spinner').addClass('is-active');
+	jQuery.post(ajaxurl, {
+		action: 'sspa_history_setting',
+		nonce: sspa_admin.nonce,
+		measurement_runs: select.val()
+	}).done(function (resp) {
+		if (resp && resp.success && resp.data) {
+			select.val(resp.data.measurement_runs).data('saved', resp.data.measurement_runs);
+		} else {
+			select.val(previous);
+			alert(wp.i18n.__("Could not save the measurement setting.", "super-speedy-performance-analysis"));
+		}
+	}).fail(function () {
+		select.val(previous);
+		alert(wp.i18n.__("Could not save the measurement setting.", "super-speedy-performance-analysis"));
+	}).always(function () {
+		select.prop('disabled', false);
+		spinner.removeClass('is-active');
+	});
+});
+
 function sspa_history_pair(section) {
 	if (section && section.length) {
 		return {
@@ -1705,6 +1729,10 @@ function sspa_runner_update(s) {
 	var counts = wp.i18n.sprintf(/* translators: 1: completed count, 2: total count, 3: progress percentage. */ wp.i18n.__("%1$s / %2$s measurements (%3$s%%)", "super-speedy-performance-analysis"), s.done, s.total, pct);
 	if (s.run_type === 'deep' && s.phase) {
 		counts = (s.phase === 1 ? wp.i18n.__("Phase 1/2, screening", "super-speedy-performance-analysis") : wp.i18n.__("Phase 2/2, confirming", "super-speedy-performance-analysis")) + ' \u00b7 ' + counts;
+	}
+	// One measurement per page: say what that is (one cold request, or a median of three).
+	if (s.measurement_label) {
+		counts += ' \u00b7 ' + s.measurement_label;
 	}
 	runner.find('.sspa-runner-counts').text(counts);
 	// The logged-in customer pages are skipped when WordPress refuses the synthetic customer.

@@ -63,6 +63,11 @@ for case_file in "$PLUGIN_DIR"/.tests/cases/*.php; do
         echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-one-file-report) ==="
         continue
     fi
+    # Own-site case: it installs a request-counting MU plugin that logs every request.
+    if [ "$name" = "167-one-run-default.php" ] && [ "${SSPA_SCENARIO:-}" != "tests-one-run" ]; then
+        echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-one-run) ==="
+        continue
+    fi
     if [ "$name" = "165-dns-check.php" ] && [ "${SSPA_SCENARIO:-}" != "tests-dns-check" ]; then
         echo "=== $name: not run here (own site: SSPA_SCENARIO=tests-dns-check) ==="
         continue

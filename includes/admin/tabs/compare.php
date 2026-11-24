@@ -47,8 +47,18 @@ $sspa_share_states = array(
 SSPA_Share_Prompt::render();
 ?>
 <div class="sspa-history-toolbar">
-    <details>
-        <summary><?php esc_html_e('Advanced Compare settings', 'super-speedy-performance-analysis'); ?></summary>
+    <details id="sspa-advanced-settings">
+        <summary><?php esc_html_e('Advanced settings', 'super-speedy-performance-analysis'); ?></summary>
+        <p>
+            <label for="sspa-measurement-runs"><?php esc_html_e('Measurement runs per page', 'super-speedy-performance-analysis'); ?></label>
+            <select id="sspa-measurement-runs" data-saved="<?php echo esc_attr(SSPA_Measurement::mode()); ?>">
+                <?php foreach (SSPA_Measurement::modes() as $sspa_mode => $sspa_mode_label) : ?>
+                    <option value="<?php echo esc_attr($sspa_mode); ?>" <?php selected(SSPA_Measurement::mode(), $sspa_mode); ?>><?php echo esc_html($sspa_mode_label); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span class="spinner" aria-hidden="true"></span><br>
+            <span class="description"><?php esc_html_e('One run measures each page once, cold, with no warm-up. Three runs sends a warm-up and three measured requests per page and reports the median, taking about four times as many requests. Applies to Run Analysis, the quick comparison and Analyse this page; Plugin Impact and Cache Impact Analysis keep their own sampling.', 'super-speedy-performance-analysis'); ?></span>
+        </p>
         <p>
             <label>
                 <input type="checkbox" id="sspa-plugin-update-detection" value="1" <?php checked($sspa_update_detection); ?>>

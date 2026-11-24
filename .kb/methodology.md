@@ -4,7 +4,13 @@ Credibility is the product, so here is exactly how measurement works. For what t
 
 ## Sampling
 
-Every page is requested once as a warm-up (priming caches), then three measured times. The plugin reports the **median**, keeps the spread, and measures a near-empty baseline request to establish your server's noise floor. Responses served by a page cache are detected (via a per-request token echoed in a response header) and discarded - a cached page says nothing about PHP.
+By default every page is measured **once, cold**: one request, with no warm-up first, and that request's time is what you see. Run the analysis again yourself to check a figure. For a firmer number, set **Measurement runs per page** to **Three runs** (Compare tab, **Advanced settings**): each page is then requested once as a warm-up (priming caches) and three measured times, and the plugin reports the **median** and keeps the spread. One run sends one request per page; three runs send four.
+
+The setting applies to Run Analysis, spot checks, the quick comparison after plugin changes and Analyse this page. Plugin Impact Analysis and Cache Impact Analysis keep their own sampling (below), because they compare a page with and without something and need like-for-like measurements.
+
+Each analysis also measures a near-empty baseline request to establish your server's noise floor. Responses served by a page cache are detected (via a per-request token echoed in a response header) and discarded, then retried up to twice - a cached page says nothing about PHP, so it never counts as the measurement.
+
+A single request has no spread. With one run, the page summary says so, Compare names the mode each run used and warns that a small timing difference between single requests is not evidence of a change, and output-change detection (which needs at least two matching requests) shows as unavailable.
 
 ## Capture
 
@@ -19,7 +25,7 @@ Plugin Impact Analysis measures each plugin by re-profiling pages with that one 
 It runs in **two phases**, so thoroughness does not mean measuring everything everywhere:
 
 1. **Screen** - every eligible plugin is measured in one cache mode on a handful of pages: its top pages by attributed SQL+HTTP time plus the site's slowest page (a plugin with no attributed queries is screened on the home page and slowest page, since hook-only costs leave no query trail). Two samples per cell - fast.
-2. **Confirm** - only plugins that showed a measurable impact in the screen graduate to the full treatment: every remaining page (three samples), plus - with a persistent object cache and the SSPA `db.php` shim - **cache-disabled** (persistent cache bypassed for that request only) and **cache-priming** (the first cache-enabled request, no warm-up) measurements on their screened pages. Innocent plugins never cost more than their screening cells.
+2. **Confirm** - only plugins that showed a measurable impact in the screen graduate to the full treatment: every remaining page (a warm-up and three samples), plus - with a persistent object cache and the SSPA `db.php` shim - **cache-disabled** (persistent cache bypassed for that request only) and **cache-priming** (the first cache-enabled request, no warm-up) measurements on their screened pages. Innocent plugins never cost more than their screening cells.
 
 The headline number is the **normal** mode: the object cache in its natural, warmed state - what real visitors experience. One honest caveat on priming: the live cache is never flushed (that would hurt real visitors), so "priming" measures the first hit against whatever cache state exists, not a guaranteed-cold cache.
 

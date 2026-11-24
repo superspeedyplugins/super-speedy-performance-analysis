@@ -6,7 +6,7 @@ Profiles one exact URL and shows where its time went. Front end or wp-admin, any
 
 For the URL you're looking at:
 
-- **Generation time, SQL time, HTTP time and peak RAM**, as medians across three measured samples after a warm-up.
+- **Generation time, SQL time, HTTP time and peak RAM**, from one cold request by default, or as medians across three measured samples after a warm-up with Measurement runs per page set to Three runs.
 - **Where the PHP time went, per phase**: core, plugin file loading, plugin boot callbacks, theme setup, init, routing, template render and output. The phases sum to the page's generation time, so nothing is unaccounted for.
 - **Per-plugin cost**, in both attribution modes (see below).
 - **The slowest queries with the code that ran them**, what `EXPLAIN` says about each one, and click-to-copy for the full statement.

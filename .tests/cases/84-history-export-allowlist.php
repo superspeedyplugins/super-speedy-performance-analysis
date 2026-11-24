@@ -78,7 +78,9 @@ try {
     sspa_84_t(SSPA_History::EXPORT_SCHEMA === $export['schema'], 'the export names its versioned schema (' . $export['schema'] . ')');
     sspa_84_same_keys($export['comparison'], array('schema', 'status', 'before', 'after', 'setup_changes_available', 'setup_changes', 'configuration_changes', 'headline', 'new_diagnostics', 'summary', 'pages'), 'comparison level is exactly the declared set');
     foreach (array('before', 'after') as $side) {
-        sspa_84_same_keys($export['comparison'][$side], array('id', 'uuid', 'type', 'status', 'measurement_version', 'trigger', 'started', 'finished', 'components', 'component_state', 'history_context'), $side . ' identity is exactly the declared set');
+        sspa_84_same_keys($export['comparison'][$side], array('id', 'uuid', 'type', 'status', 'measurement_version', 'measurement', 'trigger', 'started', 'finished', 'components', 'component_state', 'history_context'), $side . ' identity is exactly the declared set');
+        // Measurement runs per page (0.71.0): a completed run always reports one, with exactly these keys.
+        sspa_84_same_keys(is_array($export['comparison'][$side]['measurement']) ? $export['comparison'][$side]['measurement'] : array(), array('mode', 'warmups', 'samples'), $side . ' measurement is exactly the declared set');
         foreach ($export['comparison'][$side]['components'] as $component) {
             sspa_84_same_keys($component, array('type', 'slug', 'version'), $side . ' component entry is exactly the declared set');
             break;

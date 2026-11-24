@@ -72,6 +72,7 @@ class SSPA_Markdown_Export {
         if (!empty($data['run'])) {
             $lines[] = '- Run type: `' . self::code(isset($data['run']['type']) ? $data['run']['type'] : 'unknown') . '`';
             $lines[] = '- Measurement version: `' . (int) (isset($data['run']['measurement_version']) ? $data['run']['measurement_version'] : 0) . '`';
+            $lines[] = '- Measurement: ' . self::plain(SSPA_Measurement::label(isset($profile['run_id']) ? SSPA_Measurement::for_run(SSPA_Run_Controller::run_row((int) $profile['run_id'])) : null));
         }
         $generated_by = isset($data['generated_by']) && is_array($data['generated_by']) ? $data['generated_by'] : array();
         $lines[] = '- WordPress: `' . self::code(isset($generated_by['wordpress']) ? $generated_by['wordpress'] : 'unknown') . '`';
@@ -137,6 +138,7 @@ class SSPA_Markdown_Export {
         $lines[] = '- Finished: ' . self::plain($report['run']['finished'] . ' UTC');
         $lines[] = '- Site score: ' . (null === $report['score'] ? 'not calculated' : (int) $report['score'] . '/100');
         $lines[] = '- Pages profiled: ' . (int) $report['summary']['pages_profiled'];
+        $lines[] = '- Measurement: ' . self::plain(SSPA_Measurement::label(isset($report['run']['measurement']) ? $report['run']['measurement'] : null));
         $lines[] = '- Findings: ' . self::finding_counts($report['summary']['findings']);
         $lines[] = '';
         $lines[] = '## Environment';

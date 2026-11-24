@@ -152,7 +152,7 @@ class SSPA_Abilities_Control {
             ),
             'get-settings' => self::ability(
                 __('Get Performance Analysis settings', 'super-speedy-performance-analysis'),
-                __('Sharing state, enabled publishers, plugin-update detection, stored-capture retention, whether data is removed on uninstall, the profiler state, the submission queue counts, the loopback origin address and whether loopback credentials are stored (never the credentials).', 'super-speedy-performance-analysis'),
+                __('Sharing state, enabled publishers, plugin-update detection, measurement runs per page (one or three), stored-capture retention, whether data is removed on uninstall, the profiler state, the submission queue counts, the loopback origin address and whether loopback credentials are stored (never the credentials).', 'super-speedy-performance-analysis'),
                 'read', 'exec_get_settings'
             ),
             'get-submission-queue' => self::ability(
@@ -283,10 +283,11 @@ class SSPA_Abilities_Control {
             ),
             'update-settings' => self::ability(
                 __('Change Performance Analysis settings', 'super-speedy-performance-analysis'),
-                __('Change any of: plugin_update_detection (notice and quick comparison after plugin changes), remove_data_on_uninstall, publishers ({slug: true|false}, which publishers\' recommendations may be shown), loopback_origin (the origin server address PA connects to when its own requests are blocked in front of the site, e.g. 127.0.0.1 or 10.0.0.5:8080; "" clears) and loopback_credentials ({user, password} for a site behind HTTP basic auth, or {clear: true}; stored, sent only to this site, never returned). Sharing itself is not changed here.', 'super-speedy-performance-analysis'),
+                __('Change any of: plugin_update_detection (notice and quick comparison after plugin changes), measurement_runs ("one": each page measured once, cold, no warm-up - the default; "three": a warm-up and three measured requests per page, median reported; applies to run-analysis, spot runs and profile-page, not to plugin impact, cache impact or endpoint profiling), remove_data_on_uninstall, publishers ({slug: true|false}, which publishers\' recommendations may be shown), loopback_origin (the origin server address PA connects to when its own requests are blocked in front of the site, e.g. 127.0.0.1 or 10.0.0.5:8080; "" clears) and loopback_credentials ({user, password} for a site behind HTTP basic auth, or {clear: true}; stored, sent only to this site, never returned). Sharing itself is not changed here.', 'super-speedy-performance-analysis'),
                 'act_idempotent', 'exec_update_settings',
                 self::input(array(
                     'plugin_update_detection' => array('type' => 'boolean'),
+                    'measurement_runs' => array('type' => 'string', 'enum' => array(SSPA_Measurement::ONE, SSPA_Measurement::THREE)),
                     'remove_data_on_uninstall' => array('type' => 'boolean'),
                     'publishers' => array('type' => 'object', 'additionalProperties' => array('type' => 'boolean')),
                     'loopback_origin' => $string,
@@ -715,6 +716,7 @@ class SSPA_Abilities_Control {
             ),
             'publishers' => SSPA_Community_State::publishers(),
             'plugin_update_detection' => (bool) sspa_get_option('plugin_update_detection'),
+            'measurement_runs' => SSPA_Measurement::mode(),
             'blob_retention_runs' => (int) sspa_get_option('blob_retention_runs'),
             'remove_data_on_uninstall' => (bool) sspa_get_option('remove_data_on_uninstall'),
             'profiler_enabled' => (bool) $health['mu'],
@@ -1008,6 +1010,9 @@ class SSPA_Abilities_Control {
         }
         if (isset($input['remove_data_on_uninstall'])) {
             sspa_update_option('remove_data_on_uninstall', (bool) $input['remove_data_on_uninstall']);
+        }
+        if (isset($input['measurement_runs'])) {
+            sspa_update_option('measurement_runs', SSPA_Measurement::sanitise_mode((string) $input['measurement_runs']));
         }
         foreach ((array) ($input['publishers'] ?? array()) as $slug => $enabled) {
             SSPA_Community_State::set_enabled(sanitize_text_field((string) $slug), (bool) $enabled);
