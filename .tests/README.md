@@ -22,6 +22,7 @@ WordPress started. `.tests/docker/` is gone; do not reintroduce it.
 .tests/run-tests.sh 80-checkout-type # preflight names a checkout block, shortcode or unsupported page by its real content
 .tests/run-tests.sh 143-checkout-address # GR store with no postcode completes block and classic purchases; a country with no real postcode stops with checkout_address_incomplete before the cart
 .tests/run-tests.sh 144-overview-insight # Overview insights link to the measured URL and to that page's analysis (Pages deep link)
+.tests/browser/run-copy-markdown.sh # own site tests-copy-markdown: a test-only MU fixture delays the real sspa_markdown_export handler 7 s; real Copy Markdown clicks (page panel, Overview, Compare row, checkout panel) with only clipboard-write granted reach the clipboard and match Download Markdown; expired nonce (403), server refusal and a fatal (500) each get their own message; a browser refusing every write shows the report selected to copy with Ctrl+C
 .tests/browser/run-insight-links.sh # after case 144 on the same site: Page analysis click opens the panel, the deep link selects Pages
 .tests/browser/run-plugins-tab.sh # own site tests-plugins-tab: Measure button, a real Plugin Impact Analysis summary (shown, reopened until seen) and the Plugins tab page/sort/show filters
 .tests/mcp/run-mcp-transport.sh # own site tests-mcp: MCP turned on as the setup page does, then initialize, tools/list, discover and execute an sspa ability over the official MCP Adapter endpoint; asserts the 57 declared abilities are all discoverable

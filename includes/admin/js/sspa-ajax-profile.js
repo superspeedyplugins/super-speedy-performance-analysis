@@ -3,8 +3,11 @@
 var saved = null, chart = null;
 function request(data) {
     return $.post(ajaxurl, Object.assign({action:'sspa_ajax_profile', nonce:sspa_admin.nonce}, data)).then(function (response) {
-        if (!response.success) throw new Error(typeof response.data === 'string' ? response.data : wp.i18n.__("Request failed.", "super-speedy-performance-analysis"));
+        if (!response || !response.success) throw new Error(SSPAFeedback.response(response, wp.i18n.__("Request failed.", "super-speedy-performance-analysis")));
         return response.data;
+    }, function (xhr, textStatus) {
+        // A failed request used to reach fail() as the jqXHR, which has no message.
+        throw new Error(SSPAFeedback.xhr(xhr, wp.i18n.__("Request failed.", "super-speedy-performance-analysis"), textStatus));
     });
 }
 function fail(error) { $('.sspa-ajax-status').text(error.message || wp.i18n.__("Request failed.", "super-speedy-performance-analysis")); }

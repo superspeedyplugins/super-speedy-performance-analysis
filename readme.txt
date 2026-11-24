@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.70.0
+Stable tag: 0.70.6
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,12 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.70.6 (24th November 2026) =
+* Fixed Copy Markdown failing with "The Markdown report could not be exported." when the export took longer than about five seconds; the copy now completes, and a browser that still refuses shows the report selected to copy with Ctrl+C (Cmd+C).
+* Error messages throughout Performance Analysis now say what failed: the server's own reason, an expired security token, or the HTTP status, instead of one general sentence.
+* Copy buttons for queries and commands show the text to copy by hand when the browser refuses, instead of doing nothing.
+* Actions that used to wait for ever or say nothing when their request failed (plugin details, the payload preview, Prune, Cancel, the sharing and settings checkboxes, the checkout panel) now report the failure.
 
 = 0.70.5 (24th November 2026) =
 * Pro: updated super-speedy-settings to 1.15.2, the shared licence and update code that the wordpress.org edition does not include.

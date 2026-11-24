@@ -464,7 +464,7 @@
 			post('sspa_process_batch', { run_id: runId }, function (resp) {
 				if (!resp.success || !resp.data) {
 					driving = false;
-					error(wp.i18n.__('The run could not be advanced.', 'super-speedy-performance-analysis'));
+					error(SSPAFeedback.response(resp, wp.i18n.__('The run could not be advanced.', 'super-speedy-performance-analysis')));
 					return;
 				}
 				var status = resp.data;
@@ -479,13 +479,13 @@
 					return;
 				}
 				error(wp.i18n.sprintf(/* translators: %s is the recorded terminal analysis status. */ wp.i18n.__('The run ended as "%s".', 'super-speedy-performance-analysis'), status.status));
-			}).fail(function () {
+			}).fail(function (xhr, textStatus) {
 				if (++failures < 4) {
 					window.setTimeout(step, 2000);
 					return;
 				}
 				driving = false;
-				error(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
+				error(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus));
 			});
 		}
 		renderProgress(null);
@@ -495,7 +495,7 @@
 	function showResult(runId) {
 		post('sspa_checkout_result', { run_id: runId || 0, pa_screen: document.getElementById('sspa_main') ? 1 : 0 }, function (resp) {
 			if (!resp.success) {
-				error(resp.data || wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
+				error(SSPAFeedback.response(resp, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')));
 				return;
 			}
 			if (resp.data.running) {
@@ -507,6 +507,8 @@
 				return;
 			}
 			renderResult(resp.data);
+		}).fail(function (xhr, textStatus) {
+			error(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus));
 		});
 	}
 
@@ -514,10 +516,12 @@
 		body(('<p class="sspa-adhoc-running sspa-adhoc-span"><span class="sspa-adhoc-spin">' + '</span>' + wp.i18n.__('Checking what a purchase would set off on this store&hellip;', 'super-speedy-performance-analysis') + '</p>'));
 		post('sspa_checkout_preflight', {}, function (resp) {
 			if (!resp.success) {
-				error(resp.data || wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
+				error(SSPAFeedback.response(resp, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')));
 				return;
 			}
 			renderDisclosure(resp.data);
+		}).fail(function (xhr, textStatus) {
+			error(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus));
 		});
 	}
 
@@ -548,10 +552,12 @@
 			allow_webhooks: pop.find('.sspa-ck-webhooks').is(':checked') ? 1 : 0
 		}, function (resp) {
 			if (!resp.success) {
-				error(resp.data || wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
+				error(SSPAFeedback.response(resp, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')));
 				return;
 			}
 			drive(resp.data.run_id);
+		}).fail(function (xhr, textStatus) {
+			error(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus));
 		});
 	});
 })(jQuery);

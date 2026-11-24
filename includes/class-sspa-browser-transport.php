@@ -44,10 +44,15 @@ class SSPA_Browser_Transport {
 
     public static function register_script() {
         wp_register_script('sspa-browser-evidence', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-browser-evidence.js', array(), sspa_asset_version('includes/admin/js/sspa-browser-evidence.js'), true);
+        // Shared error wording and clipboard handling (window.SSPAFeedback). Every Performance
+        // Analysis script reaches it through sspa-transport or names it directly, so the lazy
+        // admin-bar loader picks it up through its dependency walk.
+        wp_register_script('sspa-feedback', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-feedback.js', array('wp-i18n'), sspa_asset_version('includes/admin/js/sspa-feedback.js'), true);
+        wp_set_script_translations('sspa-feedback', 'super-speedy-performance-analysis', SSPA_PLUGIN_DIR . 'languages');
         wp_register_script(
             'sspa-transport',
             SSPA_PLUGIN_URL . 'includes/admin/js/sspa-transport.js',
-            array('sspa-browser-evidence'),
+            array('sspa-browser-evidence', 'sspa-feedback'),
             sspa_asset_version('includes/admin/js/sspa-transport.js'),
             true
         );

@@ -138,6 +138,8 @@ class SSPA_Adhoc {
                 'exporting' => __('Preparing export…', 'super-speedy-performance-analysis'),
                 'export_failed' => __('The page diagnostic could not be exported.', 'super-speedy-performance-analysis'),
                 'markdown_failed' => __('The Markdown report could not be exported.', 'super-speedy-performance-analysis'),
+                'markdown_empty' => __('The server finished the export but sent no Markdown. Try again; if it repeats, use Download Markdown.', 'super-speedy-performance-analysis'),
+                'copy_manual' => __('Your browser blocked the automatic copy, so the report is shown to copy by hand.', 'super-speedy-performance-analysis'),
                 // The plugin-impact picker. Built client-side from the plan endpoint so the
                 // estimate can update as boxes are ticked, rather than after a round trip.
                 // Page suspects are preselected for review; nothing runs before Start.

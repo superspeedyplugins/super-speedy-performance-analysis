@@ -38,9 +38,14 @@ window.SSPATransport = (function () {
 			body: fields.toString()
 		}).then(function (r) {
 			if (!r.ok) {
-				var err = new Error('HTTP ' + r.status);
-				err.transient = (r.status === 503 || r.status === 429 || r.status === 502 || r.status === 504);
-				throw err;
+				// Keep the server's own message (an expired nonce answers -1 with 403) with the status.
+				return r.text().catch(function () { return ''; }).then(function (raw) {
+					var err = new Error(window.SSPAFeedback
+						? SSPAFeedback.xhr({ status: r.status, responseText: raw }, '', 'error')
+						: 'HTTP ' + r.status);
+					err.transient = (r.status === 503 || r.status === 429 || r.status === 502 || r.status === 504);
+					throw err;
+				});
 			}
 			return r.json();
 		});

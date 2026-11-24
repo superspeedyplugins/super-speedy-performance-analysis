@@ -342,7 +342,7 @@
 			var measuredPage = $('<p class="sspa-history-measured-page" aria-live="polite">').text(strings.loading_measured_page).appendTo(target);
 			$.post(ajaxurl, {action: 'sspa_profile_target', nonce: sspa_admin.nonce, profile_id: item.profile_id}).done(function (response) {
 				if (!response.success) {
-					measuredPage.text(response.data || strings.measured_page_failed);
+					measuredPage.text(SSPAFeedback.response(response, strings.measured_page_failed));
 					return;
 				}
 				measuredPage.empty();
@@ -351,7 +351,7 @@
 				} else {
 					measuredPage.text(strings.measured_page_action);
 				}
-			}).fail(function () { measuredPage.text(strings.measured_page_failed); });
+			}).fail(function (xhr, textStatus) { measuredPage.text(SSPAFeedback.xhr(xhr, strings.measured_page_failed, textStatus)); });
 			$('<p class="description">').text(strings.representative_capture).appendTo(target);
 		}
 	}
@@ -429,14 +429,14 @@
 		}).done(function (response) {
 			if (!response.success) {
 				select.val(documentData.metric.key);
-				status.textContent = response.data || wp.i18n.__("The metric could not be loaded.", "super-speedy-performance-analysis");
+				status.textContent = SSPAFeedback.response(response, wp.i18n.__("The metric could not be loaded.", "super-speedy-performance-analysis"));
 				return;
 			}
 			$(card).find('.sspa-history-chart-table').html(response.data.table);
 			render(card, response.data.document);
-		}).fail(function () {
+		}).fail(function (xhr, textStatus) {
 			select.val(documentData.metric.key);
-			status.textContent = wp.i18n.__("The metric could not be loaded.", "super-speedy-performance-analysis");
+			status.textContent = SSPAFeedback.xhr(xhr, wp.i18n.__("The metric could not be loaded.", "super-speedy-performance-analysis"), textStatus);
 		}).always(function () {
 			select.prop('disabled', false);
 		});

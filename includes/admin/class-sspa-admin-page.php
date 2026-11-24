@@ -132,9 +132,9 @@ class SSPA_Admin_Page {
     public static function enqueue_assets() {
         wp_enqueue_script('sspa-chart-library', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-chart-library.js', array('sspa-admin'), sspa_asset_version('includes/admin/js/sspa-chart-library.js'), true);
         wp_enqueue_script('sspa-measurement-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-measurement-chart.js', array('jquery', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-measurement-chart.js'), true);
-        wp_enqueue_script('sspa-ajax-profile', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-ajax-profile.js', array('jquery', 'sspa-measurement-chart', 'sspa-chart-library', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-ajax-profile.js'), true);
+        wp_enqueue_script('sspa-ajax-profile', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-ajax-profile.js', array('jquery', 'sspa-measurement-chart', 'sspa-chart-library', 'sspa-feedback', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-ajax-profile.js'), true);
         wp_enqueue_script('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-admin.js', array('jquery', 'sspa-transport', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-admin.js'), true);
-        wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-chart-library', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
+        wp_enqueue_script('sspa-history-chart', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-chart.js', array('jquery', 'sspa-chart-library', 'sspa-feedback', 'wp-i18n'), sspa_asset_version('includes/admin/js/sspa-history-chart.js'), true);
         wp_localize_script('sspa-history-chart', 'sspa_history_chart', array(
             'plugin_title' => 'Super Speedy Performance Analysis v' . SSPA_VERSION,
             /* translators: 1: analysis ID, 2: request sample number */
@@ -189,7 +189,7 @@ class SSPA_Admin_Page {
             'tooltip_unavailable' => __('PHP warning coverage unavailable', 'super-speedy-performance-analysis'),
             'select_point' => __('Select this point for saved diagnostics', 'super-speedy-performance-analysis'),
         ));
-        wp_enqueue_script('sspa-history-run-view', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-run-view.js', array('jquery', 'sspa-admin'), sspa_asset_version('includes/admin/js/sspa-history-run-view.js'), true);
+        wp_enqueue_script('sspa-history-run-view', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-history-run-view.js', array('jquery', 'sspa-admin', 'sspa-feedback'), sspa_asset_version('includes/admin/js/sspa-history-run-view.js'), true);
         wp_localize_script('sspa-history-run-view', 'sspa_history_run', array(
             'loading' => __('Loading saved report…', 'super-speedy-performance-analysis'),
             'failed' => __('The saved report could not be loaded.', 'super-speedy-performance-analysis'),
@@ -220,7 +220,7 @@ class SSPA_Admin_Page {
         ));
         wp_enqueue_style('sspa-admin', SSPA_PLUGIN_URL . 'includes/admin/css/sspa-admin.css', array(), sspa_asset_version('includes/admin/css/sspa-admin.css'));
         // "Request a fix quote": PA's own screen only. The dialog markup comes from the server.
-        wp_enqueue_script('sspa-quote-request', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-quote-request.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-quote-request.js'), true);
+        wp_enqueue_script('sspa-quote-request', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-quote-request.js', array('jquery', 'sspa-feedback'), sspa_asset_version('includes/admin/js/sspa-quote-request.js'), true);
         wp_localize_script('sspa-quote-request', 'sspa_quote', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),
@@ -233,7 +233,7 @@ class SSPA_Admin_Page {
                 'close' => __('Close', 'super-speedy-performance-analysis'),
             ),
         ));
-        wp_enqueue_script('sspa-workflows', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-workflows.js', array('jquery'), sspa_asset_version('includes/admin/js/sspa-workflows.js'), true);
+        wp_enqueue_script('sspa-workflows', SSPA_PLUGIN_URL . 'includes/admin/js/sspa-workflows.js', array('jquery', 'sspa-feedback'), sspa_asset_version('includes/admin/js/sspa-workflows.js'), true);
         wp_localize_script('sspa-workflows', 'sspa_workflows', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('sspa_admin'),

@@ -53,7 +53,14 @@
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body.toString()
 		}).then(function (response) {
-			return response.json();
+			// An expired nonce answers -1 with HTTP 403, which is not JSON: say that, not
+			// "Unexpected token".
+			return response.text().then(function (raw) {
+				var parsed, valid = true;
+				try { parsed = JSON.parse(raw); } catch (e) { valid = false; }
+				if (response.ok && valid) { return parsed; }
+				throw new Error(SSPAFeedback.xhr({ status: response.status, responseText: raw }, cfg.i18n.failed, response.ok ? 'parsererror' : 'error'));
+			});
 		});
 	}
 
@@ -80,8 +87,7 @@
 		}
 		return ajax(data).then(function (response) {
 			if (!response || !response.success) {
-				var detail = response && response.data ? response.data : {};
-				throw new Error(detail.message || detail || cfg.i18n.failed);
+				throw new Error(SSPAFeedback.response(response, cfg.i18n.failed));
 			}
 			return response.data;
 		});
@@ -119,7 +125,7 @@
 					}, 250);
 				});
 			}
-			throw new Error(detail.message || detail || cfg.i18n.failed);
+			throw new Error(SSPAFeedback.response(response, cfg.i18n.failed));
 		});
 	}
 

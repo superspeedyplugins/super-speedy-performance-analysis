@@ -136,13 +136,13 @@
 			pa_screen: document.getElementById('sspa_main') ? 1 : 0
 		}, function (resp) {
 			if (!resp.success) {
-				renderError(resp.data || wp.i18n.__('Could not load that page profile.', 'super-speedy-performance-analysis'));
+				renderError(SSPAFeedback.response(resp, wp.i18n.__('Could not load that page profile.', 'super-speedy-performance-analysis')));
 				return;
 			}
 			current.profileId = resp.data.profile_id;
 			body(resp.data.html);
 			if (done) { done(); }
-		}).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
+		}).fail(function (xhr, textStatus) { renderError(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus)); });
 	}
 
 	function fetchByUrl(cb, fresh) {
@@ -152,7 +152,7 @@
 			url: current.url || pageUrl(),
 			fresh: fresh ? 1 : 0,
 			pa_screen: document.getElementById('sspa_main') ? 1 : 0
-		}, cb).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
+		}, cb).fail(function (xhr, textStatus) { renderError(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus)); });
 	}
 
 	// Whatever the panel is showing, show it again with fresh data.
@@ -164,7 +164,7 @@
 					body(resp.data.html);
 					if (done) { done(); }
 				} else {
-					renderError(sspa_adhoc.i18n.failed);
+					renderError(resp && resp.success ? sspa_adhoc.i18n.failed : SSPAFeedback.response(resp, sspa_adhoc.i18n.failed));
 				}
 			}, false);
 			return;
@@ -202,7 +202,7 @@
 		renderProgress(null);
 		$.post(sspa_adhoc.ajaxurl, { action: 'sspa_adhoc_start', nonce: sspa_adhoc.nonce, url: current.url, all_hooks: allHooks ? 1 : 0, raw_streams: rawStreams ? 1 : 0 }, function (resp) {
 			if (!resp.success) {
-				renderError(resp.data || wp.i18n.__('Could not start.', 'super-speedy-performance-analysis'));
+				renderError(SSPAFeedback.response(resp, wp.i18n.__('Could not start.', 'super-speedy-performance-analysis')));
 				return;
 			}
 			drive(resp.data.run_id, function () {
@@ -211,11 +211,11 @@
 						current.profileId = r.data.profile_id;
 						body(r.data.html);
 					} else {
-						renderError(sspa_adhoc.i18n.failed);
+						renderError(r && r.success ? sspa_adhoc.i18n.failed : SSPAFeedback.response(r, sspa_adhoc.i18n.failed));
 					}
 				}, true);
 			});
-		}).fail(function () { renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')); });
+		}).fail(function (xhr, textStatus) { renderError(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus)); });
 	}
 
 	/**
@@ -235,7 +235,7 @@
 		function step() {
 			$.post(sspa_adhoc.ajaxurl, { action: 'sspa_process_batch', nonce: sspa_adhoc.nonce, run_id: runId }, function (resp) {
 				failures = 0;
-				var s = resp.success ? resp.data : null;
+				var s = resp && resp.success ? resp.data : null;
 				if (s && (s.status === 'crawling' || s.status === 'analysing')) {
 					if (s.transport === 'browser' && s.status === 'crawling' && !browserDriver && window.SSPATransport) {
 						console.info(wp.i18n.__('[SSPA] loopbacks are blocked on this site - this browser is fetching the pages itself', 'super-speedy-performance-analysis'));
@@ -254,17 +254,20 @@
 				if (browserDriver) { browserDriver.stop(); }
 				if (s && s.status === 'done') {
 					onDone();
+				} else if (!resp || !resp.success) {
+					renderError(SSPAFeedback.response(resp, sspa_adhoc.i18n.failed));
 				} else {
-					renderError(sspa_adhoc.i18n.failed);
+					// The run's own recorded end reason, when it has one (cancelled, no progress...).
+					renderError(s && s.reason ? sspa_adhoc.i18n.failed + ' ' + s.reason : sspa_adhoc.i18n.failed);
 				}
-			}).fail(function () {
+			}).fail(function (xhr, textStatus) {
 				if (++failures < 4) {
 					window.setTimeout(step, 2000);
 					return;
 				}
 				driving = false;
 				if (browserDriver) { browserDriver.stop(); }
-				renderError(wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
+				renderError(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus));
 			});
 		}
 		renderProgress(null, message);
@@ -277,7 +280,7 @@
 		body('<p class="sspa-adhoc-note">' + esc(sspa_adhoc.i18n.loading) + '</p>');
 		fetchByUrl(function (resp) {
 			if (!resp.success) {
-				renderError(resp.data || wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'));
+				renderError(SSPAFeedback.response(resp, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis')));
 				return;
 			}
 			if (resp.data.running) {
@@ -287,7 +290,7 @@
 							current.profileId = r.data.profile_id;
 							body(r.data.html);
 						} else {
-							renderError(sspa_adhoc.i18n.failed);
+							renderError(r && r.success ? sspa_adhoc.i18n.failed : SSPAFeedback.response(r, sspa_adhoc.i18n.failed));
 						}
 					}, true);
 				});
@@ -406,7 +409,7 @@
 		}, function (resp) {
 			if (!resp.success || !resp.data || !resp.data.payload) {
 				button.prop('disabled', false).text(original);
-				window.alert(resp.data || sspa_adhoc.i18n.export_failed);
+				window.alert(SSPAFeedback.response(resp, sspa_adhoc.i18n.export_failed));
 				return;
 			}
 			var blob = new Blob([JSON.stringify(resp.data.payload, null, 2) + '\n'], { type: 'application/json' });
@@ -419,67 +422,79 @@
 			link.remove();
 			window.URL.revokeObjectURL(url);
 			button.prop('disabled', false).text(original);
-		}).fail(function () {
+		}).fail(function (xhr, textStatus) {
 			button.prop('disabled', false).text(original);
-			window.alert(sspa_adhoc.i18n.export_failed);
+			window.alert(SSPAFeedback.xhr(xhr, sspa_adhoc.i18n.export_failed, textStatus));
 		});
 	});
 
 	// One server-generated Markdown document backs both actions. It contains the useful
 	// diagnostic evidence but removes raw query values, SQL literals and checkout identifiers
 	// before it reaches the browser.
+	//
+	// Resolves with {markdown, filename}; rejects with an Error whose message says what failed:
+	// the server's own refusal, an HTTP failure with its status, or an empty export.
+	function requestMarkdown(kind, id) {
+		return new Promise(function (resolve, reject) {
+			$.post(sspa_adhoc.ajaxurl, {
+				action: 'sspa_markdown_export',
+				nonce: sspa_adhoc.nonce,
+				kind: kind,
+				id: id
+			}).done(function (resp) {
+				if (!resp || !resp.success) {
+					reject(new Error(SSPAFeedback.response(resp, sspa_adhoc.i18n.markdown_failed)));
+					return;
+				}
+				if (!resp.data || 'string' !== typeof resp.data.markdown || !resp.data.markdown) {
+					reject(new Error(sspa_adhoc.i18n.markdown_empty));
+					return;
+				}
+				resolve(resp.data);
+			}).fail(function (xhr, textStatus) {
+				reject(new Error(SSPAFeedback.xhr(xhr, sspa_adhoc.i18n.markdown_failed, textStatus)));
+			});
+		});
+	}
+
 	function markdownExport(button, mode) {
 		var kind = String(button.data('kind') || '');
 		var id = Number(button.data('id')) || 0;
 		var original = button.text();
 		var status = button.siblings('.sspa-markdown-status').first();
+		function settle(text) {
+			button.prop('disabled', false).text(original);
+			status.text(text || '');
+		}
 		button.prop('disabled', true).text(sspa_adhoc.i18n.exporting);
 		status.text('');
-		$.post(sspa_adhoc.ajaxurl, {
-			action: 'sspa_markdown_export',
-			nonce: sspa_adhoc.nonce,
-			kind: kind,
-			id: id
-		}, function (resp) {
-			if (!resp.success || !resp.data || !resp.data.markdown) {
-				button.prop('disabled', false).text(original);
-				window.alert(resp.data || sspa_adhoc.i18n.markdown_failed);
-				return;
-			}
-			if ('download' === mode) {
-				var blob = new Blob([resp.data.markdown], { type: 'text/markdown;charset=utf-8' });
-				var url = window.URL.createObjectURL(blob);
-				var link = document.createElement('a');
-				link.href = url;
-				link.download = resp.data.filename || ((sspa_adhoc.download_prefix || '') + 'sspa-analysis-' + id + '.md');
-				document.body.appendChild(link);
-				link.click();
-				link.remove();
-				window.URL.revokeObjectURL(url);
-				button.prop('disabled', false).text(original);
-				status.text(wp.i18n.__('Downloaded.', 'super-speedy-performance-analysis'));
-				return;
-			}
-			function copied() {
-				button.prop('disabled', false).text(original);
-				status.text(sspa_adhoc.i18n.copied + '.');
-			}
-			function copyFailed() {
-				button.prop('disabled', false).text(original);
-				window.alert(sspa_adhoc.i18n.markdown_failed);
-			}
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(resp.data.markdown).then(copied).catch(copyFailed);
-				return;
-			}
-			var textarea = $('<textarea>').val(resp.data.markdown).css({ position: 'fixed', left: '-9999px' }).appendTo('body');
-			textarea[0].select();
-			var ok = document.execCommand('copy');
-			textarea.remove();
-			ok ? copied() : copyFailed();
-		}).fail(function () {
-			button.prop('disabled', false).text(original);
-			window.alert(sspa_adhoc.i18n.markdown_failed);
+		var request = requestMarkdown(kind, id);
+		if ('copy' === mode) {
+			// The clipboard write starts now, inside the click. A large export can take longer
+			// than the browser's user-activation window (five seconds in Chromium), and a write
+			// started when the answer arrives is refused (0.70.6).
+			SSPAFeedback.copyLater(request.then(function (data) { return data.markdown; })).then(function (outcome) {
+				settle(outcome.manual ? sspa_adhoc.i18n.copy_manual : sspa_adhoc.i18n.copied + '.');
+			}, function (failure) {
+				settle();
+				window.alert(failure && failure.exportError ? failure.exportError.message : String(failure && failure.message ? failure.message : failure));
+			});
+			return;
+		}
+		request.then(function (data) {
+			var blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
+			var url = window.URL.createObjectURL(blob);
+			var link = document.createElement('a');
+			link.href = url;
+			link.download = data.filename || ((sspa_adhoc.download_prefix || '') + 'sspa-analysis-' + id + '.md');
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			window.URL.revokeObjectURL(url);
+			settle(wp.i18n.__('Downloaded.', 'super-speedy-performance-analysis'));
+		}, function (error) {
+			settle();
+			window.alert(error.message);
 		});
 	}
 
@@ -566,15 +581,10 @@
 			t.css({ left: e.pageX + 'px', top: (e.pageY - 10) + 'px' });
 			window.setTimeout(function () { t.remove(); }, 1300);
 		}
-		if (navigator.clipboard && navigator.clipboard.writeText) {
-			navigator.clipboard.writeText(sql).then(toast, function () {});
-			return;
-		}
-		// Non-secure contexts (plain-http dev sites): the clipboard API is unavailable.
-		var tmp = $('<textarea>').val(sql).css({ position: 'fixed', opacity: 0 }).appendTo('body');
-		tmp[0].select();
-		try { document.execCommand('copy'); toast(); } catch (err) { /* nothing to do */ }
-		tmp.remove();
+		// Copied inside the click; a refusal shows the query to copy by hand instead of nothing.
+		SSPAFeedback.copyText(sql).then(function (outcome) {
+			if (!outcome.manual) { toast(); }
+		});
 	});
 
 	// ---- plugin impact: the picker ----
@@ -593,14 +603,14 @@
 			url: url || ''
 		}, function (resp) {
 			if (!resp.success) {
-				target.html('<p class="sspa-adhoc-error">' + esc(resp.data || wp.i18n.__('Could not work out what to measure.', 'super-speedy-performance-analysis')) + '</p>');
+				target.html('<p class="sspa-adhoc-error">' + esc(SSPAFeedback.response(resp, wp.i18n.__('Could not work out what to measure.', 'super-speedy-performance-analysis'))) + '</p>');
 				return;
 			}
 			plan = resp.data;
 			target.html(planHtml(plan));
 			updateEstimate();
-		}).fail(function () {
-			target.html(('<p class="sspa-adhoc-error">' + wp.i18n.__('Request failed.', 'super-speedy-performance-analysis') + '</p>'));
+		}).fail(function (xhr, textStatus) {
+			target.html('<p class="sspa-adhoc-error">' + esc(SSPAFeedback.xhr(xhr, wp.i18n.__('Request failed.', 'super-speedy-performance-analysis'), textStatus)) + '</p>');
 		});
 	}
 
@@ -794,7 +804,7 @@
 			}
 			$.post(sspa_adhoc.ajaxurl, payload, function (resp) {
 				if (!resp.success) {
-					$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
+					$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(SSPAFeedback.response(resp, wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis')));
 					btn.prop('disabled', false);
 					return;
 				}
@@ -804,8 +814,8 @@
 				if (typeof window.sspa_drive_run === 'function') {
 					window.sspa_drive_run(resp.data.run_id);
 				}
-			}).fail(function () {
-				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
+			}).fail(function (xhr, textStatus) {
+				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(SSPAFeedback.xhr(xhr, wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'), textStatus));
 				btn.prop('disabled', false);
 			});
 			return;
@@ -820,7 +830,7 @@
 			'suspects[]': slugs
 		}, function (resp) {
 			if (!resp.success) {
-				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(resp.data || wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
+				$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(SSPAFeedback.response(resp, wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis')));
 				$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
 				return;
 			}
@@ -828,8 +838,8 @@
 			drive(runId, function () {
 				reload(function () { impactSummary(runId); });
 			}, wp.i18n.__('Measuring plugin impact on this page…', 'super-speedy-performance-analysis'));
-		}).fail(function () {
-			$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'));
+		}).fail(function (xhr, textStatus) {
+			$('#sspa-adhoc-pop .sspa-adhoc-estimate').text(SSPAFeedback.xhr(xhr, wp.i18n.__('Could not start measuring.', 'super-speedy-performance-analysis'), textStatus));
 			$('#sspa-adhoc-pop .sspa-adhoc-measure-start').prop('disabled', false);
 		});
 	});

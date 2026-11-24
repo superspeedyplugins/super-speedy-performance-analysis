@@ -48,7 +48,7 @@
 			.done(function (response) {
 				if (token !== serial) { return; }
 				if (!response || !response.success || !response.data || String(response.data.run_id) !== String(id)) {
-					failed(response && typeof response.data === 'string' ? response.data : '');
+					failed(SSPAFeedback.response(response, sspa_history_run.failed));
 					return;
 				}
 				view.removeAttr('aria-busy').html(response.data.html);
@@ -56,8 +56,7 @@
 			})
 			.fail(function (xhr, state) {
 				if (token !== serial || state === 'abort') { return; }
-				var data = xhr.responseJSON && xhr.responseJSON.data;
-				failed(typeof data === 'string' ? data : '');
+				failed(SSPAFeedback.xhr(xhr, sspa_history_run.failed, state));
 			});
 	}
 

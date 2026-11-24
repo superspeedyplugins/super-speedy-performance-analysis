@@ -41,15 +41,14 @@
 			source: String(button.data('source') || '')
 		}).done(function (resp) {
 			if (!resp || !resp.success || !resp.data || !resp.data.html) {
-				window.alert((resp && resp.data && resp.data.message) || sspa_quote.i18n.open_failed);
+				window.alert(SSPAFeedback.response(resp, sspa_quote.i18n.open_failed));
 				return;
 			}
 			$('#sspa-quote-backdrop').remove();
 			var backdrop = $('<div id="sspa-quote-backdrop" class="sspa-quote-backdrop"></div>').html(resp.data.html).appendTo('body');
 			backdrop.find('#sspa-quote-name').trigger('focus');
-		}).fail(function (xhr) {
-			var data = xhr && xhr.responseJSON && xhr.responseJSON.data;
-			window.alert((data && data.message) || sspa_quote.i18n.open_failed);
+		}).fail(function (xhr, textStatus) {
+			window.alert(SSPAFeedback.xhr(xhr, sspa_quote.i18n.open_failed, textStatus));
 		}).always(function () {
 			button.prop('disabled', false).text(label);
 		});
@@ -102,11 +101,10 @@
 				form.find('.sspa-quote-close').text(sspa_quote.i18n.close).trigger('focus');
 				return;
 			}
-			status(dialog, data.message || sspa_quote.i18n.send_failed, true);
+			status(dialog, SSPAFeedback.response(resp, sspa_quote.i18n.send_failed), true);
 			send.prop('disabled', false);
-		}).fail(function (xhr) {
-			var data = xhr && xhr.responseJSON && xhr.responseJSON.data;
-			status(dialog, (data && data.message) || sspa_quote.i18n.send_failed, true);
+		}).fail(function (xhr, textStatus) {
+			status(dialog, SSPAFeedback.xhr(xhr, sspa_quote.i18n.send_failed, textStatus), true);
 			send.prop('disabled', false);
 		});
 	});

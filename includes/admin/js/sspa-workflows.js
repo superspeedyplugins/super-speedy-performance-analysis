@@ -43,15 +43,15 @@
 		status(cfg.i18n.loading);
 		post('sspa_workflow_targets', { object_type: type }).done(function (response) {
 			if (!response || !response.success) {
-				status((response && response.data && response.data.message) || cfg.i18n.failed, true);
+				status(SSPAFeedback.response(response, cfg.i18n.failed), true);
 				return;
 			}
 			fill(transport, response.data.transports, cfg.i18n.no_transports);
 			var ready = response.data.transports.length;
 			$('#sspa-workflow-run').prop('disabled', !ready);
 			status(ready ? cfg.i18n.ready : cfg.i18n.no_targets, !ready);
-		}).fail(function () {
-			status(cfg.i18n.failed, true);
+		}).fail(function (xhr, textStatus) {
+			status(SSPAFeedback.xhr(xhr, cfg.i18n.failed, textStatus), true);
 		});
 	}
 
@@ -69,17 +69,17 @@
 			if (!response || !response.success) {
 				running = false;
 				$('#sspa-workflow-run').prop('disabled', false);
-				status((response && response.data && response.data.message) || cfg.i18n.failed, true);
+				status(SSPAFeedback.response(response, cfg.i18n.failed), true);
 				return;
 			}
 			objectId = response.data.object_id;
 			status(response.data.warning || cfg.i18n.running);
 			$('#sspa-workflow-frame').attr('src', response.data.editor_url);
-		}).fail(function () {
+		}).fail(function (xhr, textStatus) {
 			cleanup();
 			running = false;
 			$('#sspa-workflow-run').prop('disabled', false);
-			status(cfg.i18n.failed, true);
+			status(SSPAFeedback.xhr(xhr, cfg.i18n.failed, textStatus), true);
 		});
 	}
 
