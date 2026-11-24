@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.70.4 (24th November 2026) =
+* Pro: updated super-speedy-settings to 1.15.1, the shared licence and update code that the wordpress.org edition does not include.
+
 = 0.70.3 (24th November 2026) =
 * Pro: updated super-speedy-settings to 1.15.0, the shared licence and update code that the wordpress.org edition does not include.
 
