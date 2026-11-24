@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.69.1
+Stable tag: 0.70.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -113,7 +113,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
-= 0.69.1 (24th November 2026) =
+= 0.70.0 (24th November 2026) =
 * The full analysis Markdown file now includes the phase breakdown, top callbacks, template residuals and render regions for every front-end page, each with a one-line verdict naming its PHP CPU share, top owner and largest untimed gap.
 * The full analysis Markdown file and the Tools tab now show which PHP serves your site: its server API, binary, php.ini, additional ini files and whether each profiling extension is loaded in it.
 * A page whose SQL or HTTP was not captured but whose time was mostly CPU is now reported as PHP CPU-bound, with SQL, HTTP and object cache bounded by the non-CPU time, instead of "dominant cost unknown".
