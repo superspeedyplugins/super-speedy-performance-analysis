@@ -25,9 +25,10 @@ for ($round = 0; $round < 5; $round++) {
         }
         $results[$mode][] = $time();
         if ($context) {
-            remove_all_filters('query');
-            remove_all_filters('pre_do_shortcode_tag');
-            remove_all_filters('do_shortcode_tag');
+            // Only this observer: core's own `query` filter stays, as on a real request.
+            remove_filter('query', array($context, 'observe'), PHP_INT_MAX);
+            remove_filter('pre_do_shortcode_tag', array($context, 'shortcode_open'), PHP_INT_MAX);
+            remove_filter('do_shortcode_tag', array($context, 'shortcode_close'), PHP_INT_MIN);
         }
     }
 }
