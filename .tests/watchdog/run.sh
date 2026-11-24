@@ -74,6 +74,9 @@ cp "$PLUGIN_DIR/.tests/fixtures/watchdog-mail-recorder.php" "$SITE/wp-content/mu
 cli option update woocommerce_coming_soon no >/dev/null 2>&1
 cli option update woocommerce_store_pages_only no >/dev/null 2>&1
 cli sspa profiler enable >/dev/null 2>&1
+# Other journeys on a shared or reused site leave the checkout page as they last needed it (the
+# checkout-flow journey ends on an unsupported page). The checkout test needs WooCommerce's block.
+cli eval "wp_update_post(array('ID' => (int) get_option('woocommerce_checkout_page_id'), 'post_content' => '<!-- wp:woocommerce/checkout /-->')); wp_cache_flush();" >/dev/null 2>&1
 sleep 3 # php-fpm revalidates changed files every 2 s
 
 PAGES="baseline,home,shop,admin-dashboard,customer-shop"
