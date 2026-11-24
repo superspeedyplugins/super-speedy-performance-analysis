@@ -72,6 +72,11 @@ if (!empty($sspa_options['remove_data_on_uninstall'])) {
     foreach (array('sspa_cleanup_event', 'sspa_submission_worker_event', 'sspa_traffic_collection_tick', 'sspa_process_batch_event') as $sspa_hook) {
         wp_clear_scheduled_hook($sspa_hook);
     }
+    // SSPA-PRO-START
+    foreach (array('sspa_watchdog_run', 'sspa_watchdog_step', 'sspa_watchdog_weekly') as $sspa_hook) {
+        wp_clear_scheduled_hook($sspa_hook);
+    }
+    // SSPA-PRO-END
 
     // Per-user share panel choices.
     foreach (array('sspa_share_prompt_snoozed_until', 'sspa_share_prompt_never') as $sspa_user_key) {

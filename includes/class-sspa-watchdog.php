@@ -185,6 +185,17 @@ class SSPA_Watchdog {
         }
     }
 
+    /** Deactivating the plugin stops the watchdog: no events left, no check half done. */
+    public static function deactivate() {
+        foreach (array(self::RUN_HOOK, self::STEP_HOOK, self::WEEKLY_HOOK) as $hook) {
+            wp_clear_scheduled_hook($hook);
+        }
+        $state = self::state();
+        $state['pending'] = null;
+        $state['current'] = null;
+        self::save_state($state);
+    }
+
     // ---------------------------------------------------------------- recording updates
 
     /** Snapshot the version before the files change. The filter response is returned unchanged. */
@@ -1387,14 +1398,14 @@ class SSPA_Watchdog {
         $settings = self::settings();
         $status = self::status();
         ?>
-        <fieldset class="sspa-watchdog-settings" id="sspa-watchdog-settings">
+        <fieldset class="sspa-watchdog-settings" id="sspa-watchdog-settings" style="min-width:0;max-width:100%;margin-top:12px;">
             <legend><strong><?php esc_html_e('Update watchdog', 'super-speedy-performance-analysis'); ?></strong></legend>
             <p class="description"><?php esc_html_e('After any plugin, theme or WordPress update, the watchdog waits 10 minutes for further updates, measures the pages your last full analysis measured (logged-out, logged-in customer and wp-admin) and runs the checkout test, compares them with the analysis before the updates, and emails you only when something got worse. Every regressed page or step is measured a second time before it counts. A weekly check does the same with no update.', 'super-speedy-performance-analysis'); ?></p>
             <p><label><input type="checkbox" name="enabled" value="1" <?php checked(!empty($settings['enabled'])); ?>> <?php esc_html_e('Watch for updates that slow the site down', 'super-speedy-performance-analysis'); ?></label></p>
             <p><label><input type="checkbox" name="checkout" value="1" <?php checked(!empty($settings['checkout'])); ?>> <?php esc_html_e('Include the checkout test', 'super-speedy-performance-analysis'); ?></label><br>
                 <span class="description"><?php esc_html_e('A hidden zero-price order is placed, completed, refunded and moved to Trash, exactly as the checkout analysis does; its order emails go to the site administrator.', 'super-speedy-performance-analysis'); ?></span></p>
             <p><label><?php esc_html_e('Email alerts to', 'super-speedy-performance-analysis'); ?>
-                <input type="text" class="regular-text" name="recipients" value="<?php echo esc_attr($settings['recipients']); ?>" placeholder="<?php echo esc_attr((string) get_option('admin_email')); ?>"></label><br>
+                <input type="text" class="regular-text" style="max-width:100%;" name="recipients" value="<?php echo esc_attr($settings['recipients']); ?>" placeholder="<?php echo esc_attr((string) get_option('admin_email')); ?>"></label><br>
                 <span class="description"><?php esc_html_e('Leave empty for the site administrator. Separate several addresses with commas.', 'super-speedy-performance-analysis'); ?></span></p>
             <p><?php esc_html_e('A page or checkout step counts as slower when it is at least', 'super-speedy-performance-analysis'); ?>
                 <input type="number" class="small-text" name="threshold_percent" min="1" max="1000" value="<?php echo (int) $settings['threshold_percent']; ?>" aria-label="<?php esc_attr_e('Percent', 'super-speedy-performance-analysis'); ?>"> %

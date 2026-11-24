@@ -38,6 +38,11 @@ class SSPA_Install {
         wp_clear_scheduled_hook('sspa_cleanup_event');
         wp_clear_scheduled_hook('sspa_submission_worker_event');
         wp_clear_scheduled_hook('sspa_traffic_collection_tick');
+        // SSPA-PRO-START
+        if (is_file(SSPA_PLUGIN_DIR . 'includes/class-sspa-watchdog.php')) {
+            SSPA_Watchdog::deactivate();
+        }
+        // SSPA-PRO-END
         $run_id = SSPA_Run_Controller::active_run_id();
         if ($run_id) {
             SSPA_Run_Controller::cancel($run_id, __('Cancelled because Performance Analysis was deactivated.', 'super-speedy-performance-analysis'));
