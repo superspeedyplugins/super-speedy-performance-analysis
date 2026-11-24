@@ -114,7 +114,7 @@ The chart bundle includes the licence and notice files; its reproducible source 
 == Changelog ==
 
 = 0.70.3 (24th November 2026) =
-* Pro: updated super-speedy-settings to 1.15.0: a Super Speedy Plugins box on the wp-admin dashboard, for administrators only, with offers, upgrade prompts, speed figures and new guides. Hide or collapse it like any dashboard box.
+* Pro: updated super-speedy-settings to 1.15.0, the shared licence and update code that the wordpress.org edition does not include.
 
 = 0.70.2 (24th November 2026) =
 * The README and the bundled agent skill install the free edition from wordpress.org with `wp plugin install super-speedy-performance-analysis`.
