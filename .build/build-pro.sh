@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Build the Pro edition (superspeedyplugins.com + the GitHub release asset).
+# Build the Pro edition, for superspeedyplugins.com only. Paid since 24 November 2026: never attach
+# this zip to a GitHub release (.build/build-github.sh builds the one GitHub asset).
 #   .build/build-pro.sh <dest_dir> [--smoke]
 # Folder and zip: super-speedy-performance-analysis-pro. The full tree, nothing stripped.
 set -uo pipefail

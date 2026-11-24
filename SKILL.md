@@ -17,11 +17,12 @@ nothing is ever really deactivated).
 With wp-cli access:
 
 ```bash
-wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis-pro.zip --activate
+wp plugin install super-speedy-performance-analysis --activate
 ```
 
-Or download that zip and upload via Plugins -> Add New. Verify: `wp plugin is-active
-super-speedy-performance-analysis`.
+Or install it from WordPress.org via Plugins -> Add New. Verify: `wp plugin is-active
+super-speedy-performance-analysis` (Pro, if the site has it, is
+`super-speedy-performance-analysis-pro`).
 
 Analyses need the profiler, which the site owner turns on explicitly. With their agreement:
 

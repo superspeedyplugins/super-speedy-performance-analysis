@@ -2,13 +2,15 @@
 
 ## Install it
 
-Download the zip from the [latest release](https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest), then Plugins, Add New, Upload Plugin, Activate.
+Install it from [WordPress.org](https://wordpress.org/plugins/super-speedy-performance-analysis/): Plugins, Add New, search for "Super Speedy Performance Analysis", Install, Activate.
 
 Or over SSH:
 
 ```
-wp plugin install https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest/download/super-speedy-performance-analysis-pro.zip --force --activate
+wp plugin install super-speedy-performance-analysis --force --activate
 ```
+
+Performance Analysis Pro is a paid plugin: download its zip from your superspeedyplugins.com account, then Plugins, Add New, Upload Plugin, Activate.
 
 `--force` replaces an existing or incomplete copy. Add `--allow-root` if you're deliberately running WP-CLI as root.
 
@@ -16,9 +18,9 @@ If you already run another Super Speedy plugin, there's an Install Performance A
 
 ## Updates
 
-Free, automatic, and no licence key. New versions appear on your Plugins screen like any other update, and the download comes from the public GitHub release.
+The WordPress.org edition updates from WordPress.org like any other plugin, with no licence key. Pro updates from superspeedyplugins.com and needs its licence key entered on the Super Speedy settings page.
 
-A free key exists and does exactly one thing: it lets an AI agent install and configure the rest of the Super Speedy range for you. No feature of this plugin sits behind it.
+A free key exists and does exactly one thing: it lets an AI agent install and configure the rest of the Super Speedy range for you. No feature of the wordpress.org edition sits behind it.
 
 ## Requirements
 
@@ -47,7 +49,7 @@ Deleting leaves your stored analyses in place unless you say otherwise. The Comp
 
 ## Editions
 
-The GitHub release and the copy on superspeedyplugins.com are the same plugin. A separate wordpress.org build omits the shared settings submodule, because wordpress.org doesn't allow a bundled update checker. No feature differs between them.
+Pro (paid, from superspeedyplugins.com) is the complete plugin with the shared settings submodule and its update checker. The wordpress.org edition omits the submodule, because wordpress.org doesn't allow a bundled update checker, and leaves out what wordpress.org does not allow: measuring as a synthetic logged-in customer, a measurement login minted for background runs, and the abilities that change the site.
 
 ---
 

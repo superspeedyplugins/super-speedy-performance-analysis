@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Build both editions (Pro and wordpress.org) plus the GitHub release asset (.build/build-github.sh).
 #   .build/build-all.sh <dest_dir> [--smoke]
+# A GitHub release carries only <dest_dir>/github/super-speedy-performance-analysis.zip. The Pro zip
+# in <dest_dir> is for superspeedyplugins.com only (paid since 24 November 2026).
 set -uo pipefail
 _h="$(cd "$(dirname "$0")" && pwd)"
 DEST="${1:?usage: build-all.sh <dest_dir> [--smoke]}"

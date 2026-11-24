@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.70.2 (24th November 2026) =
+* The README and the bundled agent skill install the free edition from wordpress.org with `wp plugin install super-speedy-performance-analysis`.
+
 = 0.70.1 (24th November 2026) =
 * Pro: updated super-speedy-settings to 1.14.10, whose Install Performance Analysis button in the other Super Speedy plugins installs the free wordpress.org edition.
 

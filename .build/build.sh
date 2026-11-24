@@ -3,7 +3,8 @@
 #
 # Two editions from one tree, built mostly by DELETION:
 #
-#   pro    - superspeedyplugins.com + the GitHub release asset. Folder and zip
+#   pro    - superspeedyplugins.com only (paid since 24 November 2026; never a GitHub release asset,
+#            .build/build-github.sh builds that). Folder and zip
 #            super-speedy-performance-analysis-pro. The full tree: the synthetic test customer,
 #            minted measurement logins, every MCP/REST ability. Carries the super-speedy-settings
 #            submodule (the shared Super Speedy menu and the plugin-update-checker, PUC), whose

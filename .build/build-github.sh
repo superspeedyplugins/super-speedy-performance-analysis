@@ -5,7 +5,10 @@
 # the public diagnosis and plugin-updates skills install from
 # releases/latest/download/super-speedy-performance-analysis.zip, and installed copies' update
 # checker downloads it. It is the whole (Pro) tree in the plain folder, with the plain Plugin Name
-# and the plain updater slug, which is what installed copies run. Attach the Pro zip beside it.
+# and the plain updater slug, which is what installed copies run.
+# This is the ONLY asset a GitHub release carries. Pro is a paid plugin since 24 November 2026
+# (Dave): super-speedy-performance-analysis-pro.zip is never attached to a GitHub release, and the
+# assets already on old releases are left as they are.
 set -uo pipefail
 _h="$(cd "$(dirname "$0")" && pwd)"
 source "$_h/build.sh"

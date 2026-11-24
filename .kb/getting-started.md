@@ -12,8 +12,8 @@ Super Speedy Performance Analysis comes in two editions built from the same code
 | Profiler helpers | Installed on activation | Installed when you start your first analysis |
 | AI agent control over MCP | Read and run: analyses, settings and the profiler | Read-only |
 
-1. Download `super-speedy-performance-analysis-pro.zip` from https://github.com/superspeedyplugins/super-speedy-performance-analysis/releases/latest
-2. Plugins -> Add New -> Upload Plugin -> activate.
+1. Free edition: Plugins -> Add New, search for "Super Speedy Performance Analysis" (https://wordpress.org/plugins/super-speedy-performance-analysis/), install and activate. Pro: download `super-speedy-performance-analysis-pro.zip` from your superspeedyplugins.com account.
+2. For Pro, Plugins -> Add New -> Upload Plugin -> activate.
 3. Go to **Super Speedy -> Performance Analysis**.
 
 If both editions are installed, Pro runs and asks you to delete the other one. Both editions read the same settings and saved analyses, so switching keeps your history.
