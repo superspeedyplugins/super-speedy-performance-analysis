@@ -154,7 +154,7 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
 request), `three` (`warmups` 1, `samples` 3, medians) or `custom` (Profile this endpoint's
 chosen sample count). It is `null` when not recorded, which is a failed run; a completed run
 from before 0.71.0 reports `three`. The setting is `measurement_runs` in `get-settings` and
-`update-settings` (`one` | `three`). With one sample (since 0.72.2), that response's normalised hash is the page's
+`update-settings` (`one` | `three`). With one sample (since 0.73.1), that response's normalised hash is the page's
 `output_signature` and `output_stable` is `true`; samples that disagree give `false`.
 
 ### Finding

@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: Super Speedy Performance Analysis Pro 0.73.0\n"
+"Project-Id-Version: Super Speedy Performance Analysis Pro 0.73.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/super-speedy-performance-analysis\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-25T12:40:34+00:00\n"
+"POT-Creation-Date: 2026-11-25T12:52:11+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: super-speedy-performance-analysis\n"
@@ -717,7 +717,7 @@ msgstr ""
 #. translators: %s: recorded component version after it was added.
 #. translators: %s: newly installed component version
 #: includes/admin/class-sspa-history-chart.php:239
-#: includes/class-sspa-history-view.php:97
+#: includes/class-sspa-history-view.php:94
 #, php-format
 msgid "added at %s"
 msgstr ""
@@ -725,7 +725,7 @@ msgstr ""
 #. translators: %s: recorded component version before it was removed.
 #. translators: %s: previously installed component version
 #: includes/admin/class-sspa-history-chart.php:243
-#: includes/class-sspa-history-view.php:99
+#: includes/class-sspa-history-view.php:96
 #, php-format
 msgid "removed (was %s)"
 msgstr ""
@@ -1147,7 +1147,7 @@ msgstr ""
 #: includes/admin/partials/cache-safety-scan.php:30
 #: includes/admin/partials/cache-safety-scan.php:119
 #: includes/admin/tabs/overview.php:310
-#: includes/class-sspa-history-view.php:101
+#: includes/class-sspa-history-view.php:98
 #: includes/admin/js/sspa-checkout.js:269
 msgid "unknown"
 msgstr ""
@@ -5611,7 +5611,7 @@ msgid "Select every eligible plugin"
 msgstr ""
 
 #: includes/class-sspa-adhoc.php:157
-#: includes/class-sspa-history-view.php:161
+#: includes/class-sspa-history-view.php:158
 msgid "Clear"
 msgstr ""
 
@@ -6895,16 +6895,12 @@ msgstr ""
 msgid "Measurement: #%1$d %2$s; #%3$d %4$s."
 msgstr ""
 
-#: includes/class-sspa-history-view.php:81
-msgid "A single request varies more than a median of three, so a small timing difference here is not evidence of a change, and output stability needs at least two requests. Re-run the analysis, or set Measurement runs per page to Three runs under Advanced settings, for a firmer comparison."
-msgstr ""
-
-#: includes/class-sspa-history-view.php:87
+#: includes/class-sspa-history-view.php:84
 msgid "Setup-change evidence is unavailable for one of these older runs."
 msgstr ""
 
 #. translators: %d: number of component changes
-#: includes/class-sspa-history-view.php:90
+#: includes/class-sspa-history-view.php:87
 #, php-format
 msgid "%d setup change"
 msgid_plural "%d setup changes"
@@ -6913,58 +6909,58 @@ msgstr[1] ""
 
 #. translators: %s: newly installed component version
 #. translators: %s: previously installed component version
-#: includes/class-sspa-history-view.php:97
-#: includes/class-sspa-history-view.php:99
+#: includes/class-sspa-history-view.php:94
+#: includes/class-sspa-history-view.php:96
 msgid "unknown version"
 msgstr ""
 
 #. translators: %d: number of components whose published configuration state changed
-#: includes/class-sspa-history-view.php:112
+#: includes/class-sspa-history-view.php:109
 #, php-format
 msgid "%d configuration change"
 msgid_plural "%d configuration changes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-sspa-history-view.php:123
+#: includes/class-sspa-history-view.php:120
 msgid "Page / variant"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:124
+#: includes/class-sspa-history-view.php:121
 msgid "Validity"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:125
+#: includes/class-sspa-history-view.php:122
 msgid "Generation time"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:126
+#: includes/class-sspa-history-view.php:123
 msgid "Output"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:127
+#: includes/class-sspa-history-view.php:124
 msgid "Declared expectation"
 msgstr ""
 
 #. translators: 1: expected HTTP status code, 2: actual HTTP status code.
-#: includes/class-sspa-history-view.php:150
+#: includes/class-sspa-history-view.php:147
 #, php-format
 msgid "HTTP %1$d expected, got %2$d"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:155
+#: includes/class-sspa-history-view.php:152
 msgid "Output differs from the approved run"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:158
+#: includes/class-sspa-history-view.php:155
 msgid "Use After as expected"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:169
+#: includes/class-sspa-history-view.php:166
 msgid "Preview privacy-safe evidence"
 msgstr ""
 
-#: includes/class-sspa-history-view.php:170
+#: includes/class-sspa-history-view.php:167
 msgid "Download reviewed evidence"
 msgstr ""
 
@@ -7107,11 +7103,11 @@ msgid_plural "median of %d measured requests, no warm-up"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-sspa-measurement.php:124
+#: includes/class-sspa-measurement.php:119
 msgid "Each page is measured once, cold, with no warm-up: one request per page instead of four. Run it again yourself to check a figure, or choose Three runs for a median."
 msgstr ""
 
-#: includes/class-sspa-measurement.php:125
+#: includes/class-sspa-measurement.php:120
 msgid "Each page gets a warm-up request and three measured requests, and the median is reported: four requests per page. Choose One run to measure each page once, cold."
 msgstr ""
 
@@ -7477,13 +7473,13 @@ msgstr ""
 #. translators: %s: generation time in milliseconds.
 #: includes/class-sspa-page-summary.php:236
 #, php-format
-msgid "One measured request: %s ms, cold (no warm-up). One request has no spread; set Measurement runs per page to Three runs for a median."
+msgid "One measured request: %s ms, cold (no warm-up)."
 msgstr ""
 
 #. translators: %s: generation time in milliseconds.
 #: includes/class-sspa-page-summary.php:238
 #, php-format
-msgid "One measured request: %s ms. One request has no spread; set Measurement runs per page to Three runs for a median."
+msgid "One measured request: %s ms."
 msgstr ""
 
 #. translators: 1: minimum milliseconds, 2: median milliseconds, 3: maximum milliseconds, 4: successful sample count.
@@ -7696,7 +7692,7 @@ msgstr ""
 msgid "That run predates the shared-cache safety scan or contained no eligible pages."
 msgstr ""
 
-#: includes/class-sspa-report.php:588
+#: includes/class-sspa-report.php:591
 #: includes/traffic/class-sspa-traffic-collection.php:327
 #: includes/traffic/class-sspa-traffic-collection.php:447
 #: includes/traffic/class-sspa-traffic-collection.php:603

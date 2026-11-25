@@ -3,7 +3,7 @@ Contributors: dhilditch
 Tags: speed, performance, profiling, database, analysis
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 0.73.0
+Stable tag: 0.73.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -112,6 +112,9 @@ Apache ECharts 6.1.0 uses Apache-2.0; zrender 6.1.0 and the bundled d3 quantile 
 The chart bundle includes the licence and notice files; its reproducible source is in the public repository's `.build/echarts/` directory.
 
 == Changelog ==
+
+= 0.73.1 (25th November 2026) =
+* Compare now checks whether page output changed, lets you approve a page's output and alerts on approved-output changes for analyses measured with the default one run per page, with no extra note about single requests.
 
 = 0.73.0 (25th November 2026) =
 * Each row under Slowest queries in the page panel now expands to show where the query came from: the plugin, the shortcode, the hook path, the template file and page area, the widget, the WP_Query settings, whether it uses SQL_CALC_FOUND_ROWS, any Scalability Pro query vars and the call stack with line numbers.
