@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.72.1 (25th November 2026) =
+* Changelog wording only; no code changes.
+
 = 0.72.0 (24th November 2026) =
 * Pro: the update watchdog measures the site after every plugin, theme or WordPress core update, compares it with the analysis before the update and emails you only when a page or checkout step got slower, stopped loading or gained a PHP error, naming the update, the page and the milliseconds.
 * Pro: the watchdog waits 10 minutes after the latest update, so a batch of updates gives one check, then measures the front end, the logged-in customer pages and wp-admin with nobody at the screen and runs the checkout test.
