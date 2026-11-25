@@ -36,7 +36,7 @@ The measurements are ordinary analyses, so they appear in Compare with the rest 
 - A page or step that loaded before and fails after the update, or a page that answers with a different HTTP status.
 - A new PHP fatal error or PHP error, with the plugin or theme it came from.
 - The checkout test failing.
-- A page whose output you approved in Compare that does not match it after the update. This needs two matching responses per page, so it applies when Measurement runs per page is set to Three runs.
+- A page whose output you approved in Compare that does not match it after the update. This works with the default of one run per page.
 
 **Every regression is measured twice.** A page or step that crosses a threshold is measured again before it counts, so one slow request (a cron job, a cache warming up, a busy neighbour on shared hosting) cannot send an alert. A slowdown is reported at the smaller of its two measurements.
 

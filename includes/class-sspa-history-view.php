@@ -77,9 +77,6 @@ class SSPA_History_View {
                 <?php
                 /* translators: 1: before run id, 2: how the before run measured each page, 3: after run id, 4: how the after run measured each page */
                 echo esc_html(sprintf(__('Measurement: #%1$d %2$s; #%3$d %4$s.', 'super-speedy-performance-analysis'), (int) $comparison['before']['id'], SSPA_Measurement::label($sspa_before_m), (int) $comparison['after']['id'], SSPA_Measurement::label($sspa_after_m)));
-                if (SSPA_Measurement::is_single($sspa_before_m) || SSPA_Measurement::is_single($sspa_after_m)) {
-                    echo ' ' . esc_html__('A single request varies more than a median of three, so a small timing difference here is not evidence of a change, and output stability needs at least two requests. Re-run the analysis, or set Measurement runs per page to Three runs under Advanced settings, for a firmer comparison.', 'super-speedy-performance-analysis');
-                }
                 ?>
             </p>
 

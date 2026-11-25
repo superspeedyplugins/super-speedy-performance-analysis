@@ -4,13 +4,13 @@ Credibility is the product, so here is exactly how measurement works. For what t
 
 ## Sampling
 
-By default every page is measured **once, cold**: one request, with no warm-up first, and that request's time is what you see. Run the analysis again yourself to check a figure. For a firmer number, set **Measurement runs per page** to **Three runs** (Compare tab, **Advanced settings**): each page is then requested once as a warm-up (priming caches) and three measured times, and the plugin reports the **median** and keeps the spread. One run sends one request per page; three runs send four.
+By default every page is measured **once, cold**: one request, with no warm-up first, and that request's time is what you see. Run the analysis again yourself to see the page warm. To measure each page several times within one analysis, set **Measurement runs per page** to **Three runs** (Compare tab, **Advanced settings**): each page is then requested once as a warm-up (priming caches) and three measured times, and the plugin reports the **median** and keeps the spread. One run sends one request per page; three runs send four.
 
 The setting applies to Run Analysis, spot checks, the quick comparison after plugin changes and Analyse this page. Plugin Impact Analysis and Cache Impact Analysis keep their own sampling (below), because they compare a page with and without something and need like-for-like measurements.
 
 Each analysis also measures a near-empty baseline request to establish your server's noise floor. Responses served by a page cache are detected (via a per-request token echoed in a response header) and discarded, then retried up to twice - a cached page says nothing about PHP, so it never counts as the measurement.
 
-A single request has no spread. With one run, the page summary says so, Compare names the mode each run used and warns that a small timing difference between single requests is not evidence of a change, and output-change detection (which needs at least two matching requests) shows as unavailable.
+A before/after comparison of one run before and one run after is the normal case. Compare names the mode each run used, shows the timing differences, and compares each page's output: with one run, that request's normalised response is the page's output signature. Every measurement carries some noise, roughly 10% either way, whatever the number of samples.
 
 ## Capture
 

@@ -39,6 +39,9 @@ function sspa_62_fixture($path, $version) {
 }
 
 wp_set_current_user(1);
+// The setup-series runs use the default, one measured request per page; an earlier case on this
+// retained site may have chosen Three runs, so set it on the way in.
+sspa_update_option('measurement_runs', 'one');
 $active_run = SSPA_Run_Controller::active_run_id();
 if ($active_run) {
     SSPA_Run_Controller::cancel($active_run);
@@ -161,7 +164,12 @@ foreach (SSPA_History_Series::metrics() as $metric_key => $metric_definition) {
 }
 
 // A newer run's metadata cannot exclude its retained measurements.
+// This run plants a transport error in its first sample and a missing timing in its second, to
+// prove failed samples inside one run are charted beside the measured ones. That needs several
+// samples within the run, so it measures with Measurement runs per page = Three runs.
+sspa_update_option('measurement_runs', 'three');
 $incompatible_id = sspa_62_drive_run();
+sspa_update_option('measurement_runs', 'one');
 sspa_62_t(!is_wp_error($incompatible_id), 'the newer compatibility-candidate measurement completes');
 if (!is_wp_error($incompatible_id)) {
     update_option('sspa_test_history_error_run', $incompatible_id, false);

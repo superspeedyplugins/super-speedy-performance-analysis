@@ -227,15 +227,15 @@ class SSPA_Page_Summary {
         }
         if (!$values) return __('Sample variance is unavailable.', 'super-speedy-performance-analysis');
         if (1 === count($values)) {
-            // One run per page (SSPA_Measurement): a single request has no spread to report.
+            // One run per page (SSPA_Measurement), the normal case: report the request, no nag.
             $measurement = !empty($row['run_id']) ? SSPA_Measurement::for_run(SSPA_Run_Controller::run_row((int) $row['run_id'])) : null;
             $cold = is_array($measurement) && 0 === (int) $measurement['warmups'];
             return sprintf(
                 $cold
                     /* translators: %s: generation time in milliseconds. */
-                    ? __('One measured request: %s ms, cold (no warm-up). One request has no spread; set Measurement runs per page to Three runs for a median.', 'super-speedy-performance-analysis')
+                    ? __('One measured request: %s ms, cold (no warm-up).', 'super-speedy-performance-analysis')
                     /* translators: %s: generation time in milliseconds. */
-                    : __('One measured request: %s ms. One request has no spread; set Measurement runs per page to Three runs for a median.', 'super-speedy-performance-analysis'),
+                    : __('One measured request: %s ms.', 'super-speedy-performance-analysis'),
                 number_format($values[0], 1)
             );
         }

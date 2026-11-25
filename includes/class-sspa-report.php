@@ -497,7 +497,10 @@ class SSPA_Report {
                 $fatal_unique[md5(wp_json_encode($fatal))] = $fatal;
             }
             $diagnostics['fatals'] = array_values($fatal_unique);
-            $run_output_stable = $stable_sample_count >= 2 ? (1 === count($stable_hashes)) : null;
+            // One measured request is a normal run (Dave, 24 November 2026): its hash is this
+            // run's output signature, so a one-run before/after compares output like any other.
+            // Several samples that disagree mean the output varies; none means unknown.
+            $run_output_stable = $stable_sample_count >= 1 ? (1 === count($stable_hashes)) : null;
             $output_stable = $run_output_stable;
             // The sweep's verdict outranks this run's samples: if the latest Plugin Impact Analysis
             // of this page found its own baselines unstable, byte-identity is

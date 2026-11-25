@@ -113,11 +113,6 @@ class SSPA_Measurement {
             : sprintf(_n('median of %d measured request, no warm-up', 'median of %d measured requests, no warm-up', $samples, 'super-speedy-performance-analysis'), $samples);
     }
 
-    /** Whether a discipline is a single measured request, which has no spread. */
-    public static function is_single($discipline) {
-        return is_array($discipline) && 1 === (int) $discipline['samples'];
-    }
-
     /** The sentence the Run Analysis panel shows for the site's current setting. */
     public static function run_panel_sentence() {
         return self::ONE === self::mode()

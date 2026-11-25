@@ -169,7 +169,9 @@ if ($run_one && $run_three) {
     foreach (is_array($comparison) ? (array) $comparison['pages'] : array() as $page) {
         if ('home' === $page['page_key']) { $home_output = $page['output']['state']; }
     }
-    sspa_167_t('unavailable' === $home_output, 'output change detection against a one-request run is unavailable, not claimed (got ' . var_export($home_output, true) . ')');
+    // A one-request run is a normal before/after side (Dave, 24 November 2026): its single hash is
+    // the output signature. Nothing changed Home between the two runs.
+    sspa_167_t('unchanged' === $home_output, 'output of a one-request run compares with a three-run analysis as unchanged (got ' . var_export($home_output, true) . ')');
     $html = is_array($comparison) ? SSPA_History::render($comparison) : '';
     sspa_167_t(false !== strpos($html, '1 measured request per page') && false !== strpos($html, 'median of 3'), 'the comparison view says which mode each run used');
 }

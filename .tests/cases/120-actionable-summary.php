@@ -37,6 +37,13 @@ foreach (array('plugin.php', 'page.php', 'summary-slow.php', 'summary-child.php'
 }
 copy($fixture . 'endpoint.php', ABSPATH . 'summary-slow-endpoint.php');
 activate_plugin('sspa-render-fixture/plugin.php');
+// This case and 121, 122 and 124 (which require it) test features of several samples within one
+// run: the sample range in the export, the median request among varying samples, first-sample-only
+// cost and warm medians of the planted render waits. So they measure with Measurement runs per
+// page = Three runs (a warm-up plus three samples). One run is the default and is covered by 167/168.
+$summary_entry_runs = sspa_get_option('measurement_runs');
+sspa_update_option('measurement_runs', 'three');
+register_shutdown_function(static function () use ($summary_entry_runs) { sspa_update_option('measurement_runs', $summary_entry_runs); });
 $page = get_page_by_path('summary-fixture');
 if (!$page) {
     $id = wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish', 'post_name' => 'summary-fixture', 'post_title' => 'Summary fixture', 'post_content' => '[sspa_slow]'));

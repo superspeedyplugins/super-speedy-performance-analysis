@@ -154,8 +154,8 @@ must never offer blocking for `never`. `complete=false` names coverage gaps in
 request), `three` (`warmups` 1, `samples` 3, medians) or `custom` (Profile this endpoint's
 chosen sample count). It is `null` when not recorded, which is a failed run; a completed run
 from before 0.71.0 reports `three`. The setting is `measurement_runs` in `get-settings` and
-`update-settings` (`one` | `three`). With one sample, `pages[].output_stable` is `null` and no
-`output_signature` is given, because one response cannot show the output holds still.
+`update-settings` (`one` | `three`). With one sample (since 0.72.2), that response's normalised hash is the page's
+`output_signature` and `output_stable` is `true`; samples that disagree give `false`.
 
 ### Finding
 
@@ -387,8 +387,8 @@ from the run's full-set profile, for prioritising pages by slowness; null when t
 could not be measured), `output_stable` (true = the page's normalised output held still
 between fetches; false = it varies between loads - rotating/dynamic content - so
 byte-identity evidence is structurally unobtainable for this page and `output_identical`
-will be null; null = not enough samples to say), `output_signature` (a normalised MD5 when
-this exact run's repeated samples held still; null otherwise), `diagnostics` (allowlisted
+will be null; null = no sample carried a response hash), `output_signature` (a normalised MD5
+when this exact run's samples, one or more, share one hash; null otherwise), `diagnostics` (allowlisted
 transport error codes, HTTP error count and fatal component/type/fingerprint records),
 `profiled_at`, `plugins[]`. A signature can coexist with `output_stable=false` when this run
 was reproducible but the latest wider Plugin Impact Analysis observed that the page varies;

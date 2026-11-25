@@ -49,10 +49,10 @@ sspa_update_option('plugin_update_detection', false);
 sspa_update_option('blob_retention_runs', 7);
 sspa_history_t(false === sspa_get_option('plugin_update_detection'), 'an explicit disabled value survives unrelated saves');
 sspa_update_option('plugin_update_detection', true);
-// The stable-output and declared-expectation journeys below need at least two matching requests
-// per page, so this case measures with Measurement runs per page = Three runs. Since 0.71.0 the
-// default is one cold request, which reports output stability as unknown (case 167).
-sspa_update_option('measurement_runs', 'three');
+// The stable-output and declared-expectation journeys below run on the default, one cold request
+// per page: a one-run before/after compares output normally (Dave, 24 November 2026; case 168).
+// Set on the way in, since an earlier case on this retained site may have chosen Three runs.
+sspa_update_option('measurement_runs', 'one');
 
 // Drive the real updater hook pair against a real plugin header in this retained site.
 $update_fixture_dir = WP_PLUGIN_DIR . '/sspa-history-update-fixture';
