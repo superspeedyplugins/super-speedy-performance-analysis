@@ -113,6 +113,9 @@ The chart bundle includes the licence and notice files; its reproducible source 
 
 == Changelog ==
 
+= 0.73.2 (27th November 2026) =
+* Updated super-speedy-settings to 1.16.0: the Super Speedy screen gains plugin pages, recommendations for this site, free trial requests and deals, and licence rows show free trials.
+
 = 0.73.1 (25th November 2026) =
 * Compare now checks whether page output changed, lets you approve a page's output and alerts on approved-output changes for analyses measured with the default one run per page, with no extra note about single requests.
 
